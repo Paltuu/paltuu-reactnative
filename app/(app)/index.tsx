@@ -14,19 +14,19 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-bg px-5 pt-4">
+    <SafeAreaView className="flex-1 bg-bg px-5 pt-10">
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* User Nameplate */}
         <View className="flex-row items-center justify-between mb-8">
           <View className="flex-row items-center">
             <View className="w-12 h-12 rounded-full bg-primarySoft justify-center items-center mr-3 border border-primaryMid overflow-hidden">
-               {user?.profile_image_url ? (
-                 <Image source={{ uri: user.profile_image_url }} className="w-full h-full" />
-               ) : (
-                 <Text className="text-primary font-heading text-lg">
-                   {user?.name?.[0] || 'P'}
-                 </Text>
-               )}
+              {user?.profile_image_url ? (
+                <Image source={{ uri: user.profile_image_url }} className="w-full h-full" />
+              ) : (
+                <Text className="text-primary font-heading text-lg">
+                  {user?.name?.[0] || 'P'}
+                </Text>
+              )}
             </View>
             <View>
               <Text className="font-body text-gray-500 text-xs">{getGreeting()}</Text>
@@ -35,7 +35,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          
+
           <TouchableOpacity className="w-10 h-10 rounded-full bg-white justify-center items-center shadow-sm">
             <Text className="text-xl">🔔</Text>
           </TouchableOpacity>
@@ -50,7 +50,7 @@ export default function HomeScreen() {
             Everything you need for your pet is now in your pocket.
           </Text>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             className="bg-primary/10 py-3 rounded-button border border-primary/20"
             onPress={logout}
           >
