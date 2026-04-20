@@ -24,5 +24,10 @@ export const authApi = {
   async googleAuth(idToken: string) {
     const { data } = await client.post('/auth/mobile/google', { idToken });
     return data;
+  },
+
+  async getProfile(userId: string) {
+    const { data } = await client.get(`/my-profile/${userId}`);
+    return data;
   }
 };

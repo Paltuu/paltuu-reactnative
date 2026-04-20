@@ -19,9 +19,29 @@ interface AuthState {
   updateAccessToken: (accessToken: string) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
+  fetchProfile: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+// Simple base64 decoder to parse JWT without external libs
+const decodeJWT = (token: string) => {
+  try {
+    const base64Payload = token.split('.')[1];
+    // Polyfill for atob in React Native
+    const base64 = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      Buffer.from(base64, 'base64')
+        .toString('binary')
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -29,10 +49,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setAuth: async (user, accessToken, refreshToken) => {
-    await storage.saveUser(user);
     await storage.saveToken(accessToken);
     await storage.saveRefreshToken(refreshToken);
-    set({ user, accessToken, refreshToken, isAuthenticated: true });
+    set({ accessToken, refreshToken, isAuthenticated: true });
+    
+    if (user) {
+      await storage.saveUser(user);
+      set({ user });
+    } else {
+      // If user is null (common in production login), fetch it immediately
+      await get().fetchProfile();
+    }
   },
 
   updateAccessToken: async (accessToken) => {
@@ -45,14 +72,45 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 
+  fetchProfile: async () => {
+    const { accessToken } = get();
+    if (!accessToken) return;
+
+    try {
+      const payload = decodeJWT(accessToken);
+      const userId = payload?.user_id || payload?.id;
+      
+      if (userId) {
+        // Dynamic import to avoid circular dependency
+        const { authApi } = require('../api/auth');
+        const userData = await authApi.getProfile(userId);
+        
+        const mappedUser: User = {
+          id: String(userData.id || userData.user_id),
+          email: userData.email,
+          name: userData.name || userData.email,
+          role: userData.role || "regular user",
+          profile_image_url: userData.profile_image_url || null,
+        };
+        
+        await storage.saveUser(mappedUser);
+        set({ user: mappedUser });
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile', e);
+    }
+  },
+
   hydrate: async () => {
     try {
       const user = await storage.getUser();
       const accessToken = await storage.getToken();
       const refreshToken = await storage.getRefreshToken();
 
-      if (user && accessToken && refreshToken) {
+      if (accessToken && refreshToken) {
         set({ user, accessToken, refreshToken, isAuthenticated: true });
+        // If we have token but no user (or to refresh), fetch profile
+        get().fetchProfile();
       }
     } catch (e) {
       console.error('Failed to hydrate auth store', e);
