@@ -1,56 +1,22 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { View, TextInput, Text, TextInputProps } from 'react-native';
 
 interface CustomInputProps extends TextInputProps {
   label: string;
   error?: string;
+  containerClassName?: string;
 }
 
-export const CustomInput: React.FC<CustomInputProps> = ({ label, error, ...props }) => {
+export const CustomInput: React.FC<CustomInputProps> = ({ label, error, containerClassName = "", ...props }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+    <View className={`mb-5 w-full ${containerClassName}`}>
+      <Text className="font-bodyMedium text-gray-700 mb-2">{label}</Text>
       <TextInput
-        style={[styles.input, error ? styles.inputError : null]}
-        placeholderTextColor={COLORS.gray[400]}
+        className={`h-[52px] border ${error ? 'border-error' : 'border-gray-300'} rounded-button px-4 text-dark bg-white font-body`}
+        placeholderTextColor="#999999"
         {...props}
       />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text className="text-error text-xs mt-1 font-body">{error}</Text>}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-    width: '100%',
-  },
-  label: {
-    fontSize: 14,
-    color: COLORS.gray[700],
-    marginBottom: 8,
-    fontWeight: '500',
-    fontFamily: 'Montserrat_500Medium',
-  },
-  input: {
-    height: 52,
-    borderWidth: 1,
-    borderColor: COLORS.gray[300],
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: COLORS.black,
-    backgroundColor: COLORS.white,
-    fontFamily: 'Montserrat_400Regular',
-  },
-  inputError: {
-    borderColor: COLORS.error,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 12,
-    marginTop: 4,
-    fontFamily: 'Montserrat_400Regular',
-  },
-});

@@ -1,13 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 
 interface PrimaryButtonProps {
   title: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
+  className?: string;
 }
 
 export const PrimaryButton: React.FC<PrimaryButtonProps> = ({ 
@@ -15,45 +14,20 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   onPress, 
   loading, 
   disabled,
-  style 
+  className = "",
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.button, disabled || loading ? styles.disabled : null, style]}
+      className={`h-[52px] bg-primary rounded-button justify-center items-center w-full ${disabled || loading ? 'opacity-40' : ''} ${className}`}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={COLORS.white} />
+        <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text style={styles.text}>{title}</Text>
+        <Text className="text-white text-base font-headingSemi">{title}</Text>
       )}
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    height: 52,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Montserrat_600SemiBold',
-  },
-});
