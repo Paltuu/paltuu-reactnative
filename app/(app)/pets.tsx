@@ -1,88 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { petsApi } from '../../src/api/pets';
-import { PetCard } from '../../src/components/pets/PetCard';
+import React, { useState } from 'react';
+import { View, Text, SafeAreaView, FlatList, Image, TouchableOpacity, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { petApi } from '../../src/api/pets';
+import { Ionicons } from '@expo/vector-icons';
 
-const SPECIES = [
-  { id: 'Dog', icon: 'dog' },
-  { id: 'Cat', icon: 'cat' },
-  { id: 'Bird', icon: 'feather' },
-  { id: 'Rabbit', icon: 'carrot' }
-];
+const SPECIES = ['All', 'Dog', 'Cat', 'Bird', 'Rabbit'];
 
 export default function PetsScreen() {
-  const [pets, setPets] = useState([]);
-  const [selectedSpecies, setSelectedSpecies] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [selectedSpecies, setSelectedSpecies] = useState('All');
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchPets();
-  }, []);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pets', selectedSpecies, search],
+    queryFn: () => petApi.getAdoptionPets({
+      species: selectedSpecies === 'All' ? undefined : selectedSpecies.toLowerCase(),
+      // Adding search as breed filter for now as a simple implementation
+      breed: search || undefined,
+      limit: 20
+    }),
+  });
 
-  const fetchPets = async (type = null) => {
-    try {
-      setLoading(true);
-      const data = await petsApi.getPets({ type });
-      setPets(data);
-    } catch (error) {
-      console.error('Pets fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const pets = data?.data || [];
 
-  const handleSpeciesSelect = (id) => {
-    const newSpecies = selectedSpecies === id ? null : id;
-    setSelectedSpecies(newSpecies);
-    fetchPets(newSpecies);
-  };
+  const renderPetCard = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      className="bg-white m-2 rounded-2xl overflow-hidden shadow-sm flex-1"
+      activeOpacity={0.8}
+    >
+      <Image
+        source={{ uri: item.image_url || item.profile_image_url || 'https://via.placeholder.com/150' }}
+        className="w-full h-40"
+        resizeMode="cover"
+      />
+      <View className="p-3">
+        <View className="flex-row justify-between items-center mb-1">
+          <Text className="font-heading text-base text-dark flex-1" numberOfLines={1}>
+            {item.pet_name}
+          </Text>
+          <Text className="text-xs font-body text-primary">{item.sex}</Text>
+        </View>
+        <View className="flex-row items-center">
+          <Ionicons name="location-outline" size={12} color="#666" />
+          <Text className="text-xs font-body text-gray-500 ml-1" numberOfLines={1}>
+            {item.city || item.area || 'Pakistan'}
+          </Text>
+        </View>
+        <Text className="text-[10px] font-body text-gray-400 mt-2" numberOfLines={1}>
+          {item.pet_breed || 'Mixed Breed'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-bg px-5">
-      {/* Header */}
-      <View className="mt-4 mb-6">
-        <Text className="font-heading text-2xl text-dark">Find Your Companion</Text>
-        <Text className="font-body text-gray-500">Discover pets waiting for a home</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-bg pt-10">
+      <View className="px-5 pb-2">
+        <Text className="font-heading text-2xl text-dark mb-4">Adopt a Friend</Text>
 
-      {/* Filters */}
-      <View className="mb-6">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {/* Search Bar */}
+        <View className="flex-row items-center bg-white rounded-xl px-4 py-2 border border-gray-100 mb-6">
+          <Ionicons name="search-outline" size={20} color="#999" />
+          <TextInput
+            placeholder="Search by breed..."
+            className="flex-1 ml-3 font-body text-sm"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        {/* Species Filter Chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
           {SPECIES.map((s) => (
-            <TouchableOpacity 
-              key={s.id}
-              onPress={() => handleSpeciesSelect(s.id)}
-              className={`px-5 py-3 rounded-2xl mr-3 flex-row items-center ${selectedSpecies === s.id ? 'bg-primary' : 'bg-surface border border-gray-100'}`}
+            <TouchableOpacity
+              key={s}
+              onPress={() => setSelectedSpecies(s)}
+              className={`px-6 py-2 rounded-full mr-3 border ${selectedSpecies === s ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+                }`}
             >
-              <Text className={`font-heading text-sm ${selectedSpecies === s.id ? 'text-white' : 'text-gray-500'}`}>
-                {s.id}s
+              <Text className={`font-headingSemi text-xs ${selectedSpecies === s ? 'text-white' : 'text-gray-600'
+                }`}>
+                {s}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Pet Feed */}
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#A03048" />
+      {isLoading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#a03048" />
         </View>
       ) : (
-        <FlatList 
+        <FlatList
           data={pets}
+          renderItem={renderPetCard}
           keyExtractor={(item) => item.pet_id.toString()}
-          renderItem={({ item }) => (
-            <PetCard 
-              pet={item} 
-              onPress={() => console.log('Pet selected', item.pet_id)} 
-            />
-          )}
-          showsVerticalScrollIndicator={false}
+          numColumns={2}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 100 }}
+          onRefresh={refetch}
+          refreshing={isLoading}
           ListEmptyComponent={
-            <View className="items-center justify-center mt-10">
-              <Text className="font-body text-gray-400">No pets available right now</Text>
+            <View className="py-20 items-center">
+              <Text className="font-body text-gray-500">No pets found matching your criteria.</Text>
             </View>
           }
         />

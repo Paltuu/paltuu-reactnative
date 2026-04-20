@@ -61,7 +61,7 @@ export default function BazaarScreen() {
       {/* Search */}
       <View className="bg-surface h-12 px-4 rounded-xl flex-row items-center mb-6 shadow-sm">
         <Feather name="search" size={18} color="#9CA3AF" />
-        <TextInput 
+        <TextInput
           placeholder="Search products..."
           className="flex-1 ml-2 font-body text-dark"
           value={search}
@@ -72,7 +72,7 @@ export default function BazaarScreen() {
       {/* Categories */}
       <View className="mb-6">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => handleCategorySelect(null)}
             className={`px-6 py-2 rounded-full mr-3 ${selectedCategory === null ? 'bg-primary' : 'bg-surface border border-gray-100'}`}
           >
@@ -81,7 +81,7 @@ export default function BazaarScreen() {
             </Text>
           </TouchableOpacity>
           {categories.map((cat) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={cat.category_id}
               onPress={() => handleCategorySelect(cat.category_id)}
               className={`px-6 py-2 rounded-full mr-3 ${selectedCategory === cat.category_id ? 'bg-primary' : 'bg-surface border border-gray-100'}`}
@@ -100,15 +100,15 @@ export default function BazaarScreen() {
           <ActivityIndicator color="#A03048" />
         </View>
       ) : (
-        <FlatList 
+        <FlatList
           data={products}
           keyExtractor={(item) => item.product_id.toString()}
           numColumns={2}
           columnWrapperStyle={{ justifyContent: 'space-between' }}
           renderItem={({ item }) => (
-            <ProductCard 
-              product={item} 
-              onPress={() => console.log('Product pressed', item.product_id)} 
+            <ProductCard
+              product={item}
+              onPress={() => console.log('Product pressed', item.product_id)}
             />
           )}
           showsVerticalScrollIndicator={false}

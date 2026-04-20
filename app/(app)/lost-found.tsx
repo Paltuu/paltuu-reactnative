@@ -17,8 +17,8 @@ export default function LostFoundScreen() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const data = await lostFoundApi.getPosts({ 
-        type: filter === 'all' ? null : filter 
+      const data = await lostFoundApi.getPosts({
+        type: filter === 'all' ? null : filter
       });
       setPosts(data);
     } catch (error) {
@@ -29,59 +29,9 @@ export default function LostFoundScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-bg px-5">
-      {/* Header */}
-      <View className="mt-4 mb-6 flex-row items-center justify-between">
-        <View>
-          <Text className="font-heading text-2xl text-dark">Lost & Found</Text>
-          <Text className="font-body text-gray-500">Helping pets find their way home</Text>
-        </View>
-        <TouchableOpacity className="bg-primary w-12 h-12 rounded-full items-center justify-center shadow-md">
-          <Feather name="plus" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Tabs */}
-      <View className="flex-row bg-surface p-1 rounded-2xl mb-6 shadow-sm">
-        {['all', 'lost', 'found'].map((t) => (
-          <TouchableOpacity 
-            key={t}
-            onPress={() => setFilter(t)}
-            className={`flex-1 py-3 rounded-xl items-center ${filter === t ? 'bg-primary' : 'bg-transparent'}`}
-          >
-            <Text className={`font-heading text-xs uppercase ${filter === t ? 'text-white' : 'text-gray-400'}`}>
-              {t}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Feed */}
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#A03048" />
-        </View>
-      ) : (
-        <FlatList 
-          data={posts}
-          keyExtractor={(item) => item.post_id.toString()}
-          renderItem={({ item }) => (
-            <LFPCard 
-              post={item} 
-              onPress={() => console.log('LFP selected', item.post_id)} 
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="items-center justify-center mt-10">
-              <Feather name="search" size={40} color="#E5E7EB" />
-              <Text className="font-body text-gray-400 mt-4 text-center">
-                No reports found in your area
-              </Text>
-            </View>
-          }
-        />
-      )}
+    <SafeAreaView className="flex-1 bg-bg px-5 pt-10">
+      <Text className="font-heading text-xl text-dark">Lost & Found</Text>
+      <Text className="font-body text-gray-500 mt-2">Coming Soon</Text>
     </SafeAreaView>
   );
 }
