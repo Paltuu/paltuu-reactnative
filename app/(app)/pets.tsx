@@ -20,7 +20,7 @@ export default function PetsScreen() {
     }),
   });
 
-  const pets = data?.pets || [];
+  const pets = data?.data || [];
 
   const renderPetCard = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -28,25 +28,25 @@ export default function PetsScreen() {
       activeOpacity={0.8}
     >
       <Image
-        source={{ uri: item.image_url || 'https://via.placeholder.com/150' }}
+        source={{ uri: item.image_url || item.profile_image_url || 'https://via.placeholder.com/150' }}
         className="w-full h-40"
         resizeMode="cover"
       />
       <View className="p-3">
         <View className="flex-row justify-between items-center mb-1">
           <Text className="font-heading text-base text-dark flex-1" numberOfLines={1}>
-            {item.name}
+            {item.pet_name}
           </Text>
           <Text className="text-xs font-body text-primary">{item.sex}</Text>
         </View>
         <View className="flex-row items-center">
           <Ionicons name="location-outline" size={12} color="#666" />
           <Text className="text-xs font-body text-gray-500 ml-1" numberOfLines={1}>
-            {item.city || 'Pakistan'}
+            {item.city || item.area || 'Pakistan'}
           </Text>
         </View>
         <Text className="text-[10px] font-body text-gray-400 mt-2" numberOfLines={1}>
-          {item.breed}
+          {item.pet_breed || 'Mixed Breed'}
         </Text>
       </View>
     </TouchableOpacity>
@@ -94,7 +94,7 @@ export default function PetsScreen() {
         <FlatList
           data={pets}
           renderItem={renderPetCard}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.pet_id.toString()}
           numColumns={2}
           contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 100 }}
           onRefresh={refetch}
