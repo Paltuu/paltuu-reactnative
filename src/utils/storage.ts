@@ -20,6 +20,7 @@ export const storage = {
     return await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
   },
   async saveUser(user: any) {
+    if (!user) return;
     await SecureStore.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
   },
   async getUser() {

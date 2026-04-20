@@ -10,15 +10,24 @@ export const useAuthActions = () => {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
-      // Assuming backend return { user, accessToken, refreshToken }
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      const accessToken = data.accessToken || data.token;
+      const refreshToken = data.refreshToken || "";
+      
+      if (accessToken) {
+        setAuth(data.user || null, accessToken, refreshToken);
+      }
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     onSuccess: (data) => {
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      const accessToken = data.accessToken || data.token;
+      const refreshToken = data.refreshToken || "";
+      
+      if (accessToken) {
+        setAuth(data.user || null, accessToken, refreshToken);
+      }
     },
   });
 

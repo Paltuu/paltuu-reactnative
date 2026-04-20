@@ -6,6 +6,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  profile_image_url?: string;
 }
 
 interface AuthState {
@@ -14,7 +15,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => Promise<void>;
+  setAuth: (user: User | null, accessToken: string, refreshToken: string) => Promise<void>;
   updateAccessToken: (accessToken: string) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
