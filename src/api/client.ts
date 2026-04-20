@@ -64,7 +64,7 @@ client.interceptors.response.use(
         }
 
         // Call refresh endpoint
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/mobile/refresh`, {
+        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`, {
           refreshToken,
         });
 

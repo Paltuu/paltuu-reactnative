@@ -77,25 +77,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!accessToken) return;
 
     try {
-      const payload = decodeJWT(accessToken);
-      const userId = payload?.user_id || payload?.id;
+      // Dynamic import to avoid circular dependency
+      const { authApi } = require('../api/auth');
+      const userData = await authApi.getProfile();
       
-      if (userId) {
-        // Dynamic import to avoid circular dependency
-        const { authApi } = require('../api/auth');
-        const userData = await authApi.getProfile(userId);
-        
-        const mappedUser: User = {
-          id: String(userData.id || userData.user_id),
-          email: userData.email,
-          name: userData.name || userData.email,
-          role: userData.role || "regular user",
-          profile_image_url: userData.profile_image_url || null,
-        };
-        
-        await storage.saveUser(mappedUser);
-        set({ user: mappedUser });
-      }
+      const mappedUser: User = {
+        id: String(userData.id || userData.user_id),
+        email: userData.email,
+        name: userData.name || userData.email,
+        role: userData.role || "regular user",
+        profile_image_url: userData.profile_image_url || null,
+      };
+      
+      await storage.saveUser(mappedUser);
+      set({ user: mappedUser });
     } catch (e) {
       console.error('Failed to fetch user profile', e);
     }
