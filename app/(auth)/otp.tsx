@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { 
   View, 
   Text, 
-  SafeAreaView, 
   KeyboardAvoidingView, 
   Platform,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
-import { CustomInput } from '../../components/common/CustomInput';
-import { PrimaryButton } from '../../components/common/PrimaryButton';
-import { useAuthActions } from '../../hooks/useAuth';
+import { CustomInput } from '../../src/components/common/CustomInput';
+import { PrimaryButton } from '../../src/components/common/PrimaryButton';
+import { useAuthActions } from '../../src/hooks/useAuth';
 
 export default function OTPScreen() {
   const { name, email, password } = useLocalSearchParams<{ name: string; email: string; password?: string }>();

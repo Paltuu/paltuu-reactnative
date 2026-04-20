@@ -13,10 +13,11 @@ import {
   DMSans_500Medium,
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../src/stores/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '../api/queryClient';
-import '../styles/global.css';
+import { queryClient } from '../src/api/queryClient';
+import '../src/styles/global.css';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -65,12 +66,14 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {!fontsLoaded && !fontError ? null : (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(app)" options={{ headerShown: false }} />
-        </Stack>
-      )}
+      <SafeAreaProvider>
+        {!fontsLoaded && !fontError ? null : (
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          </Stack>
+        )}
+      </SafeAreaProvider>
     </QueryClientProvider>
   );
 }

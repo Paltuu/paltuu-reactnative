@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { useAuthStore } from '../../stores/authStore';
+import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../../src/stores/authStore';
 
 export default function HomeScreen() {
   const { user, logout } = useAuthStore();
