@@ -46,7 +46,7 @@ export default function AppLayout() {
           title: 'Pets',
           tabBarIcon: ({ focused }) => (
             <View className={`w-14 h-14 rounded-full items-center justify-center -mt-8 border-4 border-white ${focused ? 'bg-primary' : 'bg-primarySoft'}`}>
-              <Image 
+              <Image
                 source={require('../../assets/primary_icon.svg')}
                 style={{ width: 32, height: 32, tintColor: 'white' }}
                 contentFit="contain"
@@ -73,13 +73,11 @@ export default function AppLayout() {
           ),
         }}
       />
-      
+
       {/* Hidden Screens */}
       <Tabs.Screen name="adopt" options={{ href: null }} />
       <Tabs.Screen name="pet-care" options={{ href: null }} />
       <Tabs.Screen name="lost-found" options={{ href: null }} />
-      <Tabs.Screen name="clinic/[id]" options={{ href: null }} />
-      <Tabs.Screen name="vet/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
