@@ -8,11 +8,11 @@ export const useCollapsibleHeader = () => {
   const scrollY = useRef(new Animated.Value(0)).current;
   const totalHeaderHeight = HEADER_HEIGHT + insets.top;
 
-  const diffClamp = Animated.diffClamp(scrollY, 0, totalHeaderHeight);
+  const diffClamp = Animated.diffClamp(scrollY, 0, HEADER_HEIGHT);
   
   const translateY = diffClamp.interpolate({
-    inputRange: [0, totalHeaderHeight],
-    outputRange: [0, -totalHeaderHeight],
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -HEADER_HEIGHT],
   });
 
   return {

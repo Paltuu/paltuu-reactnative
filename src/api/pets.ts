@@ -47,7 +47,7 @@ export const petApi = {
   },
 
   async getCategories() {
-    const { data } = await client.get('../pet-categories');
+    const { data } = await client.get('/pet-categories');
     return data;
   },
 
