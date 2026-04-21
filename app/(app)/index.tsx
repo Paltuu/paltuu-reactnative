@@ -30,8 +30,23 @@ export default function HomeScreen() {
         bazaarApi.getProducts({ limit: 4 })
       ]);
       
-      const petsList = petsRes?.data || petsRes || [];
-      const productsList = productsRes?.data || productsRes || [];
+      const findArray = (obj: any): any[] => {
+        if (Array.isArray(obj)) return obj;
+        if (obj && typeof obj === 'object') {
+          for (const key in obj) {
+            if (Array.isArray(obj[key])) return obj[key];
+          }
+          // If not found in direct keys, try one level deeper
+          for (const key in obj) {
+            const nested = findArray(obj[key]);
+            if (nested.length > 0) return nested;
+          }
+        }
+        return [];
+      };
+
+      const productsList = findArray(productsRes);
+      const petsListRaw = findArray(petsRes);
 
       // Map products to ensure image_url exists for the component
       const mappedProducts = productsList.map((p: any) => ({
@@ -40,8 +55,8 @@ export default function HomeScreen() {
         category_name: p.categories?.[0]?.name || 'Product'
       }));
 
-      setFeaturedPets(Array.isArray(petsList) ? petsList : []);
-      setTrendingProducts(Array.isArray(mappedProducts) ? mappedProducts : []);
+      setFeaturedPets(petsListRaw);
+      setTrendingProducts(mappedProducts);
     } catch (error) {
       console.error('Dashboard fetch error:', error);
     } finally {
@@ -129,6 +144,7 @@ export default function HomeScreen() {
               <ProductCard 
                 key={product.product_id} 
                 product={product}
+                style={{ width: '48%' }}
                 onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: product.product_id } })}
               />
             ))}

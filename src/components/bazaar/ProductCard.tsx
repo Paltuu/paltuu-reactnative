@@ -1,73 +1,82 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 
 interface ProductCardProps {
-  product: {
-    product_id: number;
-    title: string;
-    price: number | string;
-    image_url?: string;
-    images?: string[];
-    main_image?: string;
-    image?: string;
-    category_name?: string;
-    categories?: { name: string }[];
-    compare_at_price?: number | string;
-  };
+  product: any;
   onPress: () => void;
+  style?: any;
 }
 
-export const ProductCard = ({ product, onPress }: ProductCardProps) => {
-  const displayImage = product.image_url || product.main_image || product.image || (Array.isArray(product.images) ? product.images[0] : null);
-  const displayCategory = product.category_name || (Array.isArray(product.categories) ? product.categories[0]?.name : 'Product');
-  const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
-  const comparePrice = typeof product.compare_at_price === 'string' ? parseFloat(product.compare_at_price) : product.compare_at_price;
-  const hasDiscount = comparePrice && comparePrice > price;
+export const ProductCard = ({ product, onPress, style }: ProductCardProps) => {
+  // Ultra-robust field mapping
+  const name = product.title || product.name || 'Product';
+  
+  // Handle various image formats (string, object with url, array of strings, array of objects)
+  const getImageUrl = () => {
+    const rawImage = product.image_url || product.main_image || product.image || (Array.isArray(product.images) ? product.images[0] : null);
+    if (!rawImage) return null;
+    if (typeof rawImage === 'string') return rawImage;
+    if (typeof rawImage === 'object' && rawImage.url) return rawImage.url;
+    if (typeof rawImage === 'object' && rawImage.uri) return rawImage.uri;
+    if (typeof rawImage === 'object' && rawImage.image_url) return rawImage.image_url;
+    if (typeof rawImage === 'object' && rawImage.src) return rawImage.src;
+    return null;
+  };
+  
+  const imageUrl = getImageUrl();
+  const price = typeof product.price === 'string' ? parseFloat(product.price) : (product.price || 0);
+  const originalPriceRaw = product.original_price || product.compare_at_price;
+  const originalPrice = originalPriceRaw ? (typeof originalPriceRaw === 'string' ? parseFloat(originalPriceRaw) : originalPriceRaw) : null;
+  
+  const hasDiscount = originalPrice && originalPrice > price;
+  const discountPercentage = hasDiscount ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+  
+  const inStock = product.inStock !== undefined ? product.inStock : (product.stock > 0 || true);
 
   return (
-    <TouchableOpacity 
-      activeOpacity={0.8}
+    <TouchableOpacity
+      activeOpacity={0.9}
       onPress={onPress}
-      className="bg-surface rounded-card overflow-hidden mb-4 shadow-sm"
-      style={{ width: '48%' }}
+      className="bg-white pt-4 px-4 rounded-[2.5rem] shadow-sm border border-gray-100 mb-4 overflow-hidden"
+      style={[{ width: '100%' }, style]}
     >
-      <View className="relative">
-        <Image 
-          source={{ uri: displayImage || 'https://placehold.co/400x400/A03048/FFFFFF.png?text=Paltuu' }} 
-          className="w-full aspect-square"
-          resizeMode="cover"
+      <View className="relative bg-gray-50 rounded-2xl p-2 mb-2">
+        <Image
+          source={{ uri: imageUrl || `https://placehold.co/400x400/A03048/FFFFFF.png?text=${encodeURIComponent(name)}` }}
+          style={{ width: '100%', aspectRatio: 1 }}
+          className="rounded-xl"
+          contentFit="contain"
         />
-        {hasDiscount && (
-          <View className="absolute top-2 left-2 bg-primary px-2 py-1 rounded-md">
-            <Text className="text-white font-heading text-[10px]">SAVE</Text>
+        {inStock === false && (
+          <View className="absolute inset-0 bg-black/50 items-center justify-center rounded-xl">
+            <Text className="text-white font-heading text-xs uppercase">Out of Stock</Text>
           </View>
         )}
       </View>
 
-      <View className="p-3">
-        <Text className="text-gray-400 font-body text-[10px] uppercase mb-1">
-          {displayCategory}
-        </Text>
-        <Text className="font-heading text-sm text-dark mb-2" numberOfLines={1}>
-          {product.title}
+      <View className="pb-4">
+        <Text className="font-heading text-sm text-dark mb-1 h-10 leading-snug" numberOfLines={2}>
+          {name}
         </Text>
 
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-primary font-heading text-base">
-              Rs {price.toLocaleString()}
+        <View>
+          <View className="flex-row items-center flex-wrap">
+            <Text className="text-primary font-heading text-sm mr-2">
+              PKR {price.toLocaleString()}
             </Text>
             {hasDiscount && (
-              <Text className="text-gray-400 font-body text-xs line-through">
-                Rs {comparePrice?.toLocaleString()}
-              </Text>
+              <View className="flex-row items-center">
+                <Text className="text-gray-400 font-body text-xs line-through mr-2">
+                  {originalPrice?.toLocaleString()}
+                </Text>
+                <Text className="text-green-600 font-headingSemi text-[10px]">
+                  -{discountPercentage}%
+                </Text>
+              </View>
             )}
           </View>
-
-          <TouchableOpacity className="bg-primary/10 p-2 rounded-full">
-            <Feather name="shopping-cart" size={16} color="#A03048" />
-          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>

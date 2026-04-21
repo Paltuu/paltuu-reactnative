@@ -28,14 +28,29 @@ export default function BazaarScreen() {
 
   const { data: productData, isLoading, refetch } = useQuery({
     queryKey: ['bazaar', selectedCat, search],
-    queryFn: () => bazaarApi.getProducts({
-      categorySlug: selectedCat.slug,
-      keyword: search || selectedCat.keyword,
-      limit: 20
-    }),
+    queryFn: async () => {
+      const filters: any = { limit: 20 };
+      if (selectedCat.slug) filters.categorySlug = selectedCat.slug;
+      if (search || selectedCat.keyword) filters.keyword = search || selectedCat.keyword;
+      
+      const res = await bazaarApi.getProducts(filters);
+      return res;
+    },
   });
 
-  const products = productData?.data || [];
+  const findArray = (obj: any): any[] => {
+    if (Array.isArray(obj)) return obj;
+    if (obj && typeof obj === 'object') {
+      for (const key in obj) {
+        if (Array.isArray(obj[key])) return obj[key];
+        const nested = findArray(obj[key]);
+        if (nested.length > 0) return nested;
+      }
+    }
+    return [];
+  };
+
+  const products = findArray(productData);
 
   const renderProductCard = ({ item }: { item: any }) => (
     <View style={{ flex: 0.5, padding: 4 }}>
@@ -56,9 +71,10 @@ export default function BazaarScreen() {
         </View>
       ) : (
         <Animated.FlatList
+          key="bazaar-grid"
           data={products}
           renderItem={renderProductCard}
-          keyExtractor={(item) => item.product_id.toString()}
+          keyExtractor={(item) => item.product_id?.toString() || Math.random().toString()}
           numColumns={2}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
