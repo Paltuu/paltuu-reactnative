@@ -78,6 +78,8 @@ export default function AppLayout() {
       <Tabs.Screen name="adopt" options={{ href: null }} />
       <Tabs.Screen name="pet-care" options={{ href: null }} />
       <Tabs.Screen name="lost-found" options={{ href: null }} />
+      <Tabs.Screen name="clinic/[id]" options={{ href: null }} />
+      <Tabs.Screen name="vet/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
