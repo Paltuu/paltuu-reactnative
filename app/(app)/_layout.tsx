@@ -8,21 +8,17 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: '#a03048', // primary color
         tabBarInactiveTintColor: '#999999',
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 88 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 12,
-          paddingTop: 10,
+          height: Platform.OS === 'ios' ? 70 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 0,
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E0E0E0',
           elevation: 0,
           shadowOpacity: 0,
-        },
-        tabBarLabelStyle: {
-          fontFamily: 'DMSans_500Medium',
-          fontSize: 12,
         },
       }}
     >

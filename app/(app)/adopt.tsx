@@ -1,19 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity,
-  ActivityIndicator, ScrollView, TextInput, Modal, Pressable,
-  Switch, Platform
+  View, Text, TouchableOpacity,
+  ActivityIndicator, ScrollView, TextInput, Modal,
+  Switch, Platform, StyleSheet, Animated
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
 import { MainHeader } from '../../src/components/common/MainHeader';
-import { PetCard } from '../../src/components/pets/PetCard';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+
+// Local helper to format age
+const formatAge = (ageMonths: number | null | undefined): string => {
+  if (ageMonths === null || ageMonths === undefined || ageMonths < 0) {
+    return "Unknown age";
+  }
+  if (ageMonths === 0) return "Newborn";
+  const years = Math.floor(ageMonths / 12);
+  const months = ageMonths % 12;
+  const yearStr = years > 0 ? `${years} ${years === 1 ? "Year" : "Years"}` : "";
+  const monthStr = months > 0 ? `${months} ${months === 1 ? "Month" : "Months"}` : "";
+  if (yearStr && monthStr) return `${yearStr}, ${monthStr}`;
+  return yearStr || monthStr;
+};
 
 export default function AdoptScreen() {
   const router = useRouter();
-  // --- State ---
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [filters, setFilters] = useState<PetFilters>({
     species: undefined,
@@ -26,19 +40,40 @@ export default function AdoptScreen() {
     neutered: false,
   });
 
-  // --- Fetch Data ---
-  const { data: petData, isLoading, refetch } = useQuery({
+  // --- Infinite Query ---
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+    isRefetching
+  } = useInfiniteQuery({
     queryKey: ['pets', filters],
-    queryFn: () => petApi.getAdoptionPets({
+    queryFn: ({ pageParam = 1 }) => petApi.getAdoptionPets({
       ...filters,
-      limit: 20
+      page: pageParam,
+      limit: 11
     }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      // Check if the last page had items, if so, allow next page
+      // Normally we'd use meta.last_page, but based on common API behavior:
+      const totalLoaded = allPages.reduce((acc, page) => acc + (page.data?.length || 0), 0);
+      if (lastPage.data?.length === 11) {
+        return allPages.length + 1;
+      }
+      return undefined;
+    },
   });
 
   const { data: cities } = useQuery({ queryKey: ['cities'], queryFn: petApi.getCities });
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: petApi.getCategories });
 
-  const pets = petData?.data || [];
+  const pets = useMemo(() => {
+    return data?.pages.flatMap(page => page.data || []) || [];
+  }, [data]);
 
   // --- Handlers ---
   const applyFilter = (newFilters: Partial<PetFilters>) => {
@@ -60,20 +95,49 @@ export default function AdoptScreen() {
 
   // --- Render Components ---
   const renderPetCard = ({ item }: { item: any }) => (
-    <View className="flex-1 m-2">
-      <PetCard 
-        pet={item} 
-        onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
-      />
-    </View>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
+      className="flex-1 bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-100"
+    >
+      <View className="relative">
+        <Image
+          source={item.main_image || item.image_url || require('../../assets/dog-placeholder.png')}
+          style={{ width: '100%', aspectRatio: 1, borderRadius: 16 }}
+          contentFit="cover"
+          transition={300}
+        />
+        {item.listing_type === "rescue" && (
+          <View className="absolute top-2 right-2 bg-primary px-2 py-1 rounded-full flex-row items-center">
+            <Text className="text-white text-[10px] font-bold">+ Rescue</Text>
+          </View>
+        )}
+      </View>
+      <View className="py-4">
+        <Text className="font-heading text-base text-dark mb-1" numberOfLines={1}>
+          {item.pet_name}
+        </Text>
+        <Text className="font-body text-gray-500 text-xs mb-1" numberOfLines={1}>
+          {formatAge(item.age_months)}
+        </Text>
+        <View className="flex-row items-center">
+          <Ionicons name="location-sharp" size={14} color="#a03048" />
+          <Text className="font-body text-gray-500 text-xs ml-1" numberOfLines={1}>
+            {item.city}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 
+  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
+
   return (
-    <SafeAreaView className="flex-1 bg-white pt-10">
-      <MainHeader />
-      {/* Header & Search */}
-      <View className="px-5 pb-2 pt-4">
-        <View className="flex-row justify-between items-end mb-4">
+    <View className="flex-1 bg-white">
+      <MainHeader translateY={translateY} />
+
+      <View style={{ paddingTop: totalHeaderHeight }} className="px-5 pb-2">
+        <View className="flex-row justify-between items-end mb-4 pt-4">
           <View>
             <Text className="font-heading text-2xl text-dark">Find Your Pet</Text>
             <Text className="font-body text-gray-400 text-xs mt-1">Browse adoption listings</Text>
@@ -105,14 +169,32 @@ export default function AdoptScreen() {
           <ActivityIndicator size="large" color="#a03048" />
         </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={pets}
           renderItem={renderPetCard}
           keyExtractor={(item) => item.pet_id.toString()}
           numColumns={2}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
           contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 100 }}
           onRefresh={refetch}
-          refreshing={isLoading}
+          refreshing={isRefetching}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="py-4">
+                <ActivityIndicator color="#a03048" />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View className="py-20 items-center">
               <Text className="font-body text-gray-500">No pets found matching these filters.</Text>
@@ -145,7 +227,7 @@ export default function AdoptScreen() {
                   key={cat}
                   onPress={() => applyFilter({ species: cat === 'All' ? undefined : (categories.find((c: any) => c.category_name === cat)?.category_id || cat) })}
                   className={`px-4 py-2 rounded-xl mr-2 mb-2 border ${(filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c: any) => c.category_name === cat)?.category_id))
-                      ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-100'
+                    ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-100'
                     }`}
                 >
                   <Text className={`font-body text-xs ${((filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c: any) => c.category_name === cat)?.category_id))) ? 'text-white' : 'text-gray-600'}`}>{cat}</Text>
@@ -225,6 +307,6 @@ export default function AdoptScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
