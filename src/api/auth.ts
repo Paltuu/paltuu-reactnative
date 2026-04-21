@@ -2,32 +2,33 @@ import client from './client';
 
 export const authApi = {
   async login(credentials: any) {
-    const { data } = await client.post('/v1/auth/login', credentials);
+    const { data } = await client.post('/auth/login', credentials);
     return data;
   },
   
   async register(userData: any) {
-    const { data } = await client.post('/v1/auth/register', userData);
+    const { data } = await client.post('/auth/register', userData);
     return data;
   },
   
   async sendOtp(email: string) {
-    const { data } = await client.post('/v1/auth/otp/send', { email });
+    const { data } = await client.post('../auth/mobile/otp/send', { email });
     return data;
   },
   
   async logout(refreshToken: string) {
-    const { data } = await client.post('/v1/auth/logout', { refreshToken });
+    const { data } = await client.post('/auth/logout', { refreshToken });
     return data;
   },
   
   async googleAuth(idToken: string) {
-    const { data } = await client.post('/v1/auth/google', { idToken });
+    const { data } = await client.post('/auth/google', { idToken });
     return data;
   },
 
   async getProfile() {
-    const { data } = await client.get('/v1/profile');
+    // This is not in v1 yet, using relative path
+    const { data } = await client.get('../my-profile');
     return data;
   }
 };

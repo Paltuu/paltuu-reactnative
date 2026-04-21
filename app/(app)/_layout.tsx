@@ -62,12 +62,18 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="lost-found"
         options={{
-          title: 'Lost',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "megaphone" : "megaphone-outline"} size={24} color={color} />
-          ),
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

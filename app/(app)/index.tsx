@@ -8,12 +8,14 @@ import { bazaarApi } from '../../src/api/bazaar';
 import { PetCard } from '../../src/components/pets/PetCard';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
+import { MainHeader } from '../../src/components/common/MainHeader';
+
 
 export default function HomeScreen() {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const router = useRouter();
-  const [featuredPets, setFeaturedPets] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [featuredPets, setFeaturedPets] = useState<any[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,12 +25,16 @@ export default function HomeScreen() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [pets, products] = await Promise.all([
+      const [petsRes, productsRes] = await Promise.all([
         petsApi.getPets({ page: 1 }),
         bazaarApi.getProducts({ page: 1 })
       ]);
-      setFeaturedPets(pets.slice(0, 3));
-      setTrendingProducts(products.slice(0, 4));
+      
+      const petsList = petsRes?.data || petsRes || [];
+      const productsList = productsRes?.data || productsRes || [];
+
+      setFeaturedPets(Array.isArray(petsList) ? petsList.slice(0, 3) : []);
+      setTrendingProducts(Array.isArray(productsList) ? productsList.slice(0, 4) : []);
     } catch (error) {
       console.error('Dashboard fetch error:', error);
     } finally {
@@ -38,37 +44,19 @@ export default function HomeScreen() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-bg px-5 pt-10">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* User Nameplate */}
-        <View className="flex-row items-center justify-between mb-8">
-          <View className="flex-row items-center">
-            <View className="w-12 h-12 rounded-full bg-primarySoft justify-center items-center mr-3 border border-primaryMid overflow-hidden">
-              {user?.profile_image_url ? (
-                <Image source={{ uri: user.profile_image_url }} className="w-full h-full" />
-              ) : (
-                <Text className="text-primary font-heading text-lg">
-                  {user?.name?.[0] || 'P'}
-                </Text>
-              )}
-            </View>
-            <View>
-              <Text className="font-body text-gray-500 text-xs">{getGreeting()}</Text>
-              <Text className="font-heading text-xl text-dark">
-                {user?.name?.split(' ')[0] || 'Paltuu User'} 👋
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity className="w-10 h-10 rounded-full bg-white justify-center items-center shadow-sm">
-            <Text className="text-xl">🔔</Text>
-          </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-white pt-10">
+      <MainHeader />
+      <ScrollView className="flex-1">
+        {/* Simple Welcome Section */}
+        <View className="px-5 pt-4 pb-2">
+          <Text className="text-gray-400 font-body text-xs mb-1">{getGreeting()},</Text>
+          <Text className="font-heading text-2xl text-dark capitalize">{user?.name || 'Friend'} 👋</Text>
         </View>
 
         {/* Dashboard Content Placeholder */}

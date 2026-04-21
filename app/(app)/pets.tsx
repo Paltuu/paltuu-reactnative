@@ -7,6 +7,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
+import { MainHeader } from '../../src/components/common/MainHeader';
 
 export default function PetsScreen() {
   // --- State ---
@@ -84,8 +85,9 @@ export default function PetsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg pt-10">
+      <MainHeader />
       {/* Header & Search */}
-      <View className="px-5 pb-2">
+      <View className="px-5 pb-2 pt-4">
         <View className="flex-row justify-between items-end mb-4">
           <View>
             <Text className="font-heading text-2xl text-dark">Find Your Pet</Text>

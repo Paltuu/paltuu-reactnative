@@ -77,22 +77,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!accessToken) return;
 
     try {
-      // Dynamic import to avoid circular dependency
-      const { authApi } = require('../api/auth');
-      const userData = await authApi.getProfile();
+      const payload = decodeJWT(accessToken);
+      const userId = payload?.user_id || payload?.id;
       
-      const mappedUser: User = {
-        id: String(userData.id || userData.user_id),
-        email: userData.email,
-        name: userData.name || userData.email,
-        role: userData.role || "regular user",
-        profile_image_url: userData.profile_image_url || null,
-      };
-      
-      await storage.saveUser(mappedUser);
-      set({ user: mappedUser });
+      if (userId) {
+        const { petApi } = require('../api/pets');
+        const userData = await petApi.getProfile(userId);
+        
+        if (userData) {
+          const mappedUser: User = {
+            id: String(userData.id || userData.user_id || userId),
+            email: userData.email,
+            name: userData.name || userData.email,
+            role: userData.role || "regular user",
+            profile_image_url: userData.profile_image_url || null,
+          };
+          
+          await storage.saveUser(mappedUser);
+          set({ user: mappedUser });
+        }
+      }
     } catch (e) {
-      console.error('Failed to fetch user profile', e);
+      // Quietly fail - we'll just use the default email/state
+      console.log('Profile fetch skipped or unavailable');
     }
   },
 

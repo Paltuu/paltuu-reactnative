@@ -1,120 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { 
+  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity, 
+  ActivityIndicator, ScrollView, TextInput 
+} from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { bazaarApi } from '../../src/api/bazaar';
-import { ProductCard } from '../../src/components/bazaar/ProductCard';
+import { Ionicons } from '@expo/vector-icons';
+import { MainHeader } from '../../src/components/common/MainHeader';
+
+const BAZAAR_CATEGORIES = [
+  { title: "All", slug: undefined },
+  { title: "Cat Food", slug: "food", keyword: "cat" },
+  { title: "Dog Food", slug: "food", keyword: "dog" },
+  { title: "Accessories", slug: "accessories" },
+  { title: "Housing", slug: "housing" }
+];
 
 export default function BazaarScreen() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [selectedCat, setSelectedCat] = useState(BAZAAR_CATEGORIES[0]);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  const { data: productData, isLoading, refetch } = useQuery({
+    queryKey: ['bazaar', selectedCat, search],
+    queryFn: () => bazaarApi.getProducts({
+      categorySlug: selectedCat.slug,
+      keyword: search || selectedCat.keyword,
+      limit: 20
+    }),
+  });
 
-  const fetchInitialData = async () => {
-    try {
-      setLoading(true);
-      const [productsData, categoriesData] = await Promise.all([
-        bazaarApi.getProducts(),
-        bazaarApi.getCategories()
-      ]);
-      setProducts(productsData);
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Bazaar fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const products = productData?.data || [];
 
-  const handleCategorySelect = async (categoryId) => {
-    try {
-      setSelectedCategory(categoryId);
-      setLoading(true);
-      const filtered = await bazaarApi.getProducts({ category: categoryId });
-      setProducts(filtered);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const renderProductCard = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      className="bg-white m-2 rounded-2xl overflow-hidden shadow-sm flex-1"
+      activeOpacity={0.8}
+    >
+      <View className="relative">
+        <Image 
+          source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
+          className="w-full h-40"
+          resizeMode="contain"
+        />
+        {item.original_price && (
+          <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded-lg">
+            <Text className="text-white text-[10px] font-bold">SALE</Text>
+          </View>
+        )}
+      </View>
+      <View className="p-3">
+        <Text className="font-headingSemi text-sm text-dark mb-1" numberOfLines={2}>
+          {item.title}
+        </Text>
+        <View className="flex-row items-center space-x-2">
+          <Text className="text-primary font-bold text-sm">
+            ₨ {parseInt(item.price).toLocaleString()}
+          </Text>
+          {item.original_price && (
+            <Text className="text-gray-400 line-through text-[10px]">
+              ₨ {parseInt(item.original_price).toLocaleString()}
+            </Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-bg px-5">
-      {/* Header */}
-      <View className="flex-row items-center justify-between mt-4 mb-6">
-        <View>
-          <Text className="font-heading text-2xl text-dark">Paltuu Bazaar</Text>
-          <Text className="font-body text-gray-500">Premium pet supplies</Text>
+    <SafeAreaView className="flex-1 bg-bg pt-10">
+      <MainHeader />
+      <View className="px-5 pb-2 pt-4">
+        <Text className="font-heading text-2xl text-dark mb-4">Paltuu Bazaar</Text>
+
+        {/* Search */}
+        <View className="flex-row items-center bg-white rounded-xl px-4 py-3 border border-gray-100 mb-4 shadow-sm">
+          <Ionicons name="search-outline" size={20} color="#999" />
+          <TextInput 
+            placeholder="Search products..." 
+            className="flex-1 ml-3 font-body text-sm"
+            value={search}
+            onChangeText={setSearch}
+          />
         </View>
-        <TouchableOpacity className="bg-surface p-3 rounded-full shadow-sm">
-          <Feather name="shopping-bag" size={20} color="#A03048" />
-        </TouchableOpacity>
-      </View>
 
-      {/* Search */}
-      <View className="bg-surface h-12 px-4 rounded-xl flex-row items-center mb-6 shadow-sm">
-        <Feather name="search" size={18} color="#9CA3AF" />
-        <TextInput
-          placeholder="Search products..."
-          className="flex-1 ml-2 font-body text-dark"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      {/* Categories */}
-      <View className="mb-6">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity
-            onPress={() => handleCategorySelect(null)}
-            className={`px-6 py-2 rounded-full mr-3 ${selectedCategory === null ? 'bg-primary' : 'bg-surface border border-gray-100'}`}
-          >
-            <Text className={`font-heading text-xs ${selectedCategory === null ? 'text-white' : 'text-gray-500'}`}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.category_id}
-              onPress={() => handleCategorySelect(cat.category_id)}
-              className={`px-6 py-2 rounded-full mr-3 ${selectedCategory === cat.category_id ? 'bg-primary' : 'bg-surface border border-gray-100'}`}
+        {/* Category Scroll */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          {BAZAAR_CATEGORIES.map((cat) => (
+            <TouchableOpacity 
+              key={cat.title}
+              onPress={() => setSelectedCat(cat)}
+              className={`px-6 py-2 rounded-full mr-3 border ${
+                selectedCat.title === cat.title ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+              }`}
             >
-              <Text className={`font-heading text-xs ${selectedCategory === cat.category_id ? 'text-white' : 'text-gray-500'}`}>
-                {cat.category_name}
+              <Text className={`font-headingSemi text-xs ${
+                selectedCat.title === cat.title ? 'text-white' : 'text-gray-600'
+              }`}>
+                {cat.title}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Product Grid */}
-      {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#A03048" />
+      {isLoading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#a03048" />
         </View>
       ) : (
         <FlatList
           data={products}
+          renderItem={renderProductCard}
           keyExtractor={(item) => item.product_id.toString()}
           numColumns={2}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          renderItem={({ item }) => (
-            <ProductCard
-              product={item}
-              onPress={() => console.log('Product pressed', item.product_id)}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 100 }}
+          onRefresh={refetch}
+          refreshing={isLoading}
           ListEmptyComponent={
-            <View className="items-center justify-center mt-10">
-              <Text className="font-body text-gray-400">No products found</Text>
+            <View className="py-20 items-center">
+              <Text className="font-body text-gray-500">No products found.</Text>
             </View>
           }
         />

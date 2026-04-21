@@ -1,28 +1,27 @@
 import client from './client';
 
+export interface BazaarFilters {
+  categorySlug?: string;
+  sortBy?: 'trending' | 'discount' | 'price_low' | 'price_high';
+  keyword?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const bazaarApi = {
-  async getProducts(params?: { category?: number; collection?: number; page?: number }) {
-    const { data } = await client.get('/v1/bazaar/products', { params });
+  // Main endpoint for fetching products (used on dashboard and bazaar)
+  async getProducts(params: BazaarFilters = {}) {
+    const { data } = await client.get('/bazaar/products', { params });
     return data;
   },
 
-  async getCategories() {
-    const { data } = await client.get('/v1/bazaar/categories');
+  async getProductDetails(id: number) {
+    const { data } = await client.get(`/bazaar/products/${id}`);
     return data;
   },
 
-  async getCollections() {
-    const { data } = await client.get('/v1/bazaar/collections');
-    return data;
-  },
-
-  async getCart() {
-    const { data } = await client.get('/v1/bazaar/cart');
-    return data;
-  },
-
-  async addToCart(productId: number, variantId?: number, quantity: number = 1) {
-    const { data } = await client.post('/v1/bazaar/cart', { productId, variantId, quantity });
+  async getBazaarCategories() {
+    const { data } = await client.get('/bazaar/categories');
     return data;
   }
 };
