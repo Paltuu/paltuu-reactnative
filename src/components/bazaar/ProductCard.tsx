@@ -6,16 +6,24 @@ interface ProductCardProps {
   product: {
     product_id: number;
     title: string;
-    price: number;
-    image_url: string;
-    category_name: string;
-    compare_at_price?: number;
+    price: number | string;
+    image_url?: string;
+    images?: string[];
+    main_image?: string;
+    image?: string;
+    category_name?: string;
+    categories?: { name: string }[];
+    compare_at_price?: number | string;
   };
   onPress: () => void;
 }
 
 export const ProductCard = ({ product, onPress }: ProductCardProps) => {
-  const hasDiscount = product.compare_at_price && product.compare_at_price > product.price;
+  const displayImage = product.image_url || product.main_image || product.image || (Array.isArray(product.images) ? product.images[0] : null);
+  const displayCategory = product.category_name || (Array.isArray(product.categories) ? product.categories[0]?.name : 'Product');
+  const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+  const comparePrice = typeof product.compare_at_price === 'string' ? parseFloat(product.compare_at_price) : product.compare_at_price;
+  const hasDiscount = comparePrice && comparePrice > price;
 
   return (
     <TouchableOpacity 
@@ -26,7 +34,7 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => {
     >
       <View className="relative">
         <Image 
-          source={{ uri: product.image_url || 'https://placehold.co/400x400/A03048/FFFFFF.png?text=Paltuu' }} 
+          source={{ uri: displayImage || 'https://placehold.co/400x400/A03048/FFFFFF.png?text=Paltuu' }} 
           className="w-full aspect-square"
           resizeMode="cover"
         />
@@ -36,27 +44,27 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => {
           </View>
         )}
       </View>
-      
+
       <View className="p-3">
         <Text className="text-gray-400 font-body text-[10px] uppercase mb-1">
-          {product.category_name}
+          {displayCategory}
         </Text>
         <Text className="font-heading text-sm text-dark mb-2" numberOfLines={1}>
           {product.title}
         </Text>
-        
+
         <View className="flex-row items-center justify-between">
           <View>
             <Text className="text-primary font-heading text-base">
-              Rs {product.price.toLocaleString()}
+              Rs {price.toLocaleString()}
             </Text>
             {hasDiscount && (
               <Text className="text-gray-400 font-body text-xs line-through">
-                Rs {product.compare_at_price?.toLocaleString()}
+                Rs {comparePrice?.toLocaleString()}
               </Text>
             )}
           </View>
-          
+
           <TouchableOpacity className="bg-primary/10 p-2 rounded-full">
             <Feather name="shopping-cart" size={16} color="#A03048" />
           </TouchableOpacity>

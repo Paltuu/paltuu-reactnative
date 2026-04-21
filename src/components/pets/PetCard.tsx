@@ -6,12 +6,15 @@ interface PetCardProps {
   pet: {
     pet_id: number;
     pet_name: string;
-    pet_type: string;
+    pet_type: string | number;
     pet_breed: string;
     age_months: number;
     sex: string;
     city: string;
-    main_image: string;
+    main_image?: string;
+    image_url?: string;
+    profile_image_url?: string;
+    image?: string;
     owner_name: string;
   };
   onPress: () => void;
@@ -23,6 +26,9 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
     return `${Math.floor(months / 12)}y`;
   };
 
+  const displayImage = pet.main_image || pet.image_url || pet.profile_image_url || pet.image;
+  const isMale = pet.sex?.toLowerCase() === 'male';
+
   return (
     <TouchableOpacity 
       activeOpacity={0.9}
@@ -31,7 +37,7 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
     >
       <View className="relative">
         <Image 
-          source={{ uri: pet.main_image || 'https://placehold.co/600x400/A03048/FFFFFF.png?text=' + pet.pet_name }} 
+          source={{ uri: displayImage || 'https://placehold.co/600x400/A03048/FFFFFF.png?text=' + pet.pet_name }} 
           className="w-full h-48"
           resizeMode="cover"
         />
@@ -39,7 +45,7 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
           <Feather name="map-pin" size={10} color="white" />
           <Text className="text-white text-[10px] font-body ml-1">{pet.city}</Text>
         </View>
-        
+
         <TouchableOpacity className="absolute top-3 right-3 bg-white/80 p-2 rounded-full">
           <Feather name="heart" size={16} color="#A03048" />
         </TouchableOpacity>
@@ -48,9 +54,9 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
       <View className="p-4">
         <View className="flex-row justify-between items-center mb-1">
           <Text className="font-heading text-lg text-dark">{pet.pet_name}</Text>
-          <View className={`px-2 py-1 rounded-md ${pet.sex === 'Male' ? 'bg-blue-50' : 'bg-pink-50'}`}>
-            <Text className={`text-[10px] font-heading ${pet.sex === 'Male' ? 'text-blue-500' : 'text-pink-500'}`}>
-              {pet.sex.toUpperCase()}
+          <View className={`px-2 py-1 rounded-md ${isMale ? 'bg-blue-50' : 'bg-pink-50'}`}>
+            <Text className={`text-[10px] font-heading ${isMale ? 'text-blue-500' : 'text-pink-500'}`}>
+              {(pet.sex || 'Unknown').toUpperCase()}
             </Text>
           </View>
         </View>
@@ -66,7 +72,7 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
             </View>
             <Text className="font-body text-xs text-gray-400">By {pet.owner_name}</Text>
           </View>
-          
+
           <View className="bg-primary/5 px-3 py-1 rounded-full">
             <Text className="text-primary font-heading text-[10px]">ADOPT</Text>
           </View>

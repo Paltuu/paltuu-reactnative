@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity, 
-  ActivityIndicator, ScrollView, TextInput 
+import {
+  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity,
+  ActivityIndicator, ScrollView, TextInput
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { bazaarApi } from '../../src/api/bazaar';
 import { Ionicons } from '@expo/vector-icons';
 import { MainHeader } from '../../src/components/common/MainHeader';
+import { ProductCard } from '../../src/components/bazaar/ProductCard';
+import { useRouter } from 'expo-router';
 
 const BAZAAR_CATEGORIES = [
   { title: "All", slug: undefined },
@@ -17,6 +19,7 @@ const BAZAAR_CATEGORIES = [
 ];
 
 export default function BazaarScreen() {
+  const router = useRouter();
   const [selectedCat, setSelectedCat] = useState(BAZAAR_CATEGORIES[0]);
   const [search, setSearch] = useState('');
 
@@ -32,38 +35,10 @@ export default function BazaarScreen() {
   const products = productData?.data || [];
 
   const renderProductCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      className="bg-white m-2 rounded-2xl overflow-hidden shadow-sm flex-1"
-      activeOpacity={0.8}
-    >
-      <View className="relative">
-        <Image 
-          source={{ uri: item.image || 'https://via.placeholder.com/150' }} 
-          className="w-full h-40"
-          resizeMode="contain"
-        />
-        {item.original_price && (
-          <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded-lg">
-            <Text className="text-white text-[10px] font-bold">SALE</Text>
-          </View>
-        )}
-      </View>
-      <View className="p-3">
-        <Text className="font-headingSemi text-sm text-dark mb-1" numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View className="flex-row items-center space-x-2">
-          <Text className="text-primary font-bold text-sm">
-            ₨ {parseInt(item.price).toLocaleString()}
-          </Text>
-          {item.original_price && (
-            <Text className="text-gray-400 line-through text-[10px]">
-              ₨ {parseInt(item.original_price).toLocaleString()}
-            </Text>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
+    <ProductCard 
+      product={item} 
+      onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: item.product_id } })}
+    />
   );
 
   return (
@@ -75,8 +50,8 @@ export default function BazaarScreen() {
         {/* Search */}
         <View className="flex-row items-center bg-white rounded-xl px-4 py-3 border border-gray-100 mb-4 shadow-sm">
           <Ionicons name="search-outline" size={20} color="#999" />
-          <TextInput 
-            placeholder="Search products..." 
+          <TextInput
+            placeholder="Search products..."
             className="flex-1 ml-3 font-body text-sm"
             value={search}
             onChangeText={setSearch}
@@ -86,16 +61,14 @@ export default function BazaarScreen() {
         {/* Category Scroll */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
           {BAZAAR_CATEGORIES.map((cat) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={cat.title}
               onPress={() => setSelectedCat(cat)}
-              className={`px-6 py-2 rounded-full mr-3 border ${
-                selectedCat.title === cat.title ? 'bg-primary border-primary' : 'bg-white border-gray-200'
-              }`}
+              className={`px-6 py-2 rounded-full mr-3 border ${selectedCat.title === cat.title ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+                }`}
             >
-              <Text className={`font-headingSemi text-xs ${
-                selectedCat.title === cat.title ? 'text-white' : 'text-gray-600'
-              }`}>
+              <Text className={`font-headingSemi text-xs ${selectedCat.title === cat.title ? 'text-white' : 'text-gray-600'
+                }`}>
                 {cat.title}
               </Text>
             </TouchableOpacity>

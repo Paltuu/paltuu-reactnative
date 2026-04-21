@@ -26,15 +26,22 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       const [petsRes, productsRes] = await Promise.all([
-        petsApi.getPets({ page: 1 }),
-        bazaarApi.getProducts({ page: 1 })
+        petsApi.getPets({ limit: 6 }),
+        bazaarApi.getProducts({ limit: 4 })
       ]);
       
       const petsList = petsRes?.data || petsRes || [];
       const productsList = productsRes?.data || productsRes || [];
 
-      setFeaturedPets(Array.isArray(petsList) ? petsList.slice(0, 3) : []);
-      setTrendingProducts(Array.isArray(productsList) ? productsList.slice(0, 4) : []);
+      // Map products to ensure image_url exists for the component
+      const mappedProducts = productsList.map((p: any) => ({
+        ...p,
+        image_url: p.images?.[0] || p.main_image || p.image || null,
+        category_name: p.categories?.[0]?.name || 'Product'
+      }));
+
+      setFeaturedPets(Array.isArray(petsList) ? petsList : []);
+      setTrendingProducts(Array.isArray(mappedProducts) ? mappedProducts : []);
     } catch (error) {
       console.error('Dashboard fetch error:', error);
     } finally {
@@ -49,30 +56,88 @@ export default function HomeScreen() {
     return 'Good Evening';
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#A03048" />
+        <Text className="mt-4 font-body text-gray-400">Loading your world...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white pt-10">
       <MainHeader />
-      <ScrollView className="flex-1">
-        {/* Simple Welcome Section */}
-        <View className="px-5 pt-4 pb-2">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Welcome Section */}
+        <View className="px-5 pt-4 pb-6">
           <Text className="text-gray-400 font-body text-xs mb-1">{getGreeting()},</Text>
           <Text className="font-heading text-2xl text-dark capitalize">{user?.name || 'Friend'} 👋</Text>
         </View>
 
-        {/* Dashboard Content Placeholder */}
-        <View className="bg-white p-6 rounded-card shadow-sm w-full">
-          <Text className="font-heading text-lg text-dark mb-2">
-            Welcome to Paltuu Mobile
-          </Text>
-          <Text className="font-body text-gray-500 mb-6">
-            Everything you need for your pet is now in your pocket.
-          </Text>
+        {/* Featured Pets Section */}
+        <View className="mb-8">
+          <View className="flex-row justify-between items-center px-5 mb-4">
+            <Text className="font-heading text-lg text-dark">Recent Pets</Text>
+            <TouchableOpacity onPress={() => router.push('/(app)/pets')}>
+              <Text className="text-primary font-headingSemi text-xs">View All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          >
+            {featuredPets.map((pet) => (
+              <View key={pet.pet_id} style={{ width: 280, marginRight: 16 }}>
+                <PetCard 
+                  pet={pet} 
+                  onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: pet.pet_id } })}
+                />
+              </View>
+            ))}
+            {featuredPets.length === 0 && (
+              <View className="bg-gray-50 p-10 rounded-card items-center justify-center w-[300px]">
+                <Text className="font-body text-gray-400">No pets nearby</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
 
+        {/* Trending Products */}
+        <View className="px-5 mb-8">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="font-heading text-lg text-dark">Paltuu Bazaar</Text>
+            <TouchableOpacity onPress={() => router.push('/(app)/bazaar')}>
+              <Text className="text-primary font-headingSemi text-xs">Shop All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="flex-row flex-wrap justify-between">
+            {trendingProducts.map((product) => (
+              <ProductCard 
+                key={product.product_id} 
+                product={product}
+                onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: product.product_id } })}
+              />
+            ))}
+          </View>
+          
+          {trendingProducts.length === 0 && (
+            <View className="bg-gray-50 p-10 rounded-card items-center justify-center w-full">
+              <Text className="font-body text-gray-400">Marketplace loading...</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Logout Placeholder */}
+        <View className="px-5 pb-10">
           <TouchableOpacity
-            className="bg-primary/10 py-3 rounded-button border border-primary/20"
+            className="bg-gray-100 py-4 rounded-button"
             onPress={logout}
           >
-            <Text className="text-primary font-headingSemi text-center">Logout from App</Text>
+            <Text className="text-gray-500 font-headingSemi text-center">Logout from App</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

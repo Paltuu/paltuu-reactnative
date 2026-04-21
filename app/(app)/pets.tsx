@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity, 
+import {
+  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal, Pressable,
   Switch, Platform
 } from 'react-native';
@@ -8,8 +8,11 @@ import { useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
 import { MainHeader } from '../../src/components/common/MainHeader';
+import { PetCard } from '../../src/components/pets/PetCard';
+import { useRouter } from 'expo-router';
 
 export default function PetsScreen() {
+  const router = useRouter();
   // --- State ---
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [filters, setFilters] = useState<PetFilters>({
@@ -57,30 +60,12 @@ export default function PetsScreen() {
 
   // --- Render Components ---
   const renderPetCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      className="bg-white m-2 rounded-2xl overflow-hidden shadow-sm flex-1"
-      activeOpacity={0.8}
-    >
-      <Image 
-        source={{ uri: item.image_url || item.profile_image_url || 'https://via.placeholder.com/150' }} 
-        className="w-full h-40"
-        resizeMode="cover"
+    <View className="flex-1 m-2">
+      <PetCard 
+        pet={item} 
+        onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
       />
-      <View className="p-3">
-        <View className="flex-row justify-between items-center mb-1">
-          <Text className="font-heading text-base text-dark flex-1" numberOfLines={1}>
-            {item.pet_name}
-          </Text>
-          <Text className="text-xs font-body text-primary uppercase">{item.sex}</Text>
-        </View>
-        <View className="flex-row items-center">
-          <Ionicons name="location-outline" size={12} color="#666" />
-          <Text className="text-xs font-body text-gray-500 ml-1" numberOfLines={1}>
-            {item.city || item.area || 'Pakistan'}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -93,7 +78,7 @@ export default function PetsScreen() {
             <Text className="font-heading text-2xl text-dark">Find Your Pet</Text>
             <Text className="font-body text-gray-400 text-xs mt-1">Browse adoption listings</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setIsFilterVisible(true)}
             className="flex-row items-center bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm"
           >
@@ -105,8 +90,8 @@ export default function PetsScreen() {
         {/* Quick Search */}
         <View className="flex-row items-center bg-white rounded-xl px-4 py-3 border border-gray-100 mb-4 shadow-sm">
           <Ionicons name="search-outline" size={20} color="#999" />
-          <TextInput 
-            placeholder="Search breed (e.g. Persian)..." 
+          <TextInput
+            placeholder="Search breed (e.g. Persian)..."
             className="flex-1 ml-3 font-body text-sm"
             value={filters.breed}
             onChangeText={(text) => applyFilter({ breed: text })}
@@ -156,15 +141,14 @@ export default function PetsScreen() {
             <Text className="font-headingSemi text-dark mb-3">Species</Text>
             <View className="flex-row flex-wrap mb-6">
               {['All', ...(categories?.map((c: any) => c.category_name) || [])].map((cat) => (
-                <TouchableOpacity 
-                   key={cat}
-                   onPress={() => applyFilter({ species: cat === 'All' ? undefined : (categories.find((c:any) => c.category_name === cat)?.category_id || cat) })}
-                   className={`px-4 py-2 rounded-xl mr-2 mb-2 border ${
-                     (filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c:any) => c.category_name === cat)?.category_id))
-                       ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-100'
-                   }`}
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => applyFilter({ species: cat === 'All' ? undefined : (categories.find((c: any) => c.category_name === cat)?.category_id || cat) })}
+                  className={`px-4 py-2 rounded-xl mr-2 mb-2 border ${(filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c: any) => c.category_name === cat)?.category_id))
+                      ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-100'
+                    }`}
                 >
-                  <Text className={`font-body text-xs ${((filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c:any) => c.category_name === cat)?.category_id))) ? 'text-white' : 'text-gray-600'}`}>{cat}</Text>
+                  <Text className={`font-body text-xs ${((filters.species === undefined && cat === 'All') || (filters.species == (categories?.find((c: any) => c.category_name === cat)?.category_id))) ? 'text-white' : 'text-gray-600'}`}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -173,7 +157,7 @@ export default function PetsScreen() {
             <Text className="font-headingSemi text-dark mb-3">Sex</Text>
             <View className="flex-row space-x-2 mb-6">
               {['any', 'male', 'female'].map((s) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={s}
                   onPress={() => applyFilter({ sex: s === 'any' ? undefined : s })}
                   className={`flex-1 py-3 rounded-xl border items-center ${filters.sex === (s === 'any' ? undefined : s) ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-100'}`}
@@ -186,15 +170,15 @@ export default function PetsScreen() {
             {/* Age Range */}
             <Text className="font-headingSemi text-dark mb-3">Age (Months)</Text>
             <View className="flex-row space-x-4 mb-6">
-              <TextInput 
-                placeholder="Min Age" 
+              <TextInput
+                placeholder="Min Age"
                 keyboardType="numeric"
                 className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-100 font-body text-sm"
                 value={filters.minAge}
                 onChangeText={(text) => applyFilter({ minAge: text })}
               />
-              <TextInput 
-                placeholder="Max Age" 
+              <TextInput
+                placeholder="Max Age"
                 keyboardType="numeric"
                 className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-100 font-body text-sm"
                 value={filters.maxAge}
@@ -207,16 +191,16 @@ export default function PetsScreen() {
             <View className="space-y-4 mb-10">
               <View className="flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <Text className="font-body text-dark">Vaccinated Only</Text>
-                <Switch 
-                  value={filters.vaccinated} 
+                <Switch
+                  value={filters.vaccinated}
                   onValueChange={(val) => applyFilter({ vaccinated: val })}
                   trackColor={{ false: "#eee", true: "#a03048" }}
                 />
               </View>
               <View className="flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <Text className="font-body text-dark">Neutered Only</Text>
-                <Switch 
-                  value={filters.neutered} 
+                <Switch
+                  value={filters.neutered}
                   onValueChange={(val) => applyFilter({ neutered: val })}
                   trackColor={{ false: "#eee", true: "#a03048" }}
                 />
@@ -226,13 +210,13 @@ export default function PetsScreen() {
 
           {/* Footer Buttons */}
           <View className="p-6 border-t border-gray-100 flex-row space-x-4">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={resetFilters}
               className="flex-1 py-4 border border-gray-200 rounded-button items-center"
             >
               <Text className="font-headingSemi text-dark">Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setIsFilterVisible(false)}
               className="flex-2 bg-primary py-4 rounded-button items-center"
             >
