@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, SafeAreaView, FlatList, Image, TouchableOpacity,
-  ActivityIndicator, ScrollView, TextInput
+  View, Text, TouchableOpacity,
+  ActivityIndicator, TextInput, Animated, FlatList
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { bazaarApi } from '../../src/api/bazaar';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MainHeader } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
+import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
 
 const BAZAAR_CATEGORIES = [
   { title: "All", slug: undefined },
@@ -23,6 +24,8 @@ export default function BazaarScreen() {
   const [selectedCat, setSelectedCat] = useState(BAZAAR_CATEGORIES[0]);
   const [search, setSearch] = useState('');
 
+  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
+
   const { data: productData, isLoading, refetch } = useQuery({
     queryKey: ['bazaar', selectedCat, search],
     queryFn: () => bazaarApi.getProducts({
@@ -35,60 +38,73 @@ export default function BazaarScreen() {
   const products = productData?.data || [];
 
   const renderProductCard = ({ item }: { item: any }) => (
-    <ProductCard 
-      product={item} 
-      onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: item.product_id } })}
-    />
+    <View style={{ flex: 0.5, padding: 4 }}>
+      <ProductCard 
+        product={item} 
+        onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: item.product_id } })}
+      />
+    </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-bg pt-10">
-      <MainHeader />
-      <View className="px-5 pb-2 pt-4">
-        <Text className="font-heading text-2xl text-dark mb-4">Paltuu Bazaar</Text>
-
-        {/* Search */}
-        <View className="flex-row items-center bg-white rounded-xl px-4 py-3 border border-gray-100 mb-4 shadow-sm">
-          <Ionicons name="search-outline" size={20} color="#999" />
-          <TextInput
-            placeholder="Search products..."
-            className="flex-1 ml-3 font-body text-sm"
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-
-        {/* Category Scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-          {BAZAAR_CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.title}
-              onPress={() => setSelectedCat(cat)}
-              className={`px-6 py-2 rounded-full mr-3 border ${selectedCat.title === cat.title ? 'bg-primary border-primary' : 'bg-white border-gray-200'
-                }`}
-            >
-              <Text className={`font-headingSemi text-xs ${selectedCat.title === cat.title ? 'text-white' : 'text-gray-600'
-                }`}>
-                {cat.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <MainHeader translateY={translateY} />
+      
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#a03048" />
         </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={products}
           renderItem={renderProductCard}
           keyExtractor={(item) => item.product_id.toString()}
           numColumns={2}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 100 }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ 
+            paddingTop: totalHeaderHeight,
+            paddingHorizontal: 12, 
+            paddingBottom: 100 
+          }}
           onRefresh={refetch}
           refreshing={isLoading}
+          ListHeaderComponent={
+            <View className="pb-2 pt-4">
+              <Text className="font-heading text-2xl text-dark mb-4">Paltuu Bazaar</Text>
+
+              {/* Search */}
+              <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 mb-4 shadow-sm">
+                <Ionicons name="search-outline" size={20} color="#999" />
+                <TextInput
+                  placeholder="Search products..."
+                  className="flex-1 ml-3 font-body text-sm"
+                  value={search}
+                  onChangeText={setSearch}
+                />
+              </View>
+
+              {/* Category Scroll */}
+              <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                {BAZAAR_CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.title}
+                    onPress={() => setSelectedCat(cat)}
+                    className={`px-6 py-2 rounded-full mr-3 border ${selectedCat.title === cat.title ? 'bg-primary border-primary' : 'bg-white border-gray-200'
+                      }`}
+                  >
+                    <Text className={`font-headingSemi text-xs ${selectedCat.title === cat.title ? 'text-white' : 'text-gray-600'
+                      }`}>
+                      {cat.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.ScrollView>
+            </View>
+          }
           ListEmptyComponent={
             <View className="py-20 items-center">
               <Text className="font-body text-gray-500">No products found.</Text>
@@ -96,6 +112,6 @@ export default function BazaarScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

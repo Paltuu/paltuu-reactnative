@@ -21,7 +21,7 @@ export const petApi = {
   },
 
   // Used on Dashboard
-  async getPets(params?: { city?: number; type?: string; breed?: string; page?: number }) {
+  async getPets(params: PetFilters = {}) {
     const { data } = await client.get('/pets', { params });
     return data;
   },

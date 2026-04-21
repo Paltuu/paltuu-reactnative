@@ -1,16 +1,26 @@
 import React from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { MainHeader } from '../../src/components/common/MainHeader';
+import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
+  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-10">
-      <MainHeader />
-      <ScrollView className="flex-1 px-5 pt-6">
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <MainHeader translateY={translateY} />
+      <Animated.ScrollView 
+        className="flex-1 px-5" 
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: totalHeaderHeight + 20 }}
+      >
         {/* User Profile Info */}
         <View className="items-center mb-8">
           <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden mb-4 border-2 border-primary/20">
@@ -27,22 +37,25 @@ export default function ProfileScreen() {
         </View>
 
         {/* Menu Items */}
-        <View className="space-y-4 mb-10">
+        <View className="mb-10">
           <MenuButton icon="paw-outline" title="My Pets" />
+          <View className="h-4" />
           <MenuButton icon="heart-outline" title="Favorites" />
+          <View className="h-4" />
           <MenuButton icon="settings-outline" title="Settings" />
+          <View className="h-4" />
           <MenuButton icon="help-circle-outline" title="Help & Support" />
           
           <TouchableOpacity 
             onPress={logout}
-            className="flex-row items-center p-4 bg-red-50 rounded-2xl mt-4"
+            className="flex-row items-center p-4 bg-red-50 rounded-2xl mt-8"
           >
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
             <Text className="ml-3 font-headingSemi text-red-500">Log Out</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 

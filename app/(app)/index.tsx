@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, Image, Animated, ActivityIndicator, ScrollView } from 'react-native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { petsApi } from '../../src/api/pets';
 import { bazaarApi } from '../../src/api/bazaar';
@@ -9,7 +7,7 @@ import { PetCard } from '../../src/components/pets/PetCard';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
 import { MainHeader } from '../../src/components/common/MainHeader';
-
+import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
 
 export default function HomeScreen() {
   const { user, logout } = useAuthStore();
@@ -17,6 +15,8 @@ export default function HomeScreen() {
   const [featuredPets, setFeaturedPets] = useState<any[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
 
   useEffect(() => {
     fetchDashboardData();
@@ -58,17 +58,27 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+      <View className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#A03048" />
         <Text className="mt-4 font-body text-gray-400">Loading your world...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-10">
-      <MainHeader />
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <MainHeader translateY={translateY} />
+      
+      <Animated.ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: totalHeaderHeight }}
+      >
         {/* Welcome Section */}
         <View className="px-5 pt-4 pb-6">
           <Text className="text-gray-400 font-body text-xs mb-1">{getGreeting()},</Text>
@@ -140,7 +150,7 @@ export default function HomeScreen() {
             <Text className="text-gray-500 font-headingSemi text-center">Logout from App</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }

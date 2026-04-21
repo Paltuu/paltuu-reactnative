@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
+import { Image } from 'expo-image';
 
 export default function AppLayout() {
   return (
@@ -35,15 +36,6 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="pets"
-        options={{
-          title: 'Pets',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "paw" : "paw-outline"} size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="bazaar"
         options={{
           title: 'Bazaar',
@@ -53,11 +45,26 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="pet-care"
+        name="pets"
         options={{
-          title: 'Care',
+          title: 'Pets',
+          tabBarIcon: ({ focused }) => (
+            <View className={`w-14 h-14 rounded-full items-center justify-center -mt-8 border-4 border-white ${focused ? 'bg-primary' : 'bg-primarySoft'}`}>
+              <Image 
+                source={require('../../assets/primary_icon.svg')}
+                style={{ width: 32, height: 32, tintColor: 'white' }}
+                contentFit="contain"
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "heart" : "heart-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "search" : "search-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -70,12 +77,11 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="lost-found"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
+      
+      {/* Hidden Screens */}
+      <Tabs.Screen name="adopt" options={{ href: null }} />
+      <Tabs.Screen name="pet-care" options={{ href: null }} />
+      <Tabs.Screen name="lost-found" options={{ href: null }} />
     </Tabs>
   );
 }
