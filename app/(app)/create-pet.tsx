@@ -1,29 +1,146 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
   Switch,
   Alert,
   ActivityIndicator,
-  Image
+  Image,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
-import { Picker } from '@react-native-picker/picker'; // We might need to install this or use a custom one
 
+/* ───────────────────────────────────────────────
+   Custom Dropdown — avoids @react-native-picker
+   ─────────────────────────────────────────────── */
+interface DropdownProps {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onSelect: (value: string) => void;
+}
+
+function Dropdown({ label, value, options, onSelect }: DropdownProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <>
+      <TouchableOpacity style={dStyles.trigger} onPress={() => setOpen(true)}>
+        <Text style={selected ? dStyles.triggerText : dStyles.placeholder}>
+          {selected ? selected.label : label}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color="#999" />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide">
+        <TouchableOpacity
+          style={dStyles.backdrop}
+          activeOpacity={1}
+          onPress={() => setOpen(false)}
+        >
+          <View style={dStyles.sheet}>
+            <Text style={dStyles.sheetTitle}>{label}</Text>
+            <FlatList
+              data={options}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    dStyles.option,
+                    item.value === value && dStyles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    onSelect(item.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      dStyles.optionText,
+                      item.value === value && dStyles.optionTextSelected,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {item.value === value && (
+                    <Ionicons name="checkmark" size={20} color="#a03048" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+}
+
+const dStyles = StyleSheet.create({
+  trigger: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EEE',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  triggerText: { fontSize: 16, color: '#000' },
+  placeholder: { fontSize: 16, color: '#AAA' },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
+    paddingBottom: 30,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  option: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F8F8',
+  },
+  optionSelected: { backgroundColor: '#FFF0F3' },
+  optionText: { fontSize: 16, color: '#333' },
+  optionTextSelected: { color: '#a03048', fontWeight: '600' },
+});
+
+/* ───────────────────────────────────────────────
+   Main Screen
+   ─────────────────────────────────────────────── */
 export default function CreatePetScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore();
+  const { cities, categories, fetchMetadata, createPet, isLoading } =
+    usePetStore();
 
-  // Form State
   const [formData, setFormData] = useState({
     title: '',
     petType: '',
@@ -41,391 +158,309 @@ export default function CreatePetScreen() {
   const [images, setImages] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchMetadata();
+    fetchMetadata().catch(() => {});
   }, []);
+
+  /* build dropdown options from store data */
+  const categoryOptions = (categories ?? []).map((c: any) => ({
+    label: c.category_name || c.name || 'Unknown',
+    value: (c.category_id || c.id)?.toString(),
+  }));
+
+  const cityOptions = (cities ?? []).map((c: any) => ({
+    label: c.city_name || c.name || 'Unknown',
+    value: (c.city_id || c.id)?.toString(),
+  }));
+
+  const sexOptions = [
+    { label: 'Male', value: 'male' },
+    { label: 'Female', value: 'female' },
+  ];
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: 5,
-      quality: 0.8,
+      quality: 0.7,
     });
-
     if (!result.canceled) {
-      const selectedImages = result.assets.map(asset => ({
-        uri: asset.uri,
+      const selected = result.assets.map((a) => ({
+        uri: a.uri,
         type: 'image/jpeg',
-        name: asset.fileName || `image_${Date.now()}.jpg`
+        name: a.fileName || `img_${Date.now()}.jpg`,
       }));
-      setImages([...images, ...selectedImages]);
+      setImages([...images, ...selected]);
     }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    // Validation
-    if (!formData.title || !formData.petType || !formData.cityId || !formData.contactNumber) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    if (!formData.years && !formData.months) {
-      Alert.alert('Error', 'Please enter the pet\'s age');
-      return;
-    }
-
-    if (images.length === 0) {
-      Alert.alert('Error', 'Please upload at least one image');
-      return;
+    if (
+      !formData.title ||
+      !formData.petType ||
+      !formData.cityId ||
+      !formData.contactNumber
+    ) {
+      return Alert.alert('Required', 'Please fill all fields marked with *');
     }
 
     try {
-      const petPayload = {
+      const payload = {
         pet_name: formData.title,
         pet_type: Number(formData.petType),
         city_id: Number(formData.cityId),
         area: formData.area,
-        age_months: (Number(formData.years || 0) * 12) + Number(formData.months || 0),
+        age_months:
+          Number(formData.years || 0) * 12 + Number(formData.months || 0),
         contact_number: formData.contactNumber,
         description: formData.description,
         sex: formData.sex,
         vaccinated: formData.vaccinated,
         neutered: formData.neutered,
         adoption_status: 'available',
-        listing_type: 'individual', // Default for user listings
+        listing_type: 'individual',
       };
-
-      await createPet(petPayload, images);
-      Alert.alert('Success', 'Pet listing created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(app)/pets') }
+      await createPet(payload, images);
+      Alert.alert('Success', 'Listing created!', [
+        { text: 'OK', onPress: () => router.replace('/(app)/pets') },
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create listing. Please try again.');
+    } catch {
+      Alert.alert('Error', 'Submission failed.');
     }
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 60 }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 150 }]}
+        keyboardShouldPersistTaps="always"
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <Text style={styles.title}>Post a Pet</Text>
         </View>
 
-        {/* Images Section */}
-        <View style={styles.section}>
+        {/* Photos */}
+        <View style={{ marginBottom: 20 }}>
           <Text style={styles.sectionTitle}>Photos *</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-            {images.map((img, index) => (
-              <View key={index} style={styles.imageWrapper}>
-                <Image source={{ uri: img.uri }} style={styles.petImage} />
-                <TouchableOpacity 
-                  style={styles.removeImageBtn}
-                  onPress={() => removeImage(index)}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {images.map((img, i) => (
+              <View key={i} style={styles.imgWrap}>
+                <Image source={{ uri: img.uri }} style={styles.img} />
+                <TouchableOpacity
+                  style={styles.imgRemove}
+                  onPress={() =>
+                    setImages(images.filter((_, idx) => idx !== i))
+                  }
                 >
-                  <Ionicons name="close-circle" size={20} color="#FF4B4B" />
+                  <Ionicons name="close-circle" size={22} color="#FF4B4B" />
                 </TouchableOpacity>
               </View>
             ))}
             {images.length < 5 && (
-              <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
-                <Ionicons name="camera-outline" size={32} color="#a03048" />
-                <Text style={styles.addImageText}>Add Photo</Text>
+              <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
+                <Ionicons name="camera" size={28} color="#a03048" />
               </TouchableOpacity>
             )}
           </ScrollView>
         </View>
 
-        {/* Basic Info */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Title *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Friendly Golden Retriever for Adoption"
-            value={formData.title}
-            onChangeText={(text) => setFormData({ ...formData, title: text })}
-          />
+        {/* Title */}
+        <Text style={styles.label}>Listing Title *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Playful Kitten"
+          value={formData.title}
+          onChangeText={(t) => setFormData({ ...formData, title: t })}
+        />
 
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.label}>Type *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formData.petType}
-                  onValueChange={(val) => setFormData({ ...formData, petType: val })}
-                >
-                  <Picker.Item label="Select Type" value="" />
-                  {categories.map(cat => (
-                    <Picker.Item key={cat.category_id} label={cat.category_name} value={cat.category_id.toString()} />
-                  ))}
-                </Picker>
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Sex *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formData.sex}
-                  onValueChange={(val) => setFormData({ ...formData, sex: val })}
-                >
-                  <Picker.Item label="Male" value="male" />
-                  <Picker.Item label="Female" value="female" />
-                  <Picker.Item label="Unknown" value="unknown" />
-                </Picker>
-              </View>
-            </View>
+        {/* Pet Type & Sex */}
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.label}>Pet Type *</Text>
+            <Dropdown
+              label="Select Type"
+              value={formData.petType}
+              options={categoryOptions}
+              onSelect={(v) => setFormData({ ...formData, petType: v })}
+            />
           </View>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.label}>City *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formData.cityId}
-                  onValueChange={(val) => setFormData({ ...formData, cityId: val })}
-                >
-                  <Picker.Item label="Select City" value="" />
-                  {cities.map(city => (
-                    <Picker.Item key={city.city_id} label={city.city_name} value={city.city_id.toString()} />
-                  ))}
-                </Picker>
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Area</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. DHA Phase 5"
-                value={formData.area}
-                onChangeText={(text) => setFormData({ ...formData, area: text })}
-              />
-            </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Sex *</Text>
+            <Dropdown
+              label="Select"
+              value={formData.sex}
+              options={sexOptions}
+              onSelect={(v) => setFormData({ ...formData, sex: v })}
+            />
           </View>
         </View>
 
-        {/* Age & Contact */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Age *</Text>
-          <View style={styles.row}>
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 12 }]}
-              placeholder="Years"
-              keyboardType="numeric"
-              value={formData.years}
-              onChangeText={(text) => setFormData({ ...formData, years: text })}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Months"
-              keyboardType="numeric"
-              value={formData.months}
-              onChangeText={(text) => setFormData({ ...formData, months: text })}
+        {/* City & Area */}
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.label}>City *</Text>
+            <Dropdown
+              label="Select City"
+              value={formData.cityId}
+              options={cityOptions}
+              onSelect={(v) => setFormData({ ...formData, cityId: v })}
             />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Area</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Area Name"
+              value={formData.area}
+              onChangeText={(t) => setFormData({ ...formData, area: t })}
+            />
+          </View>
+        </View>
 
-          <Text style={styles.label}>Contact Number *</Text>
+        {/* Age */}
+        <Text style={styles.label}>Age *</Text>
+        <View style={styles.row}>
           <TextInput
-            style={styles.input}
-            placeholder="+92 3XX XXXXXXX"
-            keyboardType="phone-pad"
-            value={formData.contactNumber}
-            onChangeText={(text) => setFormData({ ...formData, contactNumber: text })}
+            style={[styles.input, { flex: 1, marginRight: 10 }]}
+            placeholder="Years"
+            keyboardType="number-pad"
+            maxLength={2}
+            value={formData.years}
+            onChangeText={(t) => setFormData({ ...formData, years: t })}
+          />
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            placeholder="Months"
+            keyboardType="number-pad"
+            maxLength={2}
+            value={formData.months}
+            onChangeText={(t) => setFormData({ ...formData, months: t })}
           />
         </View>
+
+        {/* Contact */}
+        <Text style={styles.label}>Contact Number *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="03XX XXXXXXX"
+          keyboardType="number-pad"
+          maxLength={15}
+          value={formData.contactNumber}
+          onChangeText={(t) => setFormData({ ...formData, contactNumber: t })}
+        />
 
         {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Tell us about the pet's personality, habits, and why they need a home..."
-            multiline
-            numberOfLines={4}
-            value={formData.description}
-            onChangeText={(text) => setFormData({ ...formData, description: text })}
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+          placeholder="Tell us more..."
+          multiline
+          value={formData.description}
+          onChangeText={(t) => setFormData({ ...formData, description: t })}
+        />
+
+        {/* Switches */}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>Vaccinated</Text>
+          <Switch
+            value={formData.vaccinated}
+            onValueChange={(v) => setFormData({ ...formData, vaccinated: v })}
+            trackColor={{ true: '#a03048', false: '#E0E0E0' }}
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>Neutered / Spayed</Text>
+          <Switch
+            value={formData.neutered}
+            onValueChange={(v) => setFormData({ ...formData, neutered: v })}
+            trackColor={{ true: '#a03048', false: '#E0E0E0' }}
           />
         </View>
 
-        {/* Health */}
-        <View style={styles.section}>
-          <View style={styles.switchRow}>
-            <View>
-              <Text style={styles.switchLabel}>Vaccinated</Text>
-              <Text style={styles.switchSublabel}>Has the pet received all shots?</Text>
-            </View>
-            <Switch
-              value={formData.vaccinated}
-              onValueChange={(val) => setFormData({ ...formData, vaccinated: val })}
-              trackColor={{ false: '#767577', true: '#a03048' }}
-            />
-          </View>
-          
-          <View style={[styles.switchRow, { marginTop: 16 }]}>
-            <View>
-              <Text style={styles.switchLabel}>Neutered / Spayed</Text>
-              <Text style={styles.switchSublabel}>Is the pet medically fixed?</Text>
-            </View>
-            <Switch
-              value={formData.neutered}
-              onValueChange={(val) => setFormData({ ...formData, neutered: val })}
-              trackColor={{ false: '#767577', true: '#a03048' }}
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+        {/* Submit */}
+        <TouchableOpacity
+          style={[styles.submitBtn, isLoading && { opacity: 0.5 }]}
           onPress={handleSubmit}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Create Listing</Text>
+            <Text style={styles.submitBtnText}>Create Listing</Text>
           )}
         </TouchableOpacity>
-        
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  scroll: { padding: 20 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 20,
   },
-  backButton: {
-    marginRight: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 12,
-  },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10 },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-    marginTop: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+    marginTop: 16,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 10,
     padding: 14,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#EEE',
+    color: '#000',
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  pickerContainer: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    overflow: 'hidden',
-  },
-  imageScroll: {
-    flexDirection: 'row',
-  },
-  imageWrapper: {
-    marginRight: 12,
-    position: 'relative',
-  },
-  petImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-  },
-  removeImageBtn: {
+  row: { flexDirection: 'row' },
+  imgWrap: { marginRight: 10, position: 'relative' },
+  img: { width: 80, height: 80, borderRadius: 12 },
+  imgRemove: {
     position: 'absolute',
     top: -5,
     right: -5,
     backgroundColor: '#fff',
     borderRadius: 10,
   },
-  addImageBtn: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-    backgroundColor: '#fceef0',
-    borderWidth: 1,
+  imgAdd: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#fdf2f4',
     borderStyle: 'dashed',
+    borderWidth: 1,
     borderColor: '#a03048',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  addImageText: {
-    fontSize: 12,
-    color: '#a03048',
-    marginTop: 4,
-    fontWeight: '600',
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 18,
   },
-  switchLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  switchSublabel: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  submitButton: {
+  switchText: { fontSize: 16, color: '#333' },
+  submitBtn: {
     backgroundColor: '#a03048',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#a03048',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 30,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#ccc',
-    shadowOpacity: 0,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
+  submitBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });
