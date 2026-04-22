@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, Animated, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, ScrollView, FlatList } from 'react-native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { petsApi } from '../../src/api/pets';
 import { bazaarApi } from '../../src/api/bazaar';
 import { PetCard } from '../../src/components/pets/PetCard';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
-import { MainHeader } from '../../src/components/common/MainHeader';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
+  
   const [featuredPets, setFeaturedPets] = useState<any[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
 
   useEffect(() => {
     fetchDashboardData();
@@ -82,17 +84,12 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <MainHeader translateY={translateY} />
-      
-      <Animated.ScrollView 
+      <ScrollView 
         className="flex-1" 
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: totalHeaderHeight }}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 8 }}
       >
         {/* Welcome Section */}
         <View className="px-5 pt-4 pb-6">
@@ -166,7 +163,7 @@ export default function HomeScreen() {
             <Text className="text-gray-500 font-headingSemi text-center">Logout from App</Text>
           </TouchableOpacity>
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }

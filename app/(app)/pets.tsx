@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PetsHubScreen() {
   const router = useRouter();
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
 
   const options = [
     {
@@ -35,17 +37,12 @@ export default function PetsHubScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <MainHeader translateY={translateY} />
-      
-      <Animated.ScrollView 
+      <ScrollView 
         className="flex-1 px-5" 
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: totalHeaderHeight }}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 8 }}
       >
         <View className="py-8">
           <Text className="font-heading text-3xl text-dark mb-2">Pets Section</Text>
@@ -73,7 +70,7 @@ export default function PetsHubScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }

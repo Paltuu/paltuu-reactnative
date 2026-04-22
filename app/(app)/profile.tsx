@@ -1,25 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <MainHeader translateY={translateY} />
-      <Animated.ScrollView 
+      <ScrollView 
         className="flex-1 px-5" 
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: totalHeaderHeight + 20 }}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 20 }}
       >
         {/* User Profile Info */}
         <View className="items-center mb-8">
@@ -54,7 +52,7 @@ export default function ProfileScreen() {
             <Text className="ml-3 font-headingSemi text-red-500">Log Out</Text>
           </TouchableOpacity>
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }

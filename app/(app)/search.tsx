@@ -1,24 +1,21 @@
 import React from 'react';
-import { View, Text, TextInput, Animated } from 'react-native';
+import { View, Text, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <MainHeader translateY={translateY} />
-      
-      <Animated.ScrollView 
+      <ScrollView 
         className="flex-1 px-5" 
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: totalHeaderHeight + 20 }}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 20 }}
       >
         <Text className="font-heading text-3xl text-dark mb-6">Search</Text>
         
@@ -36,7 +33,7 @@ export default function SearchScreen() {
             Find exactly what you're looking for in the Paltuu universe.
           </Text>
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }

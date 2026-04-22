@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import {
-  View, Text, SafeAreaView, FlatList, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity,
   ActivityIndicator, TextInput
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { getClinics } from '../../src/api/clinics';
 import { Ionicons, Feather, FontAwesome5 } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ClinicCard } from '../../src/components/pet-care/ClinicCard';
 import { useRouter } from 'expo-router';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PetCareScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: clinics, isLoading, refetch } = useQuery({
@@ -40,13 +44,13 @@ export default function PetCareScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-10">
-      <MainHeader />
-
+    <View className="flex-1 bg-white">
       <FlatList
         data={filteredClinics}
         renderItem={renderClinicCard}
         keyExtractor={(item) => item.clinic_id.toString()}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         onRefresh={refetch}
         refreshing={isLoading}
         ListHeaderComponent={
@@ -96,8 +100,11 @@ export default function PetCareScreen() {
             </View>
           )
         }
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ 
+          paddingTop: HEADER_HEIGHT + insets.top + 8,
+          paddingBottom: 100 
+        }}
       />
-    </SafeAreaView>
+    </View>
   );
 }

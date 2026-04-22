@@ -2,15 +2,16 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal,
-  Switch, Platform, StyleSheet, Animated, FlatList
+  Platform, StyleSheet, Animated, FlatList
 } from 'react-native';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Local helper to format age
 const formatAge = (ageMonths: number | null | undefined): string => {
@@ -38,6 +39,9 @@ export default function AdoptScreen() {
     breed: '',
   });
 
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
+
   // --- Infinite Query ---
   const {
     data,
@@ -52,11 +56,11 @@ export default function AdoptScreen() {
     queryFn: ({ pageParam = 1 }) => petApi.getAdoptionPets({
       ...filters,
       page: pageParam,
-      limit: 11
+      limit: 10
     }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.data?.length === 11) {
+      if (lastPage.data?.length === 10) {
         return allPages.length + 1;
       }
       return undefined;
@@ -104,7 +108,16 @@ export default function AdoptScreen() {
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
-      className="flex-1 bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-100"
+      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5"
+      style={{ 
+        flex: 1, 
+        maxWidth: '46%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2
+      }}
     >
       <View className="relative">
         <Image
@@ -136,26 +149,19 @@ export default function AdoptScreen() {
     </TouchableOpacity>
   );
 
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
-
   return (
-    <View className="flex-1 bg-white">
-      <MainHeader translateY={translateY} />
-
-      <Animated.FlatList
+    <View className="flex-1 bg-gray-50">
+      <FlatList
         data={pets}
         renderItem={renderPetCard}
         keyExtractor={(item) => item.pet_id.toString()}
         numColumns={2}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{ 
           paddingHorizontal: 12, 
           paddingBottom: 100, 
-          paddingTop: totalHeaderHeight + 20 
+          paddingTop: HEADER_HEIGHT + insets.top + 8
         }}
         onRefresh={refetch}
         refreshing={isRefetching}

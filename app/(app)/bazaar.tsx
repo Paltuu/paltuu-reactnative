@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity,
-  ActivityIndicator, TextInput, Animated, FlatList
+  ActivityIndicator, TextInput, FlatList, ScrollView
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { bazaarApi } from '../../src/api/bazaar';
 import { Ionicons } from '@expo/vector-icons';
-import { MainHeader } from '../../src/components/common/MainHeader';
+import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
-import { useCollapsibleHeader } from '../../src/hooks/useCollapsibleHeader';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BAZAAR_CATEGORIES = [
   { title: "All", slug: undefined },
@@ -21,10 +22,10 @@ const BAZAAR_CATEGORIES = [
 
 export default function BazaarScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { onScroll } = useHeaderContext();
   const [selectedCat, setSelectedCat] = useState(BAZAAR_CATEGORIES[0]);
   const [search, setSearch] = useState('');
-
-  const { scrollY, translateY, totalHeaderHeight } = useCollapsibleHeader();
 
   const { data: productData, isLoading, refetch } = useQuery({
     queryKey: ['bazaar', selectedCat, search],
@@ -63,26 +64,21 @@ export default function BazaarScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <MainHeader translateY={translateY} />
-      
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#a03048" />
         </View>
       ) : (
-        <Animated.FlatList
+        <FlatList
           key="bazaar-grid"
           data={products}
           renderItem={renderProductCard}
           keyExtractor={(item) => item.product_id?.toString() || Math.random().toString()}
           numColumns={2}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
-          )}
+          onScroll={onScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ 
-            paddingTop: totalHeaderHeight,
+            paddingTop: HEADER_HEIGHT + insets.top + 8,
             paddingHorizontal: 12, 
             paddingBottom: 100 
           }}
@@ -104,7 +100,7 @@ export default function BazaarScreen() {
               </View>
 
               {/* Category Scroll */}
-              <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                 {BAZAAR_CATEGORIES.map((cat) => (
                   <TouchableOpacity
                     key={cat.title}
@@ -118,7 +114,7 @@ export default function BazaarScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </Animated.ScrollView>
+              </ScrollView>
             </View>
           }
           ListEmptyComponent={
