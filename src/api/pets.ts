@@ -63,6 +63,26 @@ export const petApi = {
     return data;
   },
 
+  async getMyListings() {
+    const { data } = await client.get('/pets/my-listings');
+    return data;
+  },
+
+  async updatePetStatus(id: number, status: string) {
+    const { data } = await client.patch(`/pets/${id}/status`, { status });
+    return data;
+  },
+
+  async deletePet(id: number) {
+    const { data } = await client.delete(`/pets/${id}`);
+    return data;
+  },
+
+  async getMyAdoptionRequests() {
+    const { data } = await client.get('/applications/my-pets');
+    return data;
+  },
+
   async getProfile(userId: string) {
     // Reverting to the primary profile endpoint used by the web app (relative to v1)
     const { data } = await client.get(`../my-profile/${userId}`);

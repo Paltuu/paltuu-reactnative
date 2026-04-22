@@ -9,12 +9,18 @@ interface PetState {
   isLoading: boolean;
   error: string | null;
   filters: PetFilters;
+  myListings: any[];
+  adoptionRequests: any[];
 
   // Actions
   fetchPets: (filters?: PetFilters) => Promise<void>;
   fetchMetadata: () => Promise<void>;
   setFilters: (filters: Partial<PetFilters>) => void;
   resetFilters: () => void;
+  fetchMyListings: () => Promise<void>;
+  updatePetStatus: (id: number, status: string) => Promise<void>;
+  deletePet: (id: number) => Promise<void>;
+  fetchAdoptionRequests: () => Promise<void>;
 
   // Selection
   selectedPet: any | null;
@@ -29,6 +35,8 @@ export const usePetStore = create<PetState>((set, get) => ({
   pets: [],
   cities: [],
   categories: [],
+  myListings: [],
+  adoptionRequests: [],
   isLoading: false,
   error: null,
   filters: {
@@ -116,7 +124,7 @@ export const usePetStore = create<PetState>((set, get) => ({
 
         // We need an upload endpoint for images in the mobile API
         // For now, using a placeholder logic if client doesn't have it
-        await client.post('/upload-image', formData, {
+        await client.post('../upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       }
@@ -156,6 +164,48 @@ export const usePetStore = create<PetState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.message || 'Failed to create lost & found post', isLoading: false });
       throw error;
+    }
+  },
+
+  fetchMyListings: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await petsApi.getMyListings();
+      set({ myListings: Array.isArray(response) ? response : (response?.data || []), isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to fetch my listings', isLoading: false });
+    }
+  },
+
+  updatePetStatus: async (id, status) => {
+    try {
+      await petsApi.updatePetStatus(id, status);
+      const myListings = get().myListings.map(p => p.pet_id === id ? { ...p, adoption_status: status } : p);
+      set({ myListings });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update status' });
+      throw error;
+    }
+  },
+
+  deletePet: async (id) => {
+    try {
+      await petsApi.deletePet(id);
+      const myListings = get().myListings.filter(p => p.pet_id !== id);
+      set({ myListings });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete listing' });
+      throw error;
+    }
+  },
+
+  fetchAdoptionRequests: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await petsApi.getMyAdoptionRequests();
+      set({ adoptionRequests: Array.isArray(response) ? response : (response?.data || []), isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to fetch adoption requests', isLoading: false });
     }
   },
 }));

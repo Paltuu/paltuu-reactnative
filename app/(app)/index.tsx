@@ -29,13 +29,6 @@ export default function HomeScreen() {
   const trendingProducts = products.slice(0, 4);
   const loading = petsLoading || productsLoading;
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   if (loading) {
     return (
       <View className="flex-1 bg-white justify-center items-center">
@@ -54,13 +47,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 8 }}
       >
-        {/* Welcome Section */}
-        <View className="px-5 pt-4 pb-6">
-          <Text className="text-gray-400 font-body text-xs mb-1">{getGreeting()},</Text>
-          <Text className="font-heading text-2xl text-dark capitalize">{user?.name || 'Friend'} 👋</Text>
-        </View>
-
-        {/* Featured Pets Section */}
+        {/*  Featured Pets Section */}
         <View className="mb-8">
           <View className="flex-row justify-between items-center px-5 mb-4">
             <Text className="font-heading text-lg text-dark">Recent Pets</Text>
