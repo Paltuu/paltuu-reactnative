@@ -15,7 +15,7 @@ export default function SearchScreen() {
         className="flex-1 px-5" 
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 20 }}
+        contentContainerStyle={{ paddingTop: insets.top + 20 }}
       >
         <Text className="font-heading text-3xl text-dark mb-6">Search</Text>
         

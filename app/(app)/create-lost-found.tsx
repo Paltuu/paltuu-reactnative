@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
+import { useAuthStore } from '../../src/stores/authStore';
 
 /* ───────────────────────────────────────────────
    Custom Dropdown — avoids @react-native-picker
@@ -137,6 +138,7 @@ const dStyles = StyleSheet.create({
 export default function CreateLostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
   const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } =
     usePetStore();
 
@@ -196,9 +198,9 @@ export default function CreateLostFoundScreen() {
         location: formData.location,
         pet_description: formData.description,
         date: formData.date,
-        contact_info: formData.contactInfo,
+        contact_info: `+92${formData.contactInfo.replace(/^0/, '')}`,
         post_type: activeTab,
-        user_id: 47,
+        user_id: user?.id || 47,
       };
       await createLostFoundPost(payload, images);
       Alert.alert('Success', 'Report submitted!', [

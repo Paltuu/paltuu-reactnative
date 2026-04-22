@@ -11,6 +11,7 @@ interface PetState {
   filters: PetFilters;
   myListings: any[];
   adoptionRequests: any[];
+  myApplications: any[];
 
   // Actions
   fetchPets: (filters?: PetFilters) => Promise<void>;
@@ -21,6 +22,7 @@ interface PetState {
   updatePetStatus: (id: number, status: string) => Promise<void>;
   deletePet: (id: number) => Promise<void>;
   fetchAdoptionRequests: () => Promise<void>;
+  fetchMyApplications: () => Promise<void>;
 
   // Selection
   selectedPet: any | null;
@@ -37,6 +39,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   categories: [],
   myListings: [],
   adoptionRequests: [],
+  myApplications: [],
   isLoading: false,
   error: null,
   filters: {
@@ -171,7 +174,8 @@ export const usePetStore = create<PetState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await petsApi.getMyListings();
-      set({ myListings: Array.isArray(response) ? response : (response?.data || []), isLoading: false });
+      const list = Array.isArray(response) ? response : (response?.listings || response?.data?.listings || []);
+      set({ myListings: list, isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch my listings', isLoading: false });
     }
@@ -203,9 +207,21 @@ export const usePetStore = create<PetState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await petsApi.getMyAdoptionRequests();
-      set({ adoptionRequests: Array.isArray(response) ? response : (response?.data || []), isLoading: false });
+      const list = Array.isArray(response) ? response : (response?.applications || response?.data?.applications || []);
+      set({ adoptionRequests: list, isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch adoption requests', isLoading: false });
+    }
+  },
+
+  fetchMyApplications: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await petsApi.getMyApplications();
+      const list = Array.isArray(response) ? response : (response?.applications || response?.data?.applications || []);
+      set({ myApplications: list, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to fetch my applications', isLoading: false });
     }
   },
 }));

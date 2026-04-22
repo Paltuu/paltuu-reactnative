@@ -42,7 +42,7 @@ export default function PetsHubScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 8 }}
+        contentContainerStyle={{ paddingTop: insets.top + 20 }}
       >
         <View className="py-8">
           <Text className="font-heading text-3xl text-dark mb-2">Pets Section</Text>

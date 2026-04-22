@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
@@ -10,6 +11,7 @@ export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
+  const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -17,7 +19,7 @@ export default function ProfileScreen() {
         className="flex-1 px-5" 
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: HEADER_HEIGHT + insets.top + 20 }}
+        contentContainerStyle={{ paddingTop: insets.top + 20 }}
       >
         {/* User Profile Info */}
         <View className="items-center mb-8">
@@ -36,6 +38,24 @@ export default function ProfileScreen() {
 
         {/* Menu Items */}
         <View className="mb-10">
+          <MenuButton 
+            icon="list-outline" 
+            title="My Listings" 
+            onPress={() => router.push('/(app)/my-listings')}
+          />
+          <View className="h-4" />
+          <MenuButton 
+            icon="mail-unread-outline" 
+            title="Adoption Requests" 
+            onPress={() => router.push('/(app)/adoption-requests')}
+          />
+          <View className="h-4" />
+          <MenuButton 
+            icon="document-text-outline" 
+            title="My Applications" 
+            onPress={() => router.push('/(app)/my-applications')}
+          />
+          <View className="h-4" />
           <MenuButton icon="paw-outline" title="My Pets" />
           <View className="h-4" />
           <MenuButton icon="heart-outline" title="Favorites" />
@@ -57,8 +77,11 @@ export default function ProfileScreen() {
   );
 }
 
-const MenuButton = ({ icon, title }: { icon: any, title: string }) => (
-  <TouchableOpacity className="flex-row items-center justify-between p-4 bg-gray-50 rounded-2xl">
+const MenuButton = ({ icon, title, onPress }: { icon: any, title: string, onPress?: () => void }) => (
+  <TouchableOpacity 
+    onPress={onPress}
+    className="flex-row items-center justify-between p-4 bg-gray-50 rounded-2xl"
+  >
     <View className="flex-row items-center">
         <Ionicons name={icon} size={20} color="#A03048" />
         <Text className="ml-3 font-headingSemi text-dark">{title}</Text>

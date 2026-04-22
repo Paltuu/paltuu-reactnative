@@ -161,7 +161,7 @@ export default function AdoptScreen() {
         contentContainerStyle={{ 
           paddingHorizontal: 12, 
           paddingBottom: 100, 
-          paddingTop: HEADER_HEIGHT + insets.top + 8
+          paddingTop: insets.top + 8
         }}
         onRefresh={refetch}
         refreshing={isRefetching}

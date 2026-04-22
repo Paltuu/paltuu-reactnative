@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import { Image } from 'expo-image';
@@ -16,9 +16,16 @@ function LayoutContent() {
     });
   }, [router, setOnPlusPress]);
 
+  let pathname = '';
+  try {
+    pathname = usePathname();
+  } catch (e) {}
+
+  const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
+
   return (
     <>
-      <MainHeader />
+      {showHeader && <MainHeader />}
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -101,6 +108,7 @@ function LayoutContent() {
         <Tabs.Screen name="create-pet" options={{ href: null }} />
         <Tabs.Screen name="create-lost-found" options={{ href: null }} />
         <Tabs.Screen name="my-listings" options={{ href: null }} />
+        <Tabs.Screen name="my-applications" options={{ href: null }} />
         <Tabs.Screen name="adoption-requests" options={{ href: null }} />
         <Tabs.Screen name="marketplace" options={{ href: null }} />
       </Tabs>

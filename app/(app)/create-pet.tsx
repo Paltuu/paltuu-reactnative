@@ -5,17 +5,16 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  StyleSheet,
   Alert,
   ActivityIndicator,
-  Image,
   Modal,
   FlatList,
   Dimensions,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
@@ -62,25 +61,32 @@ function Dropdown({ label, value, options, onSelect }: any) {
 
   return (
     <>
-      <TouchableOpacity style={dStyles.trigger} onPress={() => setOpen(true)}>
-        <Text style={selected ? dStyles.triggerText : dStyles.placeholder}>
+      <TouchableOpacity 
+        className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex-row justify-between items-center" 
+        onPress={() => setOpen(true)}
+      >
+        <Text className={`text-base ${selected ? 'text-black font-semibold' : 'text-gray-400'}`}>
           {selected ? selected.label : label}
         </Text>
         <Ionicons name="chevron-down" size={18} color="#999" />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="slide">
-        <TouchableOpacity style={dStyles.backdrop} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={dStyles.sheet}>
-            <Text style={dStyles.sheetTitle}>{label}</Text>
+        <TouchableOpacity 
+          className="flex-1 bg-black/40 justify-end" 
+          activeOpacity={1} 
+          onPress={() => setOpen(false)}
+        >
+          <View className="bg-white rounded-t-[30px] max-h-[60%] pb-10">
+            <Text className="text-lg font-black text-center py-5 border-b border-gray-50">{label}</Text>
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[dStyles.option, item.value === value && dStyles.optionSelected]}
+                  className={`flex-row justify-between items-center px-6 py-4 border-b border-gray-50 ${item.value === value ? 'bg-primary/5' : ''}`}
                   onPress={() => { onSelect(item.value); setOpen(false); }}
                 >
-                  <Text style={[dStyles.optionText, item.value === value && dStyles.optionTextSelected]}>{item.label}</Text>
+                  <Text className={`text-base ${item.value === value ? 'text-primary font-bold' : 'text-gray-700'}`}>{item.label}</Text>
                   {item.value === value && <Ionicons name="checkmark" size={20} color="#a03048" />}
                 </TouchableOpacity>
               )}
@@ -101,7 +107,6 @@ export default function CreatePetScreen() {
   const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const scrollX = useRef(new Animated.Value(0)).current;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -198,15 +203,20 @@ export default function CreatePetScreen() {
       { id: 3, label: 'Gallery' },
     ];
     return (
-      <View style={styles.indicatorWrap}>
-        <View style={styles.indicatorRow}>
+      <View className="mb-8 px-10">
+        <View className="flex-row justify-between relative">
           {steps.map((s, i) => (
-            <View key={s.id} style={styles.stepItem}>
-              <View style={[styles.stepCircle, currentStep >= s.id && styles.stepCircleActive]}>
-                <Text style={[styles.stepNumber, currentStep >= s.id && styles.stepNumberActive]}>{s.id}</Text>
+            <View key={s.id} className="items-center z-10">
+              <View className={`w-8 h-8 rounded-xl items-center justify-center mb-1.5 ${currentStep >= s.id ? 'bg-primary' : 'bg-gray-100'}`}>
+                <Text className={`text-sm font-black ${currentStep >= s.id ? 'text-white' : 'text-gray-400'}`}>{s.id}</Text>
               </View>
-              <Text style={[styles.stepLabel, currentStep >= s.id && styles.stepLabelActive]}>{s.label}</Text>
-              {i < 2 && <View style={[styles.stepLine, currentStep > s.id && styles.stepLineActive]} />}
+              <Text className={`text-[10px] font-bold uppercase ${currentStep >= s.id ? 'text-primary' : 'text-gray-300'}`}>{s.label}</Text>
+              {i < 2 && (
+                <View className={`absolute h-[2px] bg-gray-100 top-4 left-6 z-[-1]`} style={{ width: width / 3 }} />
+              )}
+              {i < 2 && currentStep > s.id && (
+                <View className={`absolute h-[2px] bg-primary top-4 left-6 z-[-1]`} style={{ width: width / 3 }} />
+              )}
             </View>
           ))}
         </View>
@@ -215,39 +225,39 @@ export default function CreatePetScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 60 }]}>
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top + 20 }}>
       {/* Header */}
-      <View style={styles.header}>
+      <View className="flex-row justify-between items-center px-5 mb-5">
         <TouchableOpacity onPress={() => currentStep > 1 ? prevStep() : router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{currentStep === 3 ? 'Finalize' : 'Post a Pet'}</Text>
-        <View style={{ width: 24 }} />
+        <Text className="text-xl font-black text-gray-900">{currentStep === 3 ? 'Finalize' : 'Post a Pet'}</Text>
+        <View className="w-6" />
       </View>
 
       {renderStepIndicator()}
 
       <ScrollView 
-        style={{ flex: 1 }} 
-        contentContainerStyle={styles.scroll}
+        className="flex-1 px-6" 
+        contentContainerStyle={{ paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
         {currentStep === 1 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.sectionHeading}>The Essentials</Text>
-            <Text style={styles.sectionSub}>Start with the fundamental details</Text>
+          <View>
+            <Text className="text-3xl font-black text-gray-900 text-center">The Essentials</Text>
+            <Text className="text-base font-medium text-gray-400 text-center mb-10">Start with the fundamental details</Text>
 
-            <Text style={styles.label}>Listing Title *</Text>
+            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Listing Title *</Text>
             <TextInput
-              style={styles.input}
+              className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
               placeholder="e.g. Energetic Husky Mix"
               value={formData.title}
               onChangeText={t => setFormData({ ...formData, title: t })}
             />
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.label}>Pet Type *</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Pet Type *</Text>
                 <Dropdown
                   label="Select Type"
                   value={formData.petType}
@@ -255,25 +265,25 @@ export default function CreatePetScreen() {
                   onSelect={(v: any) => setFormData({ ...formData, petType: v })}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Sex *</Text>
-                <View style={styles.sexRow}>
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Sex *</Text>
+                <View className="flex-row gap-2">
                   {['male', 'female'].map(s => (
                     <TouchableOpacity
                       key={s}
                       onPress={() => setFormData({ ...formData, sex: s })}
-                      style={[styles.sexBtn, formData.sex === s && styles.sexBtnActive]}
+                      className={`flex-1 py-4 rounded-2xl items-center border ${formData.sex === s ? 'bg-primary/5 border-primary' : 'bg-gray-50 border-gray-100'}`}
                     >
-                      <Text style={[styles.sexBtnText, formData.sex === s && styles.sexBtnTextActive]}>{s}</Text>
+                      <Text className={`text-sm font-bold capitalize ${formData.sex === s ? 'text-primary' : 'text-gray-400'}`}>{s}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             </View>
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.label}>City *</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">City *</Text>
                 <Dropdown
                   label="Select City"
                   value={formData.cityId}
@@ -281,10 +291,10 @@ export default function CreatePetScreen() {
                   onSelect={(v: any) => setFormData({ ...formData, cityId: v })}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Area *</Text>
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Area *</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
                   placeholder="e.g. DHA"
                   value={formData.area}
                   onChangeText={t => setFormData({ ...formData, area: t })}
@@ -292,11 +302,11 @@ export default function CreatePetScreen() {
               </View>
             </View>
 
-            <Text style={styles.label}>Contact Phone *</Text>
-            <View style={styles.phoneInputWrap}>
-              <Text style={styles.phonePrefix}>+92</Text>
+            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Contact Phone *</Text>
+            <View className="flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-100">
+              <Text className="text-base font-black text-gray-400 mr-2">+92</Text>
               <TextInput
-                style={styles.phoneInput}
+                className="flex-1 py-4 text-base font-bold text-black"
                 placeholder="300 1234567"
                 keyboardType="number-pad"
                 maxLength={11}
@@ -308,25 +318,25 @@ export default function CreatePetScreen() {
         )}
 
         {currentStep === 2 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.sectionHeading}>Traits & Behavior</Text>
-            <Text style={styles.sectionSub}>Describe their unique personality</Text>
+          <View>
+            <Text className="text-3xl font-black text-gray-900 text-center">Traits & Behavior</Text>
+            <Text className="text-base font-medium text-gray-400 text-center mb-10">Describe their unique personality</Text>
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.label}>Years</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Years</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-bold text-center"
                   placeholder="0"
                   keyboardType="number-pad"
                   value={formData.years}
                   onChangeText={t => setFormData({ ...formData, years: t })}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Months</Text>
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Months</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-bold text-center"
                   placeholder="0"
                   keyboardType="number-pad"
                   value={formData.months}
@@ -335,20 +345,20 @@ export default function CreatePetScreen() {
               </View>
             </View>
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.label}>Breed</Text>
+            <View className="flex-row gap-3 mt-4">
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Breed</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
                   placeholder="e.g. Persian"
                   value={formData.breed}
                   onChangeText={t => setFormData({ ...formData, breed: t })}
                 />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Health Issues</Text>
+              <View className="flex-1">
+                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Health Issues</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
                   placeholder="None / Minor"
                   value={formData.healthIssues}
                   onChangeText={t => setFormData({ ...formData, healthIssues: t })}
@@ -356,18 +366,18 @@ export default function CreatePetScreen() {
               </View>
             </View>
 
-            <Text style={styles.tagSectionTitle}>SELECT ALL THAT APPLY</Text>
+            <Text className="text-[10px] font-black text-gray-300 text-center mt-10 mb-4 uppercase tracking-[2px]">SELECT ALL THAT APPLY</Text>
             {['personality', 'lifestyle', 'compatibility', 'health'].map(cat => (
-              <View key={cat} style={styles.tagCat}>
-                <Text style={styles.tagCatLabel}>{cat.toUpperCase()}</Text>
-                <View style={styles.tagGrid}>
+              <View key={cat} className="mt-6">
+                <Text className="text-[10px] font-black text-primary/50 mb-3 uppercase tracking-widest">{cat}</Text>
+                <View className="flex-row flex-wrap gap-2">
                   {PET_TAGS.filter(t => t.tag_category === cat).map(tag => (
                     <TouchableOpacity
                       key={tag.tag_id}
                       onPress={() => toggleTag(tag.tag_id)}
-                      style={[styles.tagBtn, formData.selectedTags.includes(tag.tag_id) && styles.tagBtnActive]}
+                      className={`px-4 py-2 rounded-xl border-2 ${formData.selectedTags.includes(tag.tag_id) ? 'bg-primary border-primary' : 'bg-white border-gray-100'}`}
                     >
-                      <Text style={[styles.tagText, formData.selectedTags.includes(tag.tag_id) && styles.tagTextActive]}>
+                      <Text className={`text-xs font-bold ${formData.selectedTags.includes(tag.tag_id) ? 'text-white' : 'text-gray-400'}`}>
                         {tag.tag_name}
                       </Text>
                     </TouchableOpacity>
@@ -379,34 +389,41 @@ export default function CreatePetScreen() {
         )}
 
         {currentStep === 3 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.sectionHeading}>Final Details</Text>
-            <Text style={styles.sectionSub}>Add photos and a short description</Text>
+          <View>
+            <Text className="text-3xl font-black text-gray-900 text-center">Final Details</Text>
+            <Text className="text-base font-medium text-gray-400 text-center mb-10">Add photos and a short description</Text>
 
-            <Text style={styles.label}>The Story</Text>
+            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">The Story</Text>
             <TextInput
-              style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
+              className="bg-gray-50 rounded-3xl p-5 text-base border border-gray-100 min-h-[120px]"
               placeholder="Tell us about their habits, favorite toys..."
               multiline
+              textAlignVertical="top"
               value={formData.description}
               onChangeText={t => setFormData({ ...formData, description: t })}
             />
 
-            <View style={styles.galleryCard}>
-              <Text style={styles.galleryTitle}>PHOTOS GALLERY (MAX 5)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 20 }}>
+            <View className="mt-10 bg-gray-50 rounded-[30px] p-8 border-2 border-dashed border-gray-100 items-center">
+              <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-5">PHOTOS GALLERY (MAX 5)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {images.map((img, i) => (
-                  <View key={i} style={styles.imgWrap}>
-                    <Image source={{ uri: img.uri }} style={styles.img} />
-                    <TouchableOpacity style={styles.imgRemove} onPress={() => setImages(images.filter((_, idx) => idx !== i))}>
-                      <Ionicons name="close-circle" size={22} color="#FF4B4B" />
+                  <View key={i} className="mr-4 relative">
+                    <Image source={{ uri: img.uri }} className="w-24 h-24 rounded-2xl" contentFit="cover" />
+                    <TouchableOpacity 
+                      className="absolute -top-2 -right-2 bg-white rounded-full" 
+                      onPress={() => setImages(images.filter((_, idx) => idx !== i))}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#FF4B4B" />
                     </TouchableOpacity>
                   </View>
                 ))}
                 {images.length < 5 && (
-                  <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
+                  <TouchableOpacity 
+                    className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-primary items-center justify-center" 
+                    onPress={pickImage}
+                  >
                     <Ionicons name="add" size={32} color="#a03048" />
-                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#a03048' }}>ADD</Text>
+                    <Text className="text-[10px] font-black uppercase text-primary">ADD</Text>
                   </TouchableOpacity>
                 )}
               </ScrollView>
@@ -415,21 +432,23 @@ export default function CreatePetScreen() {
         )}
 
         {/* Navigation Buttons */}
-        <View style={styles.btnRow}>
+        <View className="flex-row gap-4 mt-12">
           {currentStep > 1 && (
-            <TouchableOpacity style={styles.backBtn} onPress={prevStep}>
-              <Text style={styles.backBtnText}>Return</Text>
+            <TouchableOpacity className="flex-1 bg-gray-50 py-5 rounded-3xl items-center" onPress={prevStep}>
+              <Text className="text-gray-400 text-base font-black">Return</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity 
-            style={[styles.nextBtn, currentStep === 1 && { flex: 1 }, isLoading && { opacity: 0.7 }]} 
+            className={`bg-[#1a1a1a] py-5 rounded-3xl items-center shadow-lg ${currentStep === 1 ? 'flex-1' : 'flex-[2]'} ${isLoading ? 'opacity-70' : ''}`} 
             onPress={currentStep === 3 ? handleSubmit : nextStep}
             disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.nextBtnText}>{currentStep === 3 ? 'Launch Listing' : currentStep === 2 ? 'Almost Done' : 'Next Component'}</Text>
+              <Text className="text-white text-base font-black">
+                {currentStep === 3 ? 'Launch Listing' : currentStep === 2 ? 'Almost Done' : 'Next Component'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -437,67 +456,3 @@ export default function CreatePetScreen() {
     </View>
   );
 }
-
-const dStyles = StyleSheet.create({
-  trigger: { backgroundColor: '#F9F9F9', borderRadius: 15, padding: 16, borderWidth: 1, borderColor: '#EEE', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  triggerText: { fontSize: 16, color: '#000', fontWeight: '600' },
-  placeholder: { fontSize: 16, color: '#AAA' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '60%', paddingBottom: 40 },
-  sheetTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  option: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#F8F8F8' },
-  optionSelected: { backgroundColor: '#FFF0F3' },
-  optionText: { fontSize: 16, color: '#333' },
-  optionTextSelected: { color: '#a03048', fontWeight: '700' },
-});
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
-  scroll: { paddingHorizontal: 25 },
-  indicatorWrap: { marginBottom: 30, paddingHorizontal: 40 },
-  indicatorRow: { flexDirection: 'row', justifyContent: 'space-between', position: 'relative' },
-  stepItem: { alignItems: 'center', zIndex: 2 },
-  stepCircle: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  stepCircleActive: { backgroundColor: '#a03048' },
-  stepNumber: { fontSize: 14, fontWeight: '900', color: '#999' },
-  stepNumberActive: { color: '#fff' },
-  stepLabel: { fontSize: 10, fontWeight: '700', color: '#ccc', textTransform: 'uppercase' },
-  stepLabelActive: { color: '#a03048' },
-  stepLine: { position: 'absolute', height: 2, width: width / 3, backgroundColor: '#f0f0f0', top: 16, left: 24, zIndex: -1 },
-  stepLineActive: { backgroundColor: '#a03048' },
-  stepContainer: { flex: 1 },
-  sectionHeading: { fontSize: 32, fontWeight: '900', color: '#1a1a1a', textAlign: 'center' },
-  sectionSub: { fontSize: 16, fontWeight: '500', color: '#888', textAlign: 'center', marginBottom: 40 },
-  label: { fontSize: 11, fontWeight: '900', color: '#AAA', marginTop: 24, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
-  input: { backgroundColor: '#F9F9F9', borderRadius: 20, padding: 18, fontSize: 16, borderWidth: 1, borderColor: '#EEE', color: '#000', fontWeight: '500' },
-  row: { flexDirection: 'row' },
-  sexRow: { flexDirection: 'row', gap: 10 },
-  sexBtn: { flex: 1, paddingVertical: 16, borderRadius: 15, backgroundColor: '#F9F9F9', alignItems: 'center', borderWidth: 1, borderColor: '#EEE' },
-  sexBtnActive: { backgroundColor: '#FFF0F3', borderColor: '#a03048' },
-  sexBtnText: { fontSize: 14, fontWeight: '700', color: '#999', textTransform: 'capitalize' },
-  sexBtnTextActive: { color: '#a03048' },
-  phoneInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderRadius: 20, paddingHorizontal: 18, borderWidth: 1, borderColor: '#EEE' },
-  phonePrefix: { fontSize: 16, fontWeight: '800', color: '#AAA', marginRight: 10 },
-  phoneInput: { flex: 1, paddingVertical: 18, fontSize: 16, color: '#000', fontWeight: '700' },
-  tagSectionTitle: { fontSize: 10, fontWeight: '900', color: '#DDD', textAlign: 'center', marginTop: 40, letterSpacing: 2 },
-  tagCat: { marginTop: 30 },
-  tagCatLabel: { fontSize: 10, fontWeight: '900', color: '#a03048', opacity: 0.5, marginBottom: 15, letterSpacing: 2 },
-  tagGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tagBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#fff', borderWidth: 2, borderColor: '#f0f0f0' },
-  tagBtnActive: { backgroundColor: '#a03048', borderColor: '#a03048', shadowColor: '#a03048', shadowOpacity: 0.2, shadowRadius: 5, elevation: 5 },
-  tagText: { fontSize: 12, fontWeight: '700', color: '#999' },
-  tagTextActive: { color: '#fff' },
-  galleryCard: { marginTop: 40, backgroundColor: '#FAFAFA', borderRadius: 30, padding: 30, borderStyle: 'dashed', borderWidth: 2, borderColor: '#EEE' },
-  galleryTitle: { fontSize: 10, fontWeight: '900', color: '#AAA', textAlign: 'center', letterSpacing: 2 },
-  imgWrap: { marginRight: 15, position: 'relative' },
-  img: { width: 90, height: 90, borderRadius: 20 },
-  imgRemove: { position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10 },
-  imgAdd: { width: 90, height: 90, borderRadius: 20, backgroundColor: '#fff', borderStyle: 'dashed', borderWidth: 2, borderColor: '#a03048', alignItems: 'center', justifyContent: 'center' },
-  btnRow: { flexDirection: 'row', gap: 15, marginTop: 50, marginBottom: 100 },
-  backBtn: { flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20, padding: 20, alignItems: 'center' },
-  backBtnText: { color: '#999', fontSize: 16, fontWeight: '800' },
-  nextBtn: { flex: 2, backgroundColor: '#1a1a1a', borderRadius: 20, padding: 20, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-});

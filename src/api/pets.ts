@@ -64,7 +64,7 @@ export const petApi = {
   },
 
   async getMyListings() {
-    const { data } = await client.get('/pets/my-listings');
+    const { data } = await client.get('/profile/listings');
     return data;
   },
 
@@ -80,6 +80,11 @@ export const petApi = {
 
   async getMyAdoptionRequests() {
     const { data } = await client.get('/applications/my-pets');
+    return data;
+  },
+
+  async getMyApplications() {
+    const { data } = await client.get('/applications/my');
     return data;
   },
 
