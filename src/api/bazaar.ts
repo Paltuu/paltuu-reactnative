@@ -1,9 +1,11 @@
 import client from './client';
 
 export interface BazaarFilters {
+  category?: string;
   categorySlug?: string;
-  sortBy?: 'trending' | 'discount' | 'price_low' | 'price_high';
+  sortBy?: 'trending' | 'discount' | 'price_low' | 'price_high' | 'new' | 'price_asc' | 'price_desc';
   keyword?: string;
+  petType?: string;
   page?: number;
   limit?: number;
 }
