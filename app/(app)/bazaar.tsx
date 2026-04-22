@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { motion } from 'framer-motion'; // We'll stick to React Native Views but keep the vibe
+// We'll stick to React Native Views for animations
 
 const { width } = Dimensions.get('window');
 
@@ -90,7 +90,7 @@ const ProductSection = ({ title, icon, filters, onSeeAll }: { title: string, ico
       >
         {isLoading ? (
           [...Array(4)].map((_, i) => (
-            <View key={i} style={{ width: 200, height: 280, marginRight: 16, backgroundColor: '#f3f4f6', borderRadius: 24, animate: 'pulse' }} />
+            <View key={i} style={{ width: 200, height: 280, marginRight: 16, backgroundColor: '#f3f4f6', borderRadius: 24 }} />
           ))
         ) : (
           products.map((item) => (

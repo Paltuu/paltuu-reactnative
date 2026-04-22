@@ -41,6 +41,18 @@ export const petApi = {
     return data;
   },
 
+  async createLostFoundPost(postData: any) {
+    const { data } = await client.post('/lost-and-found', postData);
+    return data;
+  },
+
+  async uploadLostFoundImages(postId: number, formData: FormData) {
+    const { data } = await client.post('/lost-and-found/images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data', 'Params': `post_id=${postId}` },
+    });
+    return data;
+  },
+
   async getCities() {
     const { data } = await client.get('/cities');
     return data;

@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, TextInput, FlatList,
   Modal, ScrollView, SafeAreaView
 } from 'react-native';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { bazaarApi } from '../../src/api/bazaar';
+import { useBazaarStore } from '../../src/stores/bazaarStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
@@ -35,7 +34,18 @@ export default function MarketplaceScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
 
-  // Filters State
+  const { 
+    products, 
+    categories, 
+    isLoading, 
+    isFetchingNextPage, 
+    fetchProducts, 
+    fetchNextPage, 
+    fetchCategories,
+    meta
+  } = useBazaarStore();
+
+  // Local sync for UI inputs
   const [keyword, setKeyword] = useState((searchParams.keyword as string) || '');
   const [category, setCategory] = useState((searchParams.categorySlug as string) || (searchParams.category as string) || '');
   const [petType, setPetType] = useState((searchParams.petType as string) || '');
@@ -43,51 +53,29 @@ export default function MarketplaceScreen() {
   
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
-  // Fetch Categories for Filter
-  const { data: categoriesData } = useQuery({
-    queryKey: ['bazaar-categories'],
-    queryFn: () => bazaarApi.getBazaarCategories(),
-  });
+  useEffect(() => {
+    fetchCategories();
+    // Initial fetch based on URL params
+    fetchProducts({ 
+      keyword, 
+      categorySlug: category, 
+      petType, 
+      sortBy 
+    });
+  }, []);
 
-  const categories = categoriesData || [];
-
-  // Infinite Query for Products
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    refetch,
-    isRefetching
-  } = useInfiniteQuery({
-    queryKey: ['marketplace-products', keyword, category, petType, sortBy],
-    queryFn: async ({ pageParam = 1 }) => {
-      const res = await bazaarApi.getProducts({
-        keyword,
-        category,
-        petType,
-        sortBy,
-        page: pageParam,
-        limit: 20
+  // When filters change locally, we fetch
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchProducts({ 
+        keyword, 
+        categorySlug: category, 
+        petType, 
+        sortBy 
       });
-      return res;
-    },
-    getNextPageParam: (lastPage) => {
-      const { page, totalPages } = lastPage.meta || {};
-      return page < totalPages ? page + 1 : undefined;
-    },
-    initialPageParam: 1,
-  });
-
-  const products = useMemo(() => {
-    return data?.pages.flatMap((page) => {
-        // Handle different backend response structures if they exist
-        if (Array.isArray(page.rows)) return page.rows;
-        if (Array.isArray(page)) return page;
-        return [];
-    }) || [];
-  }, [data]);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [keyword, category, petType, sortBy]);
 
   const handleReset = () => {
     setKeyword('');
@@ -180,7 +168,7 @@ export default function MarketplaceScreen() {
         numColumns={2}
         contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
         onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
+            if (meta.page < meta.totalPages && !isFetchingNextPage) {
                 fetchNextPage();
             }
         }}
@@ -207,8 +195,8 @@ export default function MarketplaceScreen() {
                 </View>
             )
         )}
-        refreshing={isRefetching}
-        onRefresh={refetch}
+        refreshing={isLoading && products.length > 0}
+        onRefresh={() => fetchProducts({ keyword, categorySlug: category, petType, sortBy }, true)}
         onScroll={onScroll}
         scrollEventThrottle={16}
       />

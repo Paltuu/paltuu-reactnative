@@ -1,21 +1,24 @@
-// app/(app)/_layout.tsx
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import { Image } from 'expo-image';
-import { HeaderProvider } from '../../src/context/HeaderContext'; // adjust path if needed
-import { MainHeader } from '../../src/components/common/MainHeader';   // adjust path if needed
+import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext'; 
+import { MainHeader } from '../../src/components/common/MainHeader';   
+import { useEffect } from 'react';
 
-export default function AppLayout() {
+function LayoutContent() {
+  const router = useRouter();
+  const { setOnPlusPress } = useHeaderContext();
+
+  useEffect(() => {
+    setOnPlusPress(() => {
+      router.push('/(app)/create');
+    });
+  }, [router, setOnPlusPress]);
+
   return (
-    // HeaderProvider wraps everything so all tab screens can access header state
-    <HeaderProvider>
-      {/*
-        MainHeader is position:absolute — it floats above the Tabs navigator.
-        It manages its own visibility animation internally via HeaderContext.
-      */}
+    <>
       <MainHeader />
-
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -94,7 +97,18 @@ export default function AppLayout() {
         <Tabs.Screen name="lost-found" options={{ href: null }} />
         <Tabs.Screen name="clinic/[id]" options={{ href: null }} />
         <Tabs.Screen name="vet/[id]" options={{ href: null }} />
+        <Tabs.Screen name="create" options={{ href: null }} />
+        <Tabs.Screen name="create-pet" options={{ href: null }} />
+        <Tabs.Screen name="create-lost-found" options={{ href: null }} />
       </Tabs>
+    </>
+  );
+}
+
+export default function AppLayout() {
+  return (
+    <HeaderProvider>
+      <LayoutContent />
     </HeaderProvider>
   );
 }

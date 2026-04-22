@@ -25,5 +25,10 @@ export const bazaarApi = {
   async getBazaarCategories() {
     const { data } = await client.get('/bazaar/categories');
     return data;
+  },
+
+  async getBazaarCollections() {
+    const { data } = await client.get('/bazaar/collections');
+    return data;
   }
 };

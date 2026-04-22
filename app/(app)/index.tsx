@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator, ScrollView, FlatList } from 'react-native';
 import { useAuthStore } from '../../src/stores/authStore';
-import { petsApi } from '../../src/api/pets';
-import { bazaarApi } from '../../src/api/bazaar';
+import { usePetStore } from '../../src/stores/petStore';
+import { useBazaarStore } from '../../src/stores/bazaarStore';
 import { PetCard } from '../../src/components/pets/PetCard';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
@@ -15,56 +15,19 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
-  
-  const [featuredPets, setFeaturedPets] = useState<any[]>([]);
-  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const { pets, fetchPets, isLoading: petsLoading } = usePetStore();
+  const { products, fetchProducts, isLoading: productsLoading } = useBazaarStore();
 
   useEffect(() => {
-    fetchDashboardData();
+    // Fetch initial board data through stores
+    fetchPets({ limit: 6 });
+    fetchProducts({ limit: 4 });
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [petsRes, productsRes] = await Promise.all([
-        petsApi.getPets({ limit: 6 }),
-        bazaarApi.getProducts({ limit: 4 })
-      ]);
-      
-      const findArray = (obj: any): any[] => {
-        if (Array.isArray(obj)) return obj;
-        if (obj && typeof obj === 'object') {
-          for (const key in obj) {
-            if (Array.isArray(obj[key])) return obj[key];
-          }
-          // If not found in direct keys, try one level deeper
-          for (const key in obj) {
-            const nested = findArray(obj[key]);
-            if (nested.length > 0) return nested;
-          }
-        }
-        return [];
-      };
-
-      const productsList = findArray(productsRes);
-      const petsListRaw = findArray(petsRes);
-
-      // Map products to ensure image_url exists for the component
-      const mappedProducts = productsList.map((p: any) => ({
-        ...p,
-        image_url: p.images?.[0] || p.main_image || p.image || null,
-        category_name: p.categories?.[0]?.name || 'Product'
-      }));
-
-      setFeaturedPets(petsListRaw);
-      setTrendingProducts(mappedProducts);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const featuredPets = pets.slice(0, 6);
+  const trendingProducts = products.slice(0, 4);
+  const loading = petsLoading || productsLoading;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -84,8 +47,8 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <ScrollView 
-        className="flex-1" 
+      <ScrollView
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -105,16 +68,16 @@ export default function HomeScreen() {
               <Text className="text-primary font-headingSemi text-xs">View All</Text>
             </TouchableOpacity>
           </View>
-          
-          <ScrollView 
-            horizontal 
+
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20 }}
           >
             {featuredPets.map((pet) => (
               <View key={pet.pet_id} style={{ width: 280, marginRight: 16 }}>
-                <PetCard 
-                  pet={pet} 
+                <PetCard
+                  pet={pet}
                   onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: pet.pet_id } })}
                 />
               </View>
@@ -138,15 +101,15 @@ export default function HomeScreen() {
 
           <View className="flex-row flex-wrap justify-between">
             {trendingProducts.map((product) => (
-              <ProductCard 
-                key={product.product_id} 
+              <ProductCard
+                key={product.product_id}
                 product={product}
                 style={{ width: '48%' }}
                 onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: product.product_id } })}
               />
             ))}
           </View>
-          
+
           {trendingProducts.length === 0 && (
             <View className="bg-gray-50 p-10 rounded-card items-center justify-center w-full">
               <Text className="font-body text-gray-400">Marketplace loading...</Text>
