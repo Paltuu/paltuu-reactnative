@@ -100,6 +100,9 @@ function LayoutContent() {
         <Tabs.Screen name="create" options={{ href: null }} />
         <Tabs.Screen name="create-pet" options={{ href: null }} />
         <Tabs.Screen name="create-lost-found" options={{ href: null }} />
+        <Tabs.Screen name="my-listings" options={{ href: null }} />
+        <Tabs.Screen name="adoption-requests" options={{ href: null }} />
+        <Tabs.Screen name="marketplace" options={{ href: null }} />
       </Tabs>
     </>
   );
