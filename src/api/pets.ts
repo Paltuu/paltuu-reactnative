@@ -36,8 +36,8 @@ export const petApi = {
     return data;
   },
 
-  async applyForAdoption(petId: number, formData: any) {
-    const { data } = await client.post('/applications/adoption', { petId, ...formData });
+  async applyForAdoption(formData: any) {
+    const { data } = await client.post('/applications/adoption', formData);
     return data;
   },
 

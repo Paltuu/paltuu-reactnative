@@ -60,20 +60,22 @@ export const VetCard = ({ vet, onPress }: VetCardProps) => {
           </View>
         )}
         
-        {vet.qualifications && vet.qualifications.length > 0 && (
+        {vet.qualifications && (
           <View className="flex-row items-center">
             <Feather name="award" size={12} color="#6B7280" />
             <Text className="text-gray-500 font-body text-xs ml-2" numberOfLines={1}>
-              {vet.qualifications.map(q => q.qualification_name).join(', ')}
+              {Array.isArray(vet.qualifications) 
+                ? vet.qualifications.map(q => typeof q === 'object' ? q.qualification_name : q).join(', ')
+                : vet.qualifications}
             </Text>
           </View>
         )}
       </View>
 
-      <View className="flex-row space-x-3">
+      <View className="flex-row gap-3 mt-2">
         <TouchableOpacity 
           onPress={handleWhatsApp}
-          className="flex-1 flex-row items-center justify-center bg-green-500 py-2.5 rounded-xl space-x-2"
+          className="flex-1 flex-row items-center justify-center bg-green-500 py-3.5 rounded-2xl space-x-2 shadow-sm"
         >
           <FontAwesome5 name="whatsapp" size={14} color="white" />
           <Text className="text-white font-heading text-xs">WhatsApp</Text>
@@ -81,7 +83,7 @@ export const VetCard = ({ vet, onPress }: VetCardProps) => {
         
         <TouchableOpacity 
           onPress={handleCall}
-          className="flex-1 flex-row items-center justify-center bg-gray-100 py-2.5 rounded-xl space-x-2"
+          className="flex-1 flex-row items-center justify-center bg-gray-100 py-3.5 rounded-2xl space-x-2"
         >
           <Feather name="phone-call" size={14} color="#374151" />
           <Text className="text-gray-700 font-heading text-xs">Call</Text>

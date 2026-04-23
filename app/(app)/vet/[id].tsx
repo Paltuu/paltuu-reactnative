@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, SafeAreaView, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getVetDetails } from '../../../src/api/clinics';
@@ -100,21 +101,21 @@ export default function VetDetailsScreen() {
           </View>
 
           {/* Contact Buttons */}
-          <View className="flex-row space-x-4 mb-8">
+          <View className="flex-row gap-4 mb-10 px-2">
             <TouchableOpacity 
               onPress={handleWhatsApp}
-              className="flex-1 flex-row items-center justify-center bg-green-500 py-4 rounded-2xl space-x-2 shadow-sm"
+              className="flex-1 flex-row items-center justify-center bg-green-500 h-16 rounded-[2rem] space-x-3 shadow-lg shadow-green-500/20"
             >
-              <FontAwesome5 name="whatsapp" size={18} color="white" />
-              <Text className="text-white font-heading text-sm">WhatsApp</Text>
+              <FontAwesome5 name="whatsapp" size={20} color="white" />
+              <Text className="text-white font-heading text-base">WhatsApp</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               onPress={handleCall}
-              className="flex-1 flex-row items-center justify-center bg-primary py-4 rounded-2xl space-x-2 shadow-sm"
+              className="flex-1 flex-row items-center justify-center bg-primary h-16 rounded-[2rem] space-x-3 shadow-lg shadow-primary/20"
             >
-              <Feather name="phone-call" size={18} color="white" />
-              <Text className="text-white font-heading text-sm">Call Now</Text>
+              <Feather name="phone-call" size={20} color="white" />
+              <Text className="text-white font-heading text-base">Call Now</Text>
             </TouchableOpacity>
           </View>
 

@@ -7,6 +7,7 @@ interface User {
   name: string;
   role: string;
   profile_image_url?: string;
+  phone_number?: string;
 }
 
 interface AuthState {
@@ -91,6 +92,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             name: userData.name || userData.email,
             role: userData.role || "regular user",
             profile_image_url: userData.profile_image_url || null,
+            phone_number: userData.phone_number || userData.phone || null,
           };
           
           await storage.saveUser(mappedUser);
