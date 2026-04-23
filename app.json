@@ -30,7 +30,14 @@
     "plugins": [
       "expo-secure-store",
       "expo-font",
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Paltuu to access your photos to share them in your posts.",
+          "cameraPermission": "Allow Paltuu to access your camera to take photos of your pets."
+        }
+      ]
     ]
   }
 }

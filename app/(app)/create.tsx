@@ -18,6 +18,14 @@ export default function CreateListingScreen() {
       route: '/(app)/create-pet'
     },
     {
+      id: 'social',
+      title: 'Social Post',
+      description: 'Share a moment with the community',
+      icon: 'chatbubble-ellipses',
+      color: '#2a9d8f',
+      route: '/(app)/create-post'
+    },
+    {
       id: 'lost',
       title: 'Lost & Found',
       description: 'Report a missing pet or a found one',
@@ -43,10 +51,10 @@ export default function CreateListingScreen() {
               onPress={() => router.push(option.route as any)}
             >
               <View style={[styles.iconContainer, { backgroundColor: option.color + '15' }]}>
-                {option.id === 'pet' ? (
-                  <Ionicons name="paw" size={32} color={option.color} />
-                ) : (
+                {option.id === 'lost' ? (
                   <MaterialCommunityIcons name={option.icon as any} size={32} color={option.color} />
+                ) : (
+                  <Ionicons name={option.icon as any} size={32} color={option.color} />
                 )}
               </View>
               <View style={styles.textContainer}>
