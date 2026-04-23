@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,11 +24,9 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* ── Gradient hero ── */}
-        <LinearGradient
-          colors={['#A03048', '#c9566d', '#e8d5db']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
+        {/* ── Brand hero background ── */}
+        <View 
+          className="bg-primary"
           style={{ paddingTop: insets.top }}
         >
           {/* Top bar */}
@@ -61,7 +58,7 @@ export default function ProfileScreen() {
             <Text className="font-heading text-2xl text-white">{user?.name || 'User'}</Text>
             <Text className="font-body text-sm text-white/60 mt-1">{user?.email}</Text>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* ── Stats row ── */}
         <View className="mx-5 -mt-6 bg-surface rounded-2xl flex-row shadow-sm border border-gray-100">
