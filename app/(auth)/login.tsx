@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CustomInput } from '../../src/components/common/CustomInput';
 import { PrimaryButton } from '../../src/components/common/PrimaryButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
+import { useGoogleAuth } from '../../src/hooks/useGoogleAuth';
+import { OAUTH_CONFIG } from '../../src/constants/oauth';
 
 const { width } = Dimensions.get('window');
 
@@ -22,13 +25,48 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const { login } = useAuthActions();
+  const { login, googleAuth } = useAuthActions();
+  const { promptAsync: googlePromptAsync, isLoading: googleLoading } = useGoogleAuth();
 
   const handleLogin = () => {
     login.mutate({
       email: email.trim().toLowerCase(),
       password,
     });
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!OAUTH_CONFIG.ANDROID_CLIENT_ID && !OAUTH_CONFIG.IOS_CLIENT_ID) {
+      Alert.alert('Configuration Error', 'Google Client IDs are not configured. Please check your environment variables.');
+      return;
+    }
+
+    try {
+      console.log('🔐 Starting Google Sign-In...');
+      const idToken = await googlePromptAsync();
+
+      if (idToken) {
+        console.log('✅ Received ID Token from Google');
+        // Send the ID token to the backend
+        googleAuth.mutate(idToken, {
+          onSuccess: (data) => {
+            console.log('✅ Successfully authenticated with Google');
+            // Navigation is handled automatically by the root layout when isAuthenticated changes
+          },
+          onError: (error: any) => {
+            const errorMsg = error?.response?.data?.message || error?.message || 'Google authentication failed';
+            console.error('❌ Google Auth Error:', errorMsg);
+            Alert.alert('Sign-In Error', errorMsg);
+          },
+        });
+      } else {
+        console.log('❌ No ID token received');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Google Sign-In failed';
+      console.error('❌ Google Sign-In Error:', errorMessage);
+      Alert.alert('Sign-In Error', errorMessage);
+    }
   };
 
   return (
@@ -74,6 +112,23 @@ export default function LoginScreen() {
             <Text className="font-body text-sm text-gray-500 mb-6">
               Sign in to see what your furry community is up to.
             </Text>
+
+            {/* Error messages */}
+            {login.isError && (
+              <View className="bg-error/10 border border-error rounded-lg p-3 mb-4">
+                <Text className="font-body text-sm text-error">
+                  {(login.error as any)?.message || 'Login failed. Please try again.'}
+                </Text>
+              </View>
+            )}
+
+            {googleAuth.isError && (
+              <View className="bg-error/10 border border-error rounded-lg p-3 mb-4">
+                <Text className="font-body text-sm text-error">
+                  {(googleAuth.error as any)?.message || 'Google Sign-In failed. Please try again.'}
+                </Text>
+              </View>
+            )}
 
             {/* Inputs */}
             <CustomInput
@@ -123,13 +178,21 @@ export default function LoginScreen() {
             </View>
 
             {/* Google button */}
-            <TouchableOpacity className="h-[52px] border border-gray-100 rounded-xl flex-row justify-center items-center gap-2 bg-surface">
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading || googleAuth.isPending}
+              className="h-[52px] border border-gray-100 rounded-xl flex-row justify-center items-center gap-2 bg-surface active:bg-gray-50"
+            >
               {/* Simple coloured G since we can't import an SVG here */}
               <View className="w-5 h-5 rounded-full bg-primary/10 items-center justify-center">
-                <Text className="font-headingSemi text-[10px] text-primary">G</Text>
+                {googleLoading || googleAuth.isPending ? (
+                  <Ionicons name="sync" size={12} color="#A03048" />
+                ) : (
+                  <Text className="font-headingSemi text-[10px] text-primary">G</Text>
+                )}
               </View>
               <Text className="font-headingSemi text-base text-dark">
-                Continue with Google
+                {googleLoading || googleAuth.isPending ? 'Signing in...' : 'Continue with Google'}
               </Text>
             </TouchableOpacity>
           </View>

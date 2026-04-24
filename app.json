@@ -14,15 +14,20 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paltuu.app"
     },
     "android": {
+      "package": "com.paltuu.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,7 +42,14 @@
           "photosPermission": "Allow Paltuu to access your photos to share them in your posts.",
           "cameraPermission": "Allow Paltuu to access your camera to take photos of your pets."
         }
-      ]
-    ]
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a162a4a1-54ea-4acd-ae70-b82e5de7b494"
+      }
+    }
   }
 }
