@@ -12,7 +12,7 @@ function LayoutContent() {
 
   useEffect(() => {
     setOnPlusPress(() => {
-      router.push('/(app)/create');
+      router.push('/(app)/create-post');
     });
   }, [router, setOnPlusPress]);
 

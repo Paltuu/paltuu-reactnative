@@ -199,37 +199,55 @@ export default function CreatePostScreen() {
   const canPost = caption.trim().length > 0 || media.length > 0;
 
   const pickMedia = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need access to your photos to upload media.');
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need access to your photos to upload media.');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-      selectionLimit: 10,
-    });
-    if (!result.canceled) {
-      const uris = result.assets.map((a) => a.uri);
-      setMedia((prev) => [...prev, ...uris].slice(0, 10));
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Changed from All to Images to be safer
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10,
+        allowsEditing: false, // editing doesn't work with multiple selection
+      });
+
+      if (!result.canceled && result.assets) {
+        const uris = result.assets.map((a) => a.uri);
+        setMedia((prev) => [...prev, ...uris].slice(0, 10));
+      }
+    } catch (error: any) {
+      console.error('Pick Media Error:', error);
+      Alert.alert('Error', 'An error occurred while picking photos. Please try again.');
     }
   };
 
   const pickCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
-      return;
-    }
+    try {
+      // Check if camera is available (simulators don't have cameras)
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
+        return;
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      setMedia((prev) => [...prev, result.assets[0].uri].slice(0, 10));
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setMedia((prev) => [...prev, result.assets[0].uri].slice(0, 10));
+      }
+    } catch (error: any) {
+      console.error('Pick Camera Error:', error);
+      if (error.message?.includes('Camera not available')) {
+        Alert.alert('Camera Unavailable', 'The camera is not available on this device (e.g. Simulator).');
+      } else {
+        Alert.alert('Error', 'An error occurred while opening the camera.');
+      }
     }
   };
 

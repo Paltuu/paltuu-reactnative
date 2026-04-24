@@ -20,11 +20,11 @@ export default function PetsHubScreen() {
       color: '#A03048'
     },
     {
-      title: 'PET CARE',
-      subtitle: 'Professional services for your pets',
-      icon: 'heart',
-      route: '/(app)/pet-care',
-      color: '#4B9CD3'
+      title: 'POST A PET',
+      subtitle: 'List a pet for adoption',
+      icon: 'add-circle',
+      route: '/(app)/create-pet',
+      color: '#A03048'
     },
     {
       title: 'LOST & FOUND',
@@ -32,6 +32,20 @@ export default function PetsHubScreen() {
       icon: 'megaphone',
       route: '/(app)/lost-found',
       color: '#F5A623'
+    },
+    {
+      title: 'REPORT LOST/FOUND',
+      subtitle: 'Submit a lost or found pet report',
+      icon: 'alert-circle',
+      route: '/(app)/create-lost-found',
+      color: '#e76f51'
+    },
+    {
+      title: 'PET CARE',
+      subtitle: 'Professional services for your pets',
+      icon: 'heart',
+      route: '/(app)/pet-care',
+      color: '#4B9CD3'
     }
   ];
 

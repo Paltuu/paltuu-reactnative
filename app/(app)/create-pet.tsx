@@ -154,19 +154,24 @@ export default function CreatePetScreen() {
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: 5,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const selected = result.assets.map((a) => ({
-        uri: a.uri,
-        type: 'image/jpeg',
-        name: a.fileName || `pet_${Date.now()}.jpg`,
-      }));
-      setImages([...images, ...selected]);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 5,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets) {
+        const selected = result.assets.map((a) => ({
+          uri: a.uri,
+          type: 'image/jpeg',
+          name: a.fileName || `pet_${Date.now()}.jpg`,
+        }));
+        setImages([...images, ...selected]);
+      }
+    } catch (error) {
+      console.error('Pick Image Error:', error);
+      Alert.alert('Error', 'Failed to pick images');
     }
   };
 
