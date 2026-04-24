@@ -1,5 +1,5 @@
 // index.tsx — card-style feed
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   RefreshControl, Dimensions, Pressable,
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CommentsBottomSheet } from '../../src/components/social/CommentsBottomSheet';
 
 const { width } = Dimensions.get('window');
 const PRIMARY = '#A03048';
@@ -181,7 +182,7 @@ const LikesRow = ({ count, names }: { count: number; names?: string[] }) => {
 };
 
 /* ── Post card ── */
-const PostCard = ({ post }: { post: any }) => {
+const PostCard = ({ post, onCommentPress }: { post: any; onCommentPress: () => void }) => {
   const [liked, setLiked] = useState(post.liked);
   const [count, setCount] = useState(post.like_count);
   const isText = !post.media?.length;
@@ -256,7 +257,11 @@ const PostCard = ({ post }: { post: any }) => {
           <Ionicons name={liked ? 'paw' : 'paw-outline'} size={21} color={liked ? PRIMARY : MUTED} />
           {count > 0 && <Text style={{ fontSize: 13, fontWeight: '600', color: liked ? PRIMARY : '#9CA3AF' }}>{count}</Text>}
         </TouchableOpacity>
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} hitSlop={10}>
+        <TouchableOpacity 
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} 
+          hitSlop={10}
+          onPress={onCommentPress}
+        >
           <Ionicons name="chatbubble-outline" size={19} color={MUTED} />
           {post.comment_count > 0 && <Text style={{ fontSize: 13, fontWeight: '600', color: '#9CA3AF' }}>{post.comment_count}</Text>}
         </TouchableOpacity>
@@ -306,10 +311,15 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
   const [refreshing, setRefreshing] = useState(false);
+  const [commentsVisible, setCommentsVisible] = useState(false);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1200);
+  }, []);
+
+  const openComments = useCallback(() => {
+    setCommentsVisible(true);
   }, []);
 
   const feedData: any[] = [];
@@ -325,7 +335,7 @@ export default function HomeScreen() {
         renderItem={({ item }) =>
           item.type === 'lost'
             ? <LostCard item={item.data} />
-            : <PostCard post={item.data} />
+            : <PostCard post={item.data} onCommentPress={openComments} />
         }
         keyExtractor={(item) => `${item.type}-${item.data.post_id}`}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -338,6 +348,7 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
         showsVerticalScrollIndicator={false}
       />
+      <CommentsBottomSheet visible={commentsVisible} onClose={() => setCommentsVisible(false)} />
     </View>
   );
 }

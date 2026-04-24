@@ -170,19 +170,24 @@ export default function CreateLostFoundScreen() {
   }));
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: 3,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const selected = result.assets.map((a) => ({
-        uri: a.uri,
-        type: 'image/jpeg',
-        name: a.fileName || `lf_${Date.now()}.jpg`,
-      }));
-      setImages([...images, ...selected]);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 3,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets) {
+        const selected = result.assets.map((a) => ({
+          uri: a.uri,
+          type: 'image/jpeg',
+          name: a.fileName || `lf_${Date.now()}.jpg`,
+        }));
+        setImages([...images, ...selected]);
+      }
+    } catch (error) {
+      console.error('Pick Image Error:', error);
+      Alert.alert('Error', 'Failed to pick images');
     }
   };
 
