@@ -14,6 +14,7 @@ import {
   DMSans_500Medium,
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../src/stores/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
@@ -69,12 +70,14 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          {!fontsLoaded && !fontError ? null : (
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(app)" options={{ headerShown: false }} />
-            </Stack>
-          )}
+          <BottomSheetModalProvider>
+            {!fontsLoaded && !fontError ? null : (
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+              </Stack>
+            )}
+          </BottomSheetModalProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

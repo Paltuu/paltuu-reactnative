@@ -51,6 +51,11 @@ export interface SocialPet {
 }
 
 export const socialApi = {
+  async getFeed(page: number = 1, limit: number = 20) {
+    const { data } = await client.get(`/social/posts?page=${page}&limit=${limit}`);
+    return data as { posts: SocialPost[]; meta: { page: number; limit: number } };
+  },
+
   async getProfile(userId: string | number) {
     const { data } = await client.get(`/social/profile/${userId}`);
     return data as { profile: SocialProfile; posts: SocialPost[] };
