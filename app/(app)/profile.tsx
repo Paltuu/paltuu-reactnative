@@ -1,25 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   Image,
   ActivityIndicator,
+  Animated,
   StyleSheet,
   Dimensions,
   FlatList,
   Share,
+  Modal,
+  Switch,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/stores/authStore';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
+import client from '../../src/api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MENU_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
+const COVER_H = 210;
+const AVATAR_SIZE = 96;
 
-// ─── Design tokens (from DESIGN_SYSTEM.md) ───────────────────────────────────
+// ─── Design tokens ────────────────────────────────────────────────────────────
 const DS = {
   primary: '#A03048',
   primaryLight: 'rgba(160,48,72,0.10)',
@@ -31,7 +43,7 @@ const DS = {
   gray100: '#F3F4F6',
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatCount(n: number = 0): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -71,7 +83,7 @@ const AvatarCircle = ({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: DS.primaryLight,
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
@@ -82,7 +94,11 @@ const AvatarCircle = ({
     ]}
   >
     {uri ? (
-      <Image source={{ uri }} style={{ width: size, height: size }} resizeMode="cover" />
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
+        resizeMode="cover"
+      />
     ) : (
       <Text
         style={{
@@ -95,6 +111,30 @@ const AvatarCircle = ({
       </Text>
     )}
   </View>
+);
+
+// ─── Menu Item ────────────────────────────────────────────────────────────────
+
+const MenuItem = ({
+  icon,
+  label,
+  onPress,
+  danger = false,
+  right,
+}: {
+  icon: string;
+  label: string;
+  onPress?: () => void;
+  danger?: boolean;
+  right?: React.ReactNode;
+}) => (
+  <TouchableOpacity style={s.menuItemRow} onPress={onPress} activeOpacity={0.65}>
+    <View style={s.menuItemLeft}>
+      <Ionicons name={icon as any} size={21} color={danger ? DS.primary : DS.dark} />
+      <Text style={[s.menuItemText, danger && { color: DS.primary }]}>{label}</Text>
+    </View>
+    {right ?? <Ionicons name="chevron-forward" size={15} color={DS.gray400} />}
+  </TouchableOpacity>
 );
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
@@ -119,7 +159,6 @@ const PostCard = ({ item, user }: { item: any; user: any }) => {
 
   return (
     <View style={s.card}>
-      {/* Header */}
       <View style={s.cardHeader}>
         <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -133,40 +172,33 @@ const PostCard = ({ item, user }: { item: any; user: any }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Caption */}
       {!!item.content && (
         <Text style={[s.cardContent, mainMedia ? {} : { fontSize: 16 }]}>
           {item.content}
         </Text>
       )}
 
-      {/* Media */}
       {mainMedia && (
         <Image
           source={{ uri: mainMedia }}
-          style={s.cardMedia}
+          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
           resizeMode="cover"
         />
       )}
 
-      {/* Divider */}
       <View style={s.thinDivider} />
 
-      {/* Action row */}
       <View style={s.actionRow}>
-        {/* Comment */}
         <TouchableOpacity style={s.actionBtn}>
           <Ionicons name="chatbubble-outline" size={20} color={DS.gray400} />
           <Text style={s.actionCount}>{formatCount(item.comment_count || 0)}</Text>
         </TouchableOpacity>
 
-        {/* Repost */}
         <TouchableOpacity style={s.actionBtn}>
           <Ionicons name="repeat-outline" size={22} color={DS.gray400} />
           <Text style={s.actionCount}>{formatCount(item.repost_count || 0)}</Text>
         </TouchableOpacity>
 
-        {/* Paw */}
         <TouchableOpacity style={s.actionBtn} onPress={() => setPawHit((v) => !v)}>
           <MaterialCommunityIcons
             name={pawHit ? 'paw' : 'paw-outline'}
@@ -178,7 +210,6 @@ const PostCard = ({ item, user }: { item: any; user: any }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* Share — pushed to far right */}
         <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]} onPress={handleShare}>
           <Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} />
         </TouchableOpacity>
@@ -207,7 +238,6 @@ const PetCard = ({ item, user }: { item: any; user: any }) => {
         </View>
       </View>
 
-      {/* Pet info chips */}
       <View style={s.chipRow}>
         <View style={s.chip}>
           <MaterialCommunityIcons name="paw" size={11} color={DS.primary} />
@@ -228,13 +258,17 @@ const PetCard = ({ item, user }: { item: any; user: any }) => {
       </View>
 
       {item.main_image && (
-        <Image source={{ uri: item.main_image }} style={s.cardMedia} resizeMode="cover" />
+        <Image
+          source={{ uri: item.main_image }}
+          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
+          resizeMode="cover"
+        />
       )}
     </View>
   );
 };
 
-// ─── Repost Card ─────────────────────────────────────────────────────────────
+// ─── Repost Card ──────────────────────────────────────────────────────────────
 
 const RepostCard = ({ item, user }: { item: any; user: any }) => {
   const initials = (user?.name || 'U')
@@ -254,15 +288,15 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
         </View>
       </View>
 
-      {/* Repost label */}
       <View style={s.repostLabel}>
         <Ionicons name="repeat" size={13} color={DS.primary} />
         <Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text>
       </View>
 
-      {/* Content inset */}
       <View style={s.repostInset}>
-        <Text style={[s.cardContent, { color: DS.dark }]}>{item.content}</Text>
+        <Text style={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}>
+          {item.content}
+        </Text>
       </View>
 
       <View style={s.thinDivider} />
@@ -282,7 +316,7 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
   );
 };
 
-// ─── Tab icon components ──────────────────────────────────────────────────────
+// ─── Tab config ───────────────────────────────────────────────────────────────
 
 const TAB_CONFIG = [
   {
@@ -312,7 +346,15 @@ type TabKey = typeof TAB_CONFIG[number]['key'];
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
   const [activeTab, setActiveTab] = useState<TabKey>('Posts');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
+  const [uploading, setUploading] = useState<'profile' | 'cover' | null>(null);
+
+  const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
 
   const userId = user?.id;
 
@@ -354,59 +396,168 @@ export default function ProfileScreen() {
     (activeTab === 'Pets' && isPetsLoading) ||
     (activeTab === 'Reposts' && isRepostsLoading);
 
+  // ── Menu animation ──────────────────────────────────────────────────────────
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    Animated.spring(menuSlideX, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  };
+
+  const closeMenu = () => {
+    Animated.timing(menuSlideX, {
+      toValue: MENU_WIDTH,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setMenuVisible(false));
+  };
+
+  // ── Image upload ────────────────────────────────────────────────────────────
+
+  const handlePickAndUpload = async (type: 'profile' | 'cover') => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+
+    Alert.alert('Change Photo', '', [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const cam = await ImagePicker.requestCameraPermissionsAsync();
+          if (!cam.granted) return;
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: type === 'cover' ? [3, 1] : [1, 1],
+            quality: 0.9,
+          });
+          if (!result.canceled && result.assets?.[0]) {
+            await uploadImage(result.assets[0], type);
+          }
+        },
+      },
+      {
+        text: 'Choose from Library',
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: type === 'cover' ? [3, 1] : [1, 1],
+            quality: 0.9,
+          });
+          if (!result.canceled && result.assets?.[0]) {
+            await uploadImage(result.assets[0], type);
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const uploadImage = async (asset: ImagePicker.ImagePickerAsset, type: 'profile' | 'cover') => {
+    setUploading(type);
+    try {
+      // Use the real MIME type from the picker so the server can handle HEIC/HEIF correctly.
+      // Fall back to image/jpeg only if the picker doesn't report one.
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: asset.uri,
+        name: `${type}.${ext}`,
+        type: mimeType,
+      } as any);
+
+      const endpoint = type === 'profile'
+        ? '/social/profile/avatar'
+        : '/social/profile/cover';
+
+      await client.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+      setImageModal(null);
+    } catch {
+      Alert.alert('Upload failed', 'Please try again.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
   const renderItem = ({ item }: { item: any }) => {
     if (activeTab === 'Posts') return <PostCard item={item} user={profile} />;
     if (activeTab === 'Pets') return <PetCard item={item} user={profile} />;
     return <RepostCard item={item} user={profile} />;
   };
 
+  const currentImageUri =
+    imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url;
+
   const ListHeader = () => (
     <View style={s.headerWrapper}>
-      {/* ── Top action bar ─────────────────────────────────────── */}
+      {/* Top action bar — floats over cover */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={s.iconBtn}>
-          <Ionicons name="settings-outline" size={22} color={DS.dark} />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.iconBtn} onPress={logout}>
-          <Ionicons name="log-out-outline" size={22} color={DS.gray500} />
+        <View style={{ width: 40 }} />
+        <TouchableOpacity style={s.menuBtn} onPress={openMenu}>
+          <Ionicons name="menu" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      {/* ── Cover photo ────────────────────────────────────────── */}
-      {profile?.cover_photo_url ? (
-        <View style={s.coverWrapper}>
-          <Image
-            source={{ uri: profile.cover_photo_url }}
-            style={s.coverImage}
-            resizeMode="cover"
-          />
+      {/* Cover photo */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => setImageModal('cover')}
+      >
+        <View style={[s.coverWrapper, { height: COVER_H + insets.top }]}>
+          {profile?.cover_photo_url ? (
+            <Image
+              source={{ uri: profile.cover_photo_url }}
+              style={[s.coverImage, { backgroundColor: '#FFFFFF' }]}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={s.coverPlaceholder} />
+          )}
+          <View style={s.coverEditHint}>
+            <Ionicons name="camera-outline" size={16} color="rgba(255,255,255,0.85)" />
+          </View>
         </View>
-      ) : (
-        <View style={s.coverWrapper}>
-          <View style={s.coverPlaceholder} />
-        </View>
-      )}
+      </TouchableOpacity>
 
-      {/* ── Avatar (centered, overlapping cover) ─────────────── */}
+      {/* Avatar */}
       <View style={s.avatarCenter}>
-        <AvatarCircle
-          uri={profile?.profile_image_url}
-          size={96}
-          initials={initials}
-          style={s.avatarBorder}
-        />
+        <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('profile')}>
+          <AvatarCircle
+            uri={profile?.profile_image_url}
+            size={AVATAR_SIZE}
+            initials={initials}
+            style={s.avatarBorder}
+          />
+          <View style={s.avatarEditBadge}>
+            <Ionicons name="camera" size={12} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
       </View>
 
-      {/* ── Name & username ────────────────────────────────────── */}
+      {/* Identity */}
       <Text style={s.displayName}>{profile?.name || 'User'}</Text>
       <Text style={s.usernameText}>
         @{profile?.social_username || profile?.username || 'user'}
       </Text>
 
-      {/* ── Bio ────────────────────────────────────────────────── */}
       {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
 
-      {/* ── Stats row ──────────────────────────────────────────── */}
+      {/* Stats */}
       <View style={s.statsRow}>
         <View style={s.statItem}>
           <Text style={s.statValue}>
@@ -430,7 +581,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* ── Action buttons ─────────────────────────────────────── */}
+      {/* Action buttons */}
       <View style={s.btnRow}>
         <TouchableOpacity style={s.btnSecondary}>
           <Text style={s.btnSecondaryText}>Edit Profile</Text>
@@ -441,7 +592,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Icon-only tab bar ──────────────────────────────────── */}
+      {/* Icon tab bar */}
       <View style={s.tabBar}>
         {TAB_CONFIG.map(({ key, renderIcon }) => (
           <TouchableOpacity
@@ -458,6 +609,8 @@ export default function ProfileScreen() {
     </View>
   );
 
+  // ── Loading state ────────────────────────────────────────────────────────────
+
   if (isProfileLoading) {
     return (
       <View style={[s.screen, s.loadingCenter]}>
@@ -465,6 +618,8 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <View style={s.screen}>
@@ -491,15 +646,140 @@ export default function ProfileScreen() {
           </View>
         }
       />
+
+      {/* ── Side drawer menu ────────────────────────────────────────────────── */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeMenu}
+      >
+        <Pressable style={s.menuOverlay} onPress={closeMenu}>
+          <Animated.View style={[s.menuPanel, { transform: [{ translateX: menuSlideX }] }]}>
+            <Pressable onPress={() => {}} style={{ flex: 1 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+              >
+                {/* Header */}
+                <View style={[s.menuHeader, { paddingTop: insets.top + 20 }]}>
+                  <AvatarCircle
+                    uri={profile?.profile_image_url}
+                    size={52}
+                    initials={initials}
+                  />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={s.menuHeaderName} numberOfLines={1}>
+                      {profile?.name || 'User'}
+                    </Text>
+                    <Text style={s.menuHeaderUsername} numberOfLines={1}>
+                      @{profile?.social_username || profile?.username || 'user'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={s.menuDivider} />
+
+                <MenuItem icon="settings-outline" label="Settings" onPress={closeMenu} />
+                <MenuItem icon="paw-outline" label="My Adoption Listings" onPress={closeMenu} />
+                <MenuItem icon="document-text-outline" label="My Applications" onPress={closeMenu} />
+
+                {/* Account privacy toggle */}
+                <View style={s.menuItemRow}>
+                  <View style={s.menuItemLeft}>
+                    <Ionicons name="lock-closed-outline" size={21} color={DS.dark} />
+                    <Text style={s.menuItemText}>Private Account</Text>
+                  </View>
+                  <Switch
+                    value={profile?.is_private ?? false}
+                    onValueChange={() => {}}
+                    trackColor={{ true: DS.primary, false: DS.gray100 }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+
+                <View style={s.menuDivider} />
+
+                <MenuItem icon="help-circle-outline" label="Help" onPress={closeMenu} />
+                <MenuItem icon="information-circle-outline" label="About" onPress={closeMenu} />
+                <MenuItem icon="shield-outline" label="Privacy Center" onPress={closeMenu} />
+                <MenuItem icon="remove-circle-outline" label="Blocked" onPress={closeMenu} />
+
+                <View style={s.menuDivider} />
+
+                <MenuItem
+                  icon="log-out-outline"
+                  label="Log Out"
+                  danger
+                  right={<View />}
+                  onPress={() => { closeMenu(); logout(); }}
+                />
+              </ScrollView>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Image viewer / uploader ─────────────────────────────────────────── */}
+      <Modal
+        visible={imageModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageModal(null)}
+      >
+        <View style={s.imgModalBg}>
+          {/* Header */}
+          <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity onPress={() => setImageModal(null)} style={s.imgModalClose}>
+              <Ionicons name="close" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={s.imgModalTitle}>
+              {imageModal === 'profile' ? 'Profile Photo' : 'Cover Photo'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Image */}
+          <View style={s.imgModalContent}>
+            {currentImageUri ? (
+              <Image
+                source={{ uri: currentImageUri }}
+                style={s.imgModalImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={s.imgModalPlaceholder}>
+                <Ionicons name="image-outline" size={64} color="rgba(255,255,255,0.25)" />
+                <Text style={s.imgModalPlaceholderText}>No photo yet</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Actions */}
+          <View style={[s.imgModalActions, { paddingBottom: insets.bottom + 28 }]}>
+            <TouchableOpacity
+              style={s.imgModalBtn}
+              onPress={() => handlePickAndUpload(imageModal!)}
+              disabled={uploading !== null}
+              activeOpacity={0.8}
+            >
+              {uploading === imageModal ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
+                  <Text style={s.imgModalBtnText}>Change Photo</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
-const COVER_H = 140;
-const AVATAR_SIZE = 96;
-const AVATAR_LIFT = AVATAR_SIZE / 2 + 8; // how much avatar pokes above cover bottom
 
 const s = StyleSheet.create({
   screen: {
@@ -511,12 +791,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ─ Header wrapper (white surface) ─
+  // ─ Header wrapper ─
   headerWrapper: {
     backgroundColor: DS.surface,
     marginBottom: 4,
   },
 
+  // ─ Top bar (floats over cover) ─
   topBar: {
     position: 'absolute',
     top: 0,
@@ -524,25 +805,25 @@ const s = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     zIndex: 10,
   },
-  iconBtn: {
-    width: 36,
-    height: 36,
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   // ─ Cover ─
   coverWrapper: {
-    marginHorizontal: 16,
-    marginTop: 64, // clears the top bar with extra space
-    marginBottom: 8, // space below cover
-    borderRadius: 16,
+    marginHorizontal: 4,
+    marginTop: 0,
+    borderRadius: 8,
     overflow: 'hidden',
-    height: COVER_H,
-    backgroundColor: DS.gray100,
+    backgroundColor: '#FFFFFF',
   },
   coverImage: {
     width: '100%',
@@ -552,8 +833,16 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: DS.primaryLight,
   },
+  coverEditHint: {
+    position: 'absolute',
+    bottom: 10,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 12,
+    padding: 5,
+  },
 
-  // ─ Avatar (sits below cover, centered) ─
+  // ─ Avatar ─
   avatarCenter: {
     alignItems: 'center',
     marginTop: -(AVATAR_SIZE / 2),
@@ -561,6 +850,19 @@ const s = StyleSheet.create({
   },
   avatarBorder: {
     borderWidth: 4,
+    borderColor: DS.surface,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: DS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
     borderColor: DS.surface,
   },
 
@@ -645,7 +947,7 @@ const s = StyleSheet.create({
     color: DS.primary,
   },
 
-  // ─ Tab bar (icon only) ─
+  // ─ Tab bar ─
   tabBar: {
     flexDirection: 'row',
     borderTopWidth: 1,
@@ -667,7 +969,7 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // ─ Post divider (Instagram-style gap) ─
+  // ─ List ─
   postDivider: {
     height: 8,
     backgroundColor: DS.bg,
@@ -790,5 +1092,124 @@ const s = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
     color: DS.gray400,
+  },
+
+  // ─ Menu drawer ─
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  menuPanel: {
+    width: MENU_WIDTH,
+    height: '100%',
+    backgroundColor: DS.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: -3, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  menuHeaderName: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
+    color: DS.dark,
+  },
+  menuHeaderUsername: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 13,
+    color: DS.gray500,
+    marginTop: 2,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: DS.gray100,
+    marginVertical: 6,
+  },
+  menuItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  menuItemText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 15,
+    color: DS.dark,
+  },
+
+  // ─ Image modal ─
+  imgModalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.94)',
+  },
+  imgModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  imgModalClose: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imgModalTitle: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  imgModalContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imgModalImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
+    backgroundColor: '#000000',
+  },
+  imgModalPlaceholder: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  imgModalPlaceholderText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  imgModalActions: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  imgModalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: DS.primary,
+    borderRadius: 14,
+    height: 50,
+  },
+  imgModalBtnText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });
