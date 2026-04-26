@@ -31,22 +31,6 @@ export const useAuthActions = () => {
     },
   });
 
-  const googleAuthMutation = useMutation({
-    mutationFn: authApi.googleAuth,
-    onSuccess: (data) => {
-      console.log('✅ Google Auth Success:', { user: data.user?.email });
-      const accessToken = data.accessToken || data.token;
-      const refreshToken = data.refreshToken || "";
-
-      if (accessToken) {
-        setAuth(data.user || null, accessToken, refreshToken);
-      }
-    },
-    onError: (error: any) => {
-      console.error('❌ Google Auth Error:', error?.response?.data || error?.message || error);
-    },
-  });
-
   const sendOtpMutation = useMutation({
     mutationFn: authApi.sendOtp,
   });
@@ -61,7 +45,6 @@ export const useAuthActions = () => {
   return {
     login: loginMutation,
     register: registerMutation,
-    googleAuth: googleAuthMutation,
     sendOtp: sendOtpMutation,
     logout: logoutMutation,
   };

@@ -64,5 +64,23 @@ export const socialApi = {
   async getPets(userId: string | number) {
     const { data } = await client.get(`/social/profile/${userId}/pets`);
     return data as { pets: SocialPet[] };
+  },
+
+  async getComments(postId: string | number) {
+    const { data } = await client.get(`/social/posts/${postId}/comments`);
+    return data as any[]; // Array of comments
+  },
+
+  async postComment(postId: string | number, content: string, parentId?: string | number) {
+    const { data } = await client.post(`/social/posts/${postId}/comments`, {
+      content,
+      parent_comment_id: parentId
+    });
+    return data;
+  },
+
+  async toggleLike(postId: string | number) {
+    const { data } = await client.post(`/social/posts/${postId}/like`);
+    return data as { liked: boolean };
   }
 };

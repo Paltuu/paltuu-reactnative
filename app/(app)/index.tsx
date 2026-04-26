@@ -311,15 +311,15 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
   const [refreshing, setRefreshing] = useState(false);
-  const [commentsVisible, setCommentsVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | number | null>(null);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
 
-  const openComments = useCallback(() => {
-    setCommentsVisible(true);
+  const openComments = useCallback((postId: string | number) => {
+    setSelectedPostId(postId);
   }, []);
 
   const feedData: any[] = [];
@@ -335,7 +335,7 @@ export default function HomeScreen() {
         renderItem={({ item }) =>
           item.type === 'lost'
             ? <LostCard item={item.data} />
-            : <PostCard post={item.data} onCommentPress={openComments} />
+            : <PostCard post={item.data} onCommentPress={() => openComments(item.data.post_id)} />
         }
         keyExtractor={(item) => `${item.type}-${item.data.post_id}`}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -348,7 +348,11 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
         showsVerticalScrollIndicator={false}
       />
-      <CommentsBottomSheet visible={commentsVisible} onClose={() => setCommentsVisible(false)} />
+      <CommentsBottomSheet 
+        visible={!!selectedPostId} 
+        postId={selectedPostId}
+        onClose={() => setSelectedPostId(null)} 
+      />
     </View>
   );
 }

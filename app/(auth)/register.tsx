@@ -121,25 +121,6 @@ export default function RegisterScreen() {
                 loading={sendOtp.isPending}
               />
             </View>
-
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-[0.5px] bg-gray-100" />
-              <Text className="font-body text-xs text-gray-500 mx-3">
-                or continue with
-              </Text>
-              <View className="flex-1 h-[0.5px] bg-gray-100" />
-            </View>
-
-            {/* Google button */}
-            <TouchableOpacity className="h-[52px] border border-gray-100 rounded-xl flex-row justify-center items-center gap-2 bg-surface">
-              <View className="w-5 h-5 rounded-full bg-primary/10 items-center justify-center">
-                <Text className="font-headingSemi text-[10px] text-primary">G</Text>
-              </View>
-              <Text className="font-headingSemi text-base text-dark">
-                Continue with Google
-              </Text>
-            </TouchableOpacity>
           </View>
 
           {/* ── Footer ── */}

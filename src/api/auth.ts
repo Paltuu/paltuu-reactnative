@@ -20,11 +20,6 @@ export const authApi = {
     const { data } = await client.post('/auth/logout', { refreshToken });
     return data;
   },
-  
-  async googleAuth(idToken: string) {
-    const { data } = await client.post('/auth/google', { idToken });
-    return data;
-  },
 
   async getProfile() {
     // This is not in v1 yet, using relative path
