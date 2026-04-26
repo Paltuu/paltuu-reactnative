@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Image,
-  Animated,
+  ActivityIndicator,
   StyleSheet,
   Dimensions,
   FlatList,
@@ -13,7 +13,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
@@ -314,7 +313,6 @@ export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>('Posts');
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const userId = user?.id;
 
@@ -460,6 +458,14 @@ export default function ProfileScreen() {
     </View>
   );
 
+  if (isProfileLoading) {
+    return (
+      <View style={[s.screen, s.loadingCenter]}>
+        <ActivityIndicator size="large" color={DS.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={s.screen}>
       <FlatList
@@ -471,18 +477,17 @@ export default function ProfileScreen() {
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
         ListEmptyComponent={
           <View style={s.emptyState}>
-            <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
-            <Text style={s.emptyText}>
-              {isTabLoading ? 'Loading…' : 'Nothing here yet'}
-            </Text>
+            {isTabLoading ? (
+              <ActivityIndicator size="small" color={DS.primary} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
+                <Text style={s.emptyText}>Nothing here yet</Text>
+              </>
+            )}
           </View>
         }
       />
@@ -500,6 +505,10 @@ const s = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: DS.bg,
+  },
+  loadingCenter: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // ─ Header wrapper (white surface) ─
