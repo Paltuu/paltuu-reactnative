@@ -8,13 +8,16 @@ import { useEffect } from 'react';
 
 function LayoutContent() {
   const router = useRouter();
-  const { setOnPlusPress } = useHeaderContext();
+  const { setOnPlusPress, setOnHeartPress } = useHeaderContext();
 
   useEffect(() => {
     setOnPlusPress(() => {
       router.push('/(app)/create-post');
     });
-  }, [router, setOnPlusPress]);
+    setOnHeartPress(() => {
+      router.push('/(app)/notifications');
+    });
+  }, [router, setOnPlusPress, setOnHeartPress]);
 
   let pathname = '';
   try {
@@ -114,6 +117,7 @@ function LayoutContent() {
         <Tabs.Screen name="marketplace" options={{ href: null }} />
         <Tabs.Screen name="apply-adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-details" options={{ href: null }} />
+        <Tabs.Screen name="notifications" options={{ href: null }} />
       </Tabs>
     </>
   );
