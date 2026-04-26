@@ -19,7 +19,7 @@ import Animated, {
 import { SymbolView } from "expo-symbols";
 import { BlurView, type BlurViewProps } from "expo-blur";
 import type { SearchBarProps } from "./SearchBar.types";
-import { scheduleOnJS } from "react-native-reanimated";
+import { runOnJS } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -102,23 +102,21 @@ export const SearchBar = ({
   });
 
   const animatedSearchContentStyle = useAnimatedStyle(() => {
-    const justifyContent =
-      focusProgress.value === 0 && centerWhenUnfocused
-        ? "center"
-        : "flex-start";
-    const paddingLeft = interpolate(focusProgress.value, [0, 1], [0, 12]);
-    return { justifyContent, paddingLeft };
+    return { 
+      paddingLeft: interpolate(focusProgress.value, [0, 1], [0, 12]),
+      justifyContent: 'flex-start', // Always flex-start, we use translation for centering
+    };
   });
 
   const animatedInputWrapperStyle = useAnimatedStyle(() => {
-    if (!centerWhenUnfocused) {
-      return { transform: [{ translateX: 0 }] };
-    }
-
-    const iconAndPadding = 40;
-    const _centerOffSetValue = props?.textCenterOffset ?? 2.5;
-    const centerOffset =
-      (currentWidth.value - iconAndPadding * _centerOffSetValue) / 2 - 10;
+    if (!centerWhenUnfocused) return { transform: [{ translateX: 0 }] };
+    
+    // Use a fallback width if currentWidth hasn't been measured yet
+    const viewWidth = currentWidth.value > 0 ? currentWidth.value : (screenWidth - 32);
+    
+    // Approximate width of "Search" text + icon
+    const centeredContentWidth = 80; 
+    const centerOffset = (viewWidth / 2) - (centeredContentWidth / 2) - 20;
 
     const translateX = interpolate(
       focusProgress.value,
@@ -133,11 +131,12 @@ export const SearchBar = ({
   });
 
   const animatedIconStyle = useAnimatedStyle(() => {
-    if (!centerWhenUnfocused) {
-      return { transform: [{ translateX: 0 }] };
-    }
-    const _iconCenterValue = props?.iconCenterOffset ?? 2.5;
-    const centerOffset = (currentWidth.value - 36 * _iconCenterValue) / 2 - 10;
+    if (!centerWhenUnfocused) return { transform: [{ translateX: 0 }] };
+    
+    const viewWidth = currentWidth.value > 0 ? currentWidth.value : (screenWidth - 32);
+    const centeredContentWidth = 80;
+    const centerOffset = (viewWidth / 2) - (centeredContentWidth / 2) - 20;
+
     const translateX = interpolate(
       focusProgress.value,
       [0, 1],
@@ -147,6 +146,20 @@ export const SearchBar = ({
 
     return {
       transform: [{ translateX }],
+    };
+  });
+
+  const animatedPlaceholderStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(focusProgress.value, [0, 0.2], [1, 0]),
+      // We hide it completely when focused to prevent any overlap
+      transform: [{ scale: interpolate(focusProgress.value, [0, 0.2], [1, 0.8]) }]
+    };
+  });
+
+  const animatedActualInputStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(focusProgress.value, [0.4, 1], [0, 1]),
     };
   });
 
@@ -170,10 +183,8 @@ export const SearchBar = ({
     setIsFocused(true);
     focusProgress.value = withSpring(1, {
       damping: 20,
-      stiffness: 200,
-      mass: 0.8,
-      velocity: 0.5,
-      duration: 550 as any,
+      stiffness: 150,
+      mass: 1,
     });
   };
 
@@ -183,7 +194,7 @@ export const SearchBar = ({
     setQuery("");
     onSearchDone();
     onClear?.();
-    focusProgress.value = withTiming(0);
+    focusProgress.value = withTiming(0, { duration: 300 });
     clearButtonScale.value = withTiming(0);
     clearButtonOpacity.value = withTiming(0, { duration: 200 });
   };
@@ -207,11 +218,7 @@ export const SearchBar = ({
   };
 
   const handleClear = () => {
-    textOpacity.value = withTiming(0, { duration: 150 }, () => {
-      scheduleOnJS(setQuery)("");
-      textOpacity.value = withTiming(1, { duration: 150 });
-    });
-
+    runOnJS(setQuery)("");
     clearButtonScale.value = withTiming(0);
     clearButtonOpacity.value = withTiming(0, { duration: 200 });
     onClear?.();
@@ -224,13 +231,7 @@ export const SearchBar = ({
   };
 
   const animatedAndroidBlurStylez = useAnimatedStyle(() => ({
-    filter: [
-      {
-        blur: withSpring(
-          interpolate(focusProgress.value, [0, 0.3, 0.5, 1], [0, 10, 20, 0]),
-        ),
-      },
-    ] as any,
+    opacity: interpolate(focusProgress.value, [0, 0.5, 1], [1, 0.8, 1]),
   }));
 
   return (
@@ -244,8 +245,8 @@ export const SearchBar = ({
           ]}
         >
           <BlurView
-            intensity={15}
-            tint="systemChromeMaterialDark"
+            intensity={20}
+            tint="light"
             style={styles.blurContainer}
           >
             <View style={styles.searchContainer}>
@@ -259,31 +260,29 @@ export const SearchBar = ({
                     props?.iconStyle,
                   ]}
                 >
-                  {renderLeadingIcons ? (
-                    renderLeadingIcons()
-                  ) : (
-                    <SymbolView
-                      name="magnifyingglass"
-                      size={18}
-                      tintColor="#8E8E93"
-                      fallback={
-                        <Ionicons name="search" size={18} color="#8E8E93" />
-                      }
-                    />
-                  )}
+                  <Ionicons name="search" size={18} color="#8E8E93" />
                 </AnimatedView>
 
-                <AnimatedView style={[{ flex: 1 }, animatedInputWrapperStyle]}>
-                  <AnimatedTextInput
+                <AnimatedView style={[{ flex: 1, position: 'relative' }, animatedInputWrapperStyle]}>
+                  {/* Centered "Search" placeholder overlay */}
+                  <AnimatedView 
+                    pointerEvents="none"
+                    style={[{ position: 'absolute', left: 0, top: 0, bottom: 0, justifyContent: 'center' }, animatedPlaceholderStyle]}
+                  >
+                    <Text style={{ color: '#8E8E93', fontSize: 16 }}>Search</Text>
+                  </AnimatedView>
+
+                    <AnimatedTextInput
                     ref={inputRef}
                     style={[
                       styles.input,
                       animatedInputStyle,
+                      animatedActualInputStyle,
                       props?.inputStyle,
                     ]}
-                    cursorColor={props?.tint ?? "#007AFF"}
+                    cursorColor={props?.tint ?? "#A03048"}
                     placeholder={placeholder}
-                    placeholderTextColor="#8E8E93"
+                    placeholderTextColor={isFocused ? "#8E8E93" : "transparent"}
                     value={query}
                     onChangeText={handleChangeText}
                     onFocus={handleFocus}
@@ -291,7 +290,7 @@ export const SearchBar = ({
                     returnKeyType="search"
                     autoCorrect={false}
                     autoCapitalize="none"
-                    selectionColor={props?.tint ?? "#007AFF"}
+                    selectionColor={props?.tint ?? "#A03048"}
                     {...props}
                   />
                 </AnimatedView>
@@ -314,15 +313,7 @@ export const SearchBar = ({
                     style={[styles.clearButton, animatedClearButtonStyle]}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    {renderTrailingIcons ? (
-                      renderTrailingIcons()
-                    ) : (
-                      <SymbolView
-                        name="xmark.circle.fill"
-                        size={18}
-                        tintColor="#8E8E93"
-                      />
-                    )}
+                    <Ionicons name="close-circle" size={18} color="#8E8E93" />
                   </AnimatedTouchable>
                 )}
               </AnimatedView>
@@ -343,7 +334,7 @@ export const SearchBar = ({
               style={[
                 styles.cancelText,
                 {
-                  color: props?.tint ?? "#007AFF",
+                  color: props?.tint ?? "#A03048",
                 },
               ]}
             >
@@ -370,18 +361,18 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 12,
     overflow: "hidden",
+    backgroundColor: '#F3F4F6', // Light gray background
   },
   searchContainer: {
-    backgroundColor: "rgba(118, 118, 128, 0.12)",
     borderRadius: 12,
-    minHeight: 35,
+    minHeight: 40,
     justifyContent: "center",
   },
   searchContent: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 10 : 5,
+    paddingVertical: Platform.OS === "ios" ? 10 : 8,
   },
   searchIconContainer: {
     width: 20,
@@ -392,15 +383,13 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
-    color: "#FFFFFF",
-    fontSize: 17,
+    color: "#111111", // Dark text for light mode
+    fontSize: 16,
     fontFamily: "System",
     fontWeight: "400",
-
     includeFontPadding: false,
     textAlignVertical: "center",
     minHeight: 24,
-
     textAlign: "left",
   },
   clearButton: {
@@ -419,8 +408,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   cancelText: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: "System",
-    fontWeight: "400",
+    fontWeight: "600",
   },
 });

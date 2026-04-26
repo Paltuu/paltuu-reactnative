@@ -1,38 +1,67 @@
-import React from 'react';
-import { View, Text, TextInput, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
-import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderContext } from '../../src/context/HeaderContext';
+import { SearchBar } from '../../src/components/common/SearchBar';
+import { useFocusEffect } from 'expo-router';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchKey, setSearchKey] = useState(0);
+
+  // Force re-mount or reset when screen is focused to ensure fresh animation state
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setSearchQuery('');
+        setSearchKey(prev => prev + 1);
+      };
+    }, [])
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
       <ScrollView 
-        className="flex-1 px-5" 
+        className="flex-1" 
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: insets.top + 20 }}
+        contentContainerStyle={{ 
+          paddingTop: insets.top + 20,
+          paddingHorizontal: 16
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        <Text className="font-heading text-3xl text-dark mb-6">Search</Text>
+        <Text className="font-heading text-3xl text-dark mb-4">Search</Text>
         
-        <View className="flex-row items-center bg-gray-50 rounded-2xl px-5 py-4 border border-gray-100 shadow-sm">
-          <Ionicons name="search-outline" size={24} color="#999" />
-          <TextInput
-            placeholder="Search for pets, products, or vets..."
-            className="flex-1 ml-4 font-body text-base"
-          />
-        </View>
+        <SearchBar
+          key={searchKey}
+          placeholder="Pet, product, or vet..."
+          onSearch={(text) => setSearchQuery(text)}
+          onClear={() => setSearchQuery('')}
+          containerWidth={screenWidth - 32}
+          tint="#A03048"
+          centerWhenUnfocused={true}
+        />
         
-        <View className="items-center justify-center py-20">
-          <Ionicons name="search" size={64} color="#F0F0F0" />
-          <Text className="font-body text-gray-400 mt-4 text-center">
-            Find exactly what you're looking for in the Paltuu universe.
-          </Text>
-        </View>
+        {searchQuery.length === 0 ? (
+          <View className="items-center justify-center py-20">
+            <Ionicons name="search" size={64} color="#F0F0F0" />
+            <Text className="font-body text-gray-400 mt-4 text-center px-10">
+              Find exactly what you're looking for in the Paltuu universe.
+            </Text>
+          </View>
+        ) : (
+          <View className="py-10 items-center">
+            <Text className="font-body text-gray-400">
+              Searching for "{searchQuery}"...
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
