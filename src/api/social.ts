@@ -37,6 +37,8 @@ export interface SocialPost {
   author_name?: string;
   author_image?: string;
   social_username?: string;
+  is_liked?: boolean;
+  is_reposted?: boolean;
 }
 
 export interface SocialPet {
@@ -51,9 +53,10 @@ export interface SocialPet {
 }
 
 export const socialApi = {
-  async getFeed(page: number = 1, limit: number = 20) {
-    const { data } = await client.get(`/social/posts?page=${page}&limit=${limit}`);
-    return data as { posts: SocialPost[]; meta: { page: number; limit: number } };
+  async getFeed(cursor: string | null = null, limit: number = 20) {
+    const url = `/social/posts?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
   },
 
   async getProfile(userId: string | number) {
@@ -87,5 +90,35 @@ export const socialApi = {
   async toggleLike(postId: string | number) {
     const { data } = await client.post(`/social/posts/${postId}/like`);
     return data as { liked: boolean };
+  },
+
+  async uploadMedia(files: string[]) {
+    const formData = new FormData();
+    files.forEach((uri) => {
+      const filename = uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image`;
+      
+      formData.append('files', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+    });
+
+    const { data } = await client.post('/social/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data as { media: any[] };
+  },
+
+  async createPost(payload: {
+    content: string;
+    media: any[];
+    pet_id?: number;
+    post_type: string;
+  }) {
+    const { data } = await client.post('/social/posts', payload);
+    return data;
   }
 };

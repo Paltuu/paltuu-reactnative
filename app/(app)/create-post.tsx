@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 const { width } = Dimensions.get('window');
 
@@ -264,19 +265,37 @@ export default function CreatePostScreen() {
     setIsPosting(true);
 
     try {
-      // For now using mock API call or placeholder
-      // await socialApi.createPost({
-      //   content: caption,
-      //   media,
-      //   pet_id: selectedPets[0], // Schema supports one pet per post for now
-      //   post_type: postType === 'text' && media.length === 0 ? 'text' : 'image',
-      // });
+      let uploadedMedia: any[] = [];
       
-      // Artificial delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 1. Process and Upload media if exists
+      if (media.length > 0) {
+        // Convert all picked images to JPEG and resize for better performance
+        const processedMedia = await Promise.all(
+          media.map(async (uri) => {
+            const result = await manipulateAsync(
+              uri,
+              [{ resize: { width: 1200 } }], // Resize for sanity
+              { compress: 0.8, format: SaveFormat.JPEG }
+            );
+            return result.uri;
+          })
+        );
+
+        const uploadRes = await socialApi.uploadMedia(processedMedia);
+        uploadedMedia = uploadRes.media;
+      }
+
+      // 2. Create the actual post
+      await socialApi.createPost({
+        content: caption,
+        media: uploadedMedia,
+        pet_id: selectedPets[0], 
+        post_type: postType === 'text' && media.length === 0 ? 'text' : 'image',
+      });
       
       router.back();
     } catch (error: any) {
+      console.error('Create Post Error:', error);
       Alert.alert('Error', error.message || 'Failed to create post');
     } finally {
       setIsPosting(false);
