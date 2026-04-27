@@ -76,7 +76,7 @@ export const socialApi = {
 
   async getComments(postId: string | number) {
     const { data } = await client.get(`/social/posts/${postId}/comments`);
-    return data as any[]; // Array of comments
+    return data as { comments: any[]; has_more: boolean; next_cursor: string | null };
   },
 
   async postComment(postId: string | number, content: string, parentId?: string | number) {

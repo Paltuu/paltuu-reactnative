@@ -34,44 +34,16 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
     }
   }, [visible, postId]);
 
-  /* 
-  // 1. Fetch Comments (Real-time fetching commented out)
-  const { data: comments, isLoading, refetch } = useQuery({
+  // 1. Fetch Comments (Real-time fetching)
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['comments', postId],
     queryFn: () => socialApi.getComments(postId!),
     enabled: !!postId && visible,
     retry: false,
     staleTime: 10000,
   });
-  */
 
-  const MOCK_COMMENTS = [
-    {
-      comment_id: 1,
-      author_name: 'Sara Ali',
-      content: 'So cute! Which breed is this? ❤️',
-      created_at: new Date().toISOString(),
-      like_count: 5
-    },
-    {
-      comment_id: 2,
-      author_name: 'Hamza Sheikh',
-      content: 'Milo is getting so big! Love the progress.',
-      created_at: new Date().toISOString(),
-      like_count: 2
-    },
-    {
-      comment_id: 3,
-      author_name: 'Zainab Rashid',
-      content: 'The training really paid off. Good job Ayesha!',
-      created_at: new Date().toISOString(),
-      like_count: 8
-    }
-  ];
-
-  const comments = MOCK_COMMENTS;
-  const isLoading = false;
-  const refetch = () => {};
+  const comments = data?.comments || [];
 
   // 2. Post Comment Mutation
   const postMutation = useMutation({
