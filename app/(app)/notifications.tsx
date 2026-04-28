@@ -424,7 +424,7 @@ export default function NotificationsScreen() {
   const sections = groupNotifications(filtered);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F2F2F2', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: '#FDF7F8', paddingTop: insets.top }}>
 
       {/* Header */}
       <View style={{

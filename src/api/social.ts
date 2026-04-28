@@ -39,6 +39,7 @@ export interface SocialPost {
   social_username?: string;
   is_liked?: boolean;
   is_reposted?: boolean;
+  pet_name?: string;
 }
 
 export interface SocialPet {
@@ -57,6 +58,11 @@ export const socialApi = {
     const url = `/social/posts?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
+  },
+  
+  async getPostById(postId: string | number) {
+    const { data } = await client.get(`/social/posts/${postId}`);
+    return data as SocialPost;
   },
 
   async getProfile(userId: string | number) {

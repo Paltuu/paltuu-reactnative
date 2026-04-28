@@ -2,8 +2,8 @@ import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import { Image } from 'expo-image';
-import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext'; 
-import { MainHeader } from '../../src/components/common/MainHeader';   
+import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext';
+import { MainHeader } from '../../src/components/common/MainHeader';
 import { useEffect } from 'react';
 
 function LayoutContent() {
@@ -22,7 +22,7 @@ function LayoutContent() {
   let pathname = '';
   try {
     pathname = usePathname();
-  } catch (e) {}
+  } catch (e) { }
 
   const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
 
@@ -118,6 +118,7 @@ function LayoutContent() {
         <Tabs.Screen name="apply-adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-details" options={{ href: null }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />
+        <Tabs.Screen name="post/[id]" options={{ href: null }} />
       </Tabs>
     </>
   );

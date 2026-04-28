@@ -35,7 +35,7 @@ const AVATAR_SIZE = 96;
 const DS = {
   primary: '#A03048',
   primaryLight: 'rgba(160,48,72,0.10)',
-  bg: '#F2F2F2',
+  bg: '#FDF7F8',
   surface: '#FFFFFF',
   dark: '#111111',
   gray500: '#6B7280',

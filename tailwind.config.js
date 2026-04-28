@@ -17,7 +17,7 @@ module.exports = {
           500: "#555555",
           700: "#1A1A2E",
         },
-        bg: "#F5F5F7",
+        bg: "#FDF7F8",
         surface: "#FFFFFF",
         surfaceElevated: "#FAFAFA",
         surfaceSubtle: "#F0F0F2",
