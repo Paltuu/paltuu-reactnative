@@ -13,6 +13,8 @@ export interface SocialProfile {
   cover_photo_url: string | null;
   followers_count?: number; // Mapping from API response
   posts_count?: number; // Mapping from API response
+  is_following?: boolean;
+  is_own_profile?: boolean;
 }
 
 export interface SocialPostMedia {
@@ -39,6 +41,7 @@ export interface SocialPost {
   social_username?: string;
   is_liked?: boolean;
   is_reposted?: boolean;
+  is_following?: boolean;
   pet_name?: string;
 }
 
@@ -126,5 +129,15 @@ export const socialApi = {
   }) {
     const { data } = await client.post('/social/posts', payload);
     return data;
+  },
+  
+  async toggleFollow(userId: string | number) {
+    const { data } = await client.post(`/social/follow/${userId}`);
+    return data as { following: boolean };
+  },
+
+  async checkFollowStatus(userId: string | number) {
+    const { data } = await client.get(`/social/follow/${userId}`);
+    return data as { following: boolean };
   }
 };
