@@ -57,8 +57,8 @@ export interface SocialPet {
 }
 
 export const socialApi = {
-  async getFeed(cursor: string | null = null, limit: number = 20) {
-    const url = `/social/posts?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+  async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' = 'following') {
+    const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
   },
