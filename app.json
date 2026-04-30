@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.paltuu.app",
+      "googleServicesFile": "./android/app/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -43,7 +44,9 @@
           "cameraPermission": "Allow Paltuu to access your camera to take photos of your pets."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "extra": {
       "router": {},
