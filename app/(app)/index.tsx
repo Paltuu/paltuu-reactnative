@@ -18,7 +18,7 @@ import PostCard from '../../src/components/social/PostCard';
 // (Layout constants are now managed inside the shared PostCard)
 
 /* ── Quick Profile Modal ── */
-const QuickProfileModal = ({
+export const QuickProfileModal = ({
   userId, visible, onClose,
 }: {
   userId: number | null; visible: boolean; onClose: () => void;

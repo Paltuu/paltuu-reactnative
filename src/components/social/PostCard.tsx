@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
   Dimensions, Pressable, ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,10 +13,10 @@ import { useAuthStore } from '../../stores/authStore';
 const { width } = Dimensions.get('window');
 
 // Shared layout constants
-export const H_PAD = 28;
+export const H_PAD = 16;
 export const AVATAR_SIZE = 42;
 export const COL_GAP = 14;
-export const CONTENT_W = width - H_PAD - AVATAR_SIZE - COL_GAP - H_PAD;
+export const CONTENT_W = width - H_PAD - AVATAR_SIZE - COL_GAP - 16;
 
 /* ── Helpers ── */
 const stripHtml = (s: string) =>
@@ -76,6 +77,9 @@ export const AvatarCol = ({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Vertical thread line */}
+      <View style={{ flex: 1, width: 2, backgroundColor: '#F3F4F6', marginTop: 8, borderRadius: 1 }} />
     </View>
   );
 };
@@ -88,42 +92,68 @@ export const PetChip = ({ name }: { name: string }) => (
   </View>
 );
 
-/* ── Media ── */
-export const MediaBlock = ({ media }: { media: any[] }) => {
+/* ── Media block (Threads-style peeking carousel) ── */
+export const MediaBlock = ({
+  media, onImagePress,
+}: {
+  media: any[];
+  onImagePress?: (index: number) => void;
+}) => {
   if (!media?.length) return null;
-  const imgH = Math.round(CONTENT_W * 0.72);
 
-  if (media.length === 1) {
+  // Dynamic aspect ratio based on count
+  const peekWidth = 140;
+  const cardWidth = CONTENT_W - peekWidth;
+  const isSingle = media.length === 1;
+
+  const imgH = isSingle
+    ? Math.round(CONTENT_W)
+    : Math.round(cardWidth * 1.125);
+  const gap = 10;
+
+  if (isSingle) {
     return (
-      <Image
-        source={{ uri: media[0].url }}
-        style={{ width: CONTENT_W, height: imgH, borderRadius: 12, marginTop: 10 }}
-        contentFit="cover"
-        transition={200}
-      />
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onImagePress?.(0)}
+        style={{ marginTop: 12 }}
+      >
+        <Image
+          source={{ uri: media[0].url }}
+          style={{ width: CONTENT_W, height: imgH, borderRadius: 12 }}
+          contentFit="cover"
+          transition={200}
+        />
+      </TouchableOpacity>
     );
   }
 
-  const half = Math.floor((CONTENT_W - 3) / 2);
   return (
-    <View className="flex-row gap-[3px] mt-2.5">
-      {media.slice(0, 2).map((m, i) => (
-        <View key={i} className="relative">
-          <Image
-            source={{ uri: m.url }}
-            style={{ width: half, height: half, borderRadius: 10 }}
-            contentFit="cover"
-            transition={200}
-          />
-          {i === 1 && media.length > 2 && (
-            <View className="absolute inset-0 rounded-[10px] bg-black/45 items-center justify-center">
-              <Text className="text-white text-xl font-extrabold">
-                +{media.length - 2}
-              </Text>
-            </View>
-          )}
-        </View>
-      ))}
+    <View style={{ marginTop: 12 }}>
+      <FlatList
+        data={media}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={cardWidth + gap}
+        decelerationRate="fast"
+        pagingEnabled={false}
+        contentContainerStyle={{ gap }}
+        style={{ height: imgH }}   // ← this is what's missing
+        keyExtractor={(_, i) => i.toString()}
+        renderItem={({ item, index }) => (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => onImagePress?.(index)}
+          >
+            <Image
+              source={{ uri: item.url }}
+              style={{ width: cardWidth, height: imgH, borderRadius: 12 }}
+              contentFit="cover"
+              transition={200}
+            />
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 };
