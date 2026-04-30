@@ -321,7 +321,6 @@ const NotificationRow = ({
     </Pressable>
   );
 };
-
 /* ── Section header ── */
 const SectionHeader = ({ title }: { title: string }) => (
   <View style={{
@@ -333,6 +332,8 @@ const SectionHeader = ({ title }: { title: string }) => (
     </Text>
   </View>
 );
+
+//commit
 
 /* ── Filter tabs ── */
 const FILTERS = ['All', 'Social', 'Adoptions', 'Orders'];
