@@ -164,7 +164,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F8F9FA]">
       <FlatList
         data={posts}
         renderItem={({ item }) => (
@@ -175,7 +175,6 @@ export default function HomeScreen() {
           />
         )}
         keyExtractor={item => item.post_id}
-        ItemSeparatorComponent={Separator}
         onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{

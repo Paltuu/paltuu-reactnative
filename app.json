@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.paltuu.app"
+      "bundleIdentifier": "com.paltuu.app",
+      "googleServicesFile": "./ios/GoogleService-Info.plist"
     },
     "android": {
       "package": "com.paltuu.app",
