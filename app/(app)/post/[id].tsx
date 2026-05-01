@@ -10,9 +10,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { socialApi } from '../../../src/api/social';
+import { socialApi, SocialPost } from '../../../src/api/social';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { Dimensions } from 'react-native';
+import PostCard from '../../../src/components/social/PostCard';
+import { QuickProfileModal } from '../index'; // We'll keep the modal logic shared as well or just reuse the component
 
 const { width } = Dimensions.get('window');
 const PRIMARY = '#A03048';
@@ -119,108 +121,7 @@ const Avatar = ({ name, uri, size = 36 }: { name: string; uri?: string | null; s
   );
 };
 
-/* ── Post block (top of detail) ── */
-const PostBlock = ({ post, liked, count, onToggleLike, onComment }: any) => {
-  const clean = stripHtml(post.content);
-
-  return (
-    <View style={{ backgroundColor: BG }}>
-
-      {/* Author */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 10 }}>
-        <Avatar name={post.author_name} uri={post.author_image} size={42} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111', letterSpacing: -0.3 }}>
-            {post.author_name}
-          </Text>
-          <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
-            @{post.social_username ?? 'user'} · {formatTime(post.created_at)}
-          </Text>
-        </View>
-        <TouchableOpacity hitSlop={10}>
-          <Ionicons name="ellipsis-horizontal" size={18} color={MUTED} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Caption — full, no truncation */}
-      {!!clean && (
-        <Text style={{
-          fontSize: 15, color: '#111',
-          lineHeight: 24, letterSpacing: -0.2,
-          paddingHorizontal: 16, paddingBottom: 14,
-        }}>
-          {clean}
-        </Text>
-      )}
-
-      {/* Media — full bleed, no margin */}
-      {post.media?.length > 0 && (
-        <Image
-          source={{ uri: post.media[0].url }}
-          style={{ width, height: Math.round(width * 0.75) }}
-          contentFit="cover"
-        />
-      )}
-
-      {/* Stats */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
-        gap: 4,
-      }}>
-        <Text style={{ fontSize: 13, color: '#6B7280' }}>
-          <Text style={{ fontWeight: '700', color: '#111' }}>{count}</Text>
-          {' paws · '}
-          <Text style={{ fontWeight: '700', color: '#111' }}>{post.comment_count ?? 0}</Text>
-          {' comments'}
-        </Text>
-      </View>
-
-      {/* Divider */}
-      <View style={{ height: 0.5, backgroundColor: '#F3F4F6', marginHorizontal: 16 }} />
-
-      {/* Actions */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingVertical: 12,
-        gap: 0,
-      }}>
-        <TouchableOpacity
-          onPress={onToggleLike}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
-          hitSlop={10}
-        >
-          <Ionicons name={liked ? 'paw' : 'paw-outline'} size={22} color={liked ? PRIMARY : '#9CA3AF'} />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: liked ? PRIMARY : '#9CA3AF' }}>Paw</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onComment}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
-          hitSlop={10}
-        >
-          <Ionicons name="chatbubble-outline" size={20} color="#9CA3AF" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#9CA3AF' }}>Comment</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
-          hitSlop={10}
-        >
-          <Ionicons name="arrow-redo-outline" size={20} color="#9CA3AF" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#9CA3AF' }}>Share</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity hitSlop={10}>
-          <Ionicons name="bookmark-outline" size={20} color={MUTED} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom border */}
-      <View style={{ height: 8, backgroundColor: '#F9FAFB' }} />
-    </View>
-  );
-};
+// (PostBlock is now replaced by the shared PostCard component)
 
 /* ── Comments section header ── */
 const CommentsHeader = ({ count }: { count: number }) => (
@@ -366,6 +267,7 @@ export default function PostDetailScreen() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [text, setText] = useState('');
   const [replyingTo, setReplyingTo] = useState<FlatComment | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   /* ── Queries ── */
   const { data: postData, isLoading: postLoading } = useQuery({
@@ -454,13 +356,14 @@ export default function PostDetailScreen() {
     switch (item.type) {
       case 'post':
         return (
-          <PostBlock
-            post={postData}
-            liked={postData?.is_liked}
-            count={postData?.like_count ?? 0}
-            onToggleLike={() => likeMutation.mutate()}
-            onComment={() => inputRef.current?.focus()}
-          />
+          <>
+            <PostCard
+              post={postData!}
+              onPress={() => {}} // Static in detail view
+              onPlusPress={(uid) => setSelectedUserId(uid)}
+            />
+            <View style={{ height: 8, backgroundColor: '#F9FAFB' }} />
+          </>
         );
       case 'comments_header':
         return <CommentsHeader count={flatComments.length} />;
@@ -617,6 +520,12 @@ export default function PostDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <QuickProfileModal
+        userId={selectedUserId}
+        visible={selectedUserId !== null}
+        onClose={() => setSelectedUserId(null)}
+      />
     </View>
   );
 }

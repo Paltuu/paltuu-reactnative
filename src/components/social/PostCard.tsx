@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import ImageViewing from 'react-native-image-viewing';
 import { socialApi, SocialPost } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
+import { useRouter } from 'expo-router';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -272,10 +274,46 @@ export const PostCard = React.memo(({
   onPress: () => void;
   onPlusPress?: (userId: number) => void;
 }) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
+
+  const renderContent = (text: string) => {
+    const parts = text.split(/(#\w+)/g);
+    return (
+      <Text className="text-[15px] leading-[23px] text-[#111] tracking-tight">
+        {parts.map((part, i) => {
+          if (part.startsWith('#')) {
+            return (
+              <Text
+                key={i}
+                className="text-primary font-bold"
+                onPress={() => router.push(`/(app)/search?q=${encodeURIComponent(part)}`)}
+              >
+                {part}
+              </Text>
+            );
+          }
+          return part;
+        })}
+      </Text>
+    );
+  };
+
+  const images = useMemo(
+    () => post.media?.map((m: any) => ({ uri: m.url })) ?? [],
+    [post.media]
+  );
+
+  const handleImagePress = (index: number) => {
+    setViewerIndex(index);
+    setViewerVisible(true);
+  };
   const showPlus = Number(currentUser?.id) !== post.user_id && !post.is_following;
 
   const likeMutation = useMutation({
@@ -309,46 +347,66 @@ export const PostCard = React.memo(({
   });
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [s.card, pressed && s.cardPressed]}
-    >
-      {/* ── Row 1: Avatar + name/username + time + menu ── */}
-      <AuthorBlock
-        name={post.author_name || 'User'}
-        username={post.social_username}
-        uri={post.author_image}
-        timeAgo={timeAgo}
-        onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
+    <>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [s.card, pressed && s.cardPressed]}
+      >
+        {/* ── Row 1: Avatar + name/username + time + menu ── */}
+        <AuthorBlock
+          name={post.author_name || 'User'}
+          username={post.social_username}
+          uri={post.author_image}
+          timeAgo={timeAgo}
+          onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
+        />
+
+        {/* ── Pet chip (optional) ── */}
+        {post.pet_name && (
+          <View style={s.petChipRow}>
+            <PetChip name={post.pet_name} />
+          </View>
+        )}
+
+        {/* ── Caption — full width ── */}
+        {!!caption && (
+          <Text style={s.caption}>{caption}</Text>
+        )}
+
+        {/* ── Media — starts at avatar left edge, bleeds to card right ── */}
+        {post.media?.length > 0 && (
+          <MediaBlock media={post.media} onImagePress={handleImagePress} />
+        )}
+
+        {/* ── Action bar ── */}
+        <ActionBar
+          liked={!!post.is_liked}
+          likeCount={post.like_count}
+          commentCount={post.comment_count}
+          repostCount={(post as any).repost_count ?? 0}
+          onLike={() => likeMutation.mutate()}
+          onComment={onPress}
+        />
+      </Pressable>
+
+
+      <ImageViewing
+        images={images}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        presentationStyle="overFullScreen"
+        FooterComponent={({ imageIndex }) => (
+          <View style={{ alignItems: 'center', paddingBottom: 40 }}>
+            <Text style={{ color: '#fff', fontSize: 13, opacity: 0.7 }}>
+              {imageIndex + 1} / {images.length}
+            </Text>
+          </View>
+        )}
       />
-
-      {/* ── Pet chip (optional) ── */}
-      {post.pet_name && (
-        <View style={s.petChipRow}>
-          <PetChip name={post.pet_name} />
-        </View>
-      )}
-
-      {/* ── Caption — full width ── */}
-      {!!caption && (
-        <Text style={s.caption}>{caption}</Text>
-      )}
-
-      {/* ── Media — starts at avatar left edge, bleeds to card right ── */}
-      {post.media?.length > 0 && (
-        <MediaBlock media={post.media} />
-      )}
-
-      {/* ── Action bar ── */}
-      <ActionBar
-        liked={!!post.is_liked}
-        likeCount={post.like_count}
-        commentCount={post.comment_count}
-        repostCount={(post as any).repost_count ?? 0}
-        onLike={() => likeMutation.mutate()}
-        onComment={onPress}
-      />
-    </Pressable>
+    </>
   );
 });
 
