@@ -2,12 +2,14 @@ import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext';
 import { MainHeader } from '../../src/components/common/MainHeader';
 import { useEffect } from 'react';
 
 function LayoutContent() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { setOnPlusPress, setOnHeartPress } = useHeaderContext();
 
   useEffect(() => {
@@ -36,13 +38,17 @@ function LayoutContent() {
           tabBarActiveTintColor: '#a03048',
           tabBarInactiveTintColor: '#999999',
           tabBarStyle: {
-            height: Platform.OS === 'ios' ? 70 : 60,
-            paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+            height: Platform.OS === 'ios' ? 52 + insets.bottom : 56 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 8,
+            paddingTop: 8,
             backgroundColor: '#FFFFFF',
             borderTopWidth: 1,
-            borderTopColor: '#E0E0E0',
-            elevation: 0,
-            shadowOpacity: 0,
+            borderTopColor: '#F0F0F0',
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
           },
         }}
       >
