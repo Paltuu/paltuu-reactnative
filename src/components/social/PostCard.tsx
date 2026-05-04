@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import ImageViewing from 'react-native-image-viewing';
+import ImageModal from '../common/ImageModal';
 import { socialApi, SocialPost } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
@@ -305,8 +305,8 @@ export const PostCard = React.memo(({
     );
   };
 
-  const images = useMemo(
-    () => post.media?.map((m: any) => ({ uri: m.url })) ?? [],
+  const imageUrls = useMemo(
+    () => post.media?.map((m: any) => ({ url: m.url })) ?? [],
     [post.media]
   );
 
@@ -390,21 +390,11 @@ export const PostCard = React.memo(({
       </Pressable>
 
 
-      <ImageViewing
-        images={images}
-        imageIndex={viewerIndex}
+      <ImageModal
+        imageUrls={imageUrls}
         visible={viewerVisible}
-        onRequestClose={() => setViewerVisible(false)}
-        swipeToCloseEnabled
-        doubleTapToZoomEnabled
-        presentationStyle="overFullScreen"
-        FooterComponent={({ imageIndex }) => (
-          <View style={{ alignItems: 'center', paddingBottom: 40 }}>
-            <Text style={{ color: '#fff', fontSize: 13, opacity: 0.7 }}>
-              {imageIndex + 1} / {images.length}
-            </Text>
-          </View>
-        )}
+        index={viewerIndex}
+        onClose={() => setViewerVisible(false)}
       />
     </>
   );
