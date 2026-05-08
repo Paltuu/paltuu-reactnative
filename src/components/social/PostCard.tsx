@@ -41,7 +41,7 @@ const MEDIA_LEFT_OFFSET = CARD_INNER_PAD + AVATAR_SIZE + COL_GAP;
 const MEDIA_FULL_W = CARD_W - MEDIA_LEFT_OFFSET;
 
 // Carousel: primary card width, second card peeks
-const CAROUSEL_PEEK = 28;
+const CAROUSEL_PEEK = 120;
 const CAROUSEL_GAP = 8;
 const CAROUSEL_CARD_W = MEDIA_FULL_W - CAROUSEL_PEEK - CAROUSEL_GAP;
 
@@ -159,12 +159,12 @@ const MediaBlock = ({
 
   // Single image: full width, 4:3 aspect
   if (isSingle) {
-    const imgH = Math.round(MEDIA_FULL_W * 0.75);
+    const imgH = Math.round(MEDIA_FULL_W / 1.125);
     return (
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => onImagePress?.(0)}
-        style={s.mediaWrapper}
+        style={[s.mediaWrapper, { paddingRight: 10 }]}
       >
         <Image
           source={{ uri: media[0].url }}
@@ -189,7 +189,7 @@ const MediaBlock = ({
         decelerationRate="fast"
         pagingEnabled={false}
         bounces={false}
-        contentContainerStyle={{ gap: CAROUSEL_GAP }}
+        contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 30 }}
         style={{ height: imgH, overflow: 'visible' }}
         keyExtractor={(_, i) => i.toString()}
         renderItem={({ item, index }) => (
