@@ -29,7 +29,16 @@ function LayoutContent() {
   const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: '#FFF' }}>
+      {/* ── Global Notch Stopper ── */}
+      <View
+        style={{
+          height: insets.top,
+          backgroundColor: '#FFF',
+          width: '100%',
+          zIndex: 9999,
+        }}
+      />
       {showHeader && <MainHeader />}
       <Tabs
         screenOptions={{
@@ -126,7 +135,7 @@ function LayoutContent() {
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
       </Tabs>
-    </>
+    </View>
   );
 }
 

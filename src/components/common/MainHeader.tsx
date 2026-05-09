@@ -28,26 +28,15 @@ export const MainHeader: React.FC = () => {
     });
 
     return (
-        <>
-            {/* ── Persistent white stopper — always covers the status bar area ── */}
-            <View
-                style={[
-                    styles.stopper,
-                    { height: insets.top }
-                ]}
-                pointerEvents="none"
-            />
-
-            {/* ── Animated header content — slides up when hidden ── */}
-            <Animated.View
-                style={[
-                    styles.wrapper,
-                    {
-                        top: insets.top,
-                        transform: [{ translateY }]
-                    }
-                ]}
-            >
+        <Animated.View
+            style={[
+                styles.wrapper,
+                {
+                    top: insets.top,
+                    transform: [{ translateY }]
+                }
+            ]}
+        >
                 <View style={styles.container}>
                     <TouchableOpacity style={styles.iconButton} onPress={onPlusPress}>
                         <Ionicons name="add" size={28} color="#000" />
@@ -73,7 +62,6 @@ export const MainHeader: React.FC = () => {
                     </View>
                 )}
             </Animated.View>
-        </>
     );
 };
 

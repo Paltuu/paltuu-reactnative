@@ -23,8 +23,9 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { socialApi } from '../../src/api/social';
+import { socialApi, SocialPost } from '../../src/api/social';
 import client from '../../src/api/client';
+import PostCardShared from '../../src/components/social/PostCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
@@ -137,86 +138,8 @@ const MenuItem = ({
   </TouchableOpacity>
 );
 
-// ─── Post Card ────────────────────────────────────────────────────────────────
-
-const PostCard = ({ item, user }: { item: any; user: any }) => {
-  const [pawHit, setPawHit] = useState(false);
-
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  const mainMedia = item.media?.[0]?.url;
-
-  const handleShare = async () => {
-    try {
-      await Share.share({ message: item.content || 'Check this out on Paltuu!' });
-    } catch {}
-  };
-
-  return (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.cardName}>{user?.name || 'User'}</Text>
-          <Text style={s.cardMeta}>
-            @{user?.social_username || user?.username || 'user'} · {formatDate(item.created_at)}
-          </Text>
-        </View>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-      </View>
-
-      {!!item.content && (
-        <Text style={[s.cardContent, mainMedia ? {} : { fontSize: 16 }]}>
-          {item.content}
-        </Text>
-      )}
-
-      {mainMedia && (
-        <Image
-          source={{ uri: mainMedia }}
-          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
-          resizeMode="cover"
-        />
-      )}
-
-      <View style={s.thinDivider} />
-
-      <View style={s.actionRow}>
-        <TouchableOpacity style={s.actionBtn}>
-          <Ionicons name="chatbubble-outline" size={20} color={DS.gray400} />
-          <Text style={s.actionCount}>{formatCount(item.comment_count || 0)}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.actionBtn}>
-          <Ionicons name="repeat-outline" size={22} color={DS.gray400} />
-          <Text style={s.actionCount}>{formatCount(item.repost_count || 0)}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.actionBtn} onPress={() => setPawHit((v) => !v)}>
-          <MaterialCommunityIcons
-            name={pawHit ? 'paw' : 'paw-outline'}
-            size={22}
-            color={pawHit ? DS.primary : DS.gray400}
-          />
-          <Text style={[s.actionCount, pawHit && { color: DS.primary }]}>
-            {formatCount((item.like_count || 0) + (pawHit ? 1 : 0))}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]} onPress={handleShare}>
-          <Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
+// Internal PetCard and RepostCard remain for now as they are specific layouts
+// but we will use the shared PostCard for standard posts.
 
 // ─── Pet Card ─────────────────────────────────────────────────────────────────
 
@@ -495,7 +418,20 @@ export default function ProfileScreen() {
   // ── Render helpers ──────────────────────────────────────────────────────────
 
   const renderItem = ({ item }: { item: any }) => {
-    if (activeTab === 'Posts') return <PostCard item={item} user={profile} />;
+    if (activeTab === 'Posts') {
+      const postWithAuthor: SocialPost = {
+        ...item,
+        author_name: profile.name,
+        author_image: profile.profile_image_url,
+        social_username: profile.social_username || profile.username,
+      };
+      return (
+        <PostCardShared
+          post={postWithAuthor}
+          onPress={() => router.push(`/post/${item.post_id}`)}
+        />
+      );
+    }
     if (activeTab === 'Pets') return <PetCard item={item} user={profile} />;
     return <RepostCard item={item} user={profile} />;
   };
