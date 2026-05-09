@@ -12,7 +12,10 @@ const client = axios.create({
 // Request interceptor: Logger
 client.interceptors.request.use((config) => {
   if (__DEV__) {
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
+      data: config.data || '',
+      hasAuth: !!config.headers.Authorization
+    });
   }
   return config;
 });

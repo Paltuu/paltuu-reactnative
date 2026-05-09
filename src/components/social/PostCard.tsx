@@ -7,6 +7,8 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +59,10 @@ const stripHtml = (s: string) =>
 
 const formatTime = (dateStr: string) => {
   try {
-    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    const diff = Math.floor((Date.now() - date.getTime()) / 1000);
     if (diff < 60) return 'now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -70,6 +75,157 @@ const formatCount = (n: number) => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n);
 };
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  card: {
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F0',
+    overflow: 'hidden',
+  },
+  cardPressed: {
+    backgroundColor: '#F9F9F9',
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: CARD_INNER_PAD,
+    gap: COL_GAP,
+    marginBottom: 2,
+  },
+  avatarFallback: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: AVATAR_SIZE * 0.33,
+    fontWeight: '700',
+  },
+  plusBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    backgroundColor: '#111',
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  authorTextCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  authorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  authorName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111',
+  },
+  authorUsername: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: -2,
+  },
+  timeAgo: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  mediaWrapper: {
+    marginLeft: MEDIA_LEFT_OFFSET,
+    marginRight: -14, // Bleed to edge
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  menuBtn: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  petChipRow: {
+    marginLeft: MEDIA_LEFT_OFFSET,
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  petChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF0F2',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+  },
+  petChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A03048',
+  },
+  caption: {
+    marginLeft: MEDIA_LEFT_OFFSET,
+    marginRight: 14,
+    marginBottom: 4,
+  },
+  mediaScroll: {
+    paddingLeft: MEDIA_LEFT_OFFSET,
+  },
+  singleMediaWrapper: {
+    marginRight: 14, // Matches caption right margin
+  },
+  mediaItem: {
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: '#F0F0F0',
+  },
+  carouselItem: {
+    width: CAROUSEL_CARD_W,
+    height: MEDIA_FULL_W * 0.8,
+    marginRight: CAROUSEL_GAP,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: '#F0F0F0',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: MEDIA_LEFT_OFFSET,
+    paddingRight: 14,
+    marginTop: 12,
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionCount: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  originalPostContainer: {
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+});
 
 // ─── Avatar + name/username column ───────────────────────────────────────────
 const AuthorBlock = ({
@@ -126,7 +282,7 @@ const AuthorBlock = ({
           <Text style={s.authorName} numberOfLines={1}>
             {name || 'Anonymous'}
           </Text>
-          <Text style={s.authorTime}>{timeAgo}</Text>
+          <Text style={s.timeAgo}>{timeAgo}</Text>
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }}>
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
           </TouchableOpacity>
@@ -149,7 +305,69 @@ export const PetChip = ({ name }: { name: string }) => (
   </View>
 );
 
-// ─── Media block ─────────────────────────────────────────────────────────────
+// ─── Original Post Preview (for Reposts/Quotes) ─────────────────────────────
+interface OriginalPostPreviewProps {
+  authorName?: string;
+  authorImage?: string;
+  content?: string;
+  media?: any[];
+  createdAt?: string;
+  onPress?: () => void;
+  onMediaPress?: (index: number) => void;
+}
+
+const OriginalPostPreview = ({
+  authorName,
+  authorImage,
+  content,
+  media,
+  createdAt,
+  onPress,
+  onMediaPress
+}: OriginalPostPreviewProps) => {
+  if (!authorName && !content) return null;
+
+  return (
+    <Pressable style={s.originalPostContainer} onPress={onPress}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+        {authorImage && (
+          <Image
+            source={{ uri: authorImage }}
+            style={{ width: 16, height: 16, borderRadius: 8, marginRight: 6 }}
+          />
+        )}
+        <Text style={{ fontWeight: '700', fontSize: 13, color: '#111' }}>{authorName}</Text>
+        {createdAt && (
+          <Text style={{ fontSize: 12, color: '#666', marginLeft: 4 }}>
+            · {formatTime(createdAt || '')}
+          </Text>
+        )}
+      </View>
+
+      {!!content && (
+        <Text style={{ fontSize: 14, color: '#111', lineHeight: 19, marginBottom: 8 }}>
+          {stripHtml(content || '')}
+        </Text>
+      )}
+
+      {media && media.length > 0 && (
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            onMediaPress?.(0);
+          }}
+          style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 0.5, borderColor: '#EEE' }}
+        >
+          <Image
+            source={{ uri: media[0].url }}
+            style={{ width: '100%', height: 160 }}
+            contentFit="cover"
+          />
+        </Pressable>
+      )}
+    </Pressable>
+  );
+};
 // Images start at the avatar's left edge and stretch to the card's right edge.
 // The negative right margin removes the card's inner right padding so images bleed.
 const MediaBlock = ({
@@ -222,16 +440,20 @@ const ActionBar = ({
   liked,
   likeCount,
   commentCount,
+  reposted,
   repostCount,
   onLike,
   onComment,
+  onRepost,
 }: {
   liked: boolean;
   likeCount: number;
   commentCount: number;
+  reposted: boolean;
   repostCount?: number;
   onLike: () => void;
   onComment: () => void;
+  onRepost: () => void;
 }) => (
   <View style={s.actionBar}>
     {/* Left group: paw, comment, repost */}
@@ -256,10 +478,16 @@ const ActionBar = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={s.actionBtn} hitSlop={8}>
-        <Ionicons name="repeat-outline" size={21} color="#9CA3AF" />
+      <TouchableOpacity onPress={onRepost} style={s.actionBtn} hitSlop={8}>
+        <Ionicons
+          name="repeat-outline"
+          size={21}
+          color={reposted ? '#10B981' : '#9CA3AF'}
+        />
         {(repostCount ?? 0) > 0 && (
-          <Text style={s.actionCount}>{formatCount(repostCount ?? 0)}</Text>
+          <Text style={[s.actionCount, reposted && { color: '#10B981' }]}>
+            {formatCount(repostCount ?? 0)}
+          </Text>
         )}
       </TouchableOpacity>
     </View>
@@ -286,6 +514,10 @@ export const PostCard = React.memo(({
   const { user: currentUser } = useAuthStore();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerMedia, setViewerMedia] = useState<{ url: string }[]>([]);
+  const [isRepostModalVisible, setIsRepostModalVisible] = useState(false);
+  const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
+  const [quoteContent, setQuoteContent] = useState('');
 
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
@@ -302,7 +534,7 @@ export const PostCard = React.memo(({
   const renderContent = (text: string) => {
     const parts = text.split(/(#\w+)/g);
     return (
-      <Text className="text-[15px] leading-[23px] text-[#111] tracking-tight">
+      <Text className="text-[15px] leading-[22px] text-[#111] tracking-tight">
         {parts.map((part, i) => {
           if (part.startsWith('#')) {
             return (
@@ -328,16 +560,18 @@ export const PostCard = React.memo(({
 
   const handleImagePress = (index: number) => {
     setViewerIndex(index);
+    setViewerMedia(post.media?.map((m: any) => ({ url: m.url })) ?? []);
     setViewerVisible(true);
   };
+
   const showPlus = Number(currentUser?.id) !== post.user_id && !post.is_following;
 
   const likeMutation = useMutation({
     mutationFn: () => socialApi.toggleLike(post.post_id),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
-      const prev = queryClient.getQueryData(['social-feed']);
-      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+      const previous = queryClient.getQueryData(['social-feed']);
+      queryClient.setQueryData(['social-feed'], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -355,12 +589,38 @@ export const PostCard = React.memo(({
           })),
         };
       });
-      return { prev };
+      return { previous };
     },
-    onError: (_, __, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(['social-feed'], ctx.prev);
+    onError: (_, __, context) => {
+      if (context?.previous) queryClient.setQueryData(['social-feed'], context.previous);
     },
   });
+
+  const repostMutation = useMutation({
+    mutationFn: (quote?: string) =>
+      post.is_reposted && !quote
+        ? socialApi.undoRepost(post.post_id)
+        : socialApi.toggleRepost(post.post_id, quote),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      setIsRepostModalVisible(false);
+      setIsQuoteModalVisible(false);
+      setQuoteContent('');
+    },
+  });
+
+  const handleRepostPress = () => {
+    setIsRepostModalVisible(true);
+  };
+
+  const handleQuickRepost = () => {
+    repostMutation.mutate(undefined);
+  };
+
+  const handleQuotePost = () => {
+    setIsRepostModalVisible(false);
+    setIsQuoteModalVisible(true);
+  };
 
   return (
     <>
@@ -371,6 +631,16 @@ export const PostCard = React.memo(({
           onPressOut={onPressOut}
           style={s.card}
         >
+          {/* ── Reposted indicator ── */}
+          {post.post_type === 'repost' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 64, marginBottom: 4 }}>
+              <Ionicons name="repeat" size={14} color="#666" />
+              <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', marginLeft: 4 }}>
+                {currentUser?.id === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
+              </Text>
+            </View>
+          )}
+
           {/* ── Row 1: Avatar + name/username + time + menu ── */}
           <AuthorBlock
             name={post.author_name || 'User'}
@@ -387,13 +657,38 @@ export const PostCard = React.memo(({
             </View>
           )}
 
-          {/* ── Caption — full width ── */}
+          {/* ── Caption (Quote or Original) ── */}
           {!!caption && (
-            <Text style={s.caption}>{caption}</Text>
+            <View style={s.caption}>
+              {renderContent(caption)}
+            </View>
           )}
 
-          {/* ── Media — starts at avatar left edge, bleeds to card right ── */}
-          {post.media?.length > 0 && (
+          {/* ── Original Post (if this is a repost/quote) ── */}
+          {post.post_type === 'repost' && (
+            <View style={{ marginLeft: 64, marginRight: 14, marginTop: 2 }}>
+              <OriginalPostPreview
+                authorName={post.original_author_name}
+                authorImage={post.original_author_image}
+                content={post.original_content}
+                media={post.original_media}
+                createdAt={post.created_at}
+                onPress={() => {
+                  if (post.original_post_id) {
+                    router.push(`/post/${post.original_post_id}`);
+                  }
+                }}
+                onMediaPress={(index) => {
+                  setViewerIndex(index);
+                  setViewerMedia(post.original_media?.map((m: any) => ({ url: m.url })) ?? []);
+                  setViewerVisible(true);
+                }}
+              />
+            </View>
+          )}
+
+          {/* ── Media (only if not a repost, or if original has no media) ── */}
+          {post.post_type !== 'repost' && post.media?.length > 0 && (
             <MediaBlock media={post.media} onImagePress={handleImagePress} />
           )}
 
@@ -402,169 +697,105 @@ export const PostCard = React.memo(({
             liked={!!post.is_liked}
             likeCount={post.like_count}
             commentCount={post.comment_count}
+            reposted={!!post.is_reposted}
             repostCount={(post as any).repost_count ?? 0}
             onLike={() => likeMutation.mutate()}
             onComment={onPress}
+            onRepost={handleRepostPress}
           />
         </Pressable>
       </Animated.View>
 
 
       <ImageModal
-        imageUrls={imageUrls}
+        imageUrls={viewerMedia}
         visible={viewerVisible}
         index={viewerIndex}
         onClose={() => setViewerVisible(false)}
       />
+
+      {/* ── Repost Options Modal ── */}
+      <Modal
+        visible={isRepostModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsRepostModalVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setIsRepostModalVisible(false)}
+        >
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' }}>Repost</Text>
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}
+              onPress={handleQuickRepost}
+            >
+              <Ionicons name="repeat" size={24} color="#111" />
+              <Text style={{ marginLeft: 15, fontSize: 16, fontWeight: '500' }}>
+                {post.is_reposted ? 'Undo Repost' : 'Repost'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15 }}
+              onPress={handleQuotePost}
+            >
+              <Ionicons name="create-outline" size={24} color="#111" />
+              <Text style={{ marginLeft: 15, fontSize: 16, fontWeight: '500' }}>Quote Post</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Quote Post Composer ── */}
+      <Modal
+        visible={isQuoteModalVisible}
+        animationType="slide"
+        onRequestClose={() => setIsQuoteModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: 60 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, alignItems: 'center', marginBottom: 20 }}>
+            <TouchableOpacity onPress={() => setIsQuoteModalVisible(false)}>
+              <Text style={{ fontSize: 16, color: '#666' }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => repostMutation.mutate(quoteContent)}
+              disabled={repostMutation.isPending}
+              style={{ backgroundColor: '#A03048', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Post</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ paddingHorizontal: 20 }}>
+            <TextInput
+              autoFocus
+              multiline
+              placeholder="Add a comment..."
+              value={quoteContent}
+              onChangeText={setQuoteContent}
+              style={{ fontSize: 18, minHeight: 100, textAlignVertical: 'top' }}
+            />
+
+            {/* Preview of the original post */}
+            <View style={{ marginTop: 10 }}>
+              <OriginalPostPreview
+                authorName={post.author_name}
+                authorImage={post.author_image}
+                content={post.content}
+                media={post.media}
+                createdAt={post.created_at}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 });
 
 export default PostCard;
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    marginHorizontal: CARD_H_MARGIN,
-    marginVertical: CARD_V_MARGIN,
-    borderRadius: 0,
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingLeft: CARD_INNER_PAD,
-    paddingRight: CARD_INNER_PAD,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F0F0',
-    overflow: 'hidden',
-  },
-  cardPressed: {
-    backgroundColor: '#F9F9F9',
-  },
-
-  // ── Author block ──
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: COL_GAP,
-    marginBottom: 6,
-  },
-  avatarFallback: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: AVATAR_SIZE * 0.33,
-    fontWeight: '700',
-  },
-  plusBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    backgroundColor: '#111',
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#fff',
-  },
-  authorTextCol: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  authorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authorName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.2,
-  },
-  authorTime: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginLeft: 6,
-  },
-  authorUsername: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 1,
-    fontWeight: '400',
-  },
-
-  // ── Pet chip ──
-  petChipRow: {
-    marginBottom: 4,
-    // Indent to align with content column
-    marginLeft: AVATAR_SIZE + COL_GAP,
-  },
-  petChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#fdf0f2',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    gap: 3,
-  },
-  petChipText: {
-    fontSize: 11,
-    color: '#A03048',
-    fontWeight: '600',
-  },
-
-  // ── Caption ──
-  // Full width — spans from card left padding to card right padding
-  caption: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#111827',
-    letterSpacing: -0.1,
-    marginBottom: 10,
-    marginLeft: AVATAR_SIZE + COL_GAP,
-  },
-
-  // ── Media ──
-  // Starts under the name (AVATAR_SIZE + COL_GAP offset)
-  // but bleeds to the absolute card right edge.
-  mediaWrapper: {
-    marginLeft: AVATAR_SIZE + COL_GAP,
-    marginRight: -(CARD_INNER_PAD),
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-
-  // ── Actions ──
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    marginLeft: AVATAR_SIZE + COL_GAP,
-  },
-  actionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    gap: 4,
-  },
-  actionCount: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-});
+// ─── End of PostCard ───

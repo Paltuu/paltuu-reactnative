@@ -43,6 +43,13 @@ export interface SocialPost {
   is_reposted?: boolean;
   is_following?: boolean;
   pet_name?: string;
+  // Repost fields
+  original_post_id?: string;
+  original_content?: string;
+  original_author_name?: string;
+  original_social_username?: string;
+  original_author_image?: string;
+  original_media?: SocialPostMedia[];
 }
 
 export interface SocialPet {
@@ -99,6 +106,17 @@ export const socialApi = {
   async toggleLike(postId: string | number) {
     const { data } = await client.post(`/social/posts/${postId}/like`);
     return data as { liked: boolean };
+  },
+
+  async toggleRepost(postId: string | number, caption?: string) {
+    const body = caption ? { caption } : {};
+    const { data } = await client.post(`/social/posts/${postId}/repost`, body);
+    return data as { reposted: boolean; post?: SocialPost };
+  },
+
+  async undoRepost(postId: string | number) {
+    const { data } = await client.delete(`/social/posts/${postId}/repost`);
+    return data as { reposted: boolean };
   },
 
   async uploadMedia(files: string[]) {

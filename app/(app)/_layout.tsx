@@ -33,9 +33,12 @@ function LayoutContent() {
       {/* ── Global Notch Stopper ── */}
       <View
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
           height: insets.top,
           backgroundColor: '#FFF',
-          width: '100%',
           zIndex: 9999,
         }}
       />
