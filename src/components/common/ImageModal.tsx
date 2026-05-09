@@ -1,18 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   Modal,
   TouchableOpacity,
   Dimensions,
-  PanResponder,
-  Animated,
-  GestureResponderEvent,
-  PanResponderGestureState,
+  StyleSheet,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PagerView from 'react-native-pager-view';
 
 interface ImageModalProps {
   imageUrls: Array<{ url: string }>;
@@ -31,60 +29,18 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const pagerRef = useRef<PagerView>(null);
 
-  React.useEffect(() => {
+  // Sync index when modal opens
+  useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
+      // Small timeout to ensure PagerView is ready before setting page
+      setTimeout(() => {
+        pagerRef.current?.setPageWithoutAnimation(initialIndex);
+      }, 50);
     }
   }, [visible, initialIndex]);
-
-  const [scale] = useState(new Animated.Value(1));
-  const translateX = useRef(new Animated.Value(0)).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (evt, gestureState) => {
-        translateX.setValue(gestureState.dx);
-      },
-      onPanResponderRelease: (
-        evt: GestureResponderEvent,
-        gestureState: PanResponderGestureState
-      ) => {
-        const { dx } = gestureState;
-        
-        if (dx < -80 && currentIndex < imageUrls.length - 1) {
-          // Swipe left: next image
-          Animated.timing(translateX, {
-            toValue: -SCREEN_W,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            setCurrentIndex(currentIndex + 1);
-            translateX.setValue(0);
-          });
-        }
-        else if (dx > 80 && currentIndex > 0) {
-          // Swipe right: previous image
-          Animated.timing(translateX, {
-            toValue: SCREEN_W,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            setCurrentIndex(currentIndex - 1);
-            translateX.setValue(0);
-          });
-        }
-        else {
-          // Reset position
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
 
   return (
     <Modal
@@ -93,50 +49,36 @@ export const ImageModal: React.FC<ImageModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)' }}>
+      <View style={styles.container}>
         {/* Close button */}
-        <View style={{ position: 'absolute', top: Math.max(insets.top, 16), right: 16, zIndex: 10 }}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
+        <View style={[styles.closeButtonContainer, { top: Math.max(insets.top, 16) }]}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
         </View>
 
-        {/* Image viewer */}
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-          {...panResponder.panHandlers}
+        {/* Native Pager */}
+        <PagerView
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={initialIndex}
+          onPageSelected={(e) => setCurrentIndex(e.nativeEvent.position)}
         >
-          <Animated.View style={{ transform: [{ translateX }] }}>
-            <Image
-              source={{ uri: imageUrls[currentIndex]?.url }}
-              style={{
-                width: SCREEN_W,
-                height: SCREEN_H * 0.8,
-              }}
-              contentFit="contain"
-              transition={200}
-            />
-          </Animated.View>
-        </View>
+          {imageUrls.map((img, i) => (
+            <View key={i} style={styles.page}>
+              <Image
+                source={{ uri: img.url }}
+                style={styles.image}
+                contentFit="contain"
+                transition={200}
+              />
+            </View>
+          ))}
+        </PagerView>
 
         {/* Counter */}
-        <View
-          style={{
-            paddingBottom: Math.max(insets.bottom, 24),
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 13, opacity: 0.7 }}>
+        <View style={[styles.counterContainer, { bottom: Math.max(insets.bottom, 24) }]}>
+          <Text style={styles.counterText}>
             {currentIndex + 1} / {imageUrls.length}
           </Text>
         </View>
@@ -144,5 +86,49 @@ export const ImageModal: React.FC<ImageModalProps> = ({
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  closeButtonContainer: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 10,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pager: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: SCREEN_W,
+    height: SCREEN_H * 0.8,
+  },
+  counterContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  counterText: {
+    color: '#fff',
+    fontSize: 13,
+    opacity: 0.7,
+    fontWeight: '600',
+  },
+});
 
 export default ImageModal;
