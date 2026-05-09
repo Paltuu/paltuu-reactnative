@@ -11,6 +11,12 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate
+} from 'react-native-reanimated';
 import ImageModal from '../common/ImageModal';
 import { socialApi, SocialPost } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
@@ -22,8 +28,8 @@ const { width: SCREEN_W } = Dimensions.get('window');
 // The card has horizontal padding on the outside (card margin from screen edge)
 // but media bleeds to the card's right edge with no inner right padding.
 
-export const CARD_H_MARGIN = 12;        // card left/right margin from screen
-export const CARD_V_MARGIN = 6;         // card top/bottom margin
+export const CARD_H_MARGIN = 0;         // card left/right margin from screen
+export const CARD_V_MARGIN = 0;         // card top/bottom margin
 export const CARD_INNER_PAD = 14;       // inner horizontal padding (left side only for text)
 export const AVATAR_SIZE = 38;
 export const COL_GAP = 12;             // gap between avatar column and content column
@@ -157,18 +163,19 @@ const MediaBlock = ({
 
   const isSingle = media.length === 1;
 
-  // Single image: full width, 4:3 aspect
+  // Single image: full width (with right margin), 4:3 aspect
   if (isSingle) {
-    const imgH = Math.round(MEDIA_FULL_W / 1.125);
+    const SINGLE_IMG_W = MEDIA_FULL_W - 24; // Aligning with carousel ending margin
+    const imgH = Math.round(SINGLE_IMG_W / 1.125);
     return (
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => onImagePress?.(0)}
-        style={[s.mediaWrapper, { paddingRight: 10 }]}
+        style={s.mediaWrapper}
       >
         <Image
           source={{ uri: media[0].url }}
-          style={{ width: MEDIA_FULL_W, height: imgH, borderRadius: 14 }}
+          style={{ width: SINGLE_IMG_W, height: imgH, borderRadius: 14 }}
           contentFit="cover"
           transition={200}
         />
@@ -189,7 +196,7 @@ const MediaBlock = ({
         decelerationRate="fast"
         pagingEnabled={false}
         bounces={false}
-        contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 30 }}
+        contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: imgH, overflow: 'visible' }}
         keyExtractor={(_, i) => i.toString()}
         renderItem={({ item, index }) => (
@@ -283,6 +290,15 @@ export const PostCard = React.memo(({
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
 
+  // Scale animation for the card
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(scale.value, { damping: 15, stiffness: 150 }) }],
+  }));
+
+  const onPressIn = () => { scale.value = 0.98; };
+  const onPressOut = () => { scale.value = 1; };
+
   const renderContent = (text: string) => {
     const parts = text.split(/(#\w+)/g);
     return (
@@ -348,46 +364,50 @@ export const PostCard = React.memo(({
 
   return (
     <>
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [s.card, pressed && s.cardPressed]}
-      >
-        {/* ── Row 1: Avatar + name/username + time + menu ── */}
-        <AuthorBlock
-          name={post.author_name || 'User'}
-          username={post.social_username}
-          uri={post.author_image}
-          timeAgo={timeAgo}
-          onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
-        />
+      <Animated.View style={animatedStyle}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={s.card}
+        >
+          {/* ── Row 1: Avatar + name/username + time + menu ── */}
+          <AuthorBlock
+            name={post.author_name || 'User'}
+            username={post.social_username}
+            uri={post.author_image}
+            timeAgo={timeAgo}
+            onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
+          />
 
-        {/* ── Pet chip (optional) ── */}
-        {post.pet_name && (
-          <View style={s.petChipRow}>
-            <PetChip name={post.pet_name} />
-          </View>
-        )}
+          {/* ── Pet chip (optional) ── */}
+          {post.pet_name && (
+            <View style={s.petChipRow}>
+              <PetChip name={post.pet_name} />
+            </View>
+          )}
 
-        {/* ── Caption — full width ── */}
-        {!!caption && (
-          <Text style={s.caption}>{caption}</Text>
-        )}
+          {/* ── Caption — full width ── */}
+          {!!caption && (
+            <Text style={s.caption}>{caption}</Text>
+          )}
 
-        {/* ── Media — starts at avatar left edge, bleeds to card right ── */}
-        {post.media?.length > 0 && (
-          <MediaBlock media={post.media} onImagePress={handleImagePress} />
-        )}
+          {/* ── Media — starts at avatar left edge, bleeds to card right ── */}
+          {post.media?.length > 0 && (
+            <MediaBlock media={post.media} onImagePress={handleImagePress} />
+          )}
 
-        {/* ── Action bar ── */}
-        <ActionBar
-          liked={!!post.is_liked}
-          likeCount={post.like_count}
-          commentCount={post.comment_count}
-          repostCount={(post as any).repost_count ?? 0}
-          onLike={() => likeMutation.mutate()}
-          onComment={onPress}
-        />
-      </Pressable>
+          {/* ── Action bar ── */}
+          <ActionBar
+            liked={!!post.is_liked}
+            likeCount={post.like_count}
+            commentCount={post.comment_count}
+            repostCount={(post as any).repost_count ?? 0}
+            onLike={() => likeMutation.mutate()}
+            onComment={onPress}
+          />
+        </Pressable>
+      </Animated.View>
 
 
       <ImageModal
@@ -408,20 +428,17 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: CARD_H_MARGIN,
     marginVertical: CARD_V_MARGIN,
-    borderRadius: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
+    borderRadius: 0,
+    paddingTop: 16,
+    paddingBottom: 16,
     paddingLeft: CARD_INNER_PAD,
     paddingRight: CARD_INNER_PAD,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.055,
-    shadowRadius: 10,
-    elevation: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F0',
     overflow: 'hidden',
   },
   cardPressed: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F9F9F9',
   },
 
   // ── Author block ──

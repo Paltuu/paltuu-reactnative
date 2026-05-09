@@ -164,7 +164,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#F8F9FA]">
+    <View className="flex-1 bg-white">
       <FlatList
         data={posts}
         renderItem={({ item }) => (

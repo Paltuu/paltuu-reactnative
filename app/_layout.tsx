@@ -20,6 +20,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
 import '../src/styles/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -70,6 +71,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
+          <StatusBar style="dark" />
           <BottomSheetModalProvider>
             {!fontsLoaded && !fontError ? null : (
               <Stack screenOptions={{ headerShown: false }}>

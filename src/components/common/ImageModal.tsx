@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ImageModalProps {
   imageUrls: Array<{ url: string }>;
@@ -28,24 +29,58 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   index: initialIndex,
   onClose,
 }) => {
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+
+  React.useEffect(() => {
+    if (visible) {
+      setCurrentIndex(initialIndex);
+    }
+  }, [visible, initialIndex]);
+
   const [scale] = useState(new Animated.Value(1));
+  const translateX = useRef(new Animated.Value(0)).current;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gestureState) => {
+        translateX.setValue(gestureState.dx);
+      },
       onPanResponderRelease: (
         evt: GestureResponderEvent,
         gestureState: PanResponderGestureState
       ) => {
         const { dx } = gestureState;
-        // Swipe left: next image
-        if (dx < -50 && currentIndex < imageUrls.length - 1) {
-          setCurrentIndex(currentIndex + 1);
+        
+        if (dx < -80 && currentIndex < imageUrls.length - 1) {
+          // Swipe left: next image
+          Animated.timing(translateX, {
+            toValue: -SCREEN_W,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            setCurrentIndex(currentIndex + 1);
+            translateX.setValue(0);
+          });
         }
-        // Swipe right: previous image
-        if (dx > 50 && currentIndex > 0) {
-          setCurrentIndex(currentIndex - 1);
+        else if (dx > 80 && currentIndex > 0) {
+          // Swipe right: previous image
+          Animated.timing(translateX, {
+            toValue: SCREEN_W,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            setCurrentIndex(currentIndex - 1);
+            translateX.setValue(0);
+          });
+        }
+        else {
+          // Reset position
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
         }
       },
     })
@@ -60,7 +95,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
     >
       <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)' }}>
         {/* Close button */}
-        <View style={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
+        <View style={{ position: 'absolute', top: Math.max(insets.top, 16), right: 16, zIndex: 10 }}>
           <TouchableOpacity
             onPress={onClose}
             style={{
@@ -81,21 +116,23 @@ export const ImageModal: React.FC<ImageModalProps> = ({
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
           {...panResponder.panHandlers}
         >
-          <Image
-            source={{ uri: imageUrls[currentIndex]?.url }}
-            style={{
-              width: SCREEN_W,
-              height: SCREEN_H * 0.8,
-            }}
-            contentFit="contain"
-            transition={200}
-          />
+          <Animated.View style={{ transform: [{ translateX }] }}>
+            <Image
+              source={{ uri: imageUrls[currentIndex]?.url }}
+              style={{
+                width: SCREEN_W,
+                height: SCREEN_H * 0.8,
+              }}
+              contentFit="contain"
+              transition={200}
+            />
+          </Animated.View>
         </View>
 
         {/* Counter */}
         <View
           style={{
-            paddingBottom: 40,
+            paddingBottom: Math.max(insets.bottom, 24),
             alignItems: 'center',
           }}
         >
