@@ -157,5 +157,16 @@ export const socialApi = {
   async checkFollowStatus(userId: string | number) {
     const { data } = await client.get(`/social/follow/${userId}`);
     return data as { following: boolean };
+  },
+
+  async search(query: string, type: string = 'all', cursor: string | number = 0) {
+    const url = `/explore/search?q=${encodeURIComponent(query)}&type=${type}&cursor=${cursor}`;
+    const { data } = await client.get(url);
+    return data as { 
+      results: any; 
+      query: string; 
+      type: string; 
+      next_cursor: string | null 
+    };
   }
 };

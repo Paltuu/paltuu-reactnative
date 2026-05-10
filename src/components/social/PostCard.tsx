@@ -770,17 +770,37 @@ export const PostCard = React.memo(({
           </View>
 
           <View style={{ paddingHorizontal: 20 }}>
+            {/* User header inside composer */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+              <Image
+                source={{ uri: currentUser?.profile_image_url || 'https://via.placeholder.com/150' }}
+                style={{ width: 34, height: 34, borderRadius: 17, marginRight: 10 }}
+              />
+              <View>
+                <Text style={{ fontWeight: '700', fontSize: 15 }}>{currentUser?.name || 'User'}</Text>
+              </View>
+            </View>
+
             <TextInput
               autoFocus
               multiline
               placeholder="Add a comment..."
               value={quoteContent}
               onChangeText={setQuoteContent}
-              style={{ fontSize: 18, minHeight: 100, textAlignVertical: 'top' }}
+              style={{ fontSize: 18, minHeight: 80, textAlignVertical: 'top', color: '#111' }}
             />
 
+            {/* Composer Action Toolbar */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginVertical: 15, paddingBottom: 5 }}>
+              <TouchableOpacity><Ionicons name="image-outline" size={22} color="#A03048" /></TouchableOpacity>
+              <TouchableOpacity><Ionicons name="happy-outline" size={22} color="#A03048" /></TouchableOpacity>
+              <TouchableOpacity><Ionicons name="list-outline" size={22} color="#A03048" /></TouchableOpacity>
+              <TouchableOpacity><Ionicons name="stats-chart-outline" size={22} color="#A03048" /></TouchableOpacity>
+              <TouchableOpacity><Ionicons name="location-outline" size={22} color="#A03048" /></TouchableOpacity>
+            </View>
+
             {/* Preview of the original post */}
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginTop: 0 }}>
               <OriginalPostPreview
                 authorName={post.author_name}
                 authorImage={post.author_image}
