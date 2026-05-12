@@ -20,6 +20,9 @@ import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Video as VideoCompressor } from 'react-native-compressor';
+
+type UploadStage = 'idle' | 'compressing' | 'uploading' | 'finalizing';
 
 const { width } = Dimensions.get('window');
 
@@ -196,6 +199,8 @@ export default function CreatePostScreen() {
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [milestone, setMilestone] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
+  const [compressionProgress, setCompressionProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
@@ -247,7 +252,7 @@ export default function CreatePostScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsMultipleSelection: false,
         videoMaxDuration: 120, // 2 min max
-        quality: 1,
+        quality: 1,   // keep original — we compress ourselves below
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -300,9 +305,18 @@ export default function CreatePostScreen() {
     setSelectedPets((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   };
 
+  const resetUploadState = () => {
+    setIsPosting(false);
+    setUploadStage('idle');
+    setCompressionProgress(0);
+    setUploadProgress(0);
+  };
+
   const handlePost = async () => {
     if (!canPost) return;
     setIsPosting(true);
+    setUploadStage('idle');
+    setCompressionProgress(0);
     setUploadProgress(0);
 
     try {
@@ -313,28 +327,54 @@ export default function CreatePostScreen() {
         const isVideo = mediaTypes[i] === 'video';
 
         if (isVideo) {
-          // ── Video upload path (presigned S3 → MediaConvert) ──────────────
+          // ── Stage 1: Compress video on-device ────────────────────────────
+          setUploadStage('compressing');
+          setCompressionProgress(0);
+
+          let compressedUri = uri;
+          try {
+            compressedUri = await VideoCompressor.compress(
+              uri,
+              {
+                maxSize: 1920,           // cap longest side at 1920px (1080p)
+                bitrate: 4_000_000,      // 4 Mbps — Instagram-quality 1080p
+                minimumFileSizeForCompress: 20, // skip compression if < 20 MB
+              },
+              (progress) => {
+                setCompressionProgress(progress); // 0.0 → 1.0
+              }
+            );
+          } catch (compressErr) {
+            // Compression failed — fall back to original (still uploads, just bigger)
+            console.warn('Video compression failed, using original:', compressErr);
+            compressedUri = uri;
+          }
+
+          // ── Stage 2: Upload compressed video to S3 ───────────────────────
+          setUploadStage('uploading');
+          setUploadProgress(0);
+
           const mime = videoMimeTypes[i] || 'video/mp4';
           const ext  = mime === 'video/quicktime' ? 'mov' : 'mp4';
 
-          // Step 1: get presigned URL
+          // Get presigned URL
           const { upload_url, video_key } = await socialApi.getVideoUploadUrl(ext);
 
-          // Step 2: upload raw video directly to S3 (with progress)
-          await socialApi.uploadVideoToS3(upload_url, uri, mime, (p) => {
+          // Upload compressed file directly to S3 with progress
+          await socialApi.uploadVideoToS3(upload_url, compressedUri, mime, (p) => {
             setUploadProgress(p);
           });
 
-          // Placeholder media item — media_id will be set after post creation
           uploadedMedia.push({
-            media_type:   'video',
-            url:          uri,       // local URI — shown while processing
+            media_type:    'video',
+            url:           uri,        // local URI shown as placeholder
             thumbnail_url: null,
-            video_status: 'pending',
-            _video_key:   video_key, // internal — used below to confirm
+            video_status:  'pending',
+            _video_key:    video_key,  // internal — used to confirm below
           });
         } else {
-          // ── Image upload path (existing multipart flow) ──────────────────
+          // ── Image upload path (existing flow) ───────────────────────────
+          setUploadStage('uploading');
           const processed = await manipulateAsync(
             uri,
             [{ resize: { width: 1200 } }],
@@ -345,7 +385,9 @@ export default function CreatePostScreen() {
         }
       }
 
-      // Create the post (videos have placeholder status; images are ready)
+      // ── Stage 3: Create post + trigger MediaConvert ──────────────────────
+      setUploadStage('finalizing');
+
       const postTypeValue =
         uploadedMedia.some((m) => m.media_type === 'video')
           ? 'video'
@@ -355,7 +397,7 @@ export default function CreatePostScreen() {
 
       const post = await socialApi.createPost({
         content:   caption,
-        media:     uploadedMedia.map(({ _video_key, ...m }) => m), // strip internal field
+        media:     uploadedMedia.map(({ _video_key, ...m }) => m),
         pet_id:    selectedPets[0],
         post_type: postTypeValue,
       });
@@ -374,8 +416,7 @@ export default function CreatePostScreen() {
       console.error('Create Post Error:', error);
       Alert.alert('Error', error.message || 'Failed to create post');
     } finally {
-      setIsPosting(false);
-      setUploadProgress(0);
+      resetUploadState();
     }
   };
 
@@ -420,13 +461,15 @@ export default function CreatePostScreen() {
               }}
             >
           {isPosting ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, paddingVertical: 6 }}>
               <ActivityIndicator size="small" color="#fff" />
-              {uploadProgress > 0 && uploadProgress < 1 && (
-                <Text style={{ fontSize: 12, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
-                  {Math.round(uploadProgress * 100)}%
-                </Text>
-              )}
+              <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
+                {uploadStage === 'compressing'
+                  ? `Compressing ${Math.round(compressionProgress * 100)}%`
+                  : uploadStage === 'uploading'
+                  ? `Uploading ${Math.round(uploadProgress * 100)}%`
+                  : 'Finalizing...'}
+              </Text>
             </View>
           ) : 'Post'}
             </Text>
