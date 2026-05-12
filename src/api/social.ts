@@ -11,8 +11,8 @@ export interface SocialProfile {
   post_count: number;
   profile_image_url: string | null;
   cover_photo_url: string | null;
-  followers_count?: number; // Mapping from API response
-  posts_count?: number; // Mapping from API response
+  followers_count?: number;
+  posts_count?: number;
   is_following?: boolean;
   is_own_profile?: boolean;
 }
@@ -24,6 +24,10 @@ export interface SocialPostMedia {
   url: string;
   thumbnail_url?: string;
   ordering: number;
+  // Video-specific fields
+  hls_url?: string;
+  video_status?: 'pending' | 'processing' | 'ready' | 'failed';
+  duration_seconds?: number;
 }
 
 export interface SocialPost {
@@ -43,13 +47,6 @@ export interface SocialPost {
   is_reposted?: boolean;
   is_following?: boolean;
   pet_name?: string;
-  // Repost fields
-  original_post_id?: string;
-  original_content?: string;
-  original_author_name?: string;
-  original_social_username?: string;
-  original_author_image?: string;
-  original_media?: SocialPostMedia[];
 }
 
 export interface SocialPet {
@@ -108,17 +105,7 @@ export const socialApi = {
     return data as { liked: boolean };
   },
 
-  async toggleRepost(postId: string | number, caption?: string) {
-    const body = caption ? { caption } : {};
-    const { data } = await client.post(`/social/posts/${postId}/repost`, body);
-    return data as { reposted: boolean; post?: SocialPost };
-  },
-
-  async undoRepost(postId: string | number) {
-    const { data } = await client.delete(`/social/posts/${postId}/repost`);
-    return data as { reposted: boolean };
-  },
-
+  // ── Image upload (existing flow — unchanged) ─────────────────────────────
   async uploadMedia(files: string[]) {
     const formData = new FormData();
     files.forEach((uri) => {
@@ -139,6 +126,85 @@ export const socialApi = {
     return data as { media: any[] };
   },
 
+  // ── Video upload (new presigned S3 flow) ─────────────────────────────────
+
+  /**
+   * Step 1: get a presigned PUT URL from the backend.
+   * The backend issues a short-lived (15 min) URL pointing to paltuu-videos-raw.
+   */
+  async getVideoUploadUrl(ext: string = 'mp4') {
+    const { data } = await client.get(`/social/video-upload-url?ext=${ext}`);
+    return data as { upload_url: string; video_key: string; expires_in: number };
+  },
+
+  /**
+   * Step 2: upload the raw video file directly to S3 using the presigned URL.
+   * Uses fetch so we get upload progress without axios interceptors interfering.
+   *
+   * @param presignedUrl - the PUT URL from step 1
+   * @param fileUri      - local file URI from expo-image-picker
+   * @param mimeType     - e.g. "video/mp4"
+   * @param onProgress   - optional progress callback (0–1)
+   */
+  async uploadVideoToS3(
+    presignedUrl: string,
+    fileUri: string,
+    mimeType: string,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    // For React Native we use XMLHttpRequest to get upload progress
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(e.loaded / e.total);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`S3 upload failed: HTTP ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('S3 upload network error')));
+      xhr.addEventListener('abort', () => reject(new Error('S3 upload aborted')));
+
+      xhr.open('PUT', presignedUrl);
+      xhr.setRequestHeader('Content-Type', mimeType);
+      xhr.send({ uri: fileUri } as any); // React Native bridge handles the blob
+    });
+  },
+
+  /**
+   * Step 3: notify the backend the upload is done.
+   * The backend kicks off MediaConvert and returns a job ID.
+   */
+  async confirmVideoUpload(videoKey: string, mediaId: string) {
+    const { data } = await client.post('/social/video-upload-url', {
+      video_key: videoKey,
+      media_id: mediaId,
+    });
+    return data as { job_id: string; status: string };
+  },
+
+  /**
+   * Poll video processing status (call every few seconds on the post-detail screen).
+   */
+  async getVideoStatus(mediaId: string) {
+    const { data } = await client.get(`/social/video-status?media_id=${mediaId}`);
+    return data as {
+      media_id: string;
+      video_status: 'pending' | 'processing' | 'ready' | 'failed';
+      hls_url: string | null;
+      thumbnail_url: string | null;
+    };
+  },
+
+  // ── Post creation ─────────────────────────────────────────────────────────
   async createPost(payload: {
     content: string;
     media: any[];
@@ -157,16 +223,5 @@ export const socialApi = {
   async checkFollowStatus(userId: string | number) {
     const { data } = await client.get(`/social/follow/${userId}`);
     return data as { following: boolean };
-  },
-
-  async search(query: string, type: string = 'all', cursor: string | number = 0) {
-    const url = `/explore/search?q=${encodeURIComponent(query)}&type=${type}&cursor=${cursor}`;
-    const { data } = await client.get(url);
-    return data as { 
-      results: any; 
-      query: string; 
-      type: string; 
-      next_cursor: string | null 
-    };
   }
 };

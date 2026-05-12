@@ -47,7 +47,8 @@
       ],
       "expo-web-browser",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "expo-video"
     ],
     "extra": {
       "router": {},

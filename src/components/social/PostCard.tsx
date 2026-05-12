@@ -23,6 +23,7 @@ import ImageModal from '../common/ImageModal';
 import { socialApi, SocialPost } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
+import VideoPlayer from './VideoPlayer';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -373,17 +374,43 @@ const OriginalPostPreview = ({
 const MediaBlock = ({
   media,
   onImagePress,
+  isPlaying,
 }: {
   media: any[];
   onImagePress?: (index: number) => void;
+  isPlaying?: boolean;
 }) => {
   if (!media?.length) return null;
 
   const isSingle = media.length === 1;
+  const firstItem = media[0];
+  const isVideo = firstItem?.media_type === 'video';
 
-  // Single image: full width (with right margin), 4:3 aspect
+  // Single item
   if (isSingle) {
-    const SINGLE_IMG_W = MEDIA_FULL_W - 24; // Aligning with carousel ending margin
+    if (isVideo) {
+      const SINGLE_VIDEO_W = MEDIA_FULL_W - 24;
+      const videoH = Math.round(SINGLE_VIDEO_W * 0.5625); // 16:9
+      const isProcessing =
+        firstItem.video_status === 'processing' ||
+        firstItem.video_status === 'pending';
+      const videoUri = firstItem.hls_url || firstItem.url;
+      return (
+        <View style={s.mediaWrapper}>
+          <VideoPlayer
+            uri={videoUri}
+            thumbnailUri={firstItem.thumbnail_url}
+            width={SINGLE_VIDEO_W}
+            height={videoH}
+            borderRadius={14}
+            paused={!isPlaying}
+            isProcessing={isProcessing}
+          />
+        </View>
+      );
+    }
+
+    const SINGLE_IMG_W = MEDIA_FULL_W - 24;
     const imgH = Math.round(SINGLE_IMG_W / 1.125);
     return (
       <TouchableOpacity
@@ -392,7 +419,7 @@ const MediaBlock = ({
         style={s.mediaWrapper}
       >
         <Image
-          source={{ uri: media[0].url }}
+          source={{ uri: firstItem.url }}
           style={{ width: SINGLE_IMG_W, height: imgH, borderRadius: 14 }}
           contentFit="cover"
           transition={200}
@@ -504,10 +531,13 @@ export const PostCard = React.memo(({
   post,
   onPress,
   onPlusPress,
+  isVideoPlaying,
 }: {
   post: SocialPost;
   onPress: () => void;
   onPlusPress?: (userId: number) => void;
+  /** Pass true when this card's video should autoplay (controlled by FlatList viewability) */
+  isVideoPlaying?: boolean;
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -689,7 +719,11 @@ export const PostCard = React.memo(({
 
           {/* ── Media (only if not a repost, or if original has no media) ── */}
           {post.post_type !== 'repost' && post.media?.length > 0 && (
-            <MediaBlock media={post.media} onImagePress={handleImagePress} />
+            <MediaBlock
+              media={post.media}
+              onImagePress={handleImagePress}
+              isPlaying={isVideoPlaying}
+            />
           )}
 
           {/* ── Action bar ── */}

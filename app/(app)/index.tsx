@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
@@ -142,6 +142,17 @@ export default function HomeScreen() {
   const { onScroll } = useHeaderContext();
   
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [playingPostId, setPlayingPostId] = useState<string | null>(null);
+
+  // Only autoplay the video that's ≥60% visible in viewport
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: any[] }) => {
+      const first = viewableItems[0];
+      setPlayingPostId(first?.item?.post_id ?? null);
+    },
+    []
+  );
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
   const {
     data, fetchNextPage, hasNextPage,
@@ -172,11 +183,14 @@ export default function HomeScreen() {
             post={item}
             onPress={() => router.push(`/post/${item.post_id}`)}
             onPlusPress={(uid) => setSelectedUserId(uid)}
+            isVideoPlaying={playingPostId === item.post_id}
           />
         )}
         keyExtractor={item => item.post_id}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{
           paddingTop: HEADER_HEIGHT + insets.top,
           paddingBottom: 100,

@@ -9,6 +9,7 @@ import {
   Platform,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -189,9 +190,13 @@ export default function CreatePostScreen() {
   const [postType, setPostType] = useState<PostType>('post');
   const [caption, setCaption] = useState('');
   const [media, setMedia] = useState<string[]>([]);
+  // Track which media items are videos (for separate upload path)
+  const [mediaTypes, setMediaTypes] = useState<Record<number, 'image' | 'video'>>({});
+  const [videoMimeTypes, setVideoMimeTypes] = useState<Record<number, string>>({});
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [milestone, setMilestone] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     fetchMyListings();
@@ -208,11 +213,11 @@ export default function CreatePostScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Changed from All to Images to be safer
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
         selectionLimit: 10,
-        allowsEditing: false, // editing doesn't work with multiple selection
+        allowsEditing: false,
       });
 
       if (!result.canceled && result.assets) {
@@ -222,6 +227,41 @@ export default function CreatePostScreen() {
     } catch (error: any) {
       console.error('Pick Media Error:', error);
       Alert.alert('Error', 'An error occurred while picking photos. Please try again.');
+    }
+  };
+
+  const pickVideo = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need access to your photos to pick a video.');
+        return;
+      }
+
+      if (media.length >= 10) {
+        Alert.alert('Limit Reached', 'You can add up to 10 media items per post.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsMultipleSelection: false,
+        videoMaxDuration: 120, // 2 min max
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const idx = media.length;
+        const ext = (asset.uri.split('.').pop() || 'mp4').toLowerCase();
+        const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+        setMedia((prev) => [...prev, asset.uri]);
+        setMediaTypes((prev) => ({ ...prev, [idx]: 'video' }));
+        setVideoMimeTypes((prev) => ({ ...prev, [idx]: mime }));
+      }
+    } catch (error: any) {
+      console.error('Pick Video Error:', error);
+      Alert.alert('Error', 'An error occurred while picking a video.');
     }
   };
 
@@ -263,42 +303,79 @@ export default function CreatePostScreen() {
   const handlePost = async () => {
     if (!canPost) return;
     setIsPosting(true);
+    setUploadProgress(0);
 
     try {
       let uploadedMedia: any[] = [];
-      
-      // 1. Process and Upload media if exists
-      if (media.length > 0) {
-        // Convert all picked images to JPEG and resize for better performance
-        const processedMedia = await Promise.all(
-          media.map(async (uri) => {
-            const result = await manipulateAsync(
-              uri,
-              [{ resize: { width: 1200 } }], // Resize for sanity
-              { compress: 0.8, format: SaveFormat.JPEG }
-            );
-            return result.uri;
-          })
-        );
 
-        const uploadRes = await socialApi.uploadMedia(processedMedia);
-        uploadedMedia = uploadRes.media;
+      for (let i = 0; i < media.length; i++) {
+        const uri = media[i];
+        const isVideo = mediaTypes[i] === 'video';
+
+        if (isVideo) {
+          // ── Video upload path (presigned S3 → MediaConvert) ──────────────
+          const mime = videoMimeTypes[i] || 'video/mp4';
+          const ext  = mime === 'video/quicktime' ? 'mov' : 'mp4';
+
+          // Step 1: get presigned URL
+          const { upload_url, video_key } = await socialApi.getVideoUploadUrl(ext);
+
+          // Step 2: upload raw video directly to S3 (with progress)
+          await socialApi.uploadVideoToS3(upload_url, uri, mime, (p) => {
+            setUploadProgress(p);
+          });
+
+          // Placeholder media item — media_id will be set after post creation
+          uploadedMedia.push({
+            media_type:   'video',
+            url:          uri,       // local URI — shown while processing
+            thumbnail_url: null,
+            video_status: 'pending',
+            _video_key:   video_key, // internal — used below to confirm
+          });
+        } else {
+          // ── Image upload path (existing multipart flow) ──────────────────
+          const processed = await manipulateAsync(
+            uri,
+            [{ resize: { width: 1200 } }],
+            { compress: 0.8, format: SaveFormat.JPEG }
+          );
+          const uploadRes = await socialApi.uploadMedia([processed.uri]);
+          uploadedMedia.push(...uploadRes.media);
+        }
       }
 
-      // 2. Create the actual post
-      await socialApi.createPost({
-        content: caption,
-        media: uploadedMedia,
-        pet_id: selectedPets[0], 
-        post_type: postType === 'text' && media.length === 0 ? 'text' : 'image',
+      // Create the post (videos have placeholder status; images are ready)
+      const postTypeValue =
+        uploadedMedia.some((m) => m.media_type === 'video')
+          ? 'video'
+          : caption.trim().length > 0 && uploadedMedia.length === 0
+          ? 'text'
+          : 'image';
+
+      const post = await socialApi.createPost({
+        content:   caption,
+        media:     uploadedMedia.map(({ _video_key, ...m }) => m), // strip internal field
+        pet_id:    selectedPets[0],
+        post_type: postTypeValue,
       });
-      
+
+      // Kick off MediaConvert for each video
+      const videoItems = post.media?.filter((m: any) => m.media_type === 'video') ?? [];
+      for (let i = 0; i < videoItems.length; i++) {
+        const vKey = uploadedMedia.find((m) => m._video_key)?._video_key;
+        if (vKey && videoItems[i]?.media_id) {
+          await socialApi.confirmVideoUpload(vKey, videoItems[i].media_id);
+        }
+      }
+
       router.back();
     } catch (error: any) {
       console.error('Create Post Error:', error);
       Alert.alert('Error', error.message || 'Failed to create post');
     } finally {
       setIsPosting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -342,7 +419,16 @@ export default function CreatePostScreen() {
                 color: canPost ? '#fff' : '#9CA3AF',
               }}
             >
-              {isPosting ? 'Posting...' : 'Post'}
+          {isPosting ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6 }}>
+              <ActivityIndicator size="small" color="#fff" />
+              {uploadProgress > 0 && uploadProgress < 1 && (
+                <Text style={{ fontSize: 12, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
+                  {Math.round(uploadProgress * 100)}%
+                </Text>
+              )}
+            </View>
+          ) : 'Post'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -417,7 +503,32 @@ export default function CreatePostScreen() {
           {media.length > 0 && (
             <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
               {media.map((uri, i) => (
-                <MediaThumb key={uri} uri={uri} index={i} onRemove={removeMedia} />
+                <View key={uri} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
+                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  {/* Video badge */}
+                  {mediaTypes[i] === 'video' && (
+                    <View style={{
+                      position: 'absolute', bottom: 4, left: 4,
+                      backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
+                      paddingHorizontal: 4, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 2
+                    }}>
+                      <Ionicons name="videocam" size={10} color="#fff" />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setMedia((prev) => prev.filter((_, idx) => idx !== i));
+                      setMediaTypes((prev) => {
+                        const n = { ...prev };
+                        delete n[i];
+                        return n;
+                      });
+                    }}
+                    className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
+                  >
+                    <Ionicons name="close" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
@@ -478,6 +589,10 @@ export default function CreatePostScreen() {
 
           <TouchableOpacity onPress={pickCamera} hitSlop={8}>
             <Ionicons name="camera-outline" size={24} color="#a03048" />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={pickVideo} hitSlop={8}>
+            <Ionicons name="videocam-outline" size={24} color="#a03048" />
           </TouchableOpacity>
 
           <TouchableOpacity hitSlop={8}>
