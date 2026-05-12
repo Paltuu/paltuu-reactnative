@@ -241,4 +241,9 @@ export const socialApi = {
     const { data } = await client.delete(`/social/posts/${postId}/repost`);
     return data;
   },
+
+  async deletePost(postId: string | number) {
+    const { data } = await client.delete(`/social/posts/${postId}`);
+    return data;
+  },
 };

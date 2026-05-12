@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
 import { socialApi, SocialPost } from '../api/social';
 
 export const useSocialActions = () => {
@@ -99,6 +100,36 @@ export const useSocialActions = () => {
     },
   });
 
+  const deletePostMutation = useMutation({
+    mutationFn: (postId: string | number) => socialApi.deletePost(postId),
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ['social-feed'] });
+      const previousFeed = queryClient.getQueryData(['social-feed']);
+
+      queryClient.setQueryData(['social-feed'], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.filter((p: SocialPost) => p.post_id !== String(postId)),
+          })),
+        };
+      });
+
+      return { previousFeed };
+    },
+    onError: (err, postId, context) => {
+      if (context?.previousFeed) {
+        queryClient.setQueryData(['social-feed'], context.previousFeed);
+      }
+      Alert.alert('Error', 'Failed to delete post');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+    },
+  });
+
   const toggleLike = (postId: string | number) => {
     likeMutation.mutate(postId);
   };
@@ -107,10 +138,16 @@ export const useSocialActions = () => {
     followMutation.mutate(userId);
   };
 
+  const deletePost = (postId: string | number) => {
+    deletePostMutation.mutate(postId);
+  };
+
   return {
     toggleLike,
     toggleFollow,
+    deletePost,
     isFollowing: followMutation.isPending,
     isLiking: likeMutation.isPending,
+    isDeleting: deletePostMutation.isPending,
   };
 };
