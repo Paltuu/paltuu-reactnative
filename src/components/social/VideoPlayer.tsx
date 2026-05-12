@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -29,15 +29,6 @@ interface VideoPlayerProps {
 
 /**
  * VideoPlayer
- *
- * Uses expo-video (Expo SDK 51+) which wraps AVPlayer (iOS) and ExoPlayer (Android).
- * HLS adaptive bitrate (.m3u8) is supported natively on both platforms.
- *
- * Features:
- *  - Tap to play/pause
- *  - Mute/unmute button
- *  - Processing placeholder while MediaConvert is running
- *  - Buffering spinner
  */
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
   uri,
@@ -49,31 +40,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   loop = true,
   isProcessing = false,
 }) => {
-  const [isMuted, setIsMuted] = useState(true); // start muted like Instagram
+  const [isMuted, setIsMuted] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [userPaused, setUserPaused] = useState(false); // user explicit pause
+  const [userPaused, setUserPaused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const player = useVideoPlayer(uri, (p) => {
     p.loop = loop;
     p.muted = isMuted;
-    if (!paused && !userPaused) {
-      p.play();
-    }
+    
+    p.addListener('statusChange', (status) => {
+      console.log(`[VideoPlayer] Status for ${uri.slice(-10)}:`, status);
+      if (status === 'readyToPlay' && !paused && !userPaused) {
+        p.play();
+      }
+      if (status === 'error') {
+        setError('Failed to load video');
+      }
+    });
+
+    p.addListener('bufferingChange', (isBufferingNow) => {
+      console.log(`[VideoPlayer] Buffering for ${uri.slice(-10)}:`, isBufferingNow);
+      setIsBuffering(isBufferingNow);
+    });
   });
 
-  // Sync external paused prop (from FlatList viewability)
-  React.useEffect(() => {
+  // Sync external paused prop
+  useEffect(() => {
     if (paused) {
       player.pause();
     } else if (!userPaused) {
       player.play();
     }
   }, [paused, userPaused, player]);
-
-  // Sync mute state
-  React.useEffect(() => {
-    player.muted = isMuted;
-  }, [isMuted, player]);
 
   const handleTap = useCallback(() => {
     if (player.playing) {
@@ -87,15 +86,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const isPlaying = !paused && !userPaused;
 
-  // ── Processing placeholder ────────────────────────────────────────────────
   if (isProcessing) {
     return (
-      <View
-        style={[
-          s.processingContainer,
-          { width, height, borderRadius },
-        ]}
-      >
+      <View style={[s.processingContainer, { width, height, borderRadius }]}>
         <ActivityIndicator size="large" color="#A03048" />
         <Text style={s.processingText}>Video processing…</Text>
         <Text style={s.processingSubText}>Usually ready in 1–2 minutes</Text>
@@ -104,13 +97,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }
 
   return (
-    <View style={{ width, height, borderRadius, overflow: 'hidden' }}>
-      {/* Native video view */}
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleTap}
-        style={StyleSheet.absoluteFill}
-      >
+    <View style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}>
+      <TouchableOpacity activeOpacity={1} onPress={handleTap} style={StyleSheet.absoluteFill}>
         <VideoView
           player={player}
           style={{ width, height }}
@@ -119,27 +107,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         />
       </TouchableOpacity>
 
-      {/* Mute / unmute button */}
-      <TouchableOpacity
-        style={s.muteBtn}
-        onPress={() => setIsMuted((prev) => !prev)}
-        hitSlop={12}
-      >
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={15}
-          color="#fff"
-        />
+      <TouchableOpacity style={s.muteBtn} onPress={() => setIsMuted((prev) => !prev)} hitSlop={12}>
+        <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={15} color="#fff" />
       </TouchableOpacity>
 
-      {/* Buffering overlay */}
       {isBuffering && (
         <View style={[StyleSheet.absoluteFill, s.bufferingOverlay]}>
           <ActivityIndicator size="small" color="#fff" />
         </View>
       )}
 
-      {/* Play/pause indicator (brief flash on tap) */}
+      {error && (
+        <View style={[StyleSheet.absoluteFill, s.errorOverlay]}>
+          <Ionicons name="alert-circle" size={24} color="#fff" />
+          <Text style={s.errorText}>{error}</Text>
+        </View>
+      )}
+
       {!isPlaying && !paused && (
         <View style={[StyleSheet.absoluteFill, s.pausedOverlay]}>
           <View style={s.playIconCircle}>
@@ -148,7 +132,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </View>
       )}
 
-      {/* Video badge */}
       <View style={s.videoBadge}>
         <Ionicons name="videocam" size={10} color="#fff" />
       </View>
@@ -156,57 +139,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
 };
 
-export default VideoPlayer;
-
 const s = StyleSheet.create({
-  processingContainer: {
-    backgroundColor: '#0d0d0d',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  processingText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  processingSubText: {
-    color: '#888',
-    fontSize: 11,
-  },
-  muteBtn: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 20,
-    padding: 5,
-  },
-  bufferingOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pausedOverlay: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 3,
-  },
-  videoBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
+  processingContainer: { backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  processingText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  processingSubText: { color: '#888', fontSize: 11 },
+  muteBtn: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20, padding: 5 },
+  bufferingOverlay: { backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
+  pausedOverlay: { alignItems: 'center', justifyContent: 'center' },
+  errorOverlay: { backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  errorText: { color: '#fff', fontSize: 12, fontWeight: '500' },
+  playIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', paddingLeft: 3 },
+  videoBadge: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
 });
+
+export default VideoPlayer;

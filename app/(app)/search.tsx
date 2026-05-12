@@ -18,6 +18,8 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../src/api/social';
 import { PostCard } from '../../src/components/social/PostCard';
 import { useDebounce } from '../../src/hooks/useDebounce';
+import { useSocialActions } from '../../src/hooks/useSocialActions';
+import ImageModal from '../../src/components/common/ImageModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -89,12 +91,27 @@ const TabItem = ({ title, active, onPress }: { title: string, active: boolean, o
 );
 
 export default function SearchScreen() {
+  const { toggleFollow } = useSocialActions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { onScroll } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
+
+  // Viewer State
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerMedia, setViewerMedia] = useState<{ url: string }[]>([]);
+
+  const handleGridImagePress = (post: SocialPost, index: number) => {
+    const media = post.media?.length ? post.media : post.original_media;
+    if (media?.length) {
+      setViewerMedia(media.map(m => ({ url: m.url })));
+      setViewerIndex(index);
+      setViewerVisible(true);
+    }
+  };
 
   // ─── Trending Feed (Global) ────────────────────────────────────────────────
   const {
@@ -158,6 +175,7 @@ export default function SearchScreen() {
         <Text className="text-[#666] text-sm">@{item.social_username}</Text>
       </View>
       <TouchableOpacity 
+        onPress={() => toggleFollow(item.user_id)}
         className={`px-4 py-2 rounded-full ${item.is_following ? 'bg-[#F0F0F0]' : 'bg-primary'}`}
       >
         <Text className={`text-[13px] font-semibold ${item.is_following ? 'text-[#111]' : 'text-white'}`}>
@@ -275,7 +293,7 @@ export default function SearchScreen() {
             <PostGridItem 
               key={post.post_id}
               post={post} 
-              onPress={() => router.push(`/post/${post.post_id}`)}
+              onPress={() => handleGridImagePress(post, 0)}
             />
           ))}
         </View>
@@ -324,6 +342,13 @@ export default function SearchScreen() {
             </View>
           ) : null
         )}
+      />
+
+      <ImageModal
+        imageUrls={viewerMedia}
+        visible={viewerVisible}
+        index={viewerIndex}
+        onClose={() => setViewerVisible(false)}
       />
     </View>
   );

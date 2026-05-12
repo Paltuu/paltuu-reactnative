@@ -367,7 +367,7 @@ export default function CreatePostScreen() {
 
           uploadedMedia.push({
             media_type:    'video',
-            url:           uri,        // local URI shown as placeholder
+            url:           uri,         // Placeholder local URI to pass server validation
             thumbnail_url: null,
             video_status:  'pending',
             _video_key:    video_key,  // internal — used to confirm below
@@ -395,12 +395,16 @@ export default function CreatePostScreen() {
           ? 'text'
           : 'image';
 
-      const post = await socialApi.createPost({
+      const payload = {
         content:   caption,
         media:     uploadedMedia.map(({ _video_key, ...m }) => m),
         pet_id:    selectedPets[0],
         post_type: postTypeValue,
-      });
+      };
+
+      console.log('[CreatePost] Sending payload to server:', JSON.stringify(payload, null, 2));
+
+      const post = await socialApi.createPost(payload);
 
       // Kick off MediaConvert for each video
       const videoItems = post.media?.filter((m: any) => m.media_type === 'video') ?? [];

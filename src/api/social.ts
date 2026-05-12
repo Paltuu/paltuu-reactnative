@@ -36,9 +36,9 @@ export interface SocialPost {
   content: string;
   like_count: number;
   comment_count: number;
-  repost_count: number;
+  repost_count?: number;
   created_at: string;
-  post_type: 'original' | 'repost';
+  post_type: 'original' | 'repost' | 'image' | 'video' | 'text';
   media: SocialPostMedia[];
   author_name?: string;
   author_image?: string;
@@ -47,6 +47,13 @@ export interface SocialPost {
   is_reposted?: boolean;
   is_following?: boolean;
   pet_name?: string;
+  // Repost fields (flat structure from backend)
+  original_post_id?: string;
+  original_content?: string;
+  original_author_name?: string;
+  original_author_image?: string;
+  original_media?: SocialPostMedia[];
+  original_post?: SocialPost;
 }
 
 export interface SocialPet {
@@ -66,7 +73,7 @@ export const socialApi = {
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
   },
-  
+
   async getPostById(postId: string | number) {
     const { data } = await client.get(`/social/posts/${postId}`);
     return data as SocialPost;
@@ -112,7 +119,7 @@ export const socialApi = {
       const filename = uri.split('/').pop();
       const match = /\.(\w+)$/.exec(filename || '');
       const type = match ? `image/${match[1]}` : `image`;
-      
+
       formData.append('files', {
         uri,
         name: filename,
@@ -214,7 +221,7 @@ export const socialApi = {
     const { data } = await client.post('/social/posts', payload);
     return data;
   },
-  
+
   async toggleFollow(userId: string | number) {
     const { data } = await client.post(`/social/follow/${userId}`);
     return data as { following: boolean };
@@ -223,5 +230,15 @@ export const socialApi = {
   async checkFollowStatus(userId: string | number) {
     const { data } = await client.get(`/social/follow/${userId}`);
     return data as { following: boolean };
-  }
+  },
+
+  async toggleRepost(postId: string | number, quote?: string) {
+    const { data } = await client.post(`/social/posts/${postId}/repost`, { content: quote });
+    return data;
+  },
+
+  async undoRepost(postId: string | number) {
+    const { data } = await client.delete(`/social/posts/${postId}/repost`);
+    return data;
+  },
 };

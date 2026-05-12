@@ -13,6 +13,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSocialActions } from '../../hooks/useSocialActions';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,7 +21,7 @@ import Animated, {
   interpolate
 } from 'react-native-reanimated';
 import ImageModal from '../common/ImageModal';
-import { socialApi, SocialPost } from '../../api/social';
+import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
 import VideoPlayer from './VideoPlayer';
@@ -311,7 +312,7 @@ interface OriginalPostPreviewProps {
   authorName?: string;
   authorImage?: string;
   content?: string;
-  media?: any[];
+  media?: SocialPostMedia[];
   createdAt?: string;
   onPress?: () => void;
   onMediaPress?: (index: number) => void;
@@ -357,13 +358,20 @@ const OriginalPostPreview = ({
             e.stopPropagation();
             onMediaPress?.(0);
           }}
-          style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 0.5, borderColor: '#EEE' }}
+          style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 0.5, borderColor: '#EEE', position: 'relative' }}
         >
           <Image
-            source={{ uri: media[0].url }}
+            source={{ uri: media[0].thumbnail_url || media[0].url }}
             style={{ width: '100%', height: 160 }}
             contentFit="cover"
           />
+          {media[0].media_type === 'video' && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="play" size={20} color="white" style={{ marginLeft: 2 }} />
+              </View>
+            </View>
+          )}
         </Pressable>
       )}
     </Pressable>
@@ -376,7 +384,7 @@ const MediaBlock = ({
   onImagePress,
   isPlaying,
 }: {
-  media: any[];
+  media: SocialPostMedia[];
   onImagePress?: (index: number) => void;
   isPlaying?: boolean;
 }) => {
@@ -395,9 +403,11 @@ const MediaBlock = ({
         firstItem.video_status === 'processing' ||
         firstItem.video_status === 'pending';
       const videoUri = firstItem.hls_url || firstItem.url;
+      console.log('[VideoDebug] Rendering video player with URI:', videoUri);
       return (
         <View style={s.mediaWrapper}>
           <VideoPlayer
+            key={videoUri}
             uri={videoUri}
             thumbnailUri={firstItem.thumbnail_url}
             width={SINGLE_VIDEO_W}
@@ -444,19 +454,38 @@ const MediaBlock = ({
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: imgH, overflow: 'visible' }}
         keyExtractor={(_, i) => i.toString()}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => onImagePress?.(index)}
-          >
-            <Image
-              source={{ uri: item.url }}
-              style={{ width: CAROUSEL_CARD_W, height: imgH, borderRadius: 14 }}
-              contentFit="cover"
-              transition={200}
-            />
-          </TouchableOpacity>
-        )}
+        renderItem={({ item, index }) => {
+          const isItemVideo = item.media_type === 'video';
+          
+          if (isItemVideo) {
+            const videoUri = item.hls_url || item.url;
+            return (
+              <VideoPlayer
+                key={videoUri}
+                uri={videoUri}
+                thumbnailUri={item.thumbnail_url}
+                width={CAROUSEL_CARD_W}
+                height={imgH}
+                borderRadius={14}
+                paused={!isPlaying}
+              />
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => onImagePress?.(index)}
+            >
+              <Image
+                source={{ uri: item.url }}
+                style={{ width: CAROUSEL_CARD_W, height: imgH, borderRadius: 14 }}
+                contentFit="cover"
+                transition={200}
+              />
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
@@ -544,7 +573,7 @@ export const PostCard = React.memo(({
   const { user: currentUser } = useAuthStore();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
-  const [viewerMedia, setViewerMedia] = useState<{ url: string }[]>([]);
+  const [viewerMedia, setViewerMedia] = useState<{ url: string; type?: 'image' | 'video'; thumbnail_url?: string }[]>([]);
   const [isRepostModalVisible, setIsRepostModalVisible] = useState(false);
   const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
   const [quoteContent, setQuoteContent] = useState('');
@@ -590,41 +619,17 @@ export const PostCard = React.memo(({
 
   const handleImagePress = (index: number) => {
     setViewerIndex(index);
-    setViewerMedia(post.media?.map((m: any) => ({ url: m.url })) ?? []);
+    setViewerMedia(post.media?.map((m: any) => ({ 
+      url: m.url, 
+      type: m.media_type, 
+      thumbnail_url: m.thumbnail_url 
+    })) ?? []);
     setViewerVisible(true);
   };
 
   const showPlus = Number(currentUser?.id) !== post.user_id && !post.is_following;
 
-  const likeMutation = useMutation({
-    mutationFn: () => socialApi.toggleLike(post.post_id),
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['social-feed'] });
-      const previous = queryClient.getQueryData(['social-feed']);
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            posts: page.posts.map((p: SocialPost) =>
-              p.post_id === post.post_id
-                ? {
-                  ...p,
-                  is_liked: !p.is_liked,
-                  like_count: p.is_liked ? p.like_count - 1 : p.like_count + 1,
-                }
-                : p,
-            ),
-          })),
-        };
-      });
-      return { previous };
-    },
-    onError: (_, __, context) => {
-      if (context?.previous) queryClient.setQueryData(['social-feed'], context.previous);
-    },
-  });
+  const { toggleLike } = useSocialActions();
 
   const repostMutation = useMutation({
     mutationFn: (quote?: string) =>
@@ -710,7 +715,11 @@ export const PostCard = React.memo(({
                 }}
                 onMediaPress={(index) => {
                   setViewerIndex(index);
-                  setViewerMedia(post.original_media?.map((m: any) => ({ url: m.url })) ?? []);
+                  setViewerMedia(post.original_media?.map((m: SocialPostMedia) => ({ 
+                    url: m.url, 
+                    type: m.media_type, 
+                    thumbnail_url: m.thumbnail_url 
+                  })) ?? []);
                   setViewerVisible(true);
                 }}
               />
@@ -732,8 +741,8 @@ export const PostCard = React.memo(({
             likeCount={post.like_count}
             commentCount={post.comment_count}
             reposted={!!post.is_reposted}
-            repostCount={(post as any).repost_count ?? 0}
-            onLike={() => likeMutation.mutate()}
+            repostCount={post.repost_count ?? 0}
+            onLike={() => toggleLike(post.post_id)}
             onComment={onPress}
             onRepost={handleRepostPress}
           />
@@ -742,7 +751,7 @@ export const PostCard = React.memo(({
 
 
       <ImageModal
-        imageUrls={viewerMedia}
+        mediaItems={viewerMedia}
         visible={viewerVisible}
         index={viewerIndex}
         onClose={() => setViewerVisible(false)}

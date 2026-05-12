@@ -14,6 +14,7 @@ import { socialApi, SocialPost, SocialProfile } from '../../src/api/social';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
+import { useSocialActions } from '../../src/hooks/useSocialActions';
 
 // (Layout constants are now managed inside the shared PostCard)
 
@@ -32,13 +33,7 @@ export const QuickProfileModal = ({
     enabled: !!userId && visible,
   });
 
-  const followMutation = useMutation({
-    mutationFn: () => socialApi.toggleFollow(userId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-profile-quick', userId] });
-      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
-    },
-  });
+  const { toggleFollow, isFollowing } = useSocialActions();
 
   const profile = data?.profile;
   const initials = (profile?.name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -106,10 +101,10 @@ export const QuickProfileModal = ({
                   className={`flex-1 py-3.5 rounded-xl items-center ${
                     profile.is_following ? 'bg-gray-100' : 'bg-primary'
                   }`}
-                  onPress={() => followMutation.mutate()}
-                  disabled={followMutation.isPending}
+                  onPress={() => toggleFollow(userId!)}
+                  disabled={isFollowing}
                 >
-                  {followMutation.isPending ? (
+                  {isFollowing ? (
                     <ActivityIndicator color={profile.is_following ? '#111' : 'white'} size="small" />
                   ) : (
                     <Text className={`font-bold ${profile.is_following ? 'text-[#111]' : 'text-white'}`}>
