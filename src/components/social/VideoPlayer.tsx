@@ -44,26 +44,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isBuffering, setIsBuffering] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playCount, setPlayCount] = useState(0);
 
   const player = useVideoPlayer(uri, (p) => {
-    p.loop = loop;
+    p.loop = true;
     p.muted = isMuted;
-    
-    p.addListener('statusChange', (status) => {
-      console.log(`[VideoPlayer] Status for ${uri.slice(-10)}:`, status);
-      if (status === 'readyToPlay' && !paused && !userPaused) {
-        p.play();
+  });
+
+  // Handle status and autoplay logic
+  useEffect(() => {
+    const statusSub = player.addListener('statusChange', (payload) => {
+      const status = payload.status;
+      setIsBuffering(status === 'loading'); // Track buffering via status
+
+      if (status === 'readyToPlay' && !paused && !userPaused && playCount < 2) {
+        player.play();
       }
       if (status === 'error') {
         setError('Failed to load video');
       }
     });
 
-    p.addListener('bufferingChange', (isBufferingNow) => {
-      console.log(`[VideoPlayer] Buffering for ${uri.slice(-10)}:`, isBufferingNow);
-      setIsBuffering(isBufferingNow);
+    const finishSub = player.addListener('playToEnd', () => {
+      setPlayCount(prev => {
+        const next = prev + 1;
+        if (next >= 2) {
+          player.pause();
+        }
+        return next;
+      });
     });
-  });
+
+    return () => {
+      statusSub.remove();
+      finishSub.remove();
+    };
+  }, [player, uri, paused, userPaused, playCount]);
 
   // Sync external paused prop
   useEffect(() => {
@@ -74,17 +90,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [paused, userPaused, player]);
 
-  const handleTap = useCallback(() => {
-    if (player.playing) {
+  const isPlaying = !paused && !userPaused;
+
+  const togglePlay = useCallback(() => {
+    if (isPlaying) {
       player.pause();
       setUserPaused(true);
     } else {
+      setPlayCount(0); // Reset count if user manually hits play
       player.play();
       setUserPaused(false);
     }
-  }, [player]);
-
-  const isPlaying = !paused && !userPaused;
+  }, [player, isPlaying]);
 
   if (isProcessing) {
     return (
@@ -98,7 +115,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <View style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}>
-      <TouchableOpacity activeOpacity={1} onPress={handleTap} style={StyleSheet.absoluteFill}>
+      <TouchableOpacity activeOpacity={1} onPress={togglePlay} style={StyleSheet.absoluteFill}>
         <VideoView
           player={player}
           style={{ width, height }}
