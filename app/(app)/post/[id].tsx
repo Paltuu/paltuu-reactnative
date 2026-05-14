@@ -1,4 +1,4 @@
-// app/(app)/post/[id].tsx
+// app/post/[id].tsx
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,

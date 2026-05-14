@@ -131,7 +131,7 @@ export default function MyListingsScreen() {
               <Text className="text-base text-gray-400 mt-4 mb-5">You haven't posted any pets yet.</Text>
               <TouchableOpacity 
                 className="bg-primary px-8 py-3 rounded-xl"
-                onPress={() => router.push('/(app)/create-pet')}
+                onPress={() => router.push('/(app)/(app)/create-pet')}
               >
                 <Text className="text-white font-bold">Create Listing</Text>
               </TouchableOpacity>

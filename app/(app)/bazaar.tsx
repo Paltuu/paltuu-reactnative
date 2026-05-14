@@ -131,7 +131,7 @@ export default function BazaarScreen() {
           We're perfecting your shopping experience. We'll be back soon with something special for you and your furry friends!
         </Text>
         <TouchableOpacity 
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace('/(app)/')}
           className="bg-primary px-10 py-5 rounded-3xl shadow-xl shadow-primary/20"
         >
           <Text className="text-white font-headingBold text-lg">Return to Home</Text>

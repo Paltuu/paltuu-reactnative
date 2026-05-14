@@ -209,7 +209,7 @@ export default function CreateLostFoundScreen() {
       };
       await createLostFoundPost(payload, images);
       Alert.alert('Success', 'Report submitted!', [
-        { text: 'OK', onPress: () => router.replace('/') },
+        { text: 'OK', onPress: () => router.replace('/(app)/') },
       ]);
     } catch {
       Alert.alert('Error', 'Submission failed.');

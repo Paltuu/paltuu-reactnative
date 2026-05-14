@@ -15,7 +15,7 @@ export default function CreateListingScreen() {
       description: 'Find a loving home for a pet in need',
       icon: 'paw',
       color: '#a03048',
-      route: '/(app)/create-pet'
+      route: '/create-pet'
     },
     {
       id: 'social',
@@ -23,7 +23,7 @@ export default function CreateListingScreen() {
       description: 'Share a moment with the community',
       icon: 'chatbubble-ellipses',
       color: '#2a9d8f',
-      route: '/(app)/create-post'
+      route: '/create-post'
     },
     {
       id: 'lost',
@@ -31,7 +31,7 @@ export default function CreateListingScreen() {
       description: 'Report a missing pet or a found one',
       icon: 'map-marker-radius',
       color: '#e76f51',
-      route: '/(app)/create-lost-found'
+      route: '/create-lost-found'
     }
   ];
 

@@ -163,7 +163,7 @@ export default function SearchScreen() {
 
   const renderUserItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      onPress={() => router.push(`/social/profile/${item.user_id}`)}
+      onPress={() => router.push(`/(app)/profile/${item.user_id}`)}
       className="flex-row items-center p-4 border-b-[0.5px] border-[#F0F0F0]"
     >
       <Image 
@@ -282,7 +282,7 @@ export default function SearchScreen() {
       return (
         <PostCompactItem 
           post={item} 
-          onPress={() => router.push(`/post/${item.post_id}`)}
+          onPress={() => router.push(`/(app)/post/${item.post_id}`)}
         />
       );
     }
@@ -345,7 +345,7 @@ export default function SearchScreen() {
       />
 
       <ImageModal
-        imageUrls={viewerMedia}
+        mediaItems={viewerMedia}
         visible={viewerVisible}
         index={viewerIndex}
         onClose={() => setViewerVisible(false)}

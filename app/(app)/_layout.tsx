@@ -14,10 +14,10 @@ function LayoutContent() {
 
   useEffect(() => {
     setOnPlusPress(() => {
-      router.push('/(app)/create-post');
+      router.push('/(app)/(app)/(app)/create-post');
     });
     setOnHeartPress(() => {
-      router.push('/(app)/notifications');
+      router.push('/(app)/(app)/(app)/notifications');
     });
   }, [router, setOnPlusPress, setOnHeartPress]);
 

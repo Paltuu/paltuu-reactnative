@@ -56,7 +56,7 @@ export default function PetsHubScreen() {
         {/* ── HERO CARD — Adopt ───────────────────────────────── */}
         <TouchableOpacity
           activeOpacity={0.93}
-          onPress={() => router.push('/(app)/adopt' as any)}
+          onPress={() => router.push('/(app)/(app)/adopt' as any)}
           style={styles.heroCard}
         >
           <Image source={{ uri: ADOPT_IMG }} style={styles.heroImg} />
@@ -82,7 +82,7 @@ export default function PetsHubScreen() {
           {/* Post a Pet */}
           <TouchableOpacity
             activeOpacity={0.93}
-            onPress={() => router.push('/(app)/create-pet' as any)}
+            onPress={() => router.push('/(app)/(app)/create-pet' as any)}
             style={styles.smallCard}
           >
             <Image source={{ uri: POST_IMG }} style={styles.smallImg} />
@@ -96,7 +96,7 @@ export default function PetsHubScreen() {
           {/* Lost & Found */}
           <TouchableOpacity
             activeOpacity={0.93}
-            onPress={() => router.push('/(app)/lost-found' as any)}
+            onPress={() => router.push('/(app)/(app)/lost-found' as any)}
             style={[styles.smallCard, { borderColor: '#F59E0B' }]}
           >
             <Image source={{ uri: LOST_IMG }} style={styles.smallImg} />
@@ -123,7 +123,7 @@ export default function PetsHubScreen() {
         {/* ── URGENT — Report Lost / Found ────────────────────── */}
         <TouchableOpacity
           activeOpacity={0.93}
-          onPress={() => router.push('/(app)/create-lost-found' as any)}
+          onPress={() => router.push('/(app)/(app)/create-lost-found' as any)}
           style={styles.urgentCard}
         >
           {/* left accent */}
@@ -151,7 +151,7 @@ export default function PetsHubScreen() {
           {/* Pet Care */}
           <TouchableOpacity
             activeOpacity={0.93}
-            onPress={() => router.push('/(app)/pet-care' as any)}
+            onPress={() => router.push('/(app)/(app)/pet-care' as any)}
             style={styles.serviceCard}
           >
             <Image source={{ uri: CARE_IMG }} style={styles.serviceImg} />
@@ -165,7 +165,7 @@ export default function PetsHubScreen() {
           {/* Vet Nearby */}
           <TouchableOpacity
             activeOpacity={0.93}
-            onPress={() => router.push('/(app)/vet-nearby' as any)}
+            onPress={() => router.push('/(app)/(app)/vet-nearby' as any)}
             style={styles.serviceCard}
           >
             <Image source={{ uri: VET_IMG }} style={styles.serviceImg} />

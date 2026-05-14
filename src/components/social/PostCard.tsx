@@ -10,6 +10,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -237,14 +239,14 @@ const AuthorBlock = ({
   uri,
   timeAgo,
   onPlusPress,
-  onDeletePress,
+  onMenuPress,
 }: {
   name: string;
   username?: string;
   uri?: string | null;
   timeAgo: string;
   onPlusPress?: () => void;
-  onDeletePress?: () => void;
+  onMenuPress?: () => void;
 }) => {
   const initials = (name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const palettes = [
@@ -288,15 +290,9 @@ const AuthorBlock = ({
             {name || 'Anonymous'}
           </Text>
           <Text style={s.timeAgo}>{timeAgo}</Text>
-          {onDeletePress ? (
-            <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onDeletePress}>
-              <Ionicons name="trash-outline" size={16} color="#A03048" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }}>
-              <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
+            <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
+          </TouchableOpacity>
         </View>
         {!!username && (
           <Text style={s.authorUsername} numberOfLines={1}>
@@ -636,7 +632,7 @@ export const PostCard = React.memo(({
     setViewerVisible(true);
   };
 
-  const showPlus = Number(currentUser?.id) !== post.user_id && !post.is_following;
+  const showPlus = String(currentUser?.id) !== String(post.user_id) && !post.is_following;
 
   const { toggleLike, deletePost } = useSocialActions();
 
@@ -649,6 +645,55 @@ export const PostCard = React.memo(({
         { text: 'Delete', style: 'destructive', onPress: () => deletePost(post.post_id) },
       ]
     );
+  };
+
+  const handleMenu = () => {
+    const isOwnPost = String(currentUser?.id) === String(post.user_id);
+    
+    if (Platform.OS === 'ios') {
+      const options = isOwnPost 
+        ? ['Cancel', 'Delete Post'] 
+        : ['Cancel', 'Report Post'];
+      
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex: isOwnPost ? 1 : undefined,
+          cancelButtonIndex: 0,
+          title: 'Post Options',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            if (isOwnPost) {
+              handleDelete();
+            } else {
+              Alert.alert('Reported', 'Thank you for reporting this post.');
+            }
+          }
+        }
+      );
+    } else {
+      // Android: Continue using Alert as a simple menu
+      if (isOwnPost) {
+        Alert.alert(
+          'Post Options',
+          undefined,
+          [
+            { text: 'Delete Post', style: 'destructive', onPress: handleDelete },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Post Options',
+          undefined,
+          [
+            { text: 'Report Post', onPress: () => Alert.alert('Reported', 'Thank you for reporting this post.') },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      }
+    }
   };
 
   const repostMutation = useMutation({
@@ -703,7 +748,7 @@ export const PostCard = React.memo(({
             uri={post.author_image}
             timeAgo={timeAgo}
             onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
-            onDeletePress={Number(currentUser?.id) === post.user_id ? handleDelete : undefined}
+            onMenuPress={handleMenu}
           />
 
           {/* ── Pet chip (optional) ── */}

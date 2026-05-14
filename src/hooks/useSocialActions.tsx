@@ -127,6 +127,7 @@ export const useSocialActions = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile'] });
     },
   });
 

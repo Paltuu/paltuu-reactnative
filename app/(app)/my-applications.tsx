@@ -113,7 +113,7 @@ export default function MyApplicationsScreen() {
               </Text>
               <TouchableOpacity 
                 className="bg-primary px-10 py-4 rounded-2xl shadow-lg shadow-primary/30"
-                onPress={() => router.push('/(app)/pets')}
+                onPress={() => router.push('/(app)/(app)/pets')}
               >
                 <Text className="text-white font-black uppercase tracking-wider">Browse Pets</Text>
               </TouchableOpacity>

@@ -20,7 +20,7 @@ import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Video as VideoCompressor } from 'react-native-compressor';
+// import { Video as VideoCompressor } from 'react-native-compressor';
 
 type UploadStage = 'idle' | 'compressing' | 'uploading' | 'finalizing';
 
@@ -332,6 +332,8 @@ export default function CreatePostScreen() {
           setCompressionProgress(0);
 
           let compressedUri = uri;
+          // Skip compression in Expo Go (requires development build)
+          /*
           try {
             compressedUri = await VideoCompressor.compress(
               uri,
@@ -345,10 +347,11 @@ export default function CreatePostScreen() {
               }
             );
           } catch (compressErr) {
-            // Compression failed — fall back to original (still uploads, just bigger)
             console.warn('Video compression failed, using original:', compressErr);
             compressedUri = uri;
           }
+          */
+          compressedUri = uri;
 
           // ── Stage 2: Upload compressed video to S3 ───────────────────────
           setUploadStage('uploading');
@@ -605,7 +608,7 @@ export default function CreatePostScreen() {
                 />
               ))}
               <TouchableOpacity
-                onPress={() => router.push('/(app)/create-pet')}
+                onPress={() => router.push('/(app)/(app)/create-pet')}
                 className="flex-row items-center gap-2 px-3 py-2 rounded-full border border-dashed border-gray-300 mr-2"
               >
                 <Ionicons name="add" size={14} color="#9CA3AF" />

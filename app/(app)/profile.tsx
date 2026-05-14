@@ -428,7 +428,7 @@ export default function ProfileScreen() {
       return (
         <PostCardShared
           post={postWithAuthor}
-          onPress={() => router.push(`/post/${item.post_id}`)}
+          onPress={() => router.push(`/(app)/(app)/post/${item.post_id}`)}
         />
       );
     }
