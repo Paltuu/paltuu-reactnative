@@ -47,6 +47,7 @@ export interface SocialPost {
   is_reposted?: boolean;
   is_following?: boolean;
   pet_name?: string;
+  pet_id?: number;
   // Repost fields (flat structure from backend)
   original_post_id?: string;
   original_content?: string;
@@ -249,6 +250,15 @@ export const socialApi = {
 
   async deletePost(postId: string | number) {
     const { data } = await client.delete(`/social/posts/${postId}`);
+    return data;
+  },
+
+  async updatePost(postId: string | number, payload: {
+    content?: string;
+    pet_id?: number;
+    post_type?: string;
+  }) {
+    const { data } = await client.patch(`/social/posts/${postId}`, payload);
     return data;
   },
 };

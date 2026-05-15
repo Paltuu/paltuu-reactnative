@@ -647,12 +647,24 @@ export const PostCard = React.memo(({
     );
   };
 
+  const handleEdit = () => {
+    router.push({
+      pathname: '/(app)/create-post',
+      params: { 
+        editId: post.post_id,
+        initialCaption: post.content,
+        initialPetId: post.pet_id,
+        initialPostType: post.post_type
+      }
+    });
+  };
+
   const handleMenu = () => {
     const isOwnPost = String(currentUser?.id) === String(post.user_id);
     
     if (Platform.OS === 'ios') {
       const options = isOwnPost 
-        ? ['Cancel', 'Delete Post'] 
+        ? ['Cancel', 'Edit Post', 'Delete Post'] 
         : ['Cancel', 'Report Post'];
       
       ActionSheetIOS.showActionSheetWithOptions(
@@ -663,12 +675,11 @@ export const PostCard = React.memo(({
           title: 'Post Options',
         },
         (buttonIndex) => {
-          if (buttonIndex === 1) {
-            if (isOwnPost) {
-              handleDelete();
-            } else {
-              Alert.alert('Reported', 'Thank you for reporting this post.');
-            }
+          if (isOwnPost) {
+            if (buttonIndex === 1) handleEdit();
+            else if (buttonIndex === 2) handleDelete();
+          } else {
+            if (buttonIndex === 1) Alert.alert('Reported', 'Thank you for reporting this post.');
           }
         }
       );
@@ -679,6 +690,7 @@ export const PostCard = React.memo(({
           'Post Options',
           undefined,
           [
+            { text: 'Edit Post', onPress: handleEdit },
             { text: 'Delete Post', style: 'destructive', onPress: handleDelete },
             { text: 'Cancel', style: 'cancel' },
           ]

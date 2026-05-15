@@ -14,11 +14,12 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
+import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // import { Video as VideoCompressor } from 'react-native-compressor';
 
@@ -190,13 +191,17 @@ export default function CreatePostScreen() {
   const { user } = useAuthStore();
   const { myListings, fetchMyListings } = usePetStore();
 
-  const [postType, setPostType] = useState<PostType>('post');
-  const [caption, setCaption] = useState('');
+  const params = useLocalSearchParams();
+  const editId = params.editId as string;
+  const isEditMode = !!editId;
+
+  const [postType, setPostType] = useState<PostType>((params.initialPostType as PostType) || 'post');
+  const [caption, setCaption] = useState((params.initialCaption as string) || '');
   const [media, setMedia] = useState<string[]>([]);
   // Track which media items are videos (for separate upload path)
   const [mediaTypes, setMediaTypes] = useState<Record<number, 'image' | 'video'>>({});
   const [videoMimeTypes, setVideoMimeTypes] = useState<Record<number, string>>({});
-  const [selectedPets, setSelectedPets] = useState<number[]>([]);
+  const [selectedPets, setSelectedPets] = useState<number[]>(params.initialPetId ? [Number(params.initialPetId)] : []);
   const [milestone, setMilestone] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
@@ -312,6 +317,8 @@ export default function CreatePostScreen() {
     setUploadProgress(0);
   };
 
+    const { updatePost } = useSocialActions();
+
   const handlePost = async () => {
     if (!canPost) return;
     setIsPosting(true);
@@ -320,6 +327,17 @@ export default function CreatePostScreen() {
     setUploadProgress(0);
 
     try {
+      if (isEditMode) {
+        setUploadStage('finalizing');
+        await updatePost(editId, {
+          content: caption,
+          pet_id: selectedPets[0],
+          post_type: postType,
+        });
+        router.back();
+        return;
+      }
+
       let uploadedMedia: any[] = [];
 
       for (let i = 0; i < media.length; i++) {
@@ -451,7 +469,7 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
 
           <Text className="font-headingSemi text-dark" style={{ fontSize: 15 }}>
-            New post
+            {isEditMode ? 'Edit post' : 'New post'}
           </Text>
 
           <TouchableOpacity
@@ -474,11 +492,11 @@ export default function CreatePostScreen() {
                 {uploadStage === 'compressing'
                   ? `Compressing ${Math.round(compressionProgress * 100)}%`
                   : uploadStage === 'uploading'
-                  ? `Uploading ${Math.round(uploadProgress * 100)}%`
+                  ? 'Finalizing...'
                   : 'Finalizing...'}
               </Text>
             </View>
-          ) : 'Post'}
+          ) : (isEditMode ? 'Save' : 'Post')}
             </Text>
           </TouchableOpacity>
         </View>

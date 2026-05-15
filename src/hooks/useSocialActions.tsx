@@ -131,6 +131,16 @@ export const useSocialActions = () => {
     },
   });
 
+  const updatePostMutation = useMutation({
+    mutationFn: ({ postId, payload }: { postId: string | number; payload: any }) => 
+      socialApi.updatePost(postId, payload),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['social-trending'] });
+    },
+  });
+
   const toggleLike = (postId: string | number) => {
     likeMutation.mutate(postId);
   };
@@ -143,12 +153,18 @@ export const useSocialActions = () => {
     deletePostMutation.mutate(postId);
   };
 
+  const updatePost = (postId: string | number, payload: any) => {
+    return updatePostMutation.mutateAsync({ postId, payload });
+  };
+
   return {
     toggleLike,
     toggleFollow,
     deletePost,
+    updatePost,
     isFollowing: followMutation.isPending,
     isLiking: likeMutation.isPending,
     isDeleting: deletePostMutation.isPending,
+    isUpdating: updatePostMutation.isPending,
   };
 };
