@@ -74,7 +74,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
       {post.content.split('\n')[0].replace(/<[^>]*>/g, '').trim()}
     </Text>
     <Text className="text-[13px] text-[#666]">
-      {post.like_count + post.comment_count + post.repost_count} posts · {post.author_name}
+      {post.like_count + post.comment_count + (post.repost_count ?? 0)} posts · {post.author_name}
     </Text>
   </TouchableOpacity>
 );

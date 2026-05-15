@@ -68,6 +68,11 @@ export interface SocialPet {
 }
 
 export const socialApi = {
+  async search(query: string, type: 'all' | 'posts' | 'users' = 'all') {
+    const { data } = await client.get(`/social/search?q=${encodeURIComponent(query)}&type=${type}`);
+    return data as { results: any };
+  },
+
   async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' = 'following') {
     const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
