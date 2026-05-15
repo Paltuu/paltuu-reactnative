@@ -51,8 +51,8 @@ export const useSocialActions = () => {
   });
 
   const followMutation = useMutation({
-    mutationFn: (userId: number) => socialApi.toggleFollow(userId),
-    onMutate: async (userId) => {
+    mutationFn: (userId: string | number) => socialApi.toggleFollow(userId),
+    onMutate: async (userId: string | number) => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       const previousFeed = queryClient.getQueryData(['social-feed']);
 
@@ -63,7 +63,7 @@ export const useSocialActions = () => {
           pages: old.pages.map((page: any) => ({
             ...page,
             posts: page.posts.map((p: SocialPost) => {
-              if (p.user_id === userId) {
+              if (String(p.user_id) === String(userId)) {
                 return { ...p, is_following: !p.is_following };
               }
               return p;
@@ -145,7 +145,7 @@ export const useSocialActions = () => {
     likeMutation.mutate(postId);
   };
 
-  const toggleFollow = (userId: number) => {
+  const toggleFollow = (userId: string | number) => {
     followMutation.mutate(userId);
   };
 

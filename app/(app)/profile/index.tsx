@@ -21,11 +21,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuthStore } from '../../src/stores/authStore';
+import { useAuthStore } from '../../../src/stores/authStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { socialApi, SocialPost } from '../../src/api/social';
-import client from '../../src/api/client';
-import PostCardShared from '../../src/components/social/PostCard';
+import { socialApi, SocialPost } from '../../../src/api/social';
+import client from '../../../src/api/client';
+import PostCardShared from '../../../src/components/social/PostCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
@@ -496,19 +496,31 @@ export default function ProfileScreen() {
 
       {/* Stats */}
       <View style={s.statsRow}>
-        <View style={s.statItem}>
+        <TouchableOpacity 
+          style={s.statItem}
+          onPress={() => router.push({
+            pathname: '/(app)/follow-list',
+            params: { userId: profile.user_id, type: 'followers', name: profile.name }
+          })}
+        >
           <Text style={s.statValue}>
             {formatCount(profile?.follower_count || profile?.followers_count || 0)}
           </Text>
           <Text style={s.statLabel}>Followers</Text>
-        </View>
+        </TouchableOpacity>
         <View style={s.statSep} />
-        <View style={s.statItem}>
+        <TouchableOpacity 
+          style={s.statItem}
+          onPress={() => router.push({
+            pathname: '/(app)/follow-list',
+            params: { userId: profile.user_id, type: 'following', name: profile.name }
+          })}
+        >
           <Text style={s.statValue}>
             {formatCount(profile?.following_count || 0)}
           </Text>
           <Text style={s.statLabel}>Following</Text>
-        </View>
+        </TouchableOpacity>
         <View style={s.statSep} />
         <View style={s.statItem}>
           <Text style={s.statValue}>

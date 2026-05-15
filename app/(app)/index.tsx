@@ -92,7 +92,7 @@ export const QuickProfileModal = ({
                   className="flex-1 bg-[#111] py-3.5 rounded-xl items-center"
                   onPress={() => {
                     onClose();
-                    router.push(`/(app)/(app)/profile/${profile.user_id}`);
+                    router.push(`/(app)/profile/${profile.user_id}`);
                   }}
                 >
                   <Text className="text-white font-bold">View Full Profile</Text>
@@ -176,7 +176,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <PostCard
             post={item}
-            onPress={() => router.push(`/(app)/(app)/post/${item.post_id}`)}
+            onPress={() => router.push(`/(app)/post/${item.post_id}`)}
             onPlusPress={(uid) => setSelectedUserId(uid)}
             isVideoPlaying={playingPostId === item.post_id}
           />

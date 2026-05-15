@@ -626,7 +626,7 @@ export default function CreatePostScreen() {
                 />
               ))}
               <TouchableOpacity
-                onPress={() => router.push('/(app)/(app)/create-pet')}
+                onPress={() => router.push('/(app)/create-pet')}
                 className="flex-row items-center gap-2 px-3 py-2 rounded-full border border-dashed border-gray-300 mr-2"
               >
                 <Ionicons name="add" size={14} color="#9CA3AF" />

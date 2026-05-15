@@ -261,4 +261,18 @@ export const socialApi = {
     const { data } = await client.patch(`/social/posts/${postId}`, payload);
     return data;
   },
+  async getFollowers(userId: string | number) {
+    const { data } = await client.get(`/social/users/${userId}/followers`);
+    return data as { followers: any[]; next_cursor: string | null; has_more: boolean };
+  },
+
+  async getFollowing(userId: string | number) {
+    const { data } = await client.get(`/social/users/${userId}/following`);
+    return data as { following: any[]; next_cursor: string | null; has_more: boolean };
+  },
+
+  async removeFollower(userId: string | number, followerId: string | number) {
+    const { data } = await client.delete(`/social/users/${userId}/followers?followerId=${followerId}`);
+    return data;
+  },
 };

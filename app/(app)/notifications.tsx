@@ -415,10 +415,10 @@ export default function NotificationsScreen() {
     // Route based on type
     const social = SOCIAL_TYPES.includes(item.notification_type);
     const adoption = ADOPTION_TYPES.includes(item.notification_type);
-    if (social) router.push('/(app)/(app)/');
-    else if (adoption) router.push('/(app)/(app)/adoption-requests');
-    else if (item.notification_type === 'order_update') router.push('/(app)/(app)/orders');
-    else if (item.notification_type === 'lost_found_match') router.push('/(app)/(app)/lost-found');
+    if (social) router.push('/(app)/');
+    else if (adoption) router.push('/(app)/adoption-requests');
+    else if (item.notification_type === 'order_update') router.push('/(app)/orders');
+    else if (item.notification_type === 'lost_found_match') router.push('/(app)/lost-found');
   };
 
   const filtered = applyFilter(notifications, filter);

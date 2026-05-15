@@ -14,10 +14,10 @@ function LayoutContent() {
 
   useEffect(() => {
     setOnPlusPress(() => {
-      router.push('/(app)/(app)/(app)/create-post');
+      router.push('/(app)/create-post');
     });
     setOnHeartPress(() => {
-      router.push('/(app)/(app)/(app)/notifications');
+      router.push('/(app)/notifications');
     });
   }, [router, setOnPlusPress, setOnHeartPress]);
 
@@ -137,6 +137,7 @@ function LayoutContent() {
         <Tabs.Screen name="pet-details" options={{ href: null }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
+        <Tabs.Screen name="follow-list" options={{ href: null }} />
       </Tabs>
     </View>
   );
