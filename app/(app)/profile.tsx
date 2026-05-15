@@ -421,6 +421,7 @@ export default function ProfileScreen() {
     if (activeTab === 'Posts') {
       const postWithAuthor: SocialPost = {
         ...item,
+        user_id: profile.user_id,
         author_name: profile.name,
         author_image: profile.profile_image_url,
         social_username: profile.social_username || profile.username,
@@ -428,7 +429,7 @@ export default function ProfileScreen() {
       return (
         <PostCardShared
           post={postWithAuthor}
-          onPress={() => router.push(`/(app)/(app)/post/${item.post_id}`)}
+          onPress={() => router.push(`/(app)/post/${item.post_id}`)}
         />
       );
     }
