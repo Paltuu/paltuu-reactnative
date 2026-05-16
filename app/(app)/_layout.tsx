@@ -110,7 +110,7 @@ function LayoutContent() {
           }}
         />
         <Tabs.Screen
-          name="profile"
+          name="profile/index"
           options={{
             title: 'Profile',
             tabBarIcon: ({ color, focused }) => (
@@ -120,6 +120,7 @@ function LayoutContent() {
         />
 
         {/* Hidden Screens */}
+        <Tabs.Screen name="profile/[id]" options={{ href: null }} />
         <Tabs.Screen name="adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-care" options={{ href: null }} />
         <Tabs.Screen name="lost-found" options={{ href: null }} />
