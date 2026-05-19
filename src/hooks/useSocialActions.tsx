@@ -141,6 +141,69 @@ export const useSocialActions = () => {
     },
   });
 
+  const saveMutation = useMutation({
+    mutationFn: async ({ postId, isSaved }: { postId: string | number; isSaved: boolean }) => {
+      if (isSaved) {
+        return socialApi.unsavePost(postId);
+      } else {
+        return socialApi.savePost(postId);
+      }
+    },
+    onMutate: async ({ postId, isSaved }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: ['social-feed'] });
+      await queryClient.cancelQueries({ queryKey: ['social-profile'] });
+      await queryClient.cancelQueries({ queryKey: ['social-trending'] });
+
+      // Save snapshots
+      const previousFeed = queryClient.getQueryData(['social-feed']);
+
+      // Helper function to update posts array
+      const updatePostsArray = (posts: SocialPost[]) => {
+        return posts.map((p) => {
+          if (String(p.post_id) === String(postId)) {
+            return { ...p, is_saved: !isSaved };
+          }
+          return p;
+        });
+      };
+
+      // Optimistic updates
+      queryClient.setQueryData(['social-feed'], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: updatePostsArray(page.posts),
+          })),
+        };
+      });
+
+      queryClient.setQueryData(['social-profile'], (old: any) => {
+        if (!old || !old.posts) return old;
+        return {
+          ...old,
+          posts: updatePostsArray(old.posts),
+        };
+      });
+
+      return { previousFeed };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousFeed) {
+        queryClient.setQueryData(['social-feed'], context.previousFeed);
+      }
+      Alert.alert('Error', 'Failed to update bookmark status');
+    },
+    onSettled: (data, err, { postId }) => {
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['save-status', postId] });
+      queryClient.invalidateQueries({ queryKey: ['social-collections'] });
+    },
+  });
+
   const toggleLike = (postId: string | number) => {
     likeMutation.mutate(postId);
   };
@@ -157,14 +220,20 @@ export const useSocialActions = () => {
     return updatePostMutation.mutateAsync({ postId, payload });
   };
 
+  const toggleSave = (postId: string | number, isSaved: boolean) => {
+    saveMutation.mutate({ postId, isSaved });
+  };
+
   return {
     toggleLike,
     toggleFollow,
     deletePost,
     updatePost,
+    toggleSave,
     isFollowing: followMutation.isPending,
     isLiking: likeMutation.isPending,
     isDeleting: deletePostMutation.isPending,
     isUpdating: updatePostMutation.isPending,
+    isSaving: saveMutation.isPending,
   };
 };

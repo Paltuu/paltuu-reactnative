@@ -46,6 +46,7 @@ export interface SocialPost {
   is_liked?: boolean;
   is_reposted?: boolean;
   is_following?: boolean;
+  is_saved?: boolean;
   pet_name?: string;
   pet_id?: number;
   // Repost fields (flat structure from backend)
@@ -73,6 +74,7 @@ export interface Collection {
   name: string;
   owner_id: number;
   post_count: number;
+  is_default?: boolean;
 }
 
 export const socialApi = {
@@ -260,32 +262,42 @@ export const socialApi = {
   },
 
   async getCollections() {
-    const { data } = await client.get('/social/collections');
+    const { data } = await client.get('/collections');
     return data as { collections: Collection[] };
   },
 
   async getSaveStatus(postId: string | number) {
-    const { data } = await client.get(`/social/posts/${postId}/save-status`);
-    return data as { is_saved: boolean; collections: { collection_id: number; name: string }[] };
+    const { data } = await client.get(`/posts/${postId}/save-status`);
+    return data as { is_saved: boolean; save_id?: string | number; collections: { collection_id: number; name: string }[] };
   },
 
   async createCollection(name: string) {
-    const { data } = await client.post('/social/collections', { name });
+    const { data } = await client.post('/collections', { name });
     return data as Collection;
   },
 
+  async savePost(postId: string | number, collectionIds: number[] = []) {
+    const { data } = await client.post(`/posts/${postId}/save`, { collection_ids: collectionIds });
+    return data as { saved: boolean; save_id: string | number };
+  },
+
+  async unsavePost(postId: string | number) {
+    const { data } = await client.delete(`/posts/${postId}/save`);
+    return data as { unsaved: boolean };
+  },
+
   async addPostToCollection(collectionId: number, postId: string | number) {
-    const { data } = await client.post(`/social/collections/${collectionId}/posts`, { post_id: postId });
+    const { data } = await client.post(`/collections/${collectionId}/posts`, { post_id: postId });
     return data;
   },
 
   async removePostFromCollection(collectionId: number, postId: string | number) {
-    const { data } = await client.delete(`/social/collections/${collectionId}/posts/${postId}`);
+    const { data } = await client.delete(`/collections/${collectionId}/posts/${postId}`);
     return data;
   },
 
   async getCollectionPosts(collectionId: number, cursor?: string) {
-    const url = `/social/collections/${collectionId}/posts${cursor ? `?cursor=${cursor}` : ''}`;
+    const url = `/collections/${collectionId}/posts${cursor ? `?cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null };
   },

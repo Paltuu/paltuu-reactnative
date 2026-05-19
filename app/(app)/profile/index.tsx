@@ -630,6 +630,14 @@ export default function ProfileScreen() {
                 <View style={s.menuDivider} />
 
                 <MenuItem icon="settings-outline" label="Settings" onPress={closeMenu} />
+                <MenuItem 
+                  icon="bookmark-outline" 
+                  label="Saved Posts" 
+                  onPress={() => {
+                    closeMenu();
+                    router.push('/(app)/profile/saved');
+                  }} 
+                />
                 <MenuItem icon="paw-outline" label="My Adoption Listings" onPress={closeMenu} />
                 <MenuItem icon="document-text-outline" label="My Applications" onPress={closeMenu} />
 

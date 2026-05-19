@@ -121,6 +121,8 @@ function LayoutContent() {
 
         {/* Hidden Screens */}
         <Tabs.Screen name="profile/[id]" options={{ href: null }} />
+        <Tabs.Screen name="profile/saved/index" options={{ href: null }} />
+        <Tabs.Screen name="profile/saved/[collection_id]/index" options={{ href: null }} />
         <Tabs.Screen name="adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-care" options={{ href: null }} />
         <Tabs.Screen name="lost-found" options={{ href: null }} />

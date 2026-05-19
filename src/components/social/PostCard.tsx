@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../../hooks/useSocialActions';
+import { SaveBottomSheet } from './SaveBottomSheet';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -503,21 +504,27 @@ const ActionBar = ({
   commentCount,
   reposted,
   repostCount,
+  saved,
   onLike,
   onComment,
   onRepost,
+  onSave,
+  onSaveLongPress,
 }: {
   liked: boolean;
   likeCount: number;
   commentCount: number;
   reposted: boolean;
   repostCount?: number;
+  saved: boolean;
   onLike: () => void;
   onComment: () => void;
   onRepost: () => void;
+  onSave: () => void;
+  onSaveLongPress: () => void;
 }) => (
   <View style={s.actionBar}>
-    {/* Left group: paw, comment, repost */}
+    {/* Left group: paw, comment, repost, share */}
     <View style={s.actionGroup}>
       <TouchableOpacity onPress={onLike} style={s.actionBtn} hitSlop={8}>
         <Ionicons
@@ -551,11 +558,26 @@ const ActionBar = ({
           </Text>
         )}
       </TouchableOpacity>
+
+      {/* Share icon inside left group */}
+      <TouchableOpacity style={s.actionBtn} hitSlop={8}>
+        <Ionicons name="paper-plane-outline" size={19} color="#9CA3AF" />
+      </TouchableOpacity>
     </View>
 
-    {/* Right: share */}
-    <TouchableOpacity style={s.actionBtn} hitSlop={8}>
-      <Ionicons name="paper-plane-outline" size={19} color="#9CA3AF" />
+    {/* Right: bookmark pushed to right */}
+    <TouchableOpacity 
+      onPress={onSave}
+      onLongPress={onSaveLongPress}
+      delayLongPress={400}
+      style={[s.actionBtn, { marginLeft: 'auto' }]} 
+      hitSlop={8}
+    >
+      <Ionicons 
+        name={saved ? 'bookmark' : 'bookmark-outline'} 
+        size={19} 
+        color={saved ? '#A03048' : '#9CA3AF'} 
+      />
     </TouchableOpacity>
   </View>
 );
@@ -633,8 +655,9 @@ export const PostCard = React.memo(({
   };
 
   const showPlus = String(currentUser?.id) !== String(post.user_id) && !post.is_following;
+  const [saveSheetVisible, setSaveSheetVisible] = useState(false);
 
-  const { toggleLike, deletePost } = useSocialActions();
+  const { toggleLike, deletePost, toggleSave } = useSocialActions();
 
   const handleDelete = () => {
     Alert.alert(
@@ -820,9 +843,12 @@ export const PostCard = React.memo(({
             commentCount={post.comment_count}
             reposted={!!post.is_reposted}
             repostCount={post.repost_count ?? 0}
+            saved={!!post.is_saved}
             onLike={() => toggleLike(post.post_id)}
             onComment={onPress}
             onRepost={handleRepostPress}
+            onSave={() => toggleSave(post.post_id, !!post.is_saved)}
+            onSaveLongPress={() => setSaveSheetVisible(true)}
           />
         </Pressable>
       </Animated.View>
@@ -833,6 +859,12 @@ export const PostCard = React.memo(({
         visible={viewerVisible}
         index={viewerIndex}
         onClose={() => setViewerVisible(false)}
+      />
+
+      <SaveBottomSheet
+        visible={saveSheetVisible}
+        onClose={() => setSaveSheetVisible(false)}
+        postId={post.post_id}
       />
 
       {/* ── Repost Options Modal ── */}
