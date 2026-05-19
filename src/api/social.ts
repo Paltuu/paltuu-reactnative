@@ -68,9 +68,16 @@ export interface SocialPet {
   main_image: string | null;
 }
 
+export interface Collection {
+  collection_id: number;
+  name: string;
+  owner_id: number;
+  post_count: number;
+}
+
 export const socialApi = {
   async search(query: string, type: 'all' | 'posts' | 'users' = 'all') {
-    const { data } = await client.get(`/social/search?q=${encodeURIComponent(query)}&type=${type}`);
+    const { data } = await client.get(`/explore/search?q=${encodeURIComponent(query)}&type=${type}`);
     return data as { results: any };
   },
 
@@ -118,7 +125,6 @@ export const socialApi = {
     return data as { liked: boolean };
   },
 
-  // ── Image upload (existing flow — unchanged) ─────────────────────────────
   async uploadMedia(files: string[]) {
     const formData = new FormData();
     files.forEach((uri) => {
@@ -139,33 +145,17 @@ export const socialApi = {
     return data as { media: any[] };
   },
 
-  // ── Video upload (new presigned S3 flow) ─────────────────────────────────
-
-  /**
-   * Step 1: get a presigned PUT URL from the backend.
-   * The backend issues a short-lived (15 min) URL pointing to paltuu-videos-raw.
-   */
   async getVideoUploadUrl(ext: string = 'mp4') {
     const { data } = await client.get(`/social/video-upload-url?ext=${ext}`);
     return data as { upload_url: string; video_key: string; expires_in: number };
   },
 
-  /**
-   * Step 2: upload the raw video file directly to S3 using the presigned URL.
-   * Uses fetch so we get upload progress without axios interceptors interfering.
-   *
-   * @param presignedUrl - the PUT URL from step 1
-   * @param fileUri      - local file URI from expo-image-picker
-   * @param mimeType     - e.g. "video/mp4"
-   * @param onProgress   - optional progress callback (0–1)
-   */
   async uploadVideoToS3(
     presignedUrl: string,
     fileUri: string,
     mimeType: string,
     onProgress?: (progress: number) => void
   ): Promise<void> {
-    // For React Native we use XMLHttpRequest to get upload progress
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
@@ -188,14 +178,10 @@ export const socialApi = {
 
       xhr.open('PUT', presignedUrl);
       xhr.setRequestHeader('Content-Type', mimeType);
-      xhr.send({ uri: fileUri } as any); // React Native bridge handles the blob
+      xhr.send({ uri: fileUri } as any);
     });
   },
 
-  /**
-   * Step 3: notify the backend the upload is done.
-   * The backend kicks off MediaConvert and returns a job ID.
-   */
   async confirmVideoUpload(videoKey: string, mediaId: string) {
     const { data } = await client.post('/social/video-upload-url', {
       video_key: videoKey,
@@ -204,9 +190,6 @@ export const socialApi = {
     return data as { job_id: string; status: string };
   },
 
-  /**
-   * Poll video processing status (call every few seconds on the post-detail screen).
-   */
   async getVideoStatus(mediaId: string) {
     const { data } = await client.get(`/social/video-status?media_id=${mediaId}`);
     return data as {
@@ -217,7 +200,6 @@ export const socialApi = {
     };
   },
 
-  // ── Post creation ─────────────────────────────────────────────────────────
   async createPost(payload: {
     content: string;
     media: any[];
@@ -261,6 +243,7 @@ export const socialApi = {
     const { data } = await client.patch(`/social/posts/${postId}`, payload);
     return data;
   },
+
   async getFollowers(userId: string | number) {
     const { data } = await client.get(`/social/users/${userId}/followers`);
     return data as { followers: any[]; next_cursor: string | null; has_more: boolean };
@@ -274,5 +257,36 @@ export const socialApi = {
   async removeFollower(userId: string | number, followerId: string | number) {
     const { data } = await client.delete(`/social/users/${userId}/followers?followerId=${followerId}`);
     return data;
+  },
+
+  async getCollections() {
+    const { data } = await client.get('/social/collections');
+    return data as { collections: Collection[] };
+  },
+
+  async getSaveStatus(postId: string | number) {
+    const { data } = await client.get(`/social/posts/${postId}/save-status`);
+    return data as { is_saved: boolean; collections: { collection_id: number; name: string }[] };
+  },
+
+  async createCollection(name: string) {
+    const { data } = await client.post('/social/collections', { name });
+    return data as Collection;
+  },
+
+  async addPostToCollection(collectionId: number, postId: string | number) {
+    const { data } = await client.post(`/social/collections/${collectionId}/posts`, { post_id: postId });
+    return data;
+  },
+
+  async removePostFromCollection(collectionId: number, postId: string | number) {
+    const { data } = await client.delete(`/social/collections/${collectionId}/posts/${postId}`);
+    return data;
+  },
+
+  async getCollectionPosts(collectionId: number, cursor?: string) {
+    const url = `/social/collections/${collectionId}/posts${cursor ? `?cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { posts: SocialPost[]; next_cursor: string | null };
   },
 };

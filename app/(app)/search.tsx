@@ -79,7 +79,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
   </TouchableOpacity>
 );
 
-const TabItem = ({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
+const TabItem = React.memo(({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
   <TouchableOpacity 
     onPress={onPress}
     className={`py-[10px] px-5 border-b-2 ${active ? 'border-primary' : 'border-transparent'}`}
@@ -88,7 +88,7 @@ const TabItem = ({ title, active, onPress }: { title: string, active: boolean, o
       {title}
     </Text>
   </TouchableOpacity>
-);
+));
 
 export default function SearchScreen() {
   const { toggleFollow } = useSocialActions();
@@ -104,14 +104,14 @@ export default function SearchScreen() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerMedia, setViewerMedia] = useState<{ url: string }[]>([]);
 
-  const handleGridImagePress = (post: SocialPost, index: number) => {
+  const handleGridImagePress = useCallback((post: SocialPost, index: number) => {
     const media = post.media?.length ? post.media : post.original_media;
     if (media?.length) {
       setViewerMedia(media.map(m => ({ url: m.url })));
       setViewerIndex(index);
       setViewerVisible(true);
     }
-  };
+  }, []);
 
   // ─── Trending Feed (Global) ────────────────────────────────────────────────
   const {
@@ -161,7 +161,7 @@ export default function SearchScreen() {
     }
   }, [searchData, activeTab]);
 
-  const renderUserItem = ({ item }: { item: any }) => (
+  const renderUserItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity 
       onPress={() => router.push(`/(app)/profile/${item.user_id}`)}
       className="flex-row items-center p-4 border-b-[0.5px] border-[#F0F0F0]"
@@ -183,9 +183,9 @@ export default function SearchScreen() {
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
-  );
+  ), [router, toggleFollow]);
 
-  const renderHeader = () => (
+  const renderHeader = useMemo(() => (
     <View className="pt-5">
       <Text className="text-[32px] font-extrabold mb-[15px] px-4">
         Explore
@@ -194,7 +194,7 @@ export default function SearchScreen() {
       <View className="px-4 mb-2.5">
         <SearchBar
           placeholder="Search people or posts..."
-          onSearch={(text) => setSearchQuery(text)}
+          onSearch={setSearchQuery}
           onClear={() => setSearchQuery('')}
           containerWidth={screenWidth - 32}
           tint="#A03048"
@@ -209,12 +209,12 @@ export default function SearchScreen() {
       </View>
 
       {!debouncedQuery && (
-        <View className="p-4 border-b-[0.5px] border-[#F0F0F0]">
-          <Text className="text-lg font-extrabold">Trending Posts</Text>
+        <View style={{ padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}>
+          <Text style={{ fontSize: 18, fontWeight: '800' }}>Trending Posts</Text>
         </View>
       )}
     </View>
-  );
+  ), [activeTab, debouncedQuery]);
 
   const combinedData = useMemo(() => {
     const processPosts = (posts: SocialPost[], isTrending: boolean) => {
@@ -267,7 +267,7 @@ export default function SearchScreen() {
     return data;
   }, [debouncedQuery, trendingPosts, searchResults, activeTab, isLoadingSearch]);
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = useCallback(({ item }: { item: any }) => {
     if (item.type === 'section_header') {
       return (
         <View className="p-4 bg-[#F9F9F9]">
@@ -308,7 +308,7 @@ export default function SearchScreen() {
       );
     }
     return null;
-  };
+  }, [router, handleGridImagePress, debouncedQuery, renderUserItem]);
 
   return (
     <View className="flex-1 bg-white">
