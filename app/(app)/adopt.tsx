@@ -100,7 +100,7 @@ export default function AdoptScreen() {
   };
 
   const handleAddPetClick = () => {
-    alert('Pet listing creation is coming soon to the app!');
+    router.push('/(app)/create-pet');
   };
 
   // --- Render Components ---

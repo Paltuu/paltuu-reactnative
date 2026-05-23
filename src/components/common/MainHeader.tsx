@@ -1,15 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext } from '../../context/HeaderContext';
+import { useQuery } from '@tanstack/react-query';
+import { notificationsApi } from '../../api/notifications';
+import { useAuthStore } from '../../stores/authStore';
 
 export const HEADER_HEIGHT = 60;
 
 export const MainHeader: React.FC = () => {
     const insets = useSafeAreaInsets();
     const { isVisible, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
+    const { isAuthenticated } = useAuthStore();
+
+    // Fetch the live unread count
+    const { data: unreadData } = useQuery({
+        queryKey: ['unread-count'],
+        queryFn: () => notificationsApi.getUnreadCount(),
+        refetchInterval: 30_000, // Poll every 30 seconds
+        enabled: isAuthenticated,
+    });
+
+    const unreadCount = unreadData?.unread_count ?? 0;
 
     const animatedValue = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
 
@@ -37,31 +51,40 @@ export const MainHeader: React.FC = () => {
                 }
             ]}
         >
-                <View style={styles.container}>
-                    <TouchableOpacity style={styles.iconButton} onPress={onPlusPress}>
-                        <Ionicons name="add" size={28} color="#000" />
-                    </TouchableOpacity>
+            <View style={styles.container}>
+                <TouchableOpacity style={styles.iconButton} onPress={onPlusPress}>
+                    <Ionicons name="add" size={28} color="#000" />
+                </TouchableOpacity>
 
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('../../../assets/paltuu bilkul tight.svg')}
-                            style={styles.logo}
-                            contentFit="contain"
-                        />
-                    </View>
-
-                    <TouchableOpacity style={styles.iconButton} onPress={onHeartPress}>
-                        <Ionicons name="heart-outline" size={24} color="#000" />
-                    </TouchableOpacity>
+                <View style={styles.logoContainer}>
+                    <Image
+                        source={require('../../../assets/paltuu bilkul tight.svg')}
+                        style={styles.logo}
+                        contentFit="contain"
+                    />
                 </View>
 
-                {/* Progress Bar Loader */}
-                {isLoading && (
-                    <View style={styles.loaderWrapper}>
-                        <View style={styles.loaderBar} />
+                <TouchableOpacity style={styles.iconButton} onPress={onHeartPress}>
+                    <View style={{ position: 'relative' }}>
+                        <Ionicons name="heart-outline" size={24} color="#000" />
+                        {unreadCount > 0 && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
                     </View>
-                )}
-            </Animated.View>
+                </TouchableOpacity>
+            </View>
+
+            {/* Progress Bar Loader */}
+            {isLoading && (
+                <View style={styles.loaderWrapper}>
+                    <View style={styles.loaderBar} />
+                </View>
+            )}
+        </Animated.View>
     );
 };
 
@@ -118,5 +141,25 @@ const styles = StyleSheet.create({
         height: '100%',
         width: '100%',
         backgroundColor: '#a03048',
+    },
+    badge: {
+        position: 'absolute',
+        top: -4,
+        right: -6,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#a03048',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#fff',
+        paddingHorizontal: 3,
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 8,
+        fontWeight: '700',
+        lineHeight: 10,
     }
 });

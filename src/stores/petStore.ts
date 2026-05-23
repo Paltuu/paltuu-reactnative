@@ -127,7 +127,7 @@ export const usePetStore = create<PetState>((set, get) => ({
 
         // We need an upload endpoint for images in the mobile API
         // For now, using a placeholder logic if client doesn't have it
-        await client.post('../upload-image', formData, {
+        await client.post('/upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       }

@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 
 interface LFPCardProps {
   post: {
@@ -20,48 +21,54 @@ export const LFPCard = ({ post, onPress }: LFPCardProps) => {
   const isLost = post.post_type === 'lost';
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      className="bg-surface rounded-card mb-5 shadow-sm overflow-hidden border-l-4"
-      style={{ borderLeftColor: isLost ? '#EF4444' : '#10B981' }}
+      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5"
+      style={{
+        flex: 1,
+        maxWidth: '46%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }}
     >
-      <View className="flex-row">
-        <Image 
-          source={{ uri: post.main_image || 'https://placehold.co/400x400/A03048/FFFFFF.png?text=' + post.post_type }} 
-          className="w-32 h-32"
-          resizeMode="cover"
+      <View className="relative">
+        <Image
+          source={
+            post.main_image
+              ? post.main_image
+              : require('../../../assets/dog-placeholder.png')
+          }
+          style={{ width: '100%', aspectRatio: 1, borderRadius: 16 }}
+          contentFit="cover"
+          transition={300}
         />
-        
-        <View className="flex-1 p-3 justify-between">
-          <View>
-            <View className="flex-row items-center justify-between mb-1">
-              <View className={`px-2 py-0.5 rounded-md ${isLost ? 'bg-red-100' : 'bg-green-100'}`}>
-                <Text className={`text-[10px] font-heading ${isLost ? 'text-red-500' : 'text-green-500'}`}>
-                  {post.post_type.toUpperCase()}
-                </Text>
-              </View>
-              <Text className="text-[10px] text-gray-400 font-body">
-                {new Date(post.post_date).toLocaleDateString()}
-              </Text>
-            </View>
-            
-            <Text className="font-heading text-sm text-dark mb-1" numberOfLines={1}>
-              {post.pet_description}
-            </Text>
-            
-            <View className="flex-row items-center">
-              <Feather name="map-pin" size={10} color="#9CA3AF" />
-              <Text className="text-[10px] text-gray-500 font-body ml-1" numberOfLines={1}>
-                {post.location}, {post.city}
-              </Text>
-            </View>
-          </View>
+        {/* Lost / Found badge */}
+        <View
+          className="absolute top-2 left-2 px-2 py-1 rounded-full"
+          style={{ backgroundColor: isLost ? '#EF4444' : '#10B981' }}
+        >
+          <Text className="text-white text-[10px] font-bold">
+            {isLost ? 'Lost' : 'Found'}
+          </Text>
+        </View>
+      </View>
 
-          <TouchableOpacity className="bg-gray-50 p-2 rounded-lg flex-row items-center justify-center">
-            <Feather name="phone" size={12} color="#A03048" />
-            <Text className="text-[10px] font-heading text-primary ml-2">CONTACT OWNER</Text>
-          </TouchableOpacity>
+      <View className="py-4">
+        <Text className="font-heading text-base text-dark mb-1" numberOfLines={2}>
+          {post.pet_description}
+        </Text>
+        <Text className="font-body text-gray-500 text-xs mb-1" numberOfLines={1}>
+          {new Date(post.post_date).toLocaleDateString()}
+        </Text>
+        <View className="flex-row items-center">
+          <Ionicons name="location-sharp" size={14} color="#a03048" />
+          <Text className="font-body text-gray-500 text-xs ml-1" numberOfLines={1}>
+            {post.city}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>

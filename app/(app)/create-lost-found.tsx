@@ -156,7 +156,7 @@ export default function CreateLostFoundScreen() {
   const [images, setImages] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchMetadata().catch(() => {});
+    fetchMetadata().catch(() => { });
   }, []);
 
   const categoryOptions = (categories ?? []).map((c: any) => ({
