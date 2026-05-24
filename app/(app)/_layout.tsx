@@ -123,6 +123,13 @@ function LayoutContent() {
         <Tabs.Screen name="profile/[id]" options={{ href: null }} />
         <Tabs.Screen name="profile/saved/index" options={{ href: null }} />
         <Tabs.Screen name="profile/saved/[collection_id]/index" options={{ href: null }} />
+        <Tabs.Screen name="profile/settings" options={{ href: null }} />
+        <Tabs.Screen name="profile/edit" options={{ href: null }} />
+        <Tabs.Screen name="profile/personal-info" options={{ href: null }} />
+        <Tabs.Screen name="profile/help" options={{ href: null }} />
+        <Tabs.Screen name="profile/about" options={{ href: null }} />
+        <Tabs.Screen name="profile/privacy" options={{ href: null }} />
+        <Tabs.Screen name="profile/blocked" options={{ href: null }} />
         <Tabs.Screen name="adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-care" options={{ href: null }} />
         <Tabs.Screen name="lost-found" options={{ href: null }} />

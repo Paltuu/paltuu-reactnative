@@ -22,7 +22,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
@@ -299,6 +299,34 @@ export default function ProfileScreen() {
     enabled: !!userId && activeTab === 'Pets',
   });
 
+  const togglePrivacyMutation = useMutation({
+    mutationFn: (newPrivacy: boolean) => socialApi.togglePrivacy(newPrivacy),
+    onMutate: async (newPrivacy) => {
+      await queryClient.cancelQueries({ queryKey: ['social-profile', userId] });
+      const previousProfile = queryClient.getQueryData(['social-profile', userId]);
+      queryClient.setQueryData(['social-profile', userId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          profile: {
+            ...old.profile,
+            is_private: newPrivacy,
+          }
+        };
+      });
+      return { previousProfile };
+    },
+    onError: (err, newPrivacy, context: any) => {
+      if (context?.previousProfile) {
+        queryClient.setQueryData(['social-profile', userId], context.previousProfile);
+      }
+      Alert.alert('Error', 'Failed to update privacy settings.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+    }
+  });
+
   const profile = profileData?.profile || (user as any);
 
   const initials = (profile?.name || 'U')
@@ -532,7 +560,7 @@ export default function ProfileScreen() {
 
       {/* Action buttons */}
       <View style={s.btnRow}>
-        <TouchableOpacity style={s.btnSecondary}>
+        <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(app)/profile/edit')}>
           <Text style={s.btnSecondaryText}>Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.btnSecondary}>
@@ -629,17 +657,26 @@ export default function ProfileScreen() {
 
                 <View style={s.menuDivider} />
 
-                <MenuItem icon="settings-outline" label="Settings" onPress={closeMenu} />
+                <MenuItem 
+                  icon="settings-outline" 
+                  label="Settings" 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/settings'); }} 
+                />
                 <MenuItem 
                   icon="bookmark-outline" 
                   label="Saved Posts" 
-                  onPress={() => {
-                    closeMenu();
-                    router.push('/(app)/profile/saved');
-                  }} 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/saved'); }} 
                 />
-                <MenuItem icon="paw-outline" label="My Adoption Listings" onPress={closeMenu} />
-                <MenuItem icon="document-text-outline" label="My Applications" onPress={closeMenu} />
+                <MenuItem 
+                  icon="paw-outline" 
+                  label="My Adoption Listings" 
+                  onPress={() => { closeMenu(); router.push('/(app)/my-listings'); }} 
+                />
+                <MenuItem 
+                  icon="document-text-outline" 
+                  label="My Applications" 
+                  onPress={() => { closeMenu(); router.push('/(app)/my-applications'); }} 
+                />
 
                 {/* Account privacy toggle */}
                 <View style={s.menuItemRow}>
@@ -649,7 +686,8 @@ export default function ProfileScreen() {
                   </View>
                   <Switch
                     value={profile?.is_private ?? false}
-                    onValueChange={() => {}}
+                    onValueChange={(val) => togglePrivacyMutation.mutate(val)}
+                    disabled={togglePrivacyMutation.isPending}
                     trackColor={{ true: DS.primary, false: DS.gray100 }}
                     thumbColor="#FFFFFF"
                   />
@@ -657,10 +695,26 @@ export default function ProfileScreen() {
 
                 <View style={s.menuDivider} />
 
-                <MenuItem icon="help-circle-outline" label="Help" onPress={closeMenu} />
-                <MenuItem icon="information-circle-outline" label="About" onPress={closeMenu} />
-                <MenuItem icon="shield-outline" label="Privacy Center" onPress={closeMenu} />
-                <MenuItem icon="remove-circle-outline" label="Blocked" onPress={closeMenu} />
+                <MenuItem 
+                  icon="help-circle-outline" 
+                  label="Help" 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/help'); }} 
+                />
+                <MenuItem 
+                  icon="information-circle-outline" 
+                  label="About" 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/about'); }} 
+                />
+                <MenuItem 
+                  icon="shield-outline" 
+                  label="Privacy Center" 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/privacy'); }} 
+                />
+                <MenuItem 
+                  icon="remove-circle-outline" 
+                  label="Blocked Users" 
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/blocked'); }} 
+                />
 
                 <View style={s.menuDivider} />
 

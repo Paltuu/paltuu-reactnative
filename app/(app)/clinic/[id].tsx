@@ -28,7 +28,7 @@ export default function ClinicDetailsScreen() {
     return (
       <View className="flex-1 bg-white justify-center items-center p-10">
         <Text className="font-heading text-lg text-gray-500 text-center">Failed to load clinic details. Please try again.</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.back()}
           className="mt-4 bg-primary px-6 py-2 rounded-xl"
         >
@@ -70,7 +70,7 @@ export default function ClinicDetailsScreen() {
             className="w-full h-64"
             resizeMode="cover"
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.back()}
             className="absolute top-12 left-5 bg-white/80 p-2 rounded-full"
           >
@@ -117,7 +117,7 @@ export default function ClinicDetailsScreen() {
                 <Feather name="phone" size={16} color="white" />
                 <Text className="text-white font-heading text-sm">Call Now</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 onPress={handleWhatsApp}
                 className="w-14 bg-green-500 rounded-2xl items-center justify-center shadow-sm"
@@ -163,10 +163,9 @@ export default function ClinicDetailsScreen() {
 
           {clinic.vets && clinic.vets.length > 0 ? (
             clinic.vets.map((vet) => (
-              <VetCard 
-                key={vet.vet_id} 
-                vet={vet} 
-                onPress={() => router.push({ pathname: '/(app)/vet/[id]', params: { id: vet.vet_id } })}
+              <VetCard
+                key={vet.vet_id}
+                vet={vet}
               />
             ))
           ) : (

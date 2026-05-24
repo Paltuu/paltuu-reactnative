@@ -15,6 +15,7 @@ export interface SocialProfile {
   posts_count?: number;
   is_following?: boolean;
   is_own_profile?: boolean;
+  is_private?: boolean;
 }
 
 export interface SocialPostMedia {
@@ -97,6 +98,16 @@ export const socialApi = {
   async getProfile(userId: string | number) {
     const { data } = await client.get(`/social/profile/${userId}`);
     return data as { profile: SocialProfile; posts: SocialPost[] };
+  },
+
+  async togglePrivacy(isPrivate: boolean) {
+    const { data } = await client.patch('/social/profile/privacy', { is_private: isPrivate });
+    return data;
+  },
+
+  async updateProfile(payload: Partial<SocialProfile & { email: string, phone_number: string }>) {
+    const { data } = await client.patch('/social/profile/update', payload);
+    return data as { success: boolean; user: any };
   },
 
   async getReposts(userId: string | number, page: number = 1) {
