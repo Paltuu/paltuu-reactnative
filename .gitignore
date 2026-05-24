@@ -9,6 +9,7 @@ dist/
 web-build/
 expo-env.d.ts
 
+
 # Native
 .kotlin/
 *.orig.*
@@ -41,3 +42,4 @@ yarn-error.*
 /android
 
 .env
+.cursor

@@ -21,6 +21,7 @@ import { queryClient } from '../src/api/queryClient';
 import '../src/styles/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import Toast from 'react-native-toast-message';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -82,6 +83,7 @@ export default function RootLayout() {
           </BottomSheetModalProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
+      <Toast />
     </GestureHandlerRootView>
   );
 }

@@ -16,6 +16,8 @@ export interface SocialProfile {
   is_following?: boolean;
   is_own_profile?: boolean;
   is_private?: boolean;
+  is_blocked_by_me?: boolean;
+  is_blocking_me?: boolean;
 }
 
 export interface SocialPostMedia {
@@ -311,5 +313,36 @@ export const socialApi = {
     const url = `/collections/${collectionId}/posts${cursor ? `?cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null };
+  },
+
+  async reportPost(postId: string | number, payload: { reason_code: string; additional_note?: string }) {
+    const { data } = await client.post(`/posts/${postId}/report`, payload);
+    return data;
+  },
+
+  async reportUser(userId: string | number, payload: { reason_code: string; additional_note?: string }) {
+    const { data } = await client.post(`/users/${userId}/report`, payload);
+    return data;
+  },
+
+  async reportComment(commentId: string | number, payload: { reason_code: string; additional_note?: string }) {
+    const { data } = await client.post(`/comments/${commentId}/report`, payload);
+    return data;
+  },
+
+  async blockUser(userId: string | number) {
+    const { data } = await client.post(`/users/${userId}/block`);
+    return data as { blocked: boolean };
+  },
+
+  async unblockUser(userId: string | number) {
+    const { data } = await client.delete(`/users/${userId}/block`);
+    return data as { unblocked: boolean };
+  },
+
+  async getBlockedUsers(cursor?: string, limit: number = 20) {
+    const url = `/users/me/blocked?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { blocked_users: any[]; next_cursor: string | null; has_more: boolean };
   },
 };

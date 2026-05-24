@@ -24,6 +24,8 @@ import { socialApi, SocialPost } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 import { useSocialActions } from '../../../src/hooks/useSocialActions';
+import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
+import { useMutation } from '@tanstack/react-query';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COVER_H = 210;
@@ -111,6 +113,7 @@ export default function UserProfileScreen() {
 
   const [activeTab, setActiveTab] = useState<any>('Posts');
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
 
   const userId = id as string;
   const isMe = String(currentUser?.id) === String(userId);
@@ -142,7 +145,74 @@ export default function UserProfileScreen() {
     Reposts: repostsData?.reposts || [],
   };
 
+  const isBlockedByMe = profile?.is_blocked_by_me;
+  const isBlockingMe = profile?.is_blocking_me;
+  const isPrivateLocked = profile?.is_private_locked;
+  const isLocked = isPrivateLocked || isBlockedByMe || isBlockingMe;
   const isTabLoading = (activeTab === 'Posts' && isProfileLoading) || (activeTab === 'Pets' && isPetsLoading) || (activeTab === 'Reposts' && isRepostsLoading);
+
+  const blockMutation = useMutation({
+    mutationFn: () => socialApi.blockUser(userId),
+    onSuccess: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'success', text1: 'User blocked' });
+      });
+      queryClient.setQueryData(['social-feed'], (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.filter((p: any) => String(p.user_id) !== String(userId))
+          }))
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['social-search'] });
+      queryClient.invalidateQueries({ queryKey: ['social-explore'] });
+    },
+    onError: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'error', text1: 'Could not block user' });
+      });
+    }
+  });
+
+  const handleProfileMenu = () => {
+    import('react-native').then(({ ActionSheetIOS, Platform, Alert }) => {
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Report Profile', 'Block User'],
+            destructiveButtonIndex: 2,
+            cancelButtonIndex: 0,
+          },
+          (btnIdx) => {
+            if (btnIdx === 1) setReportSheetVisible(true);
+            else if (btnIdx === 2) {
+              Alert.alert('Block User', 'Are you sure you want to block this user?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
+              ]);
+            }
+          }
+        );
+      } else {
+        Alert.alert('Profile Options', undefined, [
+          { text: 'Report Profile', onPress: () => setReportSheetVisible(true) },
+          { text: 'Block User', style: 'destructive', onPress: () => {
+              Alert.alert('Block User', 'Are you sure you want to block this user?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
+              ]);
+            }
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
+      }
+    });
+  };
 
   const renderItem = ({ item }: { item: any }) => {
     if (activeTab === 'Posts') {
@@ -165,6 +235,11 @@ export default function UserProfileScreen() {
         <TouchableOpacity style={s.menuBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
+        {!isMe && !isBlockedByMe && !isBlockingMe && (
+          <TouchableOpacity style={[s.menuBtn, { marginLeft: 'auto' }]} onPress={handleProfileMenu}>
+            <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('cover')}>
@@ -205,7 +280,7 @@ export default function UserProfileScreen() {
           <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(app)/profile')}>
             <Text style={s.btnSecondaryText}>Go to My Profile</Text>
           </TouchableOpacity>
-        ) : (
+        ) : !isBlockedByMe && !isBlockingMe ? (
           <TouchableOpacity 
             style={[s.btnPrimary, profile?.is_following && s.btnSecondary]} 
             onPress={() => toggleFollow(userId)}
@@ -219,21 +294,33 @@ export default function UserProfileScreen() {
               </Text>
             )}
           </TouchableOpacity>
-        )}
+        ) : null}
         <TouchableOpacity style={s.btnSecondary}>
           <Ionicons name="share-social-outline" size={16} color={DS.primary} style={{ marginRight: 6 }} />
           <Text style={s.btnSecondaryText}>Share</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={s.tabBar}>
-        {TAB_CONFIG.map(({ key, renderIcon }) => (
-          <TouchableOpacity key={key} style={s.tabItem} onPress={() => setActiveTab(key)} activeOpacity={0.7}>
-            {renderIcon(activeTab === key)}
-            {activeTab === key && <View style={s.tabUnderline} />}
-          </TouchableOpacity>
-        ))}
-      </View>
+      {!isLocked ? (
+        <View style={s.tabBar}>
+          {TAB_CONFIG.map(({ key, renderIcon }) => (
+            <TouchableOpacity key={key} style={s.tabItem} onPress={() => setActiveTab(key)} activeOpacity={0.7}>
+              {renderIcon(activeTab === key)}
+              {activeTab === key && <View style={s.tabUnderline} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <Ionicons name="lock-closed-outline" size={48} color={DS.gray400} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: DS.dark, marginTop: 12, textAlign: 'center' }}>
+            {isBlockedByMe ? "You've blocked this account" : isBlockingMe ? "This account is not available" : "Profile is Private"}
+          </Text>
+          <Text style={{ fontSize: 14, color: DS.gray500, marginTop: 8, textAlign: 'center' }}>
+            {isBlockedByMe ? "You must unblock this user in Blocked Users to see their posts." : isBlockingMe ? "You cannot view this user's posts." : "Follow this user to see their posts and pets."}
+          </Text>
+        </View>
+      )}
     </View>
   );
 
@@ -259,6 +346,13 @@ export default function UserProfileScreen() {
           <View style={s.imgModalContent}>{imageModal === 'profile' ? (profile?.profile_image_url ? <Image source={{ uri: profile.profile_image_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="person-outline" size={80} color="white" /></View>) : (profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="image-outline" size={80} color="white" /></View>)}</View>
         </View>
       </Modal>
+
+      <ReportBottomSheet
+        visible={reportSheetVisible}
+        onClose={() => setReportSheetVisible(false)}
+        targetType="user"
+        targetId={userId}
+      />
     </View>
   );
 }

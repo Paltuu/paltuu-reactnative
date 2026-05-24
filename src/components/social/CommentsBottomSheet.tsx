@@ -4,6 +4,7 @@ import { BottomSheetModal, BottomSheetView, BottomSheetFlatList, BottomSheetText
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
 
 interface CommentsBottomSheetProps {
@@ -17,6 +18,9 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState<number | null>(null);
+  const [reportTargetType, setReportTargetType] = useState<'user' | 'comment'>('user');
 
   // Snap points for the bottom sheet
   const snapPoints = useMemo(() => ['60%', '90%'], []);
@@ -59,6 +63,89 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
     postMutation.mutate(commentText);
   };
 
+  const blockMutation = useMutation({
+    mutationFn: (userId: number) => socialApi.blockUser(userId),
+    onSuccess: (_, userId) => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'success', text1: 'User blocked' });
+      });
+      // Filter out comments from this user
+      queryClient.setQueryData(['comments', postId], (old: any) => {
+        if (!old?.comments) return old;
+        return {
+          ...old,
+          comments: old.comments.filter((c: any) => c.user_id !== userId)
+        };
+      });
+      // Also invalidate feed and profile
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['social-search'] });
+      queryClient.invalidateQueries({ queryKey: ['social-explore'] });
+    },
+    onError: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'error', text1: 'Could not block user' });
+      });
+    }
+  });
+
+  const handleCommentMenu = (item: any) => {
+    const isOwnComment = String(user?.id) === String(item.user_id);
+    if (isOwnComment) return;
+
+    import('react-native').then(({ ActionSheetIOS, Platform, Alert }) => {
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Report Comment', 'Report User', 'Block User'],
+            destructiveButtonIndex: 3,
+            cancelButtonIndex: 0,
+          },
+          (btnIdx) => {
+            if (btnIdx === 1) {
+              setReportTargetId(Number(item.comment_id));
+              setReportTargetType('comment');
+              setReportSheetVisible(true);
+            } else if (btnIdx === 2) {
+              setReportTargetId(item.user_id);
+              setReportTargetType('user');
+              setReportSheetVisible(true);
+            } else if (btnIdx === 3) {
+              Alert.alert('Block User', `Are you sure you want to block ${item.author_name}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate(item.user_id) },
+              ]);
+            }
+          }
+        );
+      } else {
+        Alert.alert('Options', undefined, [
+          { text: 'Report Comment', onPress: () => {
+              setReportTargetId(Number(item.comment_id));
+              setReportTargetType('comment');
+              setReportSheetVisible(true);
+            } 
+          },
+          { text: 'Report User', onPress: () => {
+              setReportTargetId(item.user_id);
+              setReportTargetType('user');
+              setReportSheetVisible(true);
+            } 
+          },
+          { text: 'Block User', style: 'destructive', onPress: () => {
+              Alert.alert('Block User', `Are you sure you want to block ${item.author_name}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate(item.user_id) },
+              ]);
+            }
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
+      }
+    });
+  };
+
   const renderComment = ({ item }: { item: any }) => {
     const initials = (item.author_name || 'U').split(' ').map((w: any) => w[0]).join('').slice(0, 2).toUpperCase();
     
@@ -68,11 +155,18 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
           <Text className="text-xs font-headingBold text-primary">{initials}</Text>
         </View>
         <View className="flex-1">
-          <View className="flex-row items-center gap-2 mb-1">
-            <Text className="text-[13px] font-headingBold text-dark">{item.author_name || 'User'}</Text>
-            <Text className="text-[11px] font-body text-gray-400">
-              {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'now'}
-            </Text>
+          <View className="flex-row items-center justify-between mb-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[13px] font-headingBold text-dark">{item.author_name || 'User'}</Text>
+              <Text className="text-[11px] font-body text-gray-400">
+                {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'now'}
+              </Text>
+            </View>
+            {String(user?.id) !== String(item.user_id) && (
+              <TouchableOpacity onPress={() => handleCommentMenu(item)} hitSlop={10} className="px-1">
+                <Ionicons name="ellipsis-horizontal" size={14} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
           </View>
           <Text className="text-sm font-body text-gray-700 leading-5">{item.content}</Text>
           <View className="flex-row gap-4 mt-2">
@@ -182,6 +276,13 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
           </TouchableOpacity>
         </View>
       </View>
+
+      <ReportBottomSheet
+        visible={reportSheetVisible}
+        onClose={() => setReportSheetVisible(false)}
+        targetType={reportTargetType}
+        targetId={reportTargetId}
+      />
     </BottomSheetModal>
   );
 };

@@ -48,7 +48,15 @@
       "expo-web-browser",
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},

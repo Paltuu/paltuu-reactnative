@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../../hooks/useSocialActions';
 import { SaveBottomSheet } from './SaveBottomSheet';
+import { ReportBottomSheet } from './ReportBottomSheet';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -610,6 +611,7 @@ export const PostCard = React.memo(({
   const [isRepostModalVisible, setIsRepostModalVisible] = useState(false);
   const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
   const [quoteContent, setQuoteContent] = useState('');
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
 
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
@@ -688,18 +690,57 @@ export const PostCard = React.memo(({
     });
   };
 
+  const blockMutation = useMutation({
+    mutationFn: () => socialApi.blockUser(post.user_id),
+    onSuccess: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'success', text1: 'User blocked' });
+      });
+      queryClient.setQueryData(['social-feed'], (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.filter((p: any) => p.user_id !== post.user_id)
+          }))
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile', post.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['social-search'] });
+      queryClient.invalidateQueries({ queryKey: ['social-explore'] });
+    },
+    onError: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'error', text1: 'Could not block user' });
+      });
+    }
+  });
+
+  const handleBlock = () => {
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block ${post.author_name || 'this user'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
+      ]
+    );
+  };
+
   const handleMenu = () => {
     const isOwnPost = String(currentUser?.id) === String(post.user_id);
     
     if (Platform.OS === 'ios') {
       const options = isOwnPost 
         ? ['Cancel', 'Edit Post', 'Delete Post'] 
-        : ['Cancel', 'Report Post'];
+        : ['Cancel', 'Report Post', 'Block User'];
       
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
-          destructiveButtonIndex: isOwnPost ? 1 : undefined,
+          destructiveButtonIndex: isOwnPost ? 2 : 2,
           cancelButtonIndex: 0,
           title: 'Post Options',
         },
@@ -708,12 +749,13 @@ export const PostCard = React.memo(({
             if (buttonIndex === 1) handleEdit();
             else if (buttonIndex === 2) handleDelete();
           } else {
-            if (buttonIndex === 1) Alert.alert('Reported', 'Thank you for reporting this post.');
+            if (buttonIndex === 1) setReportSheetVisible(true);
+            else if (buttonIndex === 2) handleBlock();
           }
         }
       );
     } else {
-      // Android: Continue using Alert as a simple menu
+      // Android
       if (isOwnPost) {
         Alert.alert(
           'Post Options',
@@ -729,7 +771,8 @@ export const PostCard = React.memo(({
           'Post Options',
           undefined,
           [
-            { text: 'Report Post', onPress: () => Alert.alert('Reported', 'Thank you for reporting this post.') },
+            { text: 'Report Post', onPress: () => setReportSheetVisible(true) },
+            { text: 'Block User', style: 'destructive', onPress: handleBlock },
             { text: 'Cancel', style: 'cancel' },
           ]
         );
@@ -972,6 +1015,12 @@ export const PostCard = React.memo(({
           </View>
         </View>
       </Modal>
+      <ReportBottomSheet
+        visible={reportSheetVisible}
+        onClose={() => setReportSheetVisible(false)}
+        targetType="post"
+        targetId={post.post_id}
+      />
     </>
   );
 });
