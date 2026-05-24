@@ -249,7 +249,11 @@ export const SearchBar = ({
             tint="light"
             style={styles.blurContainer}
           >
-            <View style={styles.searchContainer}>
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={() => inputRef.current?.focus()} 
+              style={styles.searchContainer}
+            >
               <AnimatedView
                 style={[styles.searchContent, animatedSearchContentStyle]}
               >
@@ -277,7 +281,6 @@ export const SearchBar = ({
                     style={[
                       styles.input,
                       animatedInputStyle,
-                      animatedActualInputStyle,
                       props?.inputStyle,
                     ]}
                     cursorColor={props?.tint ?? "#A03048"}
@@ -317,7 +320,7 @@ export const SearchBar = ({
                   </AnimatedTouchable>
                 )}
               </AnimatedView>
-            </View>
+            </TouchableOpacity>
           </BlurView>
         </AnimatedView>
 

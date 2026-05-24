@@ -20,6 +20,7 @@ export const MainHeader: React.FC = () => {
         queryKey: ['unread-count'],
         queryFn: () => notificationsApi.getUnreadCount(),
         refetchInterval: 30_000, // Poll every 30 seconds
+        staleTime: 30_000, // Important: deduplicate calls if multiple headers mount
         enabled: isAuthenticated,
     });
 

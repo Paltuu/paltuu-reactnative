@@ -241,6 +241,7 @@ const AuthorBlock = ({
   timeAgo,
   onPlusPress,
   onMenuPress,
+  onAvatarPress,
 }: {
   name: string;
   username?: string;
@@ -248,6 +249,7 @@ const AuthorBlock = ({
   timeAgo: string;
   onPlusPress?: () => void;
   onMenuPress?: () => void;
+  onAvatarPress?: () => void;
 }) => {
   const initials = (name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const palettes = [
@@ -262,17 +264,19 @@ const AuthorBlock = ({
     <View style={s.authorRow}>
       {/* Avatar */}
       <View style={{ position: 'relative' }}>
-        {uri ? (
-          <Image
-            source={{ uri }}
-            style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={[s.avatarFallback, { backgroundColor: p.bg }]}>
-            <Text style={[s.avatarInitials, { color: p.fg }]}>{initials}</Text>
-          </View>
-        )}
+        <TouchableOpacity onPress={onAvatarPress} disabled={!onAvatarPress} activeOpacity={0.8}>
+          {uri ? (
+            <Image
+              source={{ uri }}
+              style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={[s.avatarFallback, { backgroundColor: p.bg }]}>
+              <Text style={[s.avatarInitials, { color: p.fg }]}>{initials}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
         {onPlusPress && (
           <TouchableOpacity
             onPress={onPlusPress}
@@ -287,9 +291,11 @@ const AuthorBlock = ({
       {/* Name + username stacked */}
       <View style={s.authorTextCol}>
         <View style={s.authorNameRow}>
-          <Text style={s.authorName} numberOfLines={1}>
-            {name || 'Anonymous'}
-          </Text>
+          <TouchableOpacity onPress={onAvatarPress} disabled={!onAvatarPress}>
+            <Text style={s.authorName} numberOfLines={1}>
+              {name || 'Anonymous'}
+            </Text>
+          </TouchableOpacity>
           <Text style={s.timeAgo}>{timeAgo}</Text>
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
@@ -784,6 +790,7 @@ export const PostCard = React.memo(({
             timeAgo={timeAgo}
             onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
             onMenuPress={handleMenu}
+            onAvatarPress={() => router.push(`/(app)/profile/${post.user_id}`)}
           />
 
           {/* ── Pet chip (optional) ── */}
