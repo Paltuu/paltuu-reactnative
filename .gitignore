@@ -43,3 +43,6 @@ yarn-error.*
 
 .env
 .cursor
+
+google-services.json
+GoogleService-Info.plist

@@ -14,6 +14,8 @@ interface CommentsBottomSheetProps {
 }
 
 export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottomSheetProps) => {
+  // Normalize postId to string so React Query cache key is always consistent
+  const normalizedPostId = postId != null ? String(postId) : null;
   const [commentText, setCommentText] = useState('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const queryClient = useQueryClient();
@@ -40,9 +42,9 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
 
   // 1. Fetch Comments (Real-time fetching)
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['comments', postId],
-    queryFn: () => socialApi.getComments(postId!),
-    enabled: !!postId && visible,
+    queryKey: ['comments', normalizedPostId],
+    queryFn: () => socialApi.getComments(normalizedPostId!),
+    enabled: !!normalizedPostId && visible,
     retry: false,
     staleTime: 10000,
   });
@@ -51,10 +53,10 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
 
   // 2. Post Comment Mutation
   const postMutation = useMutation({
-    mutationFn: (text: string) => socialApi.postComment(postId!, text),
+    mutationFn: (text: string) => socialApi.postComment(normalizedPostId!, text),
     onSuccess: () => {
       setCommentText('');
-      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', normalizedPostId] });
     },
   });
 
@@ -70,7 +72,7 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
         mod.default.show({ type: 'success', text1: 'User blocked' });
       });
       // Filter out comments from this user
-      queryClient.setQueryData(['comments', postId], (old: any) => {
+      queryClient.setQueryData(['comments', normalizedPostId], (old: any) => {
         if (!old?.comments) return old;
         return {
           ...old,
@@ -233,6 +235,7 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
           ) : (
             <BottomSheetFlatList
               data={comments}
+              extraData={comments}
               keyExtractor={(item, index) => item.comment_id?.toString() || index.toString()}
               renderItem={renderComment}
               contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}

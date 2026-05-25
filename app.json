@@ -16,11 +16,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.paltuu.app",
-      "googleServicesFile": "./ios/GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.paltuu.app",
-      "googleServicesFile": "./android/app/google-services.json",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -56,12 +56,13 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "./plugins/with-rnfb-fix"
     ],
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a162a4a1-54ea-4acd-ae70-b82e5de7b494"
+        "projectId": "ec2af655-89d5-43dd-b5a5-b56101a3c24a"
       }
     }
   }

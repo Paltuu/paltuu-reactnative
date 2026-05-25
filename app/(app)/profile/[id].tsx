@@ -314,7 +314,7 @@ export default function UserProfileScreen() {
         <View style={{ padding: 40, alignItems: 'center' }}>
           <Ionicons name="lock-closed-outline" size={48} color={DS.gray400} />
           <Text style={{ fontSize: 18, fontWeight: '700', color: DS.dark, marginTop: 12, textAlign: 'center' }}>
-            {isBlockedByMe ? "You've blocked this account" : isBlockingMe ? "This account is not available" : "Profile is Private"}
+            {isBlockedByMe ? "You've blocked this account" : isBlockingMe ? "This account is not available" : "This account is private"}
           </Text>
           <Text style={{ fontSize: 14, color: DS.gray500, marginTop: 8, textAlign: 'center' }}>
             {isBlockedByMe ? "You must unblock this user in Blocked Users to see their posts." : isBlockingMe ? "You cannot view this user's posts." : "Follow this user to see their posts and pets."}
@@ -336,7 +336,20 @@ export default function UserProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
-        ListEmptyComponent={<View style={s.emptyState}>{isTabLoading ? <ActivityIndicator size="small" color={DS.primary} /> : <><MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} /><Text style={s.emptyText}>Nothing here yet</Text></>}</View>}
+        ListEmptyComponent={
+          isLocked ? null : (
+            <View style={s.emptyState}>
+              {isTabLoading ? (
+                <ActivityIndicator size="small" color={DS.primary} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
+                  <Text style={s.emptyText}>Nothing here yet</Text>
+                </>
+              )}
+            </View>
+          )
+        }
       />
 
       {/* Image Viewer */}

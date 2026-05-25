@@ -96,18 +96,16 @@ export default function BlockedUsersScreen() {
             </Text>
           }
           renderItem={({ item, index }) => (
-            <View 
-              className={`flex-row items-center justify-between p-4 bg-gray-50 border border-gray-100 ${
-                index === 0 ? 'rounded-t-2xl' : ''
-              } ${index === blockedUsers.length - 1 ? 'rounded-b-2xl' : ''} ${
-                index !== blockedUsers.length - 1 ? 'border-b-0' : ''
-              }`}
+            <View
+              className={`flex-row items-center justify-between p-4 bg-gray-50 border border-gray-100 ${index === 0 ? 'rounded-t-2xl' : ''
+                } ${index === blockedUsers.length - 1 ? 'rounded-b-2xl' : ''} ${index !== blockedUsers.length - 1 ? 'border-b-0' : ''
+                }`}
             >
               <View className="flex-row items-center flex-1">
                 {item.avatar_url ? (
-                  <Image 
-                    source={{ uri: item.avatar_url }} 
-                    className="w-12 h-12 rounded-full mr-3 bg-gray-200" 
+                  <Image
+                    source={{ uri: item.avatar_url }}
+                    className="w-12 h-12 rounded-full mr-3 bg-gray-200"
                   />
                 ) : (
                   <View className="w-12 h-12 rounded-full mr-3 bg-primary/10 items-center justify-center">
@@ -128,7 +126,7 @@ export default function BlockedUsersScreen() {
                   )}
                 </View>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => handleUnblock(item)}
                 className="bg-primary/10 px-4 py-2 rounded-xl"
               >

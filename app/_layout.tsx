@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SplashScreen } from 'expo-router';
@@ -18,6 +18,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../src/stores/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
+import { registerForPushNotifications } from '../src/services/notifications';
+import { handleDeepLink } from '../src/services/deepLinks';
 import '../src/styles/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -37,7 +39,7 @@ export default function RootLayout() {
     DMSans_700Bold,
   });
 
-  const { isAuthenticated, isLoading, hydrate } = useAuthStore();
+  const { isAuthenticated, isLoading, hydrate, user } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
@@ -61,7 +63,45 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, isLoading, segments, fontsLoaded]);
 
-  // 3. Hide Splash Screen
+  // 3. Notifications Registration & Listeners
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || !user) return;
+
+    // Register token
+    registerForPushNotifications();
+
+    try {
+      const Notifications = require('expo-notifications');
+      
+      // App is foregrounded — notification arrives
+      notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
+        if (__DEV__) console.log('[Expo Notifications] Foreground message received');
+        queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      });
+
+      // User taps the notification
+      responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
+        if (__DEV__) console.log('[Expo Notifications] Notification tapped');
+        const data = response.notification.request.content.data;
+        if (data?.deep_link) {
+          handleDeepLink(data.deep_link as string);
+        }
+      });
+    } catch (e) {
+      if (__DEV__) console.log('Expo notifications not supported in this simulator build.');
+    }
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, [isAuthenticated, isLoading, user]);
+
+  // 4. Hide Splash Screen
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();

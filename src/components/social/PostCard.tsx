@@ -265,7 +265,7 @@ const AuthorBlock = ({
     <View style={s.authorRow}>
       {/* Avatar */}
       <View style={{ position: 'relative' }}>
-        <TouchableOpacity onPress={onAvatarPress} disabled={!onAvatarPress} activeOpacity={0.8}>
+        <TouchableOpacity activeOpacity={0.8} onPress={onAvatarPress}>
           {uri ? (
             <Image
               source={{ uri }}
@@ -292,7 +292,7 @@ const AuthorBlock = ({
       {/* Name + username stacked */}
       <View style={s.authorTextCol}>
         <View style={s.authorNameRow}>
-          <TouchableOpacity onPress={onAvatarPress} disabled={!onAvatarPress}>
+          <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={{ flex: 1, marginRight: 8 }}>
             <Text style={s.authorName} numberOfLines={1}>
               {name || 'Anonymous'}
             </Text>
@@ -303,9 +303,11 @@ const AuthorBlock = ({
           </TouchableOpacity>
         </View>
         {!!username && (
-          <Text style={s.authorUsername} numberOfLines={1}>
-            @{username}
-          </Text>
+          <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={{ alignSelf: 'flex-start' }}>
+            <Text style={s.authorUsername} numberOfLines={1}>
+              @{username}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -469,7 +471,7 @@ const MediaBlock = ({
         keyExtractor={(_, i) => i.toString()}
         renderItem={({ item, index }) => {
           const isItemVideo = item.media_type === 'video';
-          
+
           if (isItemVideo) {
             const videoUri = item.hls_url || item.url;
             return (
@@ -573,17 +575,17 @@ const ActionBar = ({
     </View>
 
     {/* Right: bookmark pushed to right */}
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={onSave}
       onLongPress={onSaveLongPress}
       delayLongPress={400}
-      style={[s.actionBtn, { marginLeft: 'auto' }]} 
+      style={[s.actionBtn, { marginLeft: 'auto' }]}
       hitSlop={8}
     >
-      <Ionicons 
-        name={saved ? 'bookmark' : 'bookmark-outline'} 
-        size={19} 
-        color={saved ? '#A03048' : '#9CA3AF'} 
+      <Ionicons
+        name={saved ? 'bookmark' : 'bookmark-outline'}
+        size={19}
+        color={saved ? '#A03048' : '#9CA3AF'}
       />
     </TouchableOpacity>
   </View>
@@ -654,10 +656,10 @@ export const PostCard = React.memo(({
 
   const handleImagePress = (index: number) => {
     setViewerIndex(index);
-    setViewerMedia(post.media?.map((m: any) => ({ 
-      url: m.url, 
-      type: m.media_type, 
-      thumbnail_url: m.thumbnail_url 
+    setViewerMedia(post.media?.map((m: any) => ({
+      url: m.url,
+      type: m.media_type,
+      thumbnail_url: m.thumbnail_url
     })) ?? []);
     setViewerVisible(true);
   };
@@ -681,7 +683,7 @@ export const PostCard = React.memo(({
   const handleEdit = () => {
     router.push({
       pathname: '/(app)/create-post',
-      params: { 
+      params: {
         editId: post.post_id,
         initialCaption: post.content,
         initialPetId: post.pet_id,
@@ -731,7 +733,7 @@ export const PostCard = React.memo(({
 
   const handleMenu = () => {
     const isOwnPost = String(currentUser?.id) === String(post.user_id);
-    
+
     if (Platform.OS === 'ios') {
       const options = isOwnPost 
         ? ['Cancel', 'Edit Post', 'Delete Post'] 
@@ -866,10 +868,10 @@ export const PostCard = React.memo(({
                 }}
                 onMediaPress={(index) => {
                   setViewerIndex(index);
-                  setViewerMedia(post.original_media?.map((m: SocialPostMedia) => ({ 
-                    url: m.url, 
-                    type: m.media_type, 
-                    thumbnail_url: m.thumbnail_url 
+                  setViewerMedia(post.original_media?.map((m: SocialPostMedia) => ({
+                    url: m.url,
+                    type: m.media_type,
+                    thumbnail_url: m.thumbnail_url
                   })) ?? []);
                   setViewerVisible(true);
                 }}
@@ -1027,4 +1029,5 @@ export const PostCard = React.memo(({
 
 export default PostCard;
 
+// ─── End of PostCard ───
 // ─── End of PostCard ───

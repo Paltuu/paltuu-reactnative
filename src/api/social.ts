@@ -18,6 +18,7 @@ export interface SocialProfile {
   is_private?: boolean;
   is_blocked_by_me?: boolean;
   is_blocking_me?: boolean;
+  is_private_locked?: boolean;
 }
 
 export interface SocialPostMedia {

@@ -54,7 +54,10 @@ export const useSocialActions = () => {
     mutationFn: (userId: string | number) => socialApi.toggleFollow(userId),
     onMutate: async (userId: string | number) => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
+      await queryClient.cancelQueries({ queryKey: ['social-profile', String(userId)] });
+
       const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousProfile = queryClient.getQueryData(['social-profile', String(userId)]);
 
       queryClient.setQueryData(['social-feed'], (old: any) => {
         if (!old) return old;
@@ -81,22 +84,44 @@ export const useSocialActions = () => {
             ...old.profile,
             is_following: !old.profile.is_following,
             follower_count: old.profile.is_following 
-              ? old.profile.follower_count - 1 
+              ? Math.max(0, old.profile.follower_count - 1)
               : old.profile.follower_count + 1
           }
         };
       });
 
-      return { previousFeed };
+      // Also update full profile if it exists
+      queryClient.setQueryData(['social-profile', String(userId)], (old: any) => {
+        if (!old || !old.profile) return old;
+        return {
+          ...old,
+          profile: {
+            ...old.profile,
+            is_following: !old.profile.is_following,
+            follower_count: old.profile.is_following 
+              ? Math.max(0, old.profile.follower_count - 1)
+              : old.profile.follower_count + 1
+          }
+        };
+      });
+
+      return { previousFeed, previousProfile };
     },
     onError: (err, userId, context) => {
       if (context?.previousFeed) {
         queryClient.setQueryData(['social-feed'], context.previousFeed);
       }
+      if (context?.previousProfile) {
+        queryClient.setQueryData(['social-profile', String(userId)], context.previousProfile);
+      }
     },
     onSettled: (data, err, userId) => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile', String(userId)] });
       queryClient.invalidateQueries({ queryKey: ['social-profile-quick', userId] });
+      queryClient.invalidateQueries({ queryKey: ['social-followers'] });
+      queryClient.invalidateQueries({ queryKey: ['social-following'] });
+      queryClient.invalidateQueries({ queryKey: ['social-search'] });
     },
   });
 
