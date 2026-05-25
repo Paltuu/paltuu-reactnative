@@ -18,14 +18,14 @@ import { useAuthActions } from '../../src/hooks/useAuth';
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
   const { login } = useAuthActions();
 
   const handleLogin = () => {
     login.mutate({
-      email: email.trim().toLowerCase(),
+      email: identifier.trim(),
       password,
     });
   };
@@ -85,12 +85,11 @@ export default function LoginScreen() {
 
             {/* Inputs */}
             <CustomInput
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              label="Email or Username"
+              value={identifier}
+              onChangeText={setIdentifier}
               autoCapitalize="none"
-              placeholder="Enter your email"
+              placeholder="Enter your email or username"
             />
 
             <View className="mt-4">
