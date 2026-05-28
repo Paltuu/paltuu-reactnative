@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  Linking 
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Linking
 } from 'react-native';
 import { Image } from 'expo-image';
 import { usePetStore } from '../../src/stores/petStore';
@@ -14,9 +14,14 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AdoptionRequestsScreen() {
-  const { adoptionRequests, fetchAdoptionRequests, isLoading } = usePetStore();
+  const { adoptionRequests, fetchAdoptionRequests, updateApplicationStatus, isLoading } = usePetStore();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const handleStatusChange = (item: any, status: 'approved' | 'rejected') => {
+    const id = item.type === 'foster' ? item.foster_id : item.adoption_id;
+    updateApplicationStatus(id, item.type, status);
+  };
 
   useEffect(() => {
     fetchAdoptionRequests();
@@ -35,11 +40,18 @@ export default function AdoptionRequestsScreen() {
             <Text className="text-white text-lg font-bold">{item.adopter_name?.[0]?.toUpperCase() || 'U'}</Text>
           </View>
           <View>
-            <Text className="text-base font-bold text-gray-900">{item.adopter_name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text className="text-base font-bold text-gray-900">{item.adopter_name}</Text>
+              <View className={`px-2 py-0.5 rounded-full ${item.status === 'approved' ? 'bg-green-50' : item.status === 'rejected' ? 'bg-red-50' : 'bg-yellow-50'}`}>
+                <Text className={`text-[10px] font-bold ${item.status === 'approved' ? 'text-green-600' : item.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}`}>
+                  {item.status?.toUpperCase() || 'PENDING'}
+                </Text>
+              </View>
+            </View>
             <Text className="text-xs text-gray-400">{item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</Text>
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="w-10 h-10 rounded-full bg-green-500 justify-center items-center"
           onPress={() => handleCall(item.contact_info)}
         >
@@ -49,13 +61,13 @@ export default function AdoptionRequestsScreen() {
 
       <View className="bg-gray-50 p-3 rounded-2xl mb-4">
         <View className="flex-row items-center">
-          <Image 
-            source={{ 
-              uri: item.image_url || 
-                   item.primary_image || 
-                   (item.images && item.images[0]?.image_url) ||
-                   'https://via.placeholder.com/150' 
-            }} 
+          <Image
+            source={{
+              uri: item.image_url ||
+                item.primary_image ||
+                (item.images && item.images[0]?.image_url) ||
+                'https://via.placeholder.com/150'
+            }}
             style={{ width: 48, height: 48, borderRadius: 8 }}
             contentFit="cover"
           />
@@ -72,12 +84,28 @@ export default function AdoptionRequestsScreen() {
       </View>
 
       <View className="flex-row gap-3">
-        <TouchableOpacity className="flex-1 border border-gray-100 py-3 rounded-xl items-center">
-          <Text className="text-gray-500 font-bold">View Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="flex-1 bg-primary py-3 rounded-xl items-center">
-          <Text className="text-white font-bold">Approve</Text>
-        </TouchableOpacity>
+        {item.status === 'pending' || !item.status ? (
+          <>
+            <TouchableOpacity 
+              className="flex-1 border border-red-200 py-3 rounded-xl items-center"
+              onPress={() => handleStatusChange(item, 'rejected')}
+            >
+              <Text className="text-red-500 font-bold">Reject</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              className="flex-1 bg-primary py-3 rounded-xl items-center"
+              onPress={() => handleStatusChange(item, 'approved')}
+            >
+              <Text className="text-white font-bold">Approve</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View className="flex-grow items-center py-3 bg-gray-50 rounded-xl">
+            <Text className="text-gray-400 text-sm font-bold">
+              Request {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

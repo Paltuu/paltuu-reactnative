@@ -23,6 +23,7 @@ interface PetState {
   deletePet: (id: number) => Promise<void>;
   fetchAdoptionRequests: () => Promise<void>;
   fetchMyApplications: () => Promise<void>;
+  updateApplicationStatus: (applicationId: number, type: 'adoption' | 'foster', status: 'approved' | 'rejected') => Promise<void>;
 
   // Selection
   selectedPet: any | null;
@@ -211,6 +212,21 @@ export const usePetStore = create<PetState>((set, get) => ({
       set({ adoptionRequests: list, isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch adoption requests', isLoading: false });
+    }
+  },
+
+  updateApplicationStatus: async (applicationId, type, status) => {
+    try {
+      await petsApi.updateApplicationStatus({ application_id: applicationId, type, status });
+      // Update local state
+      const adoptionRequests = get().adoptionRequests.map(r => 
+        ((type === 'adoption' && r.adoption_id === applicationId) || 
+         (type === 'foster' && r.foster_id === applicationId)) ? { ...r, status } : r
+      );
+      set({ adoptionRequests });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update application status' });
+      throw error;
     }
   },
 

@@ -524,7 +524,7 @@ export default function ProfileScreen() {
 
       {/* Stats */}
       <View style={s.statsRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={s.statItem}
           onPress={() => router.push({
             pathname: '/(app)/follow-list',
@@ -537,7 +537,7 @@ export default function ProfileScreen() {
           <Text style={s.statLabel}>Followers</Text>
         </TouchableOpacity>
         <View style={s.statSep} />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={s.statItem}
           onPress={() => router.push({
             pathname: '/(app)/follow-list',
@@ -633,7 +633,7 @@ export default function ProfileScreen() {
       >
         <Pressable style={s.menuOverlay} onPress={closeMenu}>
           <Animated.View style={[s.menuPanel, { transform: [{ translateX: menuSlideX }] }]}>
-            <Pressable onPress={() => {}} style={{ flex: 1 }}>
+            <Pressable onPress={() => { }} style={{ flex: 1 }}>
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
@@ -657,25 +657,30 @@ export default function ProfileScreen() {
 
                 <View style={s.menuDivider} />
 
-                <MenuItem 
-                  icon="settings-outline" 
-                  label="Settings" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/settings'); }} 
+                <MenuItem
+                  icon="settings-outline"
+                  label="Settings"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/settings'); }}
                 />
-                <MenuItem 
-                  icon="bookmark-outline" 
-                  label="Saved Posts" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/saved'); }} 
+                <MenuItem
+                  icon="bookmark-outline"
+                  label="Saved Posts"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/saved'); }}
                 />
-                <MenuItem 
-                  icon="paw-outline" 
-                  label="My Adoption Listings" 
-                  onPress={() => { closeMenu(); router.push('/(app)/my-listings'); }} 
+                <MenuItem
+                  icon="paw-outline"
+                  label="My Adoption Listings"
+                  onPress={() => { closeMenu(); router.push('/(app)/my-listings'); }}
                 />
-                <MenuItem 
-                  icon="document-text-outline" 
-                  label="My Applications" 
-                  onPress={() => { closeMenu(); router.push('/(app)/my-applications'); }} 
+                <MenuItem
+                  icon="mail-outline"
+                  label="Adoption Requests"
+                  onPress={() => { closeMenu(); router.push('/(app)/adoption-requests'); }}
+                />
+                <MenuItem
+                  icon="document-text-outline"
+                  label="My Applications"
+                  onPress={() => { closeMenu(); router.push('/(app)/my-applications'); }}
                 />
 
                 {/* Account privacy toggle */}
@@ -695,25 +700,25 @@ export default function ProfileScreen() {
 
                 <View style={s.menuDivider} />
 
-                <MenuItem 
-                  icon="help-circle-outline" 
-                  label="Help" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/help'); }} 
+                <MenuItem
+                  icon="help-circle-outline"
+                  label="Help"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/help'); }}
                 />
-                <MenuItem 
-                  icon="information-circle-outline" 
-                  label="About" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/about'); }} 
+                <MenuItem
+                  icon="information-circle-outline"
+                  label="About"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/about'); }}
                 />
-                <MenuItem 
-                  icon="shield-outline" 
-                  label="Privacy Center" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/privacy'); }} 
+                <MenuItem
+                  icon="shield-outline"
+                  label="Privacy Center"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/privacy'); }}
                 />
-                <MenuItem 
-                  icon="remove-circle-outline" 
-                  label="Blocked Users" 
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/blocked'); }} 
+                <MenuItem
+                  icon="remove-circle-outline"
+                  label="Blocked Users"
+                  onPress={() => { closeMenu(); router.push('/(app)/profile/blocked'); }}
                 />
 
                 <View style={s.menuDivider} />

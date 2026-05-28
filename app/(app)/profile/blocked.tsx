@@ -21,7 +21,7 @@ export default function BlockedUsersScreen() {
     isRefetching
   } = useInfiniteQuery({
     queryKey: ['blocked-users'],
-    queryFn: ({ pageParam = null }) => socialApi.getBlockedUsers(pageParam),
+    queryFn: ({ pageParam = null }) => socialApi.getBlockedUsers(pageParam ?? undefined),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
   });

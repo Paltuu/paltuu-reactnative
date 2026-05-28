@@ -88,6 +88,11 @@ export const petApi = {
     return data;
   },
 
+  async updateApplicationStatus(params: { application_id: number; type: 'adoption' | 'foster'; status: 'approved' | 'rejected' }) {
+    const { data } = await client.put('/applications/status', params);
+    return data;
+  },
+
   async getProfile(userId: string) {
     // Reverting to the primary profile endpoint used by the web app (relative to v1)
     const { data } = await client.get(`../my-profile/${userId}`);
