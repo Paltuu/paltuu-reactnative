@@ -57,13 +57,15 @@
           }
         }
       ],
-      "./plugins/with-rnfb-fix"
+      "./plugins/with-rnfb-fix",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "router": {},
       "eas": {
         "projectId": "ec2af655-89d5-43dd-b5a5-b56101a3c24a"
       }
-    }
+    },
+    "owner": "syedshuja"
   }
 }

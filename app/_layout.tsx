@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SplashScreen } from 'expo-router';
@@ -18,12 +18,40 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../src/stores/authStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
-import { registerForPushNotifications } from '../src/services/notifications';
 import { handleDeepLink } from '../src/services/deepLinks';
 import '../src/styles/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Toast from 'react-native-toast-message';
+import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
+import { NotificationProvider } from '../src/context/NotificationContext';
+
+// ─── Module-level: Notification Handler ─────────────────────────────────────
+// Must be set before any notification arrives (outside component)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+// ─── Module-level: Background Task ──────────────────────────────────────────
+const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
+
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, ({ data, error, executionInfo }) => {
+  console.log(
+    '[Paltuu Notifications] 🌙 Background notification received:',
+    JSON.stringify({ data, error, executionInfo }, null, 2)
+  );
+  return Promise.resolve();
+});
+
+Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch((err) => {
+  if (__DEV__) console.log('[Paltuu Notifications] Background task registration:', err.message);
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -63,41 +91,29 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, isLoading, segments, fontsLoaded]);
 
-  // 3. Notifications Registration & Listeners
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
-
+  // 3. Notification query invalidation + deep link handler
+  // Token registration & listener setup is handled by <NotificationProvider>.
+  // Here we only hook into foreground/response events for app-specific side effects.
   useEffect(() => {
     if (!isAuthenticated || isLoading || !user) return;
 
-    // Register token
-    registerForPushNotifications();
+    const foregroundSub = Notifications.addNotificationReceivedListener(() => {
+      if (__DEV__) console.log('[Paltuu] Foreground notification → invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
 
-    try {
-      const Notifications = require('expo-notifications');
-      
-      // App is foregrounded — notification arrives
-      notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
-        if (__DEV__) console.log('[Expo Notifications] Foreground message received');
-        queryClient.invalidateQueries({ queryKey: ['unread-count'] });
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      });
-
-      // User taps the notification
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
-        if (__DEV__) console.log('[Expo Notifications] Notification tapped');
-        const data = response.notification.request.content.data;
-        if (data?.deep_link) {
-          handleDeepLink(data.deep_link as string);
-        }
-      });
-    } catch (e) {
-      if (__DEV__) console.log('Expo notifications not supported in this simulator build.');
-    }
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (__DEV__) console.log('[Paltuu] Notification tapped → checking deep link');
+      const data = response.notification.request.content.data;
+      if (data?.deep_link) {
+        handleDeepLink(data.deep_link as string);
+      }
+    });
 
     return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
+      foregroundSub.remove();
+      responseSub.remove();
     };
   }, [isAuthenticated, isLoading, user]);
 
@@ -111,17 +127,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <StatusBar style="dark" />
-          <BottomSheetModalProvider>
-            {!fontsLoaded && !fontError ? null : (
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
-              </Stack>
-            )}
-          </BottomSheetModalProvider>
-        </SafeAreaProvider>
+        <NotificationProvider>
+          <SafeAreaProvider>
+            <StatusBar style="dark" />
+            <BottomSheetModalProvider>
+              {!fontsLoaded && !fontError ? null : (
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                </Stack>
+              )}
+            </BottomSheetModalProvider>
+          </SafeAreaProvider>
+        </NotificationProvider>
       </QueryClientProvider>
       <Toast />
     </GestureHandlerRootView>
