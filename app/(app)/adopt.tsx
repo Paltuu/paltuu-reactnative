@@ -149,6 +149,33 @@ export default function AdoptScreen() {
     </TouchableOpacity>
   );
 
+  const renderHeader = () => (
+    <View style={{ paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+            Adopt a Pet
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
+            Find your new best friend today
+          </Text>
+        </View>
+        <View 
+          style={{ 
+            backgroundColor: 'rgba(160, 48, 72, 0.1)', 
+            paddingHorizontal: 12, 
+            paddingVertical: 6, 
+            borderRadius: 12 
+          }}
+        >
+          <Text style={{ color: '#a03048', fontWeight: '700', fontSize: 12 }}>
+            {pets.length} Available
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-gray-50">
       <FlatList
@@ -158,9 +185,10 @@ export default function AdoptScreen() {
         numColumns={2}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        ListHeaderComponent={renderHeader}
         contentContainerStyle={{ 
           paddingHorizontal: 12, 
-          paddingBottom: 100, 
+          paddingBottom: 120, 
           paddingTop: insets.top + 8
         }}
         onRefresh={refetch}
@@ -186,23 +214,59 @@ export default function AdoptScreen() {
       />
 
       {/* Floating Buttons */}
-      <View className="absolute bottom-6 left-5 right-5 flex-row justify-between items-center pointer-events-box-none">
-        <TouchableOpacity
-          onPress={handleAddPetClick}
-          className="bg-white px-4 py-3 rounded-2xl flex-row items-center border-2 border-primary shadow-lg"
-          style={{ elevation: 5 }}
-        >
-          <Ionicons name="add-circle-outline" size={20} color="#a03048" />
-          <Text className="ml-2 font-headingSemi text-xs text-primary">Add Pet</Text>
-        </TouchableOpacity>
-
+      <View 
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          left: 20,
+          right: 20,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+        pointerEvents="box-none"
+      >
+        {/* Filters Button (Left) */}
         <TouchableOpacity
           onPress={() => setIsFilterVisible(true)}
-          className="bg-white px-4 py-3 rounded-2xl flex-row items-center border-2 border-primary shadow-lg"
-          style={{ elevation: 5 }}
+          style={{
+            backgroundColor: '#FFFFFF',
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1.5,
+            borderColor: '#a03048',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
+          }}
         >
           <Ionicons name="options-outline" size={20} color="#a03048" />
-          <Text className="ml-2 font-headingSemi text-xs text-primary">Filters</Text>
+          <Text style={{ marginLeft: 8, color: '#a03048', fontWeight: '700', fontSize: 13 }}>Filters</Text>
+        </TouchableOpacity>
+
+        {/* Add Pet Floating Action Button (Right) */}
+        <TouchableOpacity
+          onPress={handleAddPetClick}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#a03048',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#a03048',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 

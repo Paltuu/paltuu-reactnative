@@ -59,7 +59,7 @@ export const MainHeader: React.FC = () => {
 
                 <View style={styles.logoContainer}>
                     <Image
-                        source={require('../../../assets/paltuu bilkul tight.svg')}
+                        source={require('../../../assets/paltuu_bilkul_tight.svg')}
                         style={styles.logo}
                         contentFit="contain"
                     />

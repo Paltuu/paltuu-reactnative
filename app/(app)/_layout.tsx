@@ -90,13 +90,28 @@ function LayoutContent() {
             title: 'Pets',
             tabBarIcon: ({ focused }) => (
               <View
-                className={`w-14 h-14 rounded-full items-center justify-center -mt-8 border-4 border-white ${focused ? 'bg-primary' : 'bg-primarySoft'
-                  }`}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: -16,
+                  borderWidth: 3.5,
+                  borderColor: '#FFFFFF',
+                  backgroundColor: '#a03048',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 3,
+                  elevation: 4,
+                }}
               >
                 <Image
                   source={require('../../assets/primary_icon.svg')}
-                  style={{ width: 32, height: 32, tintColor: 'white' }}
+                  style={{ width: 26, height: 26 }}
                   contentFit="contain"
+                  tintColor="#FFFFFF"
                 />
               </View>
             ),
