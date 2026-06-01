@@ -2,7 +2,7 @@ import { ConfigContext, ExpoConfig } from "expo/config";
 
 const EAS_PROJECT_ID = "ec2af655-89d5-43dd-b5a5-b56101a3c24a";
 const PROJECT_SLUG = "paltuu";
-const OWNER = "syedshuja";
+const OWNER = "paltuupk";
 
 // App production config
 const APP_NAME = "Paltuu";

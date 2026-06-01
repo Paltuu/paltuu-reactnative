@@ -12,6 +12,7 @@ import {
   Alert,
   Platform,
   ActionSheetIOS,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -519,6 +520,7 @@ const ActionBar = ({
   onRepost,
   onSave,
   onSaveLongPress,
+  onShare,
 }: {
   liked: boolean;
   likeCount: number;
@@ -531,6 +533,7 @@ const ActionBar = ({
   onRepost: () => void;
   onSave: () => void;
   onSaveLongPress: () => void;
+  onShare: () => void;
 }) => (
   <View style={s.actionBar}>
     {/* Left group: paw, comment, repost, share */}
@@ -569,7 +572,7 @@ const ActionBar = ({
       </TouchableOpacity>
 
       {/* Share icon inside left group */}
-      <TouchableOpacity style={s.actionBtn} hitSlop={8}>
+      <TouchableOpacity onPress={onShare} style={s.actionBtn} hitSlop={8}>
         <Ionicons name="paper-plane-outline" size={19} color="#9CA3AF" />
       </TouchableOpacity>
     </View>
@@ -901,6 +904,19 @@ export const PostCard = React.memo(({
             onRepost={handleRepostPress}
             onSave={() => toggleSave(post.post_id, !!post.is_saved)}
             onSaveLongPress={() => setSaveSheetVisible(true)}
+            onShare={async () => {
+              try {
+                const plainText = stripHtml(post.content);
+                const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
+                
+                await Share.share({
+                  title: 'Paltuu Social Post',
+                  message: shareText,
+                });
+              } catch (err: any) {
+                Alert.alert('Error', err.message);
+              }
+            }}
           />
         </Pressable>
       </Animated.View>

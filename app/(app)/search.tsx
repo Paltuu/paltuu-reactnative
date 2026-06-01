@@ -20,6 +20,7 @@ import { PostCard } from '../../src/components/social/PostCard';
 import { useDebounce } from '../../src/hooks/useDebounce';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import ImageModal from '../../src/components/common/ImageModal';
+import { MOCK_POSTS } from './index';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -71,7 +72,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
       <Ionicons name="ellipsis-horizontal" size={14} color="#666" />
     </View>
     <Text className="text-[16px] text-[#111] font-extrabold mb-1" numberOfLines={1}>
-      {post.content.split('\n')[0].replace(/<[^>]*>/g, '').trim()}
+      {(post.content || '').split('\n')[0].replace(/<[^>]*>/g, '').trim() || 'Media Post'}
     </Text>
     <Text className="text-[13px] text-[#666]">
       {post.like_count + post.comment_count + (post.repost_count ?? 0)} posts · {post.author_name}
@@ -146,20 +147,30 @@ export default function SearchScreen() {
     [trendingData]
   );
 
+  const matchingMockPosts = useMemo(() => {
+    if (!debouncedQuery) return [];
+    const query = debouncedQuery.toLowerCase().replace('#', '');
+    return MOCK_POSTS.filter(p => 
+      p.content.toLowerCase().includes(query) ||
+      (p.author_name || '').toLowerCase().includes(query) ||
+      (p.social_username || '').toLowerCase().includes(query)
+    );
+  }, [debouncedQuery]);
+
   const searchResults = useMemo(() => {
-    if (!searchData) return { users: [], posts: [] };
+    if (!searchData) return { users: [], posts: matchingMockPosts };
     const results = searchData.results;
     if (activeTab === 'all') {
       return { 
         users: results.users || [], 
-        posts: results.posts || [] 
+        posts: [...matchingMockPosts, ...(results.posts || [])] 
       };
     } else if (activeTab === 'posts') {
-      return { users: [], posts: results || [] };
+      return { users: [], posts: [...matchingMockPosts, ...(results || [])] };
     } else {
       return { users: results || [], posts: [] };
     }
-  }, [searchData, activeTab]);
+  }, [searchData, activeTab, matchingMockPosts]);
 
   const renderUserItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity 

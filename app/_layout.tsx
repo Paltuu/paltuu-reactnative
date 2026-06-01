@@ -26,32 +26,38 @@ import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { NotificationProvider } from '../src/context/NotificationContext';
+import { OfflineBanner } from '../src/components/common/OfflineBanner';
 
-// ─── Module-level: Notification Handler ─────────────────────────────────────
-// Must be set before any notification arrives (outside component)
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-// ─── Module-level: Background Task ──────────────────────────────────────────
+// ─── Module-level: Notification Handler & Background Task ────────────────────
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
-TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, ({ data, error, executionInfo }) => {
-  console.log(
-    '[Paltuu Notifications] 🌙 Background notification received:',
-    JSON.stringify({ data, error, executionInfo }, null, 2)
-  );
-  return Promise.resolve();
-});
+try {
+  // Must be set before any notification arrives (outside component)
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
 
-Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch((err) => {
-  if (__DEV__) console.log('[Paltuu Notifications] Background task registration:', err.message);
-});
+  TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, ({ data, error, executionInfo }) => {
+    console.log(
+      '[Paltuu Notifications] 🌙 Background notification received:',
+      JSON.stringify({ data, error, executionInfo }, null, 2)
+    );
+    return Promise.resolve();
+  });
+
+  Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch((err) => {
+    if (__DEV__) console.log('[Paltuu Notifications] Background task registration:', err.message);
+  });
+} catch (e: any) {
+  if (__DEV__) {
+    console.log('[Paltuu Notifications] ⚠️ Native notification setup skipped (normal in Expo Go):', e.message);
+  }
+}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -142,6 +148,7 @@ export default function RootLayout() {
         </NotificationProvider>
       </QueryClientProvider>
       <Toast />
+      <OfflineBanner />
     </GestureHandlerRootView>
   );
 }
