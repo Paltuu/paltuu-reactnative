@@ -196,6 +196,10 @@ export default function CreateLostFoundScreen() {
       return Alert.alert('Required', 'Please fill required fields');
     }
 
+    if (images.length === 0) {
+      return Alert.alert('Required', 'Please add at least one picture.');
+    }
+
     try {
       const payload = {
         category_id: Number(formData.categoryId),

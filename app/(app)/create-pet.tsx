@@ -176,6 +176,10 @@ export default function CreatePetScreen() {
   };
 
   const handleSubmit = async () => {
+    if (images.length === 0) {
+      return Alert.alert('Required', 'Please add at least one picture of the pet.');
+    }
+
     try {
       const payload = {
         pet_name: formData.title,
