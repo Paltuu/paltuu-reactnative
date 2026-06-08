@@ -194,6 +194,12 @@ export const socialApi = {
 
       xhr.open('PUT', presignedUrl);
       xhr.setRequestHeader('Content-Type', mimeType);
+
+      // NOTE: React Native's native XHR implementation recognises { uri, type, name }
+      // as a file reference and streams the binary content directly from the device's
+      // filesystem — this is NOT a plain JS object being serialised to JSON.
+      // For a presigned S3 PUT the body must be raw binary (not multipart/form-data),
+      // so this is the correct approach. Do NOT wrap in FormData here.
       xhr.send({ uri: fileUri } as any);
     });
   },

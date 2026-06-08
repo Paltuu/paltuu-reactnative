@@ -21,9 +21,25 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-// import { Video as VideoCompressor } from 'react-native-compressor';
+import { Video as VideoCompressor } from 'react-native-compressor';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 type UploadStage = 'idle' | 'compressing' | 'uploading' | 'finalizing';
+
+/**
+ * Unified media item — replaces the old parallel-array approach
+ * (mediaTypes: Record<number, 'image'|'video'> and videoMimeTypes: Record<number, string>)
+ * which could develop stale indices after item removal.
+ */
+type MediaItem = {
+  uri: string;
+  type: 'image' | 'video';
+  /** MIME type, only relevant for videos (e.g. 'video/mp4', 'video/quicktime') */
+  mime?: string;
+};
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const { width } = Dimensions.get('window');
 
@@ -43,7 +59,10 @@ const PET_EMOJI: Record<string, string> = {
   default: '🐾',
 };
 
-/* ── Subcomponents ── */
+/** Videos smaller than this are not worth compressing (saves time). */
+const COMPRESSION_SKIP_MB = 10;
+
+// ── Subcomponents ─────────────────────────────────────────────────────────────
 
 const TypeTab = ({
   item,
@@ -107,29 +126,6 @@ const PetChip = ({
   );
 };
 
-const MediaThumb = ({
-  uri,
-  index,
-  onRemove,
-}: {
-  uri: string;
-  index: number;
-  onRemove: (i: number) => void;
-}) => {
-  const thumbSize = width / 3 - 2;
-  return (
-    <View style={{ width: thumbSize, height: thumbSize, margin: 1 }}>
-      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-      <TouchableOpacity
-        onPress={() => onRemove(index)}
-        className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
-      >
-        <Ionicons name="close" size={12} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
 const MilestoneSelector = ({
   value,
   onChange,
@@ -181,7 +177,7 @@ const MilestoneSelector = ({
   );
 };
 
-/* ── Main screen ── */
+// ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function CreatePostScreen() {
   const router = useRouter();
@@ -197,11 +193,17 @@ export default function CreatePostScreen() {
 
   const [postType, setPostType] = useState<PostType>((params.initialPostType as PostType) || 'post');
   const [caption, setCaption] = useState((params.initialCaption as string) || '');
-  const [media, setMedia] = useState<string[]>([]);
-  // Track which media items are videos (for separate upload path)
-  const [mediaTypes, setMediaTypes] = useState<Record<number, 'image' | 'video'>>({});
-  const [videoMimeTypes, setVideoMimeTypes] = useState<Record<number, string>>({});
-  const [selectedPets, setSelectedPets] = useState<number[]>(params.initialPetId ? [Number(params.initialPetId)] : []);
+
+  /**
+   * Single unified array replacing the old `media: string[]` + `mediaTypes: Record<number, ...>`
+   * + `videoMimeTypes: Record<number, ...>` triple, which was prone to stale-index bugs
+   * when items were removed from the middle of the list.
+   */
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+
+  const [selectedPets, setSelectedPets] = useState<number[]>(
+    params.initialPetId ? [Number(params.initialPetId)] : []
+  );
   const [milestone, setMilestone] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
@@ -212,7 +214,9 @@ export default function CreatePostScreen() {
     fetchMyListings();
   }, []);
 
-  const canPost = caption.trim().length > 0 || media.length > 0;
+  const canPost = caption.trim().length > 0 || mediaItems.length > 0;
+
+  // ── Media pickers ────────────────────────────────────────────────────────────
 
   const pickMedia = async () => {
     try {
@@ -231,8 +235,8 @@ export default function CreatePostScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const uris = result.assets.map((a) => a.uri);
-        setMedia((prev) => [...prev, ...uris].slice(0, 10));
+        const newItems: MediaItem[] = result.assets.map((a) => ({ uri: a.uri, type: 'image' }));
+        setMediaItems((prev) => [...prev, ...newItems].slice(0, 10));
       }
     } catch (error: any) {
       console.error('Pick Media Error:', error);
@@ -248,7 +252,7 @@ export default function CreatePostScreen() {
         return;
       }
 
-      if (media.length >= 10) {
+      if (mediaItems.length >= 10) {
         Alert.alert('Limit Reached', 'You can add up to 10 media items per post.');
         return;
       }
@@ -257,17 +261,14 @@ export default function CreatePostScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsMultipleSelection: false,
         videoMaxDuration: 120, // 2 min max
-        quality: 1,   // keep original — we compress ourselves below
+        quality: 1, // keep original — we compress on-device below
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const idx = media.length;
         const ext = (asset.uri.split('.').pop() || 'mp4').toLowerCase();
         const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
-        setMedia((prev) => [...prev, asset.uri]);
-        setMediaTypes((prev) => ({ ...prev, [idx]: 'video' }));
-        setVideoMimeTypes((prev) => ({ ...prev, [idx]: mime }));
+        setMediaItems((prev) => [...prev, { uri: asset.uri, type: 'video', mime }]);
       }
     } catch (error: any) {
       console.error('Pick Video Error:', error);
@@ -277,7 +278,6 @@ export default function CreatePostScreen() {
 
   const pickCamera = async () => {
     try {
-      // Check if camera is available (simulators don't have cameras)
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
@@ -290,7 +290,9 @@ export default function CreatePostScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setMedia((prev) => [...prev, result.assets[0].uri].slice(0, 10));
+        setMediaItems((prev) =>
+          [...prev, { uri: result.assets[0].uri, type: 'image' }].slice(0, 10)
+        );
       }
     } catch (error: any) {
       console.error('Pick Camera Error:', error);
@@ -303,8 +305,11 @@ export default function CreatePostScreen() {
   };
 
   const removeMedia = (index: number) => {
-    setMedia((prev) => prev.filter((_, i) => i !== index));
+    // Safe removal — filtering by index never leaves stale keys in a separate Record<>
+    setMediaItems((prev) => prev.filter((_, i) => i !== index));
   };
+
+  // ── Other helpers ────────────────────────────────────────────────────────────
 
   const togglePet = (id: number) => {
     setSelectedPets((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -317,7 +322,9 @@ export default function CreatePostScreen() {
     setUploadProgress(0);
   };
 
-    const { updatePost } = useSocialActions();
+  const { updatePost } = useSocialActions();
+
+  // ── Post handler ─────────────────────────────────────────────────────────────
 
   const handlePost = async () => {
     if (!canPost) return;
@@ -327,6 +334,7 @@ export default function CreatePostScreen() {
     setUploadProgress(0);
 
     try {
+      // ── Edit mode — only text/meta fields can change ──────────────────────
       if (isEditMode) {
         setUploadStage('finalizing');
         await updatePost(editId, {
@@ -340,64 +348,64 @@ export default function CreatePostScreen() {
 
       let uploadedMedia: any[] = [];
 
-      for (let i = 0; i < media.length; i++) {
-        const uri = media[i];
-        const isVideo = mediaTypes[i] === 'video';
+      for (let i = 0; i < mediaItems.length; i++) {
+        const item = mediaItems[i];
 
-        if (isVideo) {
-          // ── Stage 1: Compress video on-device ────────────────────────────
+        if (item.type === 'video') {
+          // ── Stage 1: Compress video on-device ──────────────────────────────
           setUploadStage('compressing');
           setCompressionProgress(0);
 
-          let compressedUri = uri;
-          // Skip compression in Expo Go (requires development build)
-          /*
+          let compressedUri = item.uri;
+
           try {
             compressedUri = await VideoCompressor.compress(
-              uri,
+              item.uri,
               {
-                maxSize: 1920,           // cap longest side at 1920px (1080p)
-                bitrate: 4_000_000,      // 4 Mbps — Instagram-quality 1080p
-                minimumFileSizeForCompress: 20, // skip compression if < 20 MB
+                maxSize: 1280,           // cap longest side at 1280px (720p)
+                bitrate: 2_000_000,      // 2 Mbps — solid quality, half the storage of 4 Mbps
+                minimumFileSizeForCompress: COMPRESSION_SKIP_MB, // skip if already < 10 MB
               },
               (progress) => {
                 setCompressionProgress(progress); // 0.0 → 1.0
               }
             );
+            console.log(`[CreatePost] Video ${i} compressed: ${item.uri} → ${compressedUri}`);
           } catch (compressErr) {
-            console.warn('Video compression failed, using original:', compressErr);
-            compressedUri = uri;
+            // Non-fatal: fall back to original if compression fails
+            // (e.g., unsupported codec, insufficient permissions, Expo Go environment)
+            console.warn('[CreatePost] Video compression failed, uploading original:', compressErr);
+            compressedUri = item.uri;
           }
-          */
-          compressedUri = uri;
 
-          // ── Stage 2: Upload compressed video to S3 ───────────────────────
+          // ── Stage 2: Upload compressed video to S3 ─────────────────────────
           setUploadStage('uploading');
           setUploadProgress(0);
 
-          const mime = videoMimeTypes[i] || 'video/mp4';
+          const mime = item.mime || 'video/mp4';
           const ext  = mime === 'video/quicktime' ? 'mov' : 'mp4';
 
-          // Get presigned URL
+          // Get presigned PUT URL from the backend
           const { upload_url, video_key } = await socialApi.getVideoUploadUrl(ext);
 
-          // Upload compressed file directly to S3 with progress
+          // Upload directly to S3 with live progress reporting
           await socialApi.uploadVideoToS3(upload_url, compressedUri, mime, (p) => {
             setUploadProgress(p);
           });
 
           uploadedMedia.push({
             media_type:    'video',
-            url:           uri,         // Placeholder local URI to pass server validation
+            url:           item.uri,   // local URI placeholder — passes server validation
             thumbnail_url: null,
             video_status:  'pending',
-            _video_key:    video_key,  // internal — used to confirm below
+            _video_key:    video_key,  // internal — used for MediaConvert confirmation below
           });
+
         } else {
-          // ── Image upload path (existing flow) ───────────────────────────
+          // ── Image upload path ───────────────────────────────────────────────
           setUploadStage('uploading');
           const processed = await manipulateAsync(
-            uri,
+            item.uri,
             [{ resize: { width: 1200 } }],
             { compress: 0.8, format: SaveFormat.JPEG }
           );
@@ -406,7 +414,7 @@ export default function CreatePostScreen() {
         }
       }
 
-      // ── Stage 3: Create post + trigger MediaConvert ──────────────────────
+      // ── Stage 3: Create post + trigger MediaConvert ───────────────────────
       setUploadStage('finalizing');
 
       const postTypeValue =
@@ -427,7 +435,7 @@ export default function CreatePostScreen() {
 
       const post = await socialApi.createPost(payload);
 
-      // Kick off MediaConvert for each video
+      // Kick off MediaConvert transcoding for each uploaded video
       const videoItems = post.media?.filter((m: any) => m.media_type === 'video') ?? [];
       for (let i = 0; i < videoItems.length; i++) {
         const vKey = uploadedMedia.find((m) => m._video_key)?._video_key;
@@ -445,12 +453,26 @@ export default function CreatePostScreen() {
     }
   };
 
+  // ── Helpers for render ────────────────────────────────────────────────────────
+
   const initials = (user?.name || 'U')
     .split(' ')
     .map((w) => w[0])
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  const uploadStageLabel = (): string => {
+    if (uploadStage === 'compressing') {
+      return `Compressing ${Math.round(compressionProgress * 100)}%`;
+    }
+    if (uploadStage === 'uploading') {
+      return `Uploading ${Math.round(uploadProgress * 100)}%`;
+    }
+    return 'Finalizing...';
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>
@@ -478,26 +500,24 @@ export default function CreatePostScreen() {
             className="px-4 py-1.5 rounded-full"
             style={{ backgroundColor: canPost ? '#a03048' : '#E5E7EB' }}
           >
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: 'Montserrat_700Bold',
-                color: canPost ? '#fff' : '#9CA3AF',
-              }}
-            >
-          {isPosting ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, paddingVertical: 6 }}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
-                {uploadStage === 'compressing'
-                  ? `Compressing ${Math.round(compressionProgress * 100)}%`
-                  : uploadStage === 'uploading'
-                  ? 'Finalizing...'
-                  : 'Finalizing...'}
+            {isPosting ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, paddingVertical: 6 }}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
+                  {uploadStageLabel()}
+                </Text>
+              </View>
+            ) : (
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontFamily: 'Montserrat_700Bold',
+                  color: canPost ? '#fff' : '#9CA3AF',
+                }}
+              >
+                {isEditMode ? 'Save' : 'Post'}
               </Text>
-            </View>
-          ) : (isEditMode ? 'Save' : 'Post')}
-            </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -568,30 +588,26 @@ export default function CreatePostScreen() {
           </View>
 
           {/* ── Media grid ── */}
-          {media.length > 0 && (
+          {mediaItems.length > 0 && (
             <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
-              {media.map((uri, i) => (
-                <View key={uri} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
-                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              {mediaItems.map((item, i) => (
+                <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
+                  <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+
                   {/* Video badge */}
-                  {mediaTypes[i] === 'video' && (
+                  {item.type === 'video' && (
                     <View style={{
                       position: 'absolute', bottom: 4, left: 4,
                       backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
-                      paddingHorizontal: 4, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 2
+                      paddingHorizontal: 4, paddingVertical: 2,
+                      flexDirection: 'row', alignItems: 'center', gap: 2,
                     }}>
                       <Ionicons name="videocam" size={10} color="#fff" />
                     </View>
                   )}
+
                   <TouchableOpacity
-                    onPress={() => {
-                      setMedia((prev) => prev.filter((_, idx) => idx !== i));
-                      setMediaTypes((prev) => {
-                        const n = { ...prev };
-                        delete n[i];
-                        return n;
-                      });
-                    }}
+                    onPress={() => removeMedia(i)}
                     className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
                   >
                     <Ionicons name="close" size={12} color="#fff" />
@@ -671,9 +687,9 @@ export default function CreatePostScreen() {
             <MaterialCommunityIcons name="pound" size={22} color="#a03048" />
           </TouchableOpacity>
 
-          {media.length > 0 && (
+          {mediaItems.length > 0 && (
             <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
-              <Text className="font-body text-xs text-gray-500">{media.length}/10</Text>
+              <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
             </View>
           )}
         </View>

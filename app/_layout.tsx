@@ -146,9 +146,11 @@ export default function RootLayout() {
             </BottomSheetModalProvider>
           </SafeAreaProvider>
         </NotificationProvider>
+        {/* Toast and OfflineBanner must be inside QueryClientProvider
+            in case they (or their children) call useQuery internally */}
+        <Toast />
+        <OfflineBanner />
       </QueryClientProvider>
-      <Toast />
-      <OfflineBanner />
     </GestureHandlerRootView>
   );
 }
