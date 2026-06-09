@@ -60,6 +60,8 @@ export interface SocialPost {
   original_author_image?: string;
   original_media?: SocialPostMedia[];
   original_post?: SocialPost;
+  pet_profile_tags?: number[];
+  tagged_pets?: { pet_profile_id: number; name: string; avatar_url: string | null; species: string }[];
 }
 
 export interface SocialPet {
@@ -225,7 +227,7 @@ export const socialApi = {
   async createPost(payload: {
     content: string;
     media: any[];
-    pet_id?: number;
+    pet_profile_tags?: number[];
     post_type: string;
   }) {
     const { data } = await client.post('/social/posts', payload);
@@ -259,7 +261,7 @@ export const socialApi = {
 
   async updatePost(postId: string | number, payload: {
     content?: string;
-    pet_id?: number;
+    pet_profile_tags?: number[];
     post_type?: string;
   }) {
     const { data } = await client.patch(`/social/posts/${postId}`, payload);

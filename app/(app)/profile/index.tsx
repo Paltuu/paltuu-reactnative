@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
+import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 
@@ -143,7 +144,7 @@ const MenuItem = ({
 
 // ─── Pet Card ─────────────────────────────────────────────────────────────────
 
-const PetCard = ({ item, user }: { item: any; user: any }) => {
+const PetCard = ({ item, user, onPress }: { item: any; user: any; onPress: () => void }) => {
   const initials = (user?.name || 'U')
     .split(' ')
     .map((w: string) => w[0])
@@ -152,7 +153,7 @@ const PetCard = ({ item, user }: { item: any; user: any }) => {
     .toUpperCase();
 
   return (
-    <View style={s.card}>
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardHeader}>
         <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -164,30 +165,28 @@ const PetCard = ({ item, user }: { item: any; user: any }) => {
       <View style={s.chipRow}>
         <View style={s.chip}>
           <MaterialCommunityIcons name="paw" size={11} color={DS.primary} />
-          <Text style={s.chipText}>{item.pet_name}</Text>
+          <Text style={s.chipText}>{item.name}</Text>
         </View>
-        {item.pet_breed && (
+        {item.breed && (
           <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
-            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.pet_breed}</Text>
+            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.breed}</Text>
           </View>
         )}
-        {item.age_months != null && (
+        {item.age && (
           <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
-            <Text style={[s.chipText, { color: DS.gray500 }]}>
-              {item.age_months >= 12 ? `${Math.floor(item.age_months / 12)}y` : `${item.age_months}m`}
-            </Text>
+            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.age}</Text>
           </View>
         )}
       </View>
 
-      {item.main_image && (
+      {item.avatar_url && (
         <Image
-          source={{ uri: item.main_image }}
+          source={{ uri: item.avatar_url }}
           style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
           resizeMode="cover"
         />
       )}
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -295,7 +294,7 @@ export default function ProfileScreen() {
 
   const { data: petsData, isLoading: isPetsLoading } = useQuery({
     queryKey: ['social-pets', userId],
-    queryFn: () => socialApi.getPets(userId!),
+    queryFn: () => petProfilesApi.getUserPetProfiles(userId!),
     enabled: !!userId && activeTab === 'Pets',
   });
 
@@ -338,7 +337,7 @@ export default function ProfileScreen() {
 
   const tabData: Record<TabKey, any[]> = {
     Posts: profileData?.posts || [],
-    Pets: petsData?.pets || [],
+    Pets: petsData?.pet_profiles || [],
     Reposts: repostsData?.reposts || [],
   };
 
@@ -461,7 +460,15 @@ export default function ProfileScreen() {
         />
       );
     }
-    if (activeTab === 'Pets') return <PetCard item={item} user={profile} />;
+    if (activeTab === 'Pets') {
+      return (
+        <PetCard
+          item={item}
+          user={profile}
+          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id } })}
+        />
+      );
+    }
     return <RepostCard item={item} user={profile} />;
   };
 
@@ -583,6 +590,27 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {activeTab === 'Pets' && (tabData.Pets?.length ?? 0) > 0 && (
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/pet-profile/create')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingVertical: 12,
+            backgroundColor: '#ffffff',
+            borderBottomWidth: 0.5,
+            borderBottomColor: DS.gray100,
+          }}
+        >
+          <Ionicons name="add-circle-outline" size={18} color={DS.primary} />
+          <Text style={{ color: DS.primary, fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
+            Add Another Pet
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -618,6 +646,22 @@ export default function ProfileScreen() {
               <>
                 <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
                 <Text style={s.emptyText}>Nothing here yet</Text>
+                {activeTab === 'Pets' && (
+                  <TouchableOpacity
+                    onPress={() => router.push('/(app)/pet-profile/create')}
+                    style={{
+                      backgroundColor: DS.primary,
+                      paddingHorizontal: 20,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      marginTop: 12,
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
+                      Create Pet Profile
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
           </View>

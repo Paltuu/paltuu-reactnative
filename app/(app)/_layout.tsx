@@ -75,15 +75,7 @@ function LayoutContent() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="bazaar"
-          options={{
-            title: 'Bazaar',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'cart' : 'cart-outline'} size={24} color={color} />
-            ),
-          }}
-        />
+
         <Tabs.Screen
           name="pets"
           options={{
@@ -199,6 +191,10 @@ function LayoutContent() {
         />
 
         {/* Hidden Screens */}
+        <Tabs.Screen name="bazaar" options={{ href: null }} />
+        <Tabs.Screen name="pet-profile/[id]" options={{ href: null }} />
+        <Tabs.Screen name="pet-profile/create" options={{ href: null }} />
+        <Tabs.Screen name="pet-profile/gallery-manager" options={{ href: null }} />
         <Tabs.Screen name="profile/[id]" options={{ href: null }} />
         <Tabs.Screen name="profile/saved/index" options={{ href: null }} />
         <Tabs.Screen name="profile/saved/[collection_id]/index" options={{ href: null }} />

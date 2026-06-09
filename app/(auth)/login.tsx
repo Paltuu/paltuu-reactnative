@@ -11,23 +11,90 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { CustomInput } from '../../src/components/common/CustomInput';
 import { PrimaryButton } from '../../src/components/common/PrimaryButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
+import { useAuthStore } from '../../src/stores/authStore';
+
+// Required for Android browser redirect handling
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuthActions();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const handleLogin = () => {
     login.mutate({
       email: identifier.trim(),
       password,
     });
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL;
+      if (!apiBaseUrl) {
+        throw new Error('API URL is not configured.');
+      }
+
+      const authUrl = `${apiBaseUrl}/v1/auth/google/mobile`;
+      const redirectUrl = Linking.createURL('oauth2redirect');
+
+      console.log('[Google Sign-In] Initiating session:', { authUrl, redirectUrl });
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+
+      if (result.type === 'success' && result.url) {
+        const parsed = Linking.parse(result.url);
+        const { queryParams } = parsed;
+
+        const token = queryParams?.token;
+        const refreshToken = queryParams?.refreshToken;
+        const error = queryParams?.error;
+
+        if (error) {
+          throw new Error(decodeURIComponent(Array.isArray(error) ? error[0] : error));
+        }
+
+        const tokenStr = Array.isArray(token) ? token[0] : token;
+        const refreshStr = Array.isArray(refreshToken) ? refreshToken[0] : refreshToken;
+
+        if (tokenStr && refreshStr) {
+          await setAuth(null, tokenStr, refreshStr);
+          Toast.show({
+            type: 'success',
+            text1: 'Welcome!',
+            text2: 'Successfully signed in with Google',
+          });
+        } else {
+          throw new Error('Authentication tokens were not returned.');
+        }
+      } else if (result.type === 'cancel') {
+        console.log('[Google Sign-In] Flow cancelled by user');
+      } else {
+        throw new Error('Could not complete authentication session.');
+      }
+    } catch (err: any) {
+      console.error('[Google Sign-In] Error:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Sign In Failed',
+        text2: err.message || 'An error occurred during Google Sign-In.',
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -119,6 +186,26 @@ export default function LoginScreen() {
               onPress={handleLogin}
               loading={login.isPending}
             />
+
+            {/* Divider */}
+            <View className="flex-row items-center my-5">
+              <View className="flex-1 h-[1px] bg-gray-200" />
+              <Text className="mx-3 text-xs font-body text-gray-400">or connect with</Text>
+              <View className="flex-1 h-[1px] bg-gray-200" />
+            </View>
+
+            {/* Google Login Button */}
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading || login.isPending}
+              className={`h-[52px] border border-gray-200 rounded-button flex-row justify-center items-center w-full bg-white ${
+                isGoogleLoading ? 'opacity-40' : ''
+              }`}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 10 }} />
+              <Text className="text-dark text-base font-headingSemi">Sign in with Google</Text>
+            </TouchableOpacity>
           </View>
 
           {/* ── Footer ── */}

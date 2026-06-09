@@ -16,9 +16,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { socialApi } from '../../src/api/social';
+import { petProfilesApi } from '../../src/api/petProfiles';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Video as VideoCompressor } from 'react-native-compressor';
@@ -100,7 +100,7 @@ const PetChip = ({
   selected: boolean;
   onPress: () => void;
 }) => {
-  const type = String(pet?.pet_type || 'default').toLowerCase();
+  const type = String(pet?.species || 'default').toLowerCase();
   const emoji = PET_EMOJI[type] ?? PET_EMOJI.default;
   return (
     <TouchableOpacity
@@ -119,7 +119,7 @@ const PetChip = ({
           color: selected ? '#a03048' : '#374151',
         }}
       >
-        {pet.pet_name}
+        {pet.name}
       </Text>
       {selected && <Ionicons name="checkmark-circle" size={14} color="#a03048" />}
     </TouchableOpacity>
@@ -185,7 +185,6 @@ export default function CreatePostScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const { user } = useAuthStore();
-  const { myListings, fetchMyListings } = usePetStore();
 
   const params = useLocalSearchParams();
   const editId = params.editId as string;
@@ -193,6 +192,7 @@ export default function CreatePostScreen() {
 
   const [postType, setPostType] = useState<PostType>((params.initialPostType as PostType) || 'post');
   const [caption, setCaption] = useState((params.initialCaption as string) || '');
+  const [petProfiles, setPetProfiles] = useState<any[]>([]);
 
   /**
    * Single unified array replacing the old `media: string[]` + `mediaTypes: Record<number, ...>`
@@ -202,7 +202,7 @@ export default function CreatePostScreen() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
 
   const [selectedPets, setSelectedPets] = useState<number[]>(
-    params.initialPetId ? [Number(params.initialPetId)] : []
+    params.initialPetProfileId ? [Number(params.initialPetProfileId)] : []
   );
   const [milestone, setMilestone] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -211,8 +211,12 @@ export default function CreatePostScreen() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
-    fetchMyListings();
-  }, []);
+    if (user?.id) {
+      petProfilesApi.getUserPetProfiles(user.id)
+        .then((res) => setPetProfiles(res.pet_profiles))
+        .catch((err) => console.error('Error fetching pet profiles:', err));
+    }
+  }, [user]);
 
   const canPost = caption.trim().length > 0 || mediaItems.length > 0;
 
@@ -291,7 +295,7 @@ export default function CreatePostScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setMediaItems((prev) =>
-          [...prev, { uri: result.assets[0].uri, type: 'image' }].slice(0, 10)
+          [...prev, { uri: result.assets[0].uri, type: 'image' as const }].slice(0, 10)
         );
       }
     } catch (error: any) {
@@ -339,7 +343,7 @@ export default function CreatePostScreen() {
         setUploadStage('finalizing');
         await updatePost(editId, {
           content: caption,
-          pet_id: selectedPets[0],
+          pet_profile_tags: selectedPets,
           post_type: postType,
         });
         router.back();
@@ -427,7 +431,7 @@ export default function CreatePostScreen() {
       const payload = {
         content:   caption,
         media:     uploadedMedia.map(({ _video_key, ...m }) => m),
-        pet_id:    selectedPets[0],
+        pet_profile_tags: selectedPets,
         post_type: postTypeValue,
       };
 
@@ -633,16 +637,16 @@ export default function CreatePostScreen() {
               )}
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {myListings.map((pet) => (
+              {petProfiles.map((pet) => (
                 <PetChip
-                  key={pet.pet_id}
+                  key={pet.pet_profile_id}
                   pet={pet}
-                  selected={selectedPets.includes(pet.pet_id)}
-                  onPress={() => togglePet(pet.pet_id)}
+                  selected={selectedPets.includes(pet.pet_profile_id)}
+                  onPress={() => togglePet(pet.pet_profile_id)}
                 />
               ))}
               <TouchableOpacity
-                onPress={() => router.push('/(app)/create-pet')}
+                onPress={() => router.push('/(app)/pet-profile/create')}
                 className="flex-row items-center gap-2 px-3 py-2 rounded-full border border-dashed border-gray-300 mr-2"
               >
                 <Ionicons name="add" size={14} color="#9CA3AF" />
