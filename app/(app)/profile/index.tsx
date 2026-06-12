@@ -38,7 +38,7 @@ const AVATAR_SIZE = 96;
 const DS = {
   primary: '#A03048',
   primaryLight: 'rgba(160,48,72,0.10)',
-  bg: '#FDF7F8',
+  bg: '#FFFFFF',
   surface: '#FFFFFF',
   dark: '#111111',
   gray500: '#6B7280',
@@ -340,7 +340,7 @@ export default function ProfileScreen() {
 
   const tabData: Record<TabKey, any[]> = {
     Posts: profileData?.posts || [],
-    Pets: petsData?.pet_profiles || [],
+    Pets: petsData?.pets || petsData?.pet_profiles || [],
     Reposts: repostsData?.reposts || [],
   };
 

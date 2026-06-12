@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
+import CustomInput from '../../../src/components/common/CustomInput';
+import PrimaryButton from '../../../src/components/common/PrimaryButton';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -47,76 +49,108 @@ export default function PersonalInfoScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={s.root}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         {/* Header */}
-        <View className="px-5 py-4 flex-row items-center justify-between border-b border-gray-100">
-          <TouchableOpacity onPress={() => router.navigate('/(app)/profile/settings')} className="mr-4 p-1">
-            <Feather name="arrow-left" size={24} color="#111" />
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.navigate('/(app)/profile/settings')} style={s.headerBtn}>
+            <Feather name="arrow-left" size={20} color="#374151" />
           </TouchableOpacity>
-          <Text className="font-heading text-xl text-dark">Personal Info</Text>
-          <View style={{ width: 32 }} />
+          <Text style={s.headerTitle}>Personal Info</Text>
+          <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView className="flex-1 px-5 pt-6" showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Info Banner */}
-          <View className="bg-primary/5 rounded-2xl p-4 border border-primary/10 flex-row mb-8 items-center">
-            <Ionicons name="lock-closed" size={20} color="#A03048" />
-            <Text className="font-body text-xs text-gray-600 leading-relaxed ml-3 flex-1">
+          <View style={s.infoBanner}>
+            <Ionicons name="lock-closed" size={20} color="#a03048" />
+            <Text style={s.infoBannerText}>
               This information is private and will not be displayed on your public profile.
             </Text>
           </View>
 
           {/* Form */}
-          <View className="mb-6">
-            <Text className="font-headingSemi text-sm text-gray-700 mb-2">Email Address</Text>
-            <View className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex-row items-center">
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="your.email@example.com"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="flex-1 font-body text-dark text-base ml-3"
-              />
-            </View>
-          </View>
+          <View style={{ gap: 20, marginBottom: 32 }}>
+            <CustomInput
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="your.email@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              leftIcon="mail-outline"
+            />
 
-          <View className="mb-10">
-            <Text className="font-headingSemi text-sm text-gray-700 mb-2">Phone Number</Text>
-            <View className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex-row items-center">
-              <Ionicons name="call-outline" size={20} color="#9CA3AF" />
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+92 300 1234567"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-                className="flex-1 font-body text-dark text-base ml-3"
-              />
-            </View>
+            <CustomInput
+              label="Phone Number"
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="+92 300 1234567"
+              keyboardType="phone-pad"
+              leftIcon="call-outline"
+            />
           </View>
 
           {/* Save Button */}
-          <TouchableOpacity 
+          <PrimaryButton
+            title="Save Changes"
             onPress={handleSave}
-            disabled={updateMutation.isPending}
-            className={`w-full py-4 rounded-2xl items-center justify-center flex-row ${updateMutation.isPending ? 'bg-primary/70' : 'bg-primary'}`}
-          >
-            {updateMutation.isPending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text className="text-white font-headingSemi text-base">Save Changes</Text>
-            )}
-          </TouchableOpacity>
+            loading={updateMutation.isPending}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  headerBtn: {
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  scrollContent: { padding: 20, paddingTop: 24, paddingBottom: 60 },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FAF0F2',
+    borderWidth: 1,
+    borderColor: '#f3e0e4',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 28,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Montserrat_500Medium',
+    color: '#4B5563',
+    lineHeight: 18,
+  },
+});
