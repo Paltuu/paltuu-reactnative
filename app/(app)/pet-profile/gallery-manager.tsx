@@ -115,10 +115,10 @@ export default function PetGalleryManagerScreen() {
     ]);
   };
 
-  const setAsAvatar = async (photoId: number) => {
+  const setAsAvatar = async (photoUrl: string) => {
     try {
       setIsLoading(true);
-      await petProfilesApi.setPetAvatar(petId, photoId);
+      await petProfilesApi.setPetAvatar(petId, photoUrl);
       setSelectedPhoto(null);
       Alert.alert('Success', 'Profile avatar updated!');
     } catch (error) {
@@ -163,7 +163,13 @@ export default function PetGalleryManagerScreen() {
               className="mb-2 relative rounded-2xl overflow-hidden border border-gray-100 bg-surface"
               style={{ width: COLUMN_WIDTH, height: COLUMN_WIDTH }}
             >
-              <Image source={{ uri: item.photo_url }} className="w-full h-full" contentFit="cover" />
+              <Image
+                source={{ uri: item.photo_url }}
+                style={{ width: COLUMN_WIDTH, height: COLUMN_WIDTH }}
+                contentFit="cover"
+                onError={(e) => console.log('[Gallery] Image error:', item.photo_url, e.error)}
+                onLoad={() => console.log('[Gallery] Image loaded:', item.photo_url)}
+              />
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -189,8 +195,9 @@ export default function PetGalleryManagerScreen() {
               <View className="aspect-square w-full relative bg-black">
                 <Image
                   source={{ uri: selectedPhoto.photo_url }}
-                  className="w-full h-full"
+                  style={{ width: '100%', height: '100%' }}
                   contentFit="contain"
+                  onError={(e) => console.log('[Gallery] Modal image error:', selectedPhoto.photo_url, e.error)}
                 />
                 <TouchableOpacity
                   onPress={() => setSelectedPhoto(null)}
@@ -202,7 +209,7 @@ export default function PetGalleryManagerScreen() {
 
               <View className="p-4 gap-3">
                 <TouchableOpacity
-                  onPress={() => setAsAvatar(selectedPhoto.photo_id)}
+                  onPress={() => setAsAvatar(selectedPhoto.photo_url)}
                   className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl"
                 >
                   <Ionicons name="person-circle-outline" size={20} color="#ffffff" />

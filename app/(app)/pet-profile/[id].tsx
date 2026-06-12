@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -39,6 +40,7 @@ export default function PetProfileScreen() {
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isOwner = user?.id && profile?.owner_id && Number(user.id) === Number(profile.owner_id);
 
@@ -53,6 +55,20 @@ export default function PetProfileScreen() {
       fetchPosts(true);
     }
   }, [activeTab, petId]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchProfile();
+      if (activeTab === 'gallery') {
+        await fetchPhotos();
+      } else if (activeTab === 'posts') {
+        await fetchPosts(true);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -182,12 +198,28 @@ export default function PetProfileScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1">
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        className="flex-1"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#a03048']}
+            tintColor="#a03048"
+          />
+        }
+      >
         {/* Hero Banner Section */}
         <View className="items-center py-6 bg-gray-50/50 border-b border-gray-100">
           <View className="w-24 h-24 rounded-full border border-gray-200 overflow-hidden bg-primary/10 mb-3">
             {profile.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} className="w-full h-full" contentFit="cover" />
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                onError={(e) => console.log('[PetProfile] Avatar load error:', e.error)}
+              />
             ) : (
               <View className="w-full h-full items-center justify-center">
                 <Ionicons name="paw" size={48} color="#a03048" />
@@ -307,26 +339,47 @@ export default function PetProfileScreen() {
 
         {activeTab === 'gallery' && (
           <View className="mt-4 px-5">
-            {photos.length > 0 ? (
-              <FlatList
-                data={photos}
-                scrollEnabled={false}
-                keyExtractor={(item) => item.photo_id.toString()}
-                numColumns={3}
-                columnWrapperStyle={{ gap: 8 }}
-                renderItem={({ item }) => (
-                  <View
-                    className="mb-2 rounded-2xl overflow-hidden border border-gray-100 bg-surface"
-                    style={{ width: GALLERY_IMAGE_WIDTH, height: GALLERY_IMAGE_WIDTH }}
-                  >
-                    <Image source={{ uri: item.photo_url }} className="w-full h-full" contentFit="cover" />
-                  </View>
-                )}
-              />
-            ) : isLoadingPhotos ? (
+            {isLoadingPhotos && photos.length === 0 ? (
               <View className="py-20 justify-center items-center">
                 <ActivityIndicator size="small" color="#a03048" />
               </View>
+            ) : photos.length > 0 ? (
+              <>
+                {isLoadingPhotos && (
+                  <View className="py-2 items-center">
+                    <ActivityIndicator size="small" color="#a03048" />
+                  </View>
+                )}
+                <FlatList
+                  data={photos}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.photo_id.toString()}
+                  numColumns={3}
+                  columnWrapperStyle={{ gap: 8 }}
+                  renderItem={({ item }) => (
+                    <View
+                      style={{
+                        width: GALLERY_IMAGE_WIDTH,
+                        height: GALLERY_IMAGE_WIDTH,
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                        borderWidth: 1,
+                        borderColor: '#F3F4F6',
+                        backgroundColor: '#FFFFFF',
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Image
+                        source={{ uri: item.photo_url }}
+                        style={{ width: GALLERY_IMAGE_WIDTH, height: GALLERY_IMAGE_WIDTH }}
+                        contentFit="cover"
+                        onError={(e) => console.log('[PetProfile] Gallery image error:', item.photo_url, e.error)}
+                        onLoad={() => console.log('[PetProfile] Gallery image loaded:', item.photo_url)}
+                      />
+                    </View>
+                  )}
+                />
+              </>
             ) : (
               <View className="py-20 items-center justify-center">
                 <Ionicons name="images-outline" size={48} color="#9CA3AF" />

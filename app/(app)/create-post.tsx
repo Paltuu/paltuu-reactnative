@@ -21,7 +21,6 @@ import { socialApi } from '../../src/api/social';
 import { petProfilesApi } from '../../src/api/petProfiles';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Video as VideoCompressor } from 'react-native-compressor';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -363,6 +362,7 @@ export default function CreatePostScreen() {
           let compressedUri = item.uri;
 
           try {
+            const { Video: VideoCompressor } = require('react-native-compressor');
             compressedUri = await VideoCompressor.compress(
               item.uri,
               {
@@ -370,7 +370,7 @@ export default function CreatePostScreen() {
                 bitrate: 2_000_000,      // 2 Mbps — solid quality, half the storage of 4 Mbps
                 minimumFileSizeForCompress: COMPRESSION_SKIP_MB, // skip if already < 10 MB
               },
-              (progress) => {
+              (progress: number) => {
                 setCompressionProgress(progress); // 0.0 → 1.0
               }
             );

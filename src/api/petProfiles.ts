@@ -69,7 +69,7 @@ export const petProfilesApi = {
 
   async getUserPetProfiles(userId: number | string) {
     const { data } = await client.get(`/users/${userId}/pet-profiles`);
-    return data as { pet_profiles: PetProfile[] };
+    return { pet_profiles: data.pets || [] };
   },
 
   async getPetPhotos(petId: number | string) {
@@ -90,8 +90,8 @@ export const petProfilesApi = {
     return data as { success: boolean };
   },
 
-  async setPetAvatar(petId: number | string, photoId: number | string) {
-    const { data } = await client.patch(`/pet-profiles/${petId}/avatar`, { photo_id: photoId });
+  async setPetAvatar(petId: number | string, avatarUrl: string) {
+    const { data } = await client.patch(`/pet-profiles/${petId}/avatar`, { avatar_url: avatarUrl });
     return data as PetProfile;
   },
 

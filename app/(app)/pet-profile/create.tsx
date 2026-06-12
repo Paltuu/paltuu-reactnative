@@ -180,10 +180,15 @@ export default function CreatePetProfileScreen() {
       if (!dateRegex.test(dateOfBirth)) {
         return Alert.alert('Invalid Date', 'Date of birth must be in YYYY-MM-DD format.');
       }
-      const parsedDate = new Date(dateOfBirth);
-      if (isNaN(parsedDate.getTime())) {
-        return Alert.alert('Invalid Date', 'Please enter a valid calendar date.');
+      const [y, m, d] = dateOfBirth.split('-').map(Number);
+      if (m < 1 || m > 12) {
+        return Alert.alert('Invalid Date', 'Month must be between 01 and 12.');
       }
+      const daysInMonth = new Date(y, m, 0).getDate();
+      if (d < 1 || d > daysInMonth) {
+        return Alert.alert('Invalid Date', `Day must be between 01 and ${daysInMonth} for this month.`);
+      }
+      const parsedDate = new Date(y, m - 1, d);
       if (parsedDate > new Date()) {
         return Alert.alert('Invalid Date', 'Date of birth cannot be in the future.');
       }
@@ -259,8 +264,10 @@ export default function CreatePetProfileScreen() {
         <View className="items-center mb-6">
           <TouchableOpacity onPress={pickAvatar} disabled={isUploading} className="relative">
             <View className="w-24 h-24 rounded-full bg-primary/10 items-center justify-center border border-gray-100 overflow-hidden">
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} className="w-full h-full" contentFit="cover" />
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#a03048" />
+              ) : avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
                 <Ionicons name="paw" size={48} color="#a03048" />
               )}

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   Switch,
   Alert,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -275,6 +276,8 @@ export default function ProfileScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [uploading, setUploading] = useState<'profile' | 'cover' | null>(null);
+  const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
 
@@ -346,6 +349,19 @@ export default function ProfileScreen() {
     (activeTab === 'Pets' && isPetsLoading) ||
     (activeTab === 'Reposts' && isRepostsLoading);
 
+  // ── Pull-to-refresh ──────────────────────────────────────────────────────────
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+      await queryClient.invalidateQueries({ queryKey: ['social-reposts', userId] });
+      await queryClient.invalidateQueries({ queryKey: ['social-pets', userId] });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient, userId]);
+
   // ── Menu animation ──────────────────────────────────────────────────────────
 
   const openMenu = () => {
@@ -368,6 +384,11 @@ export default function ProfileScreen() {
 
   // ── Image upload ────────────────────────────────────────────────────────────
 
+  const closeModal = () => {
+    setSelectedLocalAsset(null);
+    setImageModal(null);
+  };
+
   const handlePickAndUpload = async (type: 'profile' | 'cover') => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -388,7 +409,7 @@ export default function ProfileScreen() {
             quality: 0.9,
           });
           if (!result.canceled && result.assets?.[0]) {
-            await uploadImage(result.assets[0], type);
+            setSelectedLocalAsset(result.assets[0]);
           }
         },
       },
@@ -402,7 +423,7 @@ export default function ProfileScreen() {
             quality: 0.9,
           });
           if (!result.canceled && result.assets?.[0]) {
-            await uploadImage(result.assets[0], type);
+            setSelectedLocalAsset(result.assets[0]);
           }
         },
       },
@@ -410,17 +431,17 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const uploadImage = async (asset: ImagePicker.ImagePickerAsset, type: 'profile' | 'cover') => {
+  const uploadImage = async () => {
+    if (!selectedLocalAsset || !imageModal) return;
+    const type = imageModal;
     setUploading(type);
     try {
-      // Use the real MIME type from the picker so the server can handle HEIC/HEIF correctly.
-      // Fall back to image/jpeg only if the picker doesn't report one.
-      const mimeType = asset.mimeType || 'image/jpeg';
+      const mimeType = selectedLocalAsset.mimeType || 'image/jpeg';
       const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
 
       const formData = new FormData();
       formData.append('file', {
-        uri: asset.uri,
+        uri: selectedLocalAsset.uri,
         name: `${type}.${ext}`,
         type: mimeType,
       } as any);
@@ -434,7 +455,7 @@ export default function ProfileScreen() {
       });
 
       queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
-      setImageModal(null);
+      closeModal();
     } catch {
       Alert.alert('Upload failed', 'Please try again.');
     } finally {
@@ -472,8 +493,8 @@ export default function ProfileScreen() {
     return <RepostCard item={item} user={profile} />;
   };
 
-  const currentImageUri =
-    imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url;
+  const currentImageUri = selectedLocalAsset?.uri ||
+    (imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url);
 
   const ListHeader = () => (
     <View style={s.headerWrapper}>
@@ -638,6 +659,14 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[DS.primary]}
+            tintColor={DS.primary}
+          />
+        }
         ListEmptyComponent={
           <View style={s.emptyState}>
             {isTabLoading ? (
@@ -785,12 +814,12 @@ export default function ProfileScreen() {
         visible={imageModal !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setImageModal(null)}
+        onRequestClose={closeModal}
       >
         <View style={s.imgModalBg}>
           {/* Header */}
           <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity onPress={() => setImageModal(null)} style={s.imgModalClose}>
+            <TouchableOpacity onPress={closeModal} style={s.imgModalClose}>
               <Ionicons name="close" size={26} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={s.imgModalTitle}>
@@ -817,21 +846,52 @@ export default function ProfileScreen() {
 
           {/* Actions */}
           <View style={[s.imgModalActions, { paddingBottom: insets.bottom + 28 }]}>
-            <TouchableOpacity
-              style={s.imgModalBtn}
-              onPress={() => handlePickAndUpload(imageModal!)}
-              disabled={uploading !== null}
-              activeOpacity={0.8}
-            >
-              {uploading === imageModal ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
-                  <Text style={s.imgModalBtnText}>Change Photo</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {selectedLocalAsset ? (
+              <View style={{ gap: 12 }}>
+                <TouchableOpacity
+                  style={s.imgModalBtn}
+                  onPress={uploadImage}
+                  disabled={uploading !== null}
+                  activeOpacity={0.8}
+                >
+                  {uploading !== null ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+                      <Text style={s.imgModalBtnText}>Upload Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[s.imgModalBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#FFFFFF' }]}
+                  onPress={() => handlePickAndUpload(imageModal!)}
+                  disabled={uploading !== null}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.imgModalBtnText, { color: '#FFFFFF' }]}>Select Different</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={s.imgModalBtn}
+                onPress={() => handlePickAndUpload(imageModal!)}
+                disabled={uploading !== null}
+                activeOpacity={0.8}
+              >
+                {uploading === imageModal ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
+                    <Text style={s.imgModalBtnText}>
+                      {currentImageUri ? 'Change Photo' : 'Upload Photo'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
