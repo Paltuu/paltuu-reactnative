@@ -23,6 +23,9 @@ import { useAuthStore } from '../../../src/stores/authStore';
 import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 
+const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = height * 0.38;
 const AVATAR_SIZE = 96;
@@ -80,6 +83,18 @@ export default function PetProfileScreen() {
   const navBgOpacity = scrollY.interpolate({
     inputRange: [HERO_HEIGHT * 0.5, HERO_HEIGHT],
     outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const headerTintColor = scrollY.interpolate({
+    inputRange: [HERO_HEIGHT * 0.5, HERO_HEIGHT],
+    outputRange: ['#FFFFFF', '#111827'],
+    extrapolate: 'clamp',
+  });
+
+  const btnBgColor = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT * 0.5],
+    outputRange: ['rgba(0,0,0,0.3)', 'rgba(0,0,0,0)'],
     extrapolate: 'clamp',
   });
 
@@ -207,27 +222,32 @@ export default function PetProfileScreen() {
       {/* ── Floating Transparent / Filled Nav Bar ── */}
       <Animated.View style={[s.navBar, { height: insets.top + 56, paddingTop: insets.top }]}>
         {/* Solid fill fades in on scroll */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#a03048', opacity: navBgOpacity }]} />
+        <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFFFFF', opacity: navBgOpacity }]} />
         <View style={s.navContent}>
-          <TouchableOpacity onPress={() => router.back()} style={s.navBtn}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Animated.Text style={[s.navTitle, { opacity: navBgOpacity }]}>{profile.name}</Animated.Text>
+          <AnimatedTouchableOpacity
+            onPress={() => router.back()}
+            style={[s.navBtn, { backgroundColor: btnBgColor }]}
+          >
+            <AnimatedIonicons name="chevron-back" size={24} color={headerTintColor} />
+          </AnimatedTouchableOpacity>
+          <Animated.Text style={[s.navTitle, { opacity: navBgOpacity, color: headerTintColor }]}>
+            {profile.name}
+          </Animated.Text>
           <View style={s.navActions}>
             {isOwner && (
               <>
-                <TouchableOpacity
+                <AnimatedTouchableOpacity
                   onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
-                  style={s.navIconBtn}
+                  style={[s.navIconBtn, { backgroundColor: btnBgColor }]}
                 >
-                  <Ionicons name="create-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
+                  <AnimatedIonicons name="create-outline" size={22} color={headerTintColor} />
+                </AnimatedTouchableOpacity>
+                <AnimatedTouchableOpacity
                   onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
-                  style={s.navIconBtn}
+                  style={[s.navIconBtn, { backgroundColor: btnBgColor }]}
                 >
-                  <Ionicons name="images-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
+                  <AnimatedIonicons name="images-outline" size={22} color={headerTintColor} />
+                </AnimatedTouchableOpacity>
               </>
             )}
           </View>
