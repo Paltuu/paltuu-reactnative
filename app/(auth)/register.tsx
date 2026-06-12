@@ -90,28 +90,27 @@ export default function RegisterScreen() {
               value={name}
               onChangeText={setName}
               placeholder="e.g. John Doe"
+              leftIcon="person-outline"
             />
 
-            <View className="mt-4">
-              <CustomInput
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholder="e.g. john@example.com"
-              />
-            </View>
+            <CustomInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="e.g. john@example.com"
+              leftIcon="mail-outline"
+            />
 
-            <View className="mt-4">
-              <CustomInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Min. 8 characters"
-              />
-            </View>
+            <CustomInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Min. 8 characters"
+              leftIcon="lock-closed-outline"
+            />
 
             {/* CTA */}
             <View className="mt-6">

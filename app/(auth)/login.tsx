@@ -157,17 +157,18 @@ export default function LoginScreen() {
               onChangeText={setIdentifier}
               autoCapitalize="none"
               placeholder="Enter your email or username"
+              leftIcon="mail-outline"
+              keyboardType="email-address"
             />
 
-            <View className="mt-4">
-              <CustomInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Enter your password"
-              />
-            </View>
+            <CustomInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Enter your password"
+              leftIcon="lock-closed-outline"
+            />
 
             {/* Forgot password */}
             <TouchableOpacity
@@ -198,13 +199,26 @@ export default function LoginScreen() {
             <TouchableOpacity
               onPress={handleGoogleSignIn}
               disabled={isGoogleLoading || login.isPending}
-              className={`h-[52px] border border-gray-200 rounded-button flex-row justify-center items-center w-full bg-white ${
-                isGoogleLoading ? 'opacity-40' : ''
-              }`}
-              activeOpacity={0.8}
+              style={{
+                height: 54,
+                borderWidth: 1.5,
+                borderColor: '#E5E7EB',
+                borderRadius: 16,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#FFFFFF',
+                opacity: isGoogleLoading ? 0.5 : 1,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+              activeOpacity={0.85}
             >
               <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 10 }} />
-              <Text className="text-dark text-base font-headingSemi">Sign in with Google</Text>
+              <Text className="text-dark text-base font-headingSemi">Continue with Google</Text>
             </TouchableOpacity>
           </View>
 
