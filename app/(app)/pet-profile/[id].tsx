@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,19 +8,42 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  StyleSheet,
+  Animated,
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { petProfilesApi, PetProfile, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { useAuthStore } from '../../../src/stores/authStore';
 import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 
-const { width } = Dimensions.get('window');
-const GALLERY_IMAGE_WIDTH = (width - 48) / 3;
+const { width, height } = Dimensions.get('window');
+const HERO_HEIGHT = height * 0.38;
+const AVATAR_SIZE = 96;
+const GALLERY_COL_SIZE = (width - 4) / 3;
+
+// Species → emoji badge mapping for personality
+const speciesEmoji: Record<string, string> = {
+  cat: '🐱', dog: '🐶', bird: '🐦', rabbit: '🐰',
+  hamster: '🐹', fish: '🐠', turtle: '🐢', parrot: '🦜',
+};
+
+const getSpeciesEmoji = (species: string) =>
+  speciesEmoji[species?.toLowerCase()] ?? '🐾';
+
+const formatDOB = (dob: string | null) => {
+  if (!dob) return null;
+  const d = new Date(dob);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+type Tab = 'posts' | 'gallery' | 'about';
 
 export default function PetProfileScreen() {
   const router = useRouter();
@@ -34,7 +57,7 @@ export default function PetProfileScreen() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMorePosts, setHasMorePosts] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'gallery' | 'about'>('posts');
+  const [activeTab, setActiveTab] = useState<Tab>('posts');
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
@@ -42,18 +65,31 @@ export default function PetProfileScreen() {
   const [isConverting, setIsConverting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Scroll-driven hero parallax
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const heroTranslate = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT],
+    outputRange: [0, -HERO_HEIGHT * 0.3],
+    extrapolate: 'clamp',
+  });
+  const heroOpacity = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT * 0.7],
+    outputRange: [1, 0.3],
+    extrapolate: 'clamp',
+  });
+  const navBgOpacity = scrollY.interpolate({
+    inputRange: [HERO_HEIGHT * 0.5, HERO_HEIGHT],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   const isOwner = user?.id && profile?.owner_id && Number(user.id) === Number(profile.owner_id);
+  const heroImage = photos.find((p) => p.ordering === 0)?.photo_url ?? profile?.avatar_url ?? null;
 
+  useEffect(() => { fetchProfile(); }, [petId]);
   useEffect(() => {
-    fetchProfile();
-  }, [petId]);
-
-  useEffect(() => {
-    if (activeTab === 'gallery') {
-      fetchPhotos();
-    } else if (activeTab === 'posts') {
-      fetchPosts(true);
-    }
+    if (activeTab === 'gallery') fetchPhotos();
+    else if (activeTab === 'posts') fetchPosts(true);
   }, [activeTab, petId]);
 
   const handleRefresh = async () => {
@@ -70,13 +106,17 @@ export default function PetProfileScreen() {
     }
   };
 
+  // Preload photos for hero banner too
+  useEffect(() => {
+    if (profile) fetchPhotos();
+  }, [profile?.pet_profile_id]);
+
   const fetchProfile = async () => {
     try {
       setIsLoadingProfile(true);
       const data = await petProfilesApi.getPetProfile(petId);
       setProfile(data);
     } catch (error: any) {
-      console.error('Fetch Profile Error:', error);
       Alert.alert('Error', error.response?.data?.error || 'Failed to load pet profile.');
     } finally {
       setIsLoadingProfile(false);
@@ -101,15 +141,11 @@ export default function PetProfileScreen() {
       setIsLoadingPosts(true);
       const cursor = reset ? null : nextCursor;
       const res = await petProfilesApi.getTaggedPosts(petId, cursor);
-      if (reset) {
-        setPosts(res.posts);
-      } else {
-        setPosts((prev) => [...prev, ...res.posts]);
-      }
+      setPosts(reset ? res.posts : (prev) => [...prev, ...res.posts]);
       setNextCursor(res.next_cursor);
       setHasMorePosts(res.has_more);
     } catch (error) {
-      console.error('Fetch Tagged Posts Error:', error);
+      console.error('Fetch Posts Error:', error);
     } finally {
       setIsLoadingPosts(false);
     }
@@ -118,7 +154,7 @@ export default function PetProfileScreen() {
   const handleListForAdoption = () => {
     Alert.alert(
       'List for Adoption',
-      'Would you like to list this pet for adoption? This will automatically create an adoption listing pre-filled with this pet profile\'s details.',
+      `Would you like to list this pet for adoption? This will create a structured adoption listing pre-filled with this profile's details.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -128,20 +164,13 @@ export default function PetProfileScreen() {
               setIsConverting(true);
               const res = await petProfilesApi.convertPetToAdoption(petId);
               if (res.success) {
-                Alert.alert('Success', 'Adoption listing created successfully!', [
-                  {
-                    text: 'View Listing',
-                    onPress: () => router.push({ pathname: `/(app)/pet-details`, params: { id: res.pet_id } }),
-                  },
-                  {
-                    text: 'OK',
-                    onPress: () => fetchProfile(),
-                  },
+                Alert.alert('Success', 'Adoption listing created!', [
+                  { text: 'View Listing', onPress: () => router.push({ pathname: '/(app)/pet-details', params: { id: res.pet_id } }) },
+                  { text: 'OK', onPress: fetchProfile },
                 ]);
               }
             } catch (error: any) {
-              console.error('Convert Adoption Error:', error);
-              Alert.alert('Error', error.response?.data?.error || 'Failed to list pet for adoption.');
+              Alert.alert('Error', error.response?.data?.error || 'Failed to list pet.');
             } finally {
               setIsConverting(false);
             }
@@ -151,154 +180,202 @@ export default function PetProfileScreen() {
     );
   };
 
+  // ── Loading & Error States ────────────────────────────────────────────────
   if (isLoadingProfile) {
     return (
-      <View className="flex-1 justify-center items-center bg-surface">
+      <View style={s.center}>
         <ActivityIndicator size="large" color="#a03048" />
       </View>
     );
   }
-
   if (!profile) {
     return (
-      <View className="flex-1 justify-center items-center bg-bg px-5" style={{ paddingTop: insets.top }}>
-        <Text className="text-gray-500 font-body mb-4">Profile not found</Text>
-        <TouchableOpacity onPress={() => router.back()} className="bg-primary px-6 py-3 rounded-xl">
-          <Text className="text-white font-headingSemi">Go Back</Text>
+      <View style={[s.center, { paddingTop: insets.top }]}>
+        <Ionicons name="paw-outline" size={56} color="#E5E7EB" />
+        <Text style={s.emptyTitle}>Profile not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>
-      {/* Header */}
-      <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100 bg-surface">
-        <TouchableOpacity onPress={() => router.back()} className="p-1">
-          <Ionicons name="chevron-back" size={24} color="#111111" />
-        </TouchableOpacity>
-        <Text className="text-xl font-heading text-dark">{profile.name}</Text>
-        <View className="flex-row gap-3">
-          {isOwner && (
-            <>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: `/(app)/pet-profile/create`, params: { editId: profile.pet_profile_id } })}
-                className="p-1"
-              >
-                <Ionicons name="create-outline" size={24} color="#111111" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: `/(app)/pet-profile/gallery-manager`, params: { petId: profile.pet_profile_id } })}
-                className="p-1"
-              >
-                <Ionicons name="images-outline" size={24} color="#111111" />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </View>
+    <View style={s.root}>
 
-      <ScrollView
+      {/* ── Floating Transparent / Filled Nav Bar ── */}
+      <Animated.View style={[s.navBar, { height: insets.top + 56, paddingTop: insets.top }]}>
+        {/* Solid fill fades in on scroll */}
+        <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#a03048', opacity: navBgOpacity }]} />
+        <View style={s.navContent}>
+          <TouchableOpacity onPress={() => router.back()} style={s.navBtn}>
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Animated.Text style={[s.navTitle, { opacity: navBgOpacity }]}>{profile.name}</Animated.Text>
+          <View style={s.navActions}>
+            {isOwner && (
+              <>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+                  style={s.navIconBtn}
+                >
+                  <Ionicons name="create-outline" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
+                  style={s.navIconBtn}
+                >
+                  <Ionicons name="images-outline" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* ── Scrollable Body ── */}
+      <Animated.ScrollView
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
-        className="flex-1"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             colors={['#a03048']}
             tintColor="#a03048"
+            progressViewOffset={insets.top + 56}
           />
         }
       >
-        {/* Hero Banner Section */}
-        <View className="items-center py-6 bg-gray-50/50 border-b border-gray-100">
-          <View className="w-24 h-24 rounded-full border border-gray-200 overflow-hidden bg-primary/10 mb-3">
-            {profile.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                onError={(e) => console.log('[PetProfile] Avatar load error:', e.error)}
-              />
+        {/* ── CINEMATIC HERO BANNER ── */}
+        <View style={s.heroContainer}>
+          <Animated.View style={[s.heroBg, { transform: [{ translateY: heroTranslate }], opacity: heroOpacity }]}>
+            {heroImage ? (
+              <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
             ) : (
-              <View className="w-full h-full items-center justify-center">
-                <Ionicons name="paw" size={48} color="#a03048" />
-              </View>
+              <LinearGradient colors={['#a03048', '#6B1228']} style={StyleSheet.absoluteFillObject} />
             )}
-          </View>
-          <Text className="text-2xl font-heading text-dark">{profile.name}</Text>
-          <Text className="text-sm font-body text-gray-500 mt-1">
-            {profile.breed ? `${profile.breed} • ` : ''}
-            {profile.species}
-          </Text>
-          {profile.age && (
-            <View className="bg-primary/10 rounded-full px-3 py-1 mt-2.5">
-              <Text className="text-xs text-primary font-headingSemi">{profile.age}</Text>
-            </View>
-          )}
+          </Animated.View>
+          {/* Deep gradient scrim that bleeds into white content */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.18)', 'rgba(255,255,255,1)']}
+            locations={[0.2, 0.65, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
         </View>
 
-        {/* Adoption Conversion Banner */}
-        {isOwner && !profile.is_listed_for_adoption && (
-          <View className="mx-5 my-4 bg-primary/5 border border-primary/20 rounded-2xl p-4 flex-row justify-between items-center">
-            <View className="flex-1 mr-3">
-              <Text className="text-sm font-headingSemi text-dark">Looking to rehome?</Text>
-              <Text className="text-xs font-body text-gray-500 mt-1">
-                Convert this profile into a structured adoption listing.
-              </Text>
+        {/* ── IDENTITY BLOCK (Avatar overlaps hero) ── */}
+        <View style={s.identityBlock}>
+          {/* Avatar circle */}
+          <View style={s.avatarRing}>
+            {profile.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} contentFit="cover" />
+            ) : (
+              <LinearGradient colors={['#FAF0F2', '#f3e0e4']} style={s.avatarPlaceholder}>
+                <Text style={s.avatarEmoji}>{getSpeciesEmoji(profile.species)}</Text>
+              </LinearGradient>
+            )}
+            {/* Species emoji badge */}
+            <View style={s.speciesBadge}>
+              <Text style={{ fontSize: 14 }}>{getSpeciesEmoji(profile.species)}</Text>
             </View>
-            <TouchableOpacity
-              onPress={handleListForAdoption}
-              disabled={isConverting}
-              className="bg-primary px-4 py-2.5 rounded-xl"
-            >
-              {isConverting ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text className="text-white font-headingSemi text-xs">List Pet</Text>
-              )}
+          </View>
+
+          {/* Name + meta */}
+          <Text style={s.petName}>{profile.name}</Text>
+          {(profile.breed || profile.species) && (
+            <Text style={s.petBreed}>
+              {[profile.breed, profile.species].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+
+          {/* ── Stats Ribbon ── */}
+          <View style={s.statsRow}>
+            {profile.age && (
+              <View style={s.statChip}>
+                <Ionicons name="calendar-outline" size={13} color="#a03048" />
+                <Text style={s.statText}>{profile.age}</Text>
+              </View>
+            )}
+            {profile.gender && (
+              <View style={s.statChip}>
+                <Ionicons
+                  name={profile.gender?.toLowerCase() === 'male' ? 'male' : 'female'}
+                  size={13}
+                  color="#a03048"
+                />
+                <Text style={s.statText}>{profile.gender}</Text>
+              </View>
+            )}
+            <View style={s.statChip}>
+              <MaterialCommunityIcons name="paw" size={13} color="#a03048" />
+              <Text style={s.statText}>{profile.species}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── ADOPTION / STATUS BANNERS ── */}
+        {isOwner && !profile.is_listed_for_adoption && (
+          <View style={s.rehomeBanner}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={s.rehomeBannerTitle}>Looking to rehome?</Text>
+              <Text style={s.rehomeBannerSub}>Convert this profile into a structured adoption listing.</Text>
+            </View>
+            <TouchableOpacity onPress={handleListForAdoption} disabled={isConverting} style={s.rehomeBtn}>
+              {isConverting
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={s.rehomeBtnText}>List Pet</Text>}
             </TouchableOpacity>
           </View>
         )}
 
         {profile.is_listed_for_adoption && profile.adoption_listing_id && (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: `/(app)/pet-details`, params: { id: profile.adoption_listing_id } })}
-            className="mx-5 my-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex-row justify-between items-center"
+            onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: profile.adoption_listing_id } })}
+            style={s.adoptionBanner}
           >
-            <View className="flex-1 mr-3">
-              <Text className="text-sm font-headingSemi text-amber-800">Listed for Adoption</Text>
-              <Text className="text-xs font-body text-amber-700/80 mt-1">
-                This pet is currently listed for adoption. Tap here to view the listing.
-              </Text>
+            <View style={s.adoptionBannerDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.adoptionBannerTitle}>Listed for Adoption</Text>
+              <Text style={s.adoptionBannerSub}>Tap to view the active listing</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#B45309" />
+            <Ionicons name="chevron-forward" size={18} color="#92400E" />
           </TouchableOpacity>
         )}
 
-        {/* Custom Tabs Navigation */}
-        <View className="flex-row border-b border-gray-100 bg-surface">
-          {(['posts', 'gallery', 'about'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              className="flex-1 py-4 items-center"
-              style={{ borderBottomWidth: activeTab === tab ? 2 : 0, borderBottomColor: '#a03048' }}
-            >
-              <Text
-                className={`text-sm capitalize ${
-                  activeTab === tab ? 'text-primary font-headingSemi' : 'text-gray-500 font-body'
-                }`}
+        {/* ── PREMIUM TAB BAR ── */}
+        <View style={s.tabBar}>
+          {(['posts', 'gallery', 'about'] as Tab[]).map((tab) => {
+            const active = tab === activeTab;
+            const icons: Record<Tab, any> = {
+              posts: 'chatbubble-ellipses-outline',
+              gallery: 'images-outline',
+              about: 'information-circle-outline',
+            };
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[s.tabItem, active && s.tabItemActive]}
+                activeOpacity={0.7}
               >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Ionicons name={icons[tab]} size={18} color={active ? '#a03048' : '#9CA3AF'} />
+                <Text style={[s.tabLabel, active && s.tabLabelActive]}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Tab Contents */}
+        {/* ── TAB CONTENT ── */}
+
+        {/* POSTS TAB */}
         {activeTab === 'posts' && (
-          <View className="mt-4">
+          <View style={{ marginTop: 8 }}>
             {posts.length > 0 ? (
               <FlatList
                 data={posts}
@@ -310,117 +387,465 @@ export default function PetProfileScreen() {
                     onPress={() => router.push({ pathname: '/(app)/post/[id]', params: { id: item.post_id } })}
                   />
                 )}
-                onEndReached={() => {
-                  if (hasMorePosts) fetchPosts();
-                }}
+                onEndReached={() => { if (hasMorePosts) fetchPosts(); }}
                 onEndReachedThreshold={0.5}
-                ListFooterComponent={
-                  isLoadingPosts ? (
-                    <View className="py-4">
-                      <ActivityIndicator size="small" color="#a03048" />
-                    </View>
-                  ) : null
-                }
+                ListFooterComponent={isLoadingPosts ? <ActivityIndicator size="small" color="#a03048" style={{ marginVertical: 16 }} /> : null}
               />
             ) : isLoadingPosts ? (
-              <View className="py-20 justify-center items-center">
+              <View style={s.emptyState}>
                 <ActivityIndicator size="small" color="#a03048" />
               </View>
             ) : (
-              <View className="py-20 items-center justify-center">
-                <Ionicons name="chatbubble-outline" size={48} color="#9CA3AF" />
-                <Text className="text-gray-500 font-body mt-4 text-center px-5">
-                  No posts tag this pet yet.
-                </Text>
+              <View style={s.emptyState}>
+                <Ionicons name="chatbubble-outline" size={48} color="#E5E7EB" />
+                <Text style={s.emptyTitle}>No posts yet</Text>
+                <Text style={s.emptySub}>Posts tagging {profile.name} will appear here.</Text>
               </View>
             )}
           </View>
         )}
 
+        {/* GALLERY TAB */}
         {activeTab === 'gallery' && (
-          <View className="mt-4 px-5">
-            {isLoadingPhotos && photos.length === 0 ? (
-              <View className="py-20 justify-center items-center">
+          <View style={s.galleryGrid}>
+            {photos.length > 0 ? (
+              photos.map((photo, idx) => (
+                <View
+                  key={photo.photo_id}
+                  style={[
+                    s.galleryCell,
+                    // Every 7th image is a feature tile (double wide)
+                    idx % 7 === 0 && s.galleryCellFeatured,
+                  ]}
+                >
+                  <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                  {photo.caption ? (
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={s.captionGradient}>
+                      <Text style={s.captionText} numberOfLines={1}>{photo.caption}</Text>
+                    </LinearGradient>
+                  ) : null}
+                </View>
+              ))
+            ) : isLoadingPhotos ? (
+              <View style={[s.emptyState, { width }]}>
                 <ActivityIndicator size="small" color="#a03048" />
               </View>
-            ) : photos.length > 0 ? (
-              <>
-                {isLoadingPhotos && (
-                  <View className="py-2 items-center">
-                    <ActivityIndicator size="small" color="#a03048" />
-                  </View>
-                )}
-                <FlatList
-                  data={photos}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.photo_id.toString()}
-                  numColumns={3}
-                  columnWrapperStyle={{ gap: 8 }}
-                  renderItem={({ item }) => (
-                    <View
-                      style={{
-                        width: GALLERY_IMAGE_WIDTH,
-                        height: GALLERY_IMAGE_WIDTH,
-                        borderRadius: 16,
-                        overflow: 'hidden',
-                        borderWidth: 1,
-                        borderColor: '#F3F4F6',
-                        backgroundColor: '#FFFFFF',
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Image
-                        source={{ uri: item.photo_url }}
-                        style={{ width: GALLERY_IMAGE_WIDTH, height: GALLERY_IMAGE_WIDTH }}
-                        contentFit="cover"
-                        onError={(e) => console.log('[PetProfile] Gallery image error:', item.photo_url, e.error)}
-                        onLoad={() => console.log('[PetProfile] Gallery image loaded:', item.photo_url)}
-                      />
-                    </View>
-                  )}
-                />
-              </>
             ) : (
-              <View className="py-20 items-center justify-center">
-                <Ionicons name="images-outline" size={48} color="#9CA3AF" />
-                <Text className="text-gray-500 font-body mt-4 text-center">
-                  No gallery photos available.
-                </Text>
+              <View style={[s.emptyState, { width }]}>
+                <Ionicons name="images-outline" size={48} color="#E5E7EB" />
+                <Text style={s.emptyTitle}>No photos yet</Text>
+                <Text style={s.emptySub}>Add photos from the gallery manager.</Text>
               </View>
             )}
           </View>
         )}
 
+        {/* ABOUT TAB */}
         {activeTab === 'about' && (
-          <View className="mt-4 px-5 gap-4">
+          <View style={s.aboutContainer}>
+
+            {/* Bio card */}
             {profile.bio && (
-              <View className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Bio</Text>
-                <Text className="text-sm font-body text-dark leading-5">{profile.bio}</Text>
+              <View style={s.aboutCard}>
+                <View style={s.aboutCardHeader}>
+                  <View style={s.aboutCardIcon}>
+                    <Ionicons name="heart" size={14} color="#a03048" />
+                  </View>
+                  <Text style={s.aboutCardTitle}>About {profile.name}</Text>
+                </View>
+                <Text style={s.bioText}>{profile.bio}</Text>
               </View>
             )}
 
-            <View className="bg-gray-50 rounded-2xl p-4 border border-gray-100 gap-3">
-              <View className="flex-row justify-between border-b border-gray-100/50 pb-2">
-                <Text className="text-sm font-body text-gray-500">Gender</Text>
-                <Text className="text-sm font-headingSemi text-dark capitalize">{profile.gender}</Text>
+            {/* Details card */}
+            <View style={s.aboutCard}>
+              <View style={s.aboutCardHeader}>
+                <View style={s.aboutCardIcon}>
+                  <Ionicons name="paw" size={14} color="#a03048" />
+                </View>
+                <Text style={s.aboutCardTitle}>Details</Text>
               </View>
-              {profile.date_of_birth && (
-                <View className="flex-row justify-between border-b border-gray-100/50 pb-2">
-                  <Text className="text-sm font-body text-gray-500">Date of Birth</Text>
-                  <Text className="text-sm font-headingSemi text-dark">
-                    {profile.date_of_birth.split('T')[0]}
-                  </Text>
+
+              <View style={s.detailRow}>
+                <Text style={s.detailLabel}>Species</Text>
+                <View style={s.detailValueRow}>
+                  <Text style={s.detailValueEmoji}>{getSpeciesEmoji(profile.species)}</Text>
+                  <Text style={s.detailValue}>{profile.species}</Text>
+                </View>
+              </View>
+
+              {profile.breed && (
+                <View style={s.detailRow}>
+                  <Text style={s.detailLabel}>Breed</Text>
+                  <Text style={s.detailValue}>{profile.breed}</Text>
                 </View>
               )}
-              <View className="flex-row justify-between pb-1">
-                <Text className="text-sm font-body text-gray-500">Species</Text>
-                <Text className="text-sm font-headingSemi text-dark">{profile.species}</Text>
+
+              <View style={s.detailRow}>
+                <Text style={s.detailLabel}>Gender</Text>
+                <View style={s.detailValueRow}>
+                  <Ionicons
+                    name={profile.gender?.toLowerCase() === 'male' ? 'male' : 'female'}
+                    size={13}
+                    color="#a03048"
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={s.detailValue}>{profile.gender}</Text>
+                </View>
               </View>
+
+              {profile.age && (
+                <View style={s.detailRow}>
+                  <Text style={s.detailLabel}>Age</Text>
+                  <Text style={s.detailValue}>{profile.age}</Text>
+                </View>
+              )}
+
+              {profile.date_of_birth && (
+                <View style={[s.detailRow, { borderBottomWidth: 0 }]}>
+                  <Text style={s.detailLabel}>Date of Birth</Text>
+                  <Text style={s.detailValue}>{formatDOB(profile.date_of_birth)}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Joined card */}
+            <View style={s.aboutCard}>
+              <View style={s.aboutCardHeader}>
+                <View style={s.aboutCardIcon}>
+                  <Ionicons name="sparkles" size={14} color="#a03048" />
+                </View>
+                <Text style={s.aboutCardTitle}>On Paltuu since</Text>
+              </View>
+              <Text style={s.bioText}>
+                {new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+              </Text>
             </View>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 32 },
+
+  // ── NAV BAR ──
+  navBar: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    zIndex: 100,
+  },
+  navContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  navBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  navTitle: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontFamily: 'DMSans_700Bold',
+    letterSpacing: -0.3,
+  },
+  navActions: { flexDirection: 'row', gap: 4 },
+  navIconBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+
+  // ── HERO ──
+  heroContainer: {
+    height: HERO_HEIGHT,
+    overflow: 'hidden',
+  },
+  heroBg: {
+    ...StyleSheet.absoluteFillObject,
+    height: HERO_HEIGHT * 1.3, // Extra height for parallax travel
+    backgroundColor: '#a03048',
+  },
+
+  // ── IDENTITY ──
+  identityBlock: {
+    alignItems: 'center',
+    marginTop: -(AVATAR_SIZE / 2 + 8),
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+  },
+  avatarRing: {
+    width: AVATAR_SIZE + 8,
+    height: AVATAR_SIZE + 8,
+    borderRadius: (AVATAR_SIZE + 8) / 2,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#FAF0F2',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarPlaceholder: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEmoji: { fontSize: 38 },
+  speciesBadge: {
+    position: 'absolute',
+    bottom: 2, right: 2,
+    width: 26, height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  petName: {
+    marginTop: 14,
+    fontSize: 26,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  petBreed: {
+    marginTop: 4,
+    fontSize: 14,
+    fontFamily: 'Montserrat_500Medium',
+    color: '#6B7280',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  statChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FAF0F2',
+    borderWidth: 1,
+    borderColor: 'rgba(160,48,72,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statText: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#a03048',
+    textTransform: 'capitalize',
+  },
+
+  // ── BANNERS ──
+  rehomeBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: '#FAF0F2',
+    borderWidth: 1,
+    borderColor: 'rgba(160,48,72,0.2)',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rehomeBannerTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#111827' },
+  rehomeBannerSub: { fontSize: 11, fontFamily: 'Montserrat_400Regular', color: '#6B7280', marginTop: 2 },
+  rehomeBtn: {
+    backgroundColor: '#a03048',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 14,
+  },
+  rehomeBtnText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'DMSans_700Bold' },
+
+  adoptionBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  adoptionBannerDot: {
+    width: 8, height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D97706',
+  },
+  adoptionBannerTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#92400E' },
+  adoptionBannerSub: { fontSize: 11, fontFamily: 'Montserrat_400Regular', color: '#B45309', marginTop: 2 },
+
+  // ── TABS ──
+  tabBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabItemActive: {
+    borderBottomColor: '#a03048',
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#9CA3AF',
+  },
+  tabLabelActive: {
+    color: '#a03048',
+  },
+
+  // ── GALLERY ──
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    padding: 2,
+    marginTop: 4,
+  },
+  galleryCell: {
+    width: GALLERY_COL_SIZE,
+    height: GALLERY_COL_SIZE,
+    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    borderRadius: 4,
+    position: 'relative',
+  },
+  galleryCellFeatured: {
+    width: GALLERY_COL_SIZE * 2 + 2,
+    height: GALLERY_COL_SIZE * 1.4,
+    borderRadius: 6,
+  },
+  captionGradient: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 6,
+  },
+  captionText: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_500Medium',
+    color: '#FFFFFF',
+  },
+
+  // ── ABOUT ──
+  aboutContainer: {
+    padding: 20,
+    gap: 16,
+  },
+  aboutCard: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 20,
+    padding: 18,
+  },
+  aboutCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  aboutCardIcon: {
+    width: 26, height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FAF0F2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aboutCardTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  bioText: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_400Regular',
+    color: '#4B5563',
+    lineHeight: 22,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  detailLabel: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_500Medium',
+    color: '#9CA3AF',
+  },
+  detailValueRow: { flexDirection: 'row', alignItems: 'center' },
+  detailValueEmoji: { fontSize: 13, marginRight: 6 },
+  detailValue: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+    textTransform: 'capitalize',
+  },
+
+  // ── EMPTY + ERRORS ──
+  emptyState: {
+    paddingVertical: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: 'DMSans_700Bold',
+    color: '#374151',
+  },
+  emptySub: {
+    marginTop: 6,
+    fontSize: 13,
+    fontFamily: 'Montserrat_400Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  backBtn: {
+    marginTop: 20,
+    backgroundColor: '#a03048',
+    paddingHorizontal: 28, paddingVertical: 12,
+    borderRadius: 16,
+  },
+  backBtnText: {
+    color: '#FFFFFF',
+    fontFamily: 'DMSans_700Bold',
+    fontSize: 14,
+  },
+});

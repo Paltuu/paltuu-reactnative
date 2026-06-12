@@ -102,13 +102,15 @@ export default function PetDetailsScreen() {
   return (
     <View style={s.container}>
       {/* --- MINIMALIST FIXED NAVIGATION ROW --- */}
-      <View style={[s.fixedNavRow, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={s.navBtn} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onShare} style={s.navBtn} activeOpacity={0.7}>
-          <Ionicons name="share-social-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+      <View style={[s.fixedNavRow, { height: insets.top + 56, paddingTop: insets.top }]}>
+        <View style={s.fixedNavContent}>
+          <TouchableOpacity onPress={() => router.back()} style={s.navBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={24} color="#374151" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onShare} style={s.navBtn} activeOpacity={0.7}>
+            <Ionicons name="share-social-outline" size={22} color="#374151" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -339,13 +341,16 @@ const s = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Premium soft translucency
+  },
+  fixedNavContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    height: 96,
-    zIndex: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Premium soft translucency
+    height: 56,
   },
   navBtn: {
     width: 40,

@@ -69,7 +69,11 @@ export const petProfilesApi = {
 
   async getUserPetProfiles(userId: number | string) {
     const { data } = await client.get(`/users/${userId}/pet-profiles`);
-    return { pet_profiles: data.pets || [] };
+    const profiles = data.pets || data.pet_profiles || (Array.isArray(data) ? data : []);
+    return {
+      pets: profiles,
+      pet_profiles: profiles,
+    };
   },
 
   async getPetPhotos(petId: number | string) {

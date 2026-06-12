@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
@@ -11,15 +10,18 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
+import CustomInput from '../../../src/components/common/CustomInput';
+import PrimaryButton from '../../../src/components/common/PrimaryButton';
 
 const ALLOWED_SPECIES = [
   { label: 'Dog 🐶', value: 'Dog' },
@@ -37,46 +39,68 @@ const ALLOWED_GENDERS = [
   { label: 'Unknown ❓', value: 'unknown' },
 ];
 
-function CustomDropdown({ label, value, options, onSelect }: any) {
+function PremiumDropdown({ label, value, options, onSelect, icon }: any) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o: any) => o.value === value);
 
   return (
     <>
-      <TouchableOpacity
-        className="bg-white rounded-2xl p-4 border border-gray-100 flex-row justify-between items-center"
-        onPress={() => setOpen(true)}
-      >
-        <Text className={`text-base font-body ${selected ? 'text-dark font-headingSemi' : 'text-gray-400'}`}>
-          {selected ? selected.label : label}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
-      </TouchableOpacity>
+      <View style={s.fieldContainer}>
+        <Text style={[s.fieldLabel, open && { color: '#a03048' }]}>{label}</Text>
+        <TouchableOpacity
+          style={[s.dropdownTrigger, open && s.dropdownTriggerActive]}
+          onPress={() => setOpen(true)}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            {icon && (
+              <Ionicons name={icon} size={18} color={selected ? '#a03048' : '#9CA3AF'} />
+            )}
+            <Text style={[s.dropdownText, selected && s.dropdownTextSelected]}>
+              {selected ? selected.label : `Select ${label}`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
       <Modal visible={open} transparent animationType="slide">
         <TouchableOpacity
-          className="flex-1 bg-black/40 justify-end"
+          style={s.modalOverlay}
           activeOpacity={1}
           onPress={() => setOpen(false)}
         >
-          <View className="bg-white rounded-t-[30px] max-h-[60%] pb-10">
-            <Text className="text-base font-heading text-center py-5 border-b border-gray-100">{label}</Text>
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{label}</Text>
+              <TouchableOpacity onPress={() => setOpen(false)} style={s.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#374151" />
+              </TouchableOpacity>
+            </View>
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  className={`flex-row justify-between items-center px-6 py-4 border-b border-gray-100 ${
-                    item.value === value ? 'bg-primary/5' : ''
-                  }`}
+                  style={[
+                    s.modalOption,
+                    item.value === value && s.modalOptionSelected,
+                  ]}
                   onPress={() => {
                     onSelect(item.value);
                     setOpen(false);
                   }}
                 >
-                  <Text className={`text-base font-body ${item.value === value ? 'text-primary font-headingSemi' : 'text-dark'}`}>
+                  <Text
+                    style={[
+                      s.modalOptionText,
+                      item.value === value && s.modalOptionTextActive,
+                    ]}
+                  >
                     {item.label}
                   </Text>
-                  {item.value === value && <Ionicons name="checkmark" size={20} color="#a03048" />}
+                  {item.value === value && <Ionicons name="checkmark-circle" size={20} color="#a03048" />}
                 </TouchableOpacity>
               )}
             />
@@ -89,7 +113,6 @@ function CustomDropdown({ label, value, options, onSelect }: any) {
 
 export default function CreatePetProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const petProfileId = params.editId as string;
   const isEditMode = !!petProfileId;
@@ -227,131 +250,290 @@ export default function CreatePetProfileScreen() {
 
   if (isLoading && isEditMode) {
     return (
-      <View className="flex-1 justify-center items-center bg-bg">
+      <View style={s.loaderContainer}>
         <ActivityIndicator size="large" color="#a03048" />
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-bg"
-      style={{ paddingTop: insets.top }}
-    >
-      <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100 bg-surface">
-        <TouchableOpacity onPress={() => router.back()} className="p-1">
-          <Ionicons name="chevron-back" size={24} color="#111111" />
-        </TouchableOpacity>
-        <Text className="text-xl font-heading text-dark">
-          {isEditMode ? 'Edit Pet Profile' : 'New Pet Profile'}
-        </Text>
-        <TouchableOpacity onPress={handleSave} disabled={isLoading || isUploading} className="p-1">
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#a03048" />
-          ) : (
-            <Text className="text-primary font-headingSemi text-base">Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        className="flex-1 px-5"
-        contentContainerStyle={{ paddingVertical: 24, paddingBottom: 100 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={s.root}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        {/* Avatar Section */}
-        <View className="items-center mb-6">
-          <TouchableOpacity onPress={pickAvatar} disabled={isUploading} className="relative">
-            <View className="w-24 h-24 rounded-full bg-primary/10 items-center justify-center border border-gray-100 overflow-hidden">
-              {isUploading ? (
-                <ActivityIndicator size="small" color="#a03048" />
-              ) : avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-              ) : (
-                <Ionicons name="paw" size={48} color="#a03048" />
-              )}
-            </View>
-            <View className="absolute bottom-0 right-0 bg-primary rounded-full p-2 border border-white">
-              <Ionicons name="camera" size={14} color="#ffffff" />
-            </View>
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.headerBtn}>
+            <Ionicons name="chevron-back" size={22} color="#374151" />
           </TouchableOpacity>
-          <Text className="text-xs text-gray-500 mt-2 font-body">Pet Profile Picture</Text>
+          <Text style={s.headerTitle}>
+            {isEditMode ? 'Edit Pet Profile' : 'New Pet Profile'}
+          </Text>
+          <View style={{ width: 36 }} />
         </View>
 
-        {/* Inputs */}
-        <View className="gap-4">
-          <View>
-            <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Pet Name *</Text>
-            <TextInput
-              className="bg-white rounded-xl p-4 border border-gray-100 font-body text-sm text-dark"
-              placeholder="e.g. Leo"
-              placeholderTextColor="#9CA3AF"
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Avatar Section */}
+          <View style={s.avatarSection}>
+            <TouchableOpacity onPress={pickAvatar} disabled={isUploading || isLoading} style={s.avatarWrapper}>
+              <View style={s.avatarFrame}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                ) : (
+                  <Ionicons name="paw" size={44} color="#a03048" />
+                )}
+              </View>
+              {isUploading ? (
+                <View style={s.avatarUploadOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <View style={s.avatarBadge}>
+                  <Ionicons name="camera" size={14} color="#ffffff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={s.avatarHint}>Pet Profile Picture</Text>
+          </View>
+
+          {/* Form */}
+          <View style={{ gap: 20, marginBottom: 32 }}>
+            <CustomInput
+              label="Pet Name *"
               value={name}
               onChangeText={setName}
+              placeholder="e.g. Leo"
+              leftIcon="heart-outline"
             />
-          </View>
 
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Species *</Text>
-              <CustomDropdown
-                label="Select Species"
-                value={species}
-                options={ALLOWED_SPECIES}
-                onSelect={setSpecies}
-              />
+            <View style={s.row}>
+              <View style={{ flex: 1 }}>
+                <PremiumDropdown
+                  label="Species"
+                  value={species}
+                  options={ALLOWED_SPECIES}
+                  onSelect={setSpecies}
+                  icon="paw-outline"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <PremiumDropdown
+                  label="Gender"
+                  value={gender}
+                  options={ALLOWED_GENDERS}
+                  onSelect={setGender}
+                  icon="transgender-outline"
+                />
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Gender</Text>
-              <CustomDropdown
-                label="Select Gender"
-                value={gender}
-                options={ALLOWED_GENDERS}
-                onSelect={setGender}
-              />
-            </View>
-          </View>
 
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Breed</Text>
-              <TextInput
-                className="bg-white rounded-xl p-4 border border-gray-100 font-body text-sm text-dark"
-                placeholder="e.g. Golden Retriever"
-                placeholderTextColor="#9CA3AF"
-                value={breed}
-                onChangeText={setBreed}
-              />
+            <View style={s.row}>
+              <View style={{ flex: 1 }}>
+                <CustomInput
+                  label="Breed"
+                  value={breed}
+                  onChangeText={setBreed}
+                  placeholder="e.g. Husky"
+                  leftIcon="git-branch-outline"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <CustomInput
+                  label="Date of Birth"
+                  value={dateOfBirth}
+                  onChangeText={setDateOfBirth}
+                  placeholder="YYYY-MM-DD"
+                  maxLength={10}
+                  leftIcon="calendar-outline"
+                />
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">Date of Birth</Text>
-              <TextInput
-                className="bg-white rounded-xl p-4 border border-gray-100 font-body text-sm text-dark"
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9CA3AF"
-                maxLength={10}
-                value={dateOfBirth}
-                onChangeText={setDateOfBirth}
-              />
-            </View>
-          </View>
 
-          <View>
-            <Text className="text-xs font-headingSemi text-gray-500 uppercase tracking-wider mb-2">About / Bio</Text>
-            <TextInput
-              className="bg-white rounded-xl p-4 border border-gray-100 font-body text-sm text-dark min-h-[100px]"
-              placeholder="Tell other pet lovers about their personality, hobbies, or traits..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              textAlignVertical="top"
-              maxLength={500}
+            <CustomInput
+              label="About / Bio"
               value={bio}
               onChangeText={setBio}
+              placeholder="Tell other pet lovers about their personality, hobbies, or traits..."
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+              leftIcon="chatbox-ellipses-outline"
             />
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+          {/* Save Button */}
+          <PrimaryButton
+            title={isEditMode ? 'Save Changes' : 'Create Profile'}
+            onPress={handleSave}
+            loading={isLoading || isUploading}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  headerBtn: {
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  scrollContent: { padding: 20, paddingTop: 24, paddingBottom: 60 },
+  
+  // Avatar
+  avatarSection: { alignItems: 'center', marginBottom: 28 },
+  avatarWrapper: { position: 'relative' },
+  avatarFrame: {
+    width: 96, height: 96,
+    borderRadius: 48,
+    backgroundColor: '#FAF0F2',
+    borderWidth: 1.5,
+    borderColor: '#f3e0e4',
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#a03048',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0, right: 0,
+    backgroundColor: '#a03048',
+    width: 30, height: 30,
+    borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  avatarUploadOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 48,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarHint: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#9CA3AF',
+    marginTop: 8,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+
+  // Dropdown Field
+  fieldContainer: { marginBottom: 0 },
+  fieldLabel: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#6B7280',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  dropdownTriggerActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FFFFFF',
+  },
+  dropdownText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_400Regular',
+    color: '#B0B7C3',
+  },
+  dropdownTextSelected: {
+    color: '#111827',
+  },
+
+  row: { flexDirection: 'row', gap: 12 },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    maxHeight: '60%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  modalCloseBtn: {
+    width: 32, height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
+  },
+  modalOptionSelected: {
+    backgroundColor: '#FAF0F2',
+  },
+  modalOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#374151',
+  },
+  modalOptionTextActive: {
+    fontFamily: 'DMSans_700Bold',
+    color: '#a03048',
+  },
+});
