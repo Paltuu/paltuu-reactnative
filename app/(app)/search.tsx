@@ -6,9 +6,9 @@ import {
   Dimensions, 
   ActivityIndicator, 
   TouchableOpacity,
-  Image,
   RefreshControl
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext } from '../../src/context/HeaderContext';
@@ -75,7 +75,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
       {(post.content || '').split('\n')[0].replace(/<[^>]*>/g, '').trim() || 'Media Post'}
     </Text>
     <Text className="text-[13px] text-[#666]">
-      {post.like_count + post.comment_count + (post.repost_count ?? 0)} posts · {post.author_name}
+      {(post.like_count ?? 0) + (post.comment_count ?? 0) + (post.repost_count ?? 0)} posts · {post.author_name}
     </Text>
   </TouchableOpacity>
 );
@@ -326,7 +326,7 @@ export default function SearchScreen() {
       <FlatList
         data={combinedData}
         renderItem={renderItem}
-        keyExtractor={(item, index) => item.post_id || item.user_id || `idx-${index}`}
+        keyExtractor={(item, index) => String(item.post_id || item.user_id || `idx-${index}`)}
         ListHeaderComponent={renderHeader}
         onScroll={onScroll}
         scrollEventThrottle={16}

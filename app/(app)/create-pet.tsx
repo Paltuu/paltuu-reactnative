@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
@@ -10,20 +9,21 @@ import {
   Modal,
   FlatList,
   Dimensions,
-  Animated,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
+import CustomInput from '../../src/components/common/CustomInput';
+import PrimaryButton from '../../src/components/common/PrimaryButton';
 
 const { width } = Dimensions.get('window');
 
-/* ───────────────────────────────────────────────
-   Constants from Web App
-   ─────────────────────────────────────────────── */
 const PET_TAGS = [
   { tag_id: 1, tag_name: "Playful", tag_category: "personality" },
   { tag_id: 2, tag_name: "Calm", tag_category: "personality" },
@@ -52,42 +52,68 @@ const PET_TAGS = [
   { tag_id: 25, tag_name: "Requires Company", tag_category: "compatibility" },
 ];
 
-/* ───────────────────────────────────────────────
-   Custom Components
-   ─────────────────────────────────────────────── */
-function Dropdown({ label, value, options, onSelect }: any) {
+function PremiumDropdown({ label, value, options, onSelect, icon }: any) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o: any) => o.value === value);
 
   return (
     <>
-      <TouchableOpacity 
-        className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex-row justify-between items-center" 
-        onPress={() => setOpen(true)}
-      >
-        <Text className={`text-base ${selected ? 'text-black font-semibold' : 'text-gray-400'}`}>
-          {selected ? selected.label : label}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color="#999" />
-      </TouchableOpacity>
+      <View style={s.fieldContainer}>
+        <Text style={[s.fieldLabel, open && { color: '#a03048' }]}>{label}</Text>
+        <TouchableOpacity
+          style={[s.dropdownTrigger, open && s.dropdownTriggerActive]}
+          onPress={() => setOpen(true)}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+            {icon && (
+              <Ionicons name={icon} size={18} color={selected ? '#a03048' : '#9CA3AF'} />
+            )}
+            <Text style={[s.dropdownText, selected && s.dropdownTextSelected]}>
+              {selected ? selected.label : `Select ${label}`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
       <Modal visible={open} transparent animationType="slide">
-        <TouchableOpacity 
-          className="flex-1 bg-black/40 justify-end" 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={s.modalOverlay}
+          activeOpacity={1}
           onPress={() => setOpen(false)}
         >
-          <View className="bg-white rounded-t-[30px] max-h-[60%] pb-10">
-            <Text className="text-lg font-black text-center py-5 border-b border-gray-50">{label}</Text>
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{label}</Text>
+              <TouchableOpacity onPress={() => setOpen(false)} style={s.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#374151" />
+              </TouchableOpacity>
+            </View>
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  className={`flex-row justify-between items-center px-6 py-4 border-b border-gray-50 ${item.value === value ? 'bg-primary/5' : ''}`}
-                  onPress={() => { onSelect(item.value); setOpen(false); }}
+                  style={[
+                    s.modalOption,
+                    item.value === value && s.modalOptionSelected,
+                  ]}
+                  onPress={() => {
+                    onSelect(item.value);
+                    setOpen(false);
+                  }}
                 >
-                  <Text className={`text-base ${item.value === value ? 'text-primary font-bold' : 'text-gray-700'}`}>{item.label}</Text>
-                  {item.value === value && <Ionicons name="checkmark" size={20} color="#a03048" />}
+                  <Text
+                    style={[
+                      s.modalOptionText,
+                      item.value === value && s.modalOptionTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {item.value === value && <Ionicons name="checkmark-circle" size={20} color="#a03048" />}
                 </TouchableOpacity>
               )}
             />
@@ -98,12 +124,8 @@ function Dropdown({ label, value, options, onSelect }: any) {
   );
 }
 
-/* ───────────────────────────────────────────────
-   Main Screen
-   ─────────────────────────────────────────────── */
 export default function CreatePetScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -156,7 +178,7 @@ export default function CreatePetScreen() {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: 5,
         quality: 0.7,
@@ -212,256 +234,609 @@ export default function CreatePetScreen() {
       { id: 3, label: 'Gallery' },
     ];
     return (
-      <View className="mb-8 px-10">
-        <View className="flex-row justify-between relative">
-          {steps.map((s, i) => (
-            <View key={s.id} className="items-center z-10">
-              <View className={`w-8 h-8 rounded-xl items-center justify-center mb-1.5 ${currentStep >= s.id ? 'bg-primary' : 'bg-gray-100'}`}>
-                <Text className={`text-sm font-black ${currentStep >= s.id ? 'text-white' : 'text-gray-400'}`}>{s.id}</Text>
+      <View style={s.stepContainer}>
+        <View style={s.stepRow}>
+          {steps.map((sItem, i) => (
+            <View key={sItem.id} style={s.stepItem}>
+              <View style={[s.stepCircle, currentStep >= sItem.id ? s.stepCircleActive : s.stepCircleInactive]}>
+                <Text style={[s.stepNumber, currentStep >= sItem.id ? s.stepNumberActive : s.stepNumberInactive]}>
+                  {sItem.id}
+                </Text>
               </View>
-              <Text className={`text-[10px] font-bold uppercase ${currentStep >= s.id ? 'text-primary' : 'text-gray-300'}`}>{s.label}</Text>
-              {i < 2 && (
-                <View className={`absolute h-[2px] bg-gray-100 top-4 left-6 z-[-1]`} style={{ width: width / 3 }} />
-              )}
-              {i < 2 && currentStep > s.id && (
-                <View className={`absolute h-[2px] bg-primary top-4 left-6 z-[-1]`} style={{ width: width / 3 }} />
-              )}
+              <Text style={[s.stepText, currentStep >= sItem.id ? s.stepTextActive : s.stepTextInactive]}>
+                {sItem.label}
+              </Text>
             </View>
           ))}
+          {/* Connector Line */}
+          <View style={s.stepLineBase} />
+          <View
+            style={[
+              s.stepLineActive,
+              currentStep === 1 && { width: 0 },
+              currentStep === 2 && { right: '50%' },
+              currentStep === 3 && { right: 22 }
+            ]}
+          />
         </View>
       </View>
     );
   };
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top + 20 }}>
-      {/* Header */}
-      <View className="flex-row justify-between items-center px-5 mb-5">
-        <TouchableOpacity onPress={() => currentStep > 1 ? prevStep() : router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-        </TouchableOpacity>
-        <Text className="text-xl font-black text-gray-900">{currentStep === 3 ? 'Finalize' : 'Post a Pet'}</Text>
-        <View className="w-6" />
-      </View>
-
-      {renderStepIndicator()}
-
-      <ScrollView 
-        className="flex-1 px-6" 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={s.root}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        {currentStep === 1 && (
-          <View>
-            <Text className="text-3xl font-black text-gray-900 text-center">The Essentials</Text>
-            <Text className="text-base font-medium text-gray-400 text-center mb-10">Start with the fundamental details</Text>
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => currentStep > 1 ? prevStep() : router.back()} style={s.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color="#374151" />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>
+            {currentStep === 3 ? 'Finalize' : 'Post a Pet'}
+          </Text>
+          <View style={{ width: 36 }} />
+        </View>
 
-            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Listing Title *</Text>
-            <TextInput
-              className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
-              placeholder="e.g. Energetic Husky Mix"
-              value={formData.title}
-              onChangeText={t => setFormData({ ...formData, title: t })}
-            />
+        {renderStepIndicator()}
 
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Pet Type *</Text>
-                <Dropdown
-                  label="Select Type"
-                  value={formData.petType}
-                  options={(categories || []).map((c: any) => ({ label: c.category_name || c.name, value: (c.category_id || c.id).toString() }))}
-                  onSelect={(v: any) => setFormData({ ...formData, petType: v })}
-                />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {currentStep === 1 && (
+            <View style={{ gap: 20 }}>
+              <View style={s.stepHeaderSection}>
+                <Text style={s.stepMainTitle}>The Essentials</Text>
+                <Text style={s.stepSubTitle}>Start with the fundamental details</Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Sex *</Text>
-                <View className="flex-row gap-2">
-                  {['male', 'female'].map(s => (
-                    <TouchableOpacity
-                      key={s}
-                      onPress={() => setFormData({ ...formData, sex: s })}
-                      className={`flex-1 py-4 rounded-2xl items-center border ${formData.sex === s ? 'bg-primary/5 border-primary' : 'bg-gray-50 border-gray-100'}`}
-                    >
-                      <Text className={`text-sm font-bold capitalize ${formData.sex === s ? 'text-primary' : 'text-gray-400'}`}>{s}</Text>
-                    </TouchableOpacity>
-                  ))}
+
+              <CustomInput
+                label="Listing Title *"
+                placeholder="e.g. Energetic Husky Mix"
+                value={formData.title}
+                onChangeText={t => setFormData({ ...formData, title: t })}
+                leftIcon="bookmark-outline"
+              />
+
+              <View style={s.row}>
+                <View style={{ flex: 1 }}>
+                  <PremiumDropdown
+                    label="Pet Type"
+                    value={formData.petType}
+                    options={(categories || []).map((c: any) => ({ label: c.category_name || c.name, value: (c.category_id || c.id).toString() }))}
+                    onSelect={(v: any) => setFormData({ ...formData, petType: v })}
+                    icon="paw-outline"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>Sex *</Text>
+                  <View style={s.row}>
+                    {['male', 'female'].map(sVal => (
+                      <TouchableOpacity
+                        key={sVal}
+                        onPress={() => setFormData({ ...formData, sex: sVal })}
+                        style={[
+                          s.genderBtn,
+                          formData.sex === sVal && s.genderBtnActive
+                        ]}
+                      >
+                        <Text style={[s.genderBtnText, formData.sex === sVal && s.genderBtnTextActive]}>
+                          {sVal}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">City *</Text>
-                <Dropdown
-                  label="Select City"
-                  value={formData.cityId}
-                  options={(cities || []).map((c: any) => ({ label: c.city_name || c.name, value: (c.city_id || c.id).toString() }))}
-                  onSelect={(v: any) => setFormData({ ...formData, cityId: v })}
-                />
+              <View style={s.row}>
+                <View style={{ flex: 1 }}>
+                  <PremiumDropdown
+                    label="City"
+                    value={formData.cityId}
+                    options={(cities || []).map((c: any) => ({ label: c.city_name || c.name, value: (c.city_id || c.id).toString() }))}
+                    onSelect={(v: any) => setFormData({ ...formData, cityId: v })}
+                    icon="location-outline"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Area *"
+                    placeholder="e.g. DHA"
+                    value={formData.area}
+                    onChangeText={t => setFormData({ ...formData, area: t })}
+                    leftIcon="map-outline"
+                  />
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Area *</Text>
-                <TextInput
-                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
-                  placeholder="e.g. DHA"
-                  value={formData.area}
-                  onChangeText={t => setFormData({ ...formData, area: t })}
-                />
-              </View>
-            </View>
 
-            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-2">Contact Phone *</Text>
-            <View className="flex-row items-center bg-gray-50 rounded-2xl px-4 border border-gray-100">
-              <Text className="text-base font-black text-gray-400 mr-2">+92</Text>
-              <TextInput
-                className="flex-1 py-4 text-base font-bold text-black"
+              <CustomInput
+                label="Contact Phone *"
                 placeholder="300 1234567"
                 keyboardType="number-pad"
                 maxLength={11}
                 value={formData.contactNumber}
                 onChangeText={t => setFormData({ ...formData, contactNumber: t })}
+                leftIcon="call-outline"
+                prefix="+92"
+              />
+            </View>
+          )}
+
+          {currentStep === 2 && (
+            <View style={{ gap: 20 }}>
+              <View style={s.stepHeaderSection}>
+                <Text style={s.stepMainTitle}>Traits & Behavior</Text>
+                <Text style={s.stepSubTitle}>Describe their unique personality</Text>
+              </View>
+
+              <View style={s.row}>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Age (Years)"
+                    placeholder="0"
+                    keyboardType="number-pad"
+                    value={formData.years}
+                    onChangeText={t => setFormData({ ...formData, years: t })}
+                    leftIcon="calendar-outline"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Age (Months)"
+                    placeholder="0"
+                    keyboardType="number-pad"
+                    value={formData.months}
+                    onChangeText={t => setFormData({ ...formData, months: t })}
+                    leftIcon="time-outline"
+                  />
+                </View>
+              </View>
+
+              <View style={s.row}>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Breed"
+                    placeholder="e.g. Persian"
+                    value={formData.breed}
+                    onChangeText={t => setFormData({ ...formData, breed: t })}
+                    leftIcon="git-branch-outline"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <CustomInput
+                    label="Health Issues"
+                    placeholder="None / Minor"
+                    value={formData.healthIssues}
+                    onChangeText={t => setFormData({ ...formData, healthIssues: t })}
+                    leftIcon="medkit-outline"
+                  />
+                </View>
+              </View>
+
+              <View style={{ marginTop: 16 }}>
+                <Text style={s.tagsHeader}>Select tags that apply</Text>
+                {['personality', 'lifestyle', 'compatibility', 'health'].map(cat => (
+                  <View key={cat} style={{ marginTop: 16 }}>
+                    <Text style={s.tagCategoryTitle}>{cat}</Text>
+                    <View style={s.tagsWrapper}>
+                      {PET_TAGS.filter(t => t.tag_category === cat).map(tag => {
+                        const isSelected = formData.selectedTags.includes(tag.tag_id);
+                        return (
+                          <TouchableOpacity
+                            key={tag.tag_id}
+                            onPress={() => toggleTag(tag.tag_id)}
+                            style={[s.tagBtn, isSelected && s.tagBtnActive]}
+                          >
+                            <Text style={[s.tagBtnText, isSelected && s.tagBtnTextActive]}>
+                              {tag.tag_name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {currentStep === 3 && (
+            <View style={{ gap: 20 }}>
+              <View style={s.stepHeaderSection}>
+                <Text style={s.stepMainTitle}>Final Details</Text>
+                <Text style={s.stepSubTitle}>Add photos and a short description</Text>
+              </View>
+
+              <CustomInput
+                label="The Story / Description"
+                placeholder="Tell us about their habits, favorite toys..."
+                multiline
+                numberOfLines={4}
+                value={formData.description}
+                onChangeText={t => setFormData({ ...formData, description: t })}
+                leftIcon="pencil-outline"
+              />
+
+              <View style={s.galleryContainer}>
+                <Text style={s.galleryTitle}>Photos Gallery (Max 5)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                  {images.map((img, i) => (
+                    <View key={i} style={s.galleryImageWrapper}>
+                      <Image source={{ uri: img.uri }} style={{ width: 80, height: 80, borderRadius: 14 }} contentFit="cover" />
+                      <TouchableOpacity
+                        style={s.galleryRemoveBtn}
+                        onPress={() => setImages(images.filter((_, idx) => idx !== i))}
+                      >
+                        <Ionicons name="close-circle" size={22} color="#FF4B4B" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {images.length < 5 && (
+                    <TouchableOpacity style={s.galleryAddBtn} onPress={pickImage}>
+                      <Ionicons name="add" size={28} color="#a03048" />
+                      <Text style={s.galleryAddText}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          )}
+
+          {/* Navigation */}
+          <View style={s.navRow}>
+            <View style={{ flex: 1 }}>
+              <PrimaryButton
+                title={currentStep === 3 ? 'Launch Listing' : 'Continue'}
+                onPress={currentStep === 3 ? handleSubmit : nextStep}
+                loading={isLoading}
               />
             </View>
           </View>
-        )}
-
-        {currentStep === 2 && (
-          <View>
-            <Text className="text-3xl font-black text-gray-900 text-center">Traits & Behavior</Text>
-            <Text className="text-base font-medium text-gray-400 text-center mb-10">Describe their unique personality</Text>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Years</Text>
-                <TextInput
-                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-bold text-center"
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  value={formData.years}
-                  onChangeText={t => setFormData({ ...formData, years: t })}
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Months</Text>
-                <TextInput
-                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-bold text-center"
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  value={formData.months}
-                  onChangeText={t => setFormData({ ...formData, months: t })}
-                />
-              </View>
-            </View>
-
-            <View className="flex-row gap-3 mt-4">
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Breed</Text>
-                <TextInput
-                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
-                  placeholder="e.g. Persian"
-                  value={formData.breed}
-                  onChangeText={t => setFormData({ ...formData, breed: t })}
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Health Issues</Text>
-                <TextInput
-                  className="bg-gray-50 rounded-2xl p-4 text-base border border-gray-100 font-semibold"
-                  placeholder="None / Minor"
-                  value={formData.healthIssues}
-                  onChangeText={t => setFormData({ ...formData, healthIssues: t })}
-                />
-              </View>
-            </View>
-
-            <Text className="text-[10px] font-black text-gray-300 text-center mt-10 mb-4 uppercase tracking-[2px]">SELECT ALL THAT APPLY</Text>
-            {['personality', 'lifestyle', 'compatibility', 'health'].map(cat => (
-              <View key={cat} className="mt-6">
-                <Text className="text-[10px] font-black text-primary/50 mb-3 uppercase tracking-widest">{cat}</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {PET_TAGS.filter(t => t.tag_category === cat).map(tag => (
-                    <TouchableOpacity
-                      key={tag.tag_id}
-                      onPress={() => toggleTag(tag.tag_id)}
-                      className={`px-4 py-2 rounded-xl border-2 ${formData.selectedTags.includes(tag.tag_id) ? 'bg-primary border-primary' : 'bg-white border-gray-100'}`}
-                    >
-                      <Text className={`text-xs font-bold ${formData.selectedTags.includes(tag.tag_id) ? 'text-white' : 'text-gray-400'}`}>
-                        {tag.tag_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {currentStep === 3 && (
-          <View>
-            <Text className="text-3xl font-black text-gray-900 text-center">Final Details</Text>
-            <Text className="text-base font-medium text-gray-400 text-center mb-10">Add photos and a short description</Text>
-
-            <Text className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">The Story</Text>
-            <TextInput
-              className="bg-gray-50 rounded-3xl p-5 text-base border border-gray-100 min-h-[120px]"
-              placeholder="Tell us about their habits, favorite toys..."
-              multiline
-              textAlignVertical="top"
-              value={formData.description}
-              onChangeText={t => setFormData({ ...formData, description: t })}
-            />
-
-            <View className="mt-10 bg-gray-50 rounded-[30px] p-8 border-2 border-dashed border-gray-100 items-center">
-              <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-5">PHOTOS GALLERY (MAX 5)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {images.map((img, i) => (
-                  <View key={i} className="mr-4 relative">
-                    <Image source={{ uri: img.uri }} className="w-24 h-24 rounded-2xl" contentFit="cover" />
-                    <TouchableOpacity 
-                      className="absolute -top-2 -right-2 bg-white rounded-full" 
-                      onPress={() => setImages(images.filter((_, idx) => idx !== i))}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#FF4B4B" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                {images.length < 5 && (
-                  <TouchableOpacity 
-                    className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-primary items-center justify-center" 
-                    onPress={pickImage}
-                  >
-                    <Ionicons name="add" size={32} color="#a03048" />
-                    <Text className="text-[10px] font-black uppercase text-primary">ADD</Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        )}
-
-        {/* Navigation Buttons */}
-        <View className="flex-row gap-4 mt-12">
-          {currentStep > 1 && (
-            <TouchableOpacity className="flex-1 bg-gray-50 py-5 rounded-3xl items-center" onPress={prevStep}>
-              <Text className="text-gray-400 text-base font-black">Return</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            className={`bg-[#1a1a1a] py-5 rounded-3xl items-center shadow-lg ${currentStep === 1 ? 'flex-1' : 'flex-[2]'} ${isLoading ? 'opacity-70' : ''}`} 
-            onPress={currentStep === 3 ? handleSubmit : nextStep}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white text-base font-black">
-                {currentStep === 3 ? 'Launch Listing' : currentStep === 2 ? 'Almost Done' : 'Next Component'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  headerBtn: {
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  scrollContent: { padding: 20, paddingTop: 20, paddingBottom: 80 },
+
+  // Steps indicator
+  stepContainer: {
+    paddingHorizontal: 30,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  stepItem: {
+    alignItems: 'center',
+    zIndex: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+  },
+  stepCircle: {
+    width: 28, height: 28,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  stepCircleActive: {
+    backgroundColor: '#a03048',
+  },
+  stepCircleInactive: {
+    backgroundColor: '#F3F4F6',
+  },
+  stepNumber: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+  },
+  stepNumberActive: {
+    color: '#FFFFFF',
+  },
+  stepNumberInactive: {
+    color: '#9CA3AF',
+  },
+  stepText: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_600SemiBold',
+  },
+  stepTextActive: {
+    color: '#a03048',
+  },
+  stepTextInactive: {
+    color: '#9CA3AF',
+  },
+  stepLineBase: {
+    position: 'absolute',
+    left: 22, right: 22,
+    height: 2,
+    backgroundColor: '#F3F4F6',
+    top: 14,
+    zIndex: 0,
+  },
+  stepLineActive: {
+    position: 'absolute',
+    left: 22,
+    height: 2,
+    backgroundColor: '#a03048',
+    top: 14,
+    zIndex: 1,
+  },
+
+  // Step Header
+  stepHeaderSection: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  stepMainTitle: {
+    fontSize: 22,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  stepSubTitle: {
+    fontSize: 13,
+    fontFamily: 'Montserrat_400Regular',
+    color: '#9CA3AF',
+  },
+
+  row: { flexDirection: 'row', gap: 12 },
+
+  // Sex selector
+  fieldLabel: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#6B7280',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  genderBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FAFAFA',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  genderBtnActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FAF0F2',
+  },
+  genderBtnText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_700Bold',
+    color: '#9CA3AF',
+    textTransform: 'capitalize',
+  },
+  genderBtnTextActive: {
+    color: '#a03048',
+  },
+
+  // Dropdown Field
+  fieldContainer: {
+    marginBottom: 0,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  dropdownTriggerActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FFFFFF',
+  },
+  dropdownText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_400Regular',
+    color: '#B0B7C3',
+  },
+  dropdownTextSelected: {
+    color: '#111827',
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    maxHeight: '60%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  modalCloseBtn: {
+    width: 32, height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
+  },
+  modalOptionSelected: {
+    backgroundColor: '#FAF0F2',
+  },
+  modalOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#374151',
+  },
+  modalOptionTextActive: {
+    fontFamily: 'DMSans_700Bold',
+    color: '#a03048',
+  },
+
+  // Tags Section
+  tagsHeader: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tagCategoryTitle: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  tagsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tagBtnActive: {
+    backgroundColor: '#a03048',
+    borderColor: '#a03048',
+  },
+  tagBtnText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+    color: '#6B7280',
+  },
+  tagBtnTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Gallery
+  galleryContainer: {
+    marginTop: 8,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+  },
+  galleryTitle: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  galleryImageWrapper: {
+    position: 'relative',
+    marginRight: 4,
+  },
+  galleryImage: {
+    width: 80, height: 80,
+    borderRadius: 14,
+  },
+  galleryRemoveBtn: {
+    position: 'absolute',
+    top: -6, right: -6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 11,
+  },
+  galleryAddBtn: {
+    width: 80, height: 80,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#a03048',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FAF0F2',
+  },
+  galleryAddText: {
+    fontSize: 10,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#a03048',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+
+  // Navigation
+  navRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  backNavBtn: {
+    paddingHorizontal: 24,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backNavText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_700Bold',
+    color: '#4B5563',
+  },
+});
