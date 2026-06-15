@@ -1,5 +1,4 @@
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { View, Platform, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +6,18 @@ import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContex
 import { MainHeader } from '../../src/components/common/MainHeader';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../src/stores/authStore';
+
+const ACTIVE_COLOR = '#a03048';
+const INACTIVE_COLOR = '#999999';
+
+const Icons = {
+  homeSelect: require('../../assets/icons/home-select.svg'),
+  homeUnselect: require('../../assets/icons/home-unselect.svg'),
+  searchSelect: require('../../assets/icons/search-select.svg'),
+  searchUnselect: require('../../assets/icons/search-unselect.svg'),
+  pawSelect: require('../../assets/icons/MAIN_PAW_select.svg'),
+  pawUnselect: require('../../assets/icons/MAIN_PAW_unselect.svg'),
+};
 
 function LayoutContent() {
   const router = useRouter();
@@ -70,8 +81,12 @@ function LayoutContent() {
           name="index"
           options={{
             title: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            tabBarIcon: ({ focused }) => (
+              <Image
+                source={focused ? Icons.homeSelect : Icons.homeUnselect}
+                style={{ width: 24, height: 24 }}
+                contentFit="contain"
+              />
             ),
           }}
         />
@@ -81,31 +96,11 @@ function LayoutContent() {
           options={{
             title: 'Pets',
             tabBarIcon: ({ focused }) => (
-              <View
-                style={{
-                  width: 50,
-                  height: 50,
-                  borderRadius: 25,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginTop: -16,
-                  borderWidth: 3.5,
-                  borderColor: '#FFFFFF',
-                  backgroundColor: '#a03048',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                  elevation: 4,
-                }}
-              >
-                <Image
-                  source={require('../../assets/primary_icon.svg')}
-                  style={{ width: 26, height: 26 }}
-                  contentFit="contain"
-                  tintColor="#FFFFFF"
-                />
-              </View>
+              <Image
+                source={focused ? Icons.pawSelect : Icons.pawUnselect}
+                style={{ width: 26, height: 26 }}
+                contentFit="contain"
+              />
             ),
           }}
         />
@@ -113,8 +108,12 @@ function LayoutContent() {
           name="search"
           options={{
             title: 'Search',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
+            tabBarIcon: ({ focused }) => (
+              <Image
+                source={focused ? Icons.searchSelect : Icons.searchUnselect}
+                style={{ width: 24, height: 24 }}
+                contentFit="contain"
+              />
             ),
           }}
         />
