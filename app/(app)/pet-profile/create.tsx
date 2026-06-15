@@ -237,7 +237,7 @@ export default function CreatePetProfileScreen() {
       } else {
         const newProfile = await petProfilesApi.createPetProfile(payload);
         Alert.alert('Success', 'Pet profile created successfully!', [
-          { text: 'OK', onPress: () => router.replace({ pathname: `/(app)/pet-profile/[id]`, params: { id: newProfile.pet_profile_id } }) },
+          { text: 'OK', onPress: () => router.replace({ pathname: `/(app)/pet-profile/[id]`, params: { id: newProfile.pet_profile_id, from: 'profile' } }) },
         ]);
       }
     } catch (error: any) {

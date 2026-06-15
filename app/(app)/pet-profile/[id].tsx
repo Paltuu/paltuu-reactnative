@@ -53,6 +53,7 @@ export default function PetProfileScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const petId = params.id as string;
+  const from = params.from as string;
 
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<PetProfile | null>(null);
@@ -208,7 +209,18 @@ export default function PetProfileScreen() {
       <View style={[s.center, { paddingTop: insets.top }]}>
         <Ionicons name="paw-outline" size={56} color="#E5E7EB" />
         <Text style={s.emptyTitle}>Profile not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (from === 'profile') {
+              router.push('/(app)/profile/index');
+            } else if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push('/(app)/profile/index');
+            }
+          }}
+          style={s.backBtn}
+        >
           <Text style={s.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -224,30 +236,38 @@ export default function PetProfileScreen() {
         {/* Solid fill fades in on scroll */}
         <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFFFFF', opacity: navBgOpacity }]} />
         <View style={s.navContent}>
-          <AnimatedTouchableOpacity
-            onPress={() => router.back()}
-            style={[s.navBtn, { backgroundColor: btnBgColor }]}
+          <TouchableOpacity
+            onPress={() => {
+              if (from === 'profile') {
+                router.push('/(app)/profile/index');
+              } else if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.push('/(app)/profile/index');
+              }
+            }}
+            style={s.navBtn}
           >
-            <AnimatedIonicons name="chevron-back" size={24} color={headerTintColor} />
-          </AnimatedTouchableOpacity>
+            <Ionicons name="chevron-back" size={22} color="#a03048" />
+          </TouchableOpacity>
           <Animated.Text style={[s.navTitle, { opacity: navBgOpacity, color: headerTintColor }]}>
             {profile.name}
           </Animated.Text>
           <View style={s.navActions}>
             {isOwner && (
               <>
-                <AnimatedTouchableOpacity
+                <TouchableOpacity
                   onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
-                  style={[s.navIconBtn, { backgroundColor: btnBgColor }]}
+                  style={s.navIconBtn}
                 >
-                  <AnimatedIonicons name="create-outline" size={22} color={headerTintColor} />
-                </AnimatedTouchableOpacity>
-                <AnimatedTouchableOpacity
+                  <Ionicons name="create-outline" size={20} color="#a03048" />
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
-                  style={[s.navIconBtn, { backgroundColor: btnBgColor }]}
+                  style={s.navIconBtn}
                 >
-                  <AnimatedIonicons name="images-outline" size={22} color={headerTintColor} />
-                </AnimatedTouchableOpacity>
+                  <Ionicons name="images-outline" size={20} color="#a03048" />
+                </TouchableOpacity>
               </>
             )}
           </View>
@@ -566,10 +586,12 @@ const s = StyleSheet.create({
     height: 56,
   },
   navBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: 38, height: 38,
+    borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#a03048',
   },
   navTitle: {
     flex: 1,
@@ -581,10 +603,12 @@ const s = StyleSheet.create({
   },
   navActions: { flexDirection: 'row', gap: 4 },
   navIconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: 38, height: 38,
+    borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#a03048',
   },
 
   // ── HERO ──
