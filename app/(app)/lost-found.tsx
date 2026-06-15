@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { lostFoundApi } from '../../src/api/lost-found';
+import { usePetStore } from '../../src/stores/petStore';
 import { LFPCard } from '../../src/components/lost-found/LFPCard';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 
@@ -20,32 +20,18 @@ export default function LostFoundScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
 
-  const [posts, setPosts] = useState([]);
+  const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore();
   const [filter, setFilter] = useState<'lost' | 'found'>('lost');
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchPosts(filter);
-  }, [filter]);
+    fetchLostFoundPosts();
+  }, []);
 
-  const fetchPosts = async (type: 'lost' | 'found') => {
-    try {
-      if (!refreshing) setLoading(true);
-      const data = await lostFoundApi.getPosts({ type });
-      setPosts(data || []);
-    } catch (error) {
-      console.error('Lost & Found fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch lost & found posts.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchPosts(filter);
+    await fetchLostFoundPosts();
+    setRefreshing(false);
   };
 
   const handleContact = (contactInfo: string) => {
@@ -90,15 +76,15 @@ export default function LostFoundScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {loading ? (
+    <View style={{ flex: 1 }} className="bg-gray-50">
+      {isLoading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#A03048" />
           <Text className="font-body text-gray-500 mt-3">Fetching reports...</Text>
         </View>
       ) : (
         <FlatList
-          data={posts}
+          data={lostFoundPosts.filter((p: any) => p.post_type === filter)}
           renderItem={renderCard}
           keyExtractor={(item) => item.post_id?.toString()}
           numColumns={2}
