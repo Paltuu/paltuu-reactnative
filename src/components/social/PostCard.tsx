@@ -16,6 +16,15 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+
+const PostIcons = {
+  pawSelect: require('../../../assets/icons/paw-like-select.svg'),
+  pawUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+  commentSelect: require('../../../assets/icons/comment-select.svg'),
+  commentUnselect: require('../../../assets/icons/comment-unselect.svg'),
+  shareSelect: require('../../../assets/icons/share-select.svg'),
+  shareUnselect: require('../../../assets/icons/share-unselect.svg'),
+};
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../../hooks/useSocialActions';
 import { SaveBottomSheet } from './SaveBottomSheet';
@@ -507,14 +516,15 @@ const MediaBlock = ({
   );
 };
 
-// ─── Action bar ──────────────────────────────────────────────────────────────
 const ActionBar = ({
   liked,
   likeCount,
+  commented,
   commentCount,
   reposted,
   repostCount,
   saved,
+  shared,
   onLike,
   onComment,
   onRepost,
@@ -524,10 +534,12 @@ const ActionBar = ({
 }: {
   liked: boolean;
   likeCount: number;
+  commented: boolean;
   commentCount: number;
   reposted: boolean;
   repostCount?: number;
   saved: boolean;
+  shared: boolean;
   onLike: () => void;
   onComment: () => void;
   onRepost: () => void;
@@ -536,13 +548,14 @@ const ActionBar = ({
   onShare: () => void;
 }) => (
   <View style={s.actionBar}>
-    {/* Left group: paw, comment, repost, share */}
+    {/* Left group: paw-like, comment, repost, share */}
     <View style={s.actionGroup}>
+      {/* Like / paw */}
       <TouchableOpacity onPress={onLike} style={s.actionBtn} hitSlop={8}>
-        <Ionicons
-          name={liked ? 'paw' : 'paw-outline'}
-          size={20}
-          color={liked ? '#A03048' : '#9CA3AF'}
+        <Image
+          source={liked ? PostIcons.pawSelect : PostIcons.pawUnselect}
+          style={{ width: 20, height: 20 }}
+          contentFit="contain"
         />
         {likeCount > 0 && (
           <Text style={[s.actionCount, liked && { color: '#A03048' }]}>
@@ -551,33 +564,45 @@ const ActionBar = ({
         )}
       </TouchableOpacity>
 
+      {/* Comment */}
       <TouchableOpacity onPress={onComment} style={s.actionBtn} hitSlop={8}>
-        <Ionicons name="chatbubble-outline" size={19} color="#9CA3AF" />
+        <Image
+          source={commented ? PostIcons.commentSelect : PostIcons.commentUnselect}
+          style={{ width: 20, height: 20 }}
+          contentFit="contain"
+        />
         {commentCount > 0 && (
-          <Text style={s.actionCount}>{formatCount(commentCount)}</Text>
+          <Text style={[s.actionCount, commented && { color: '#A03048' }]}>
+            {formatCount(commentCount)}
+          </Text>
         )}
       </TouchableOpacity>
 
+      {/* Repost — keep Ionicons, no custom SVG */}
       <TouchableOpacity onPress={onRepost} style={s.actionBtn} hitSlop={8}>
         <Ionicons
           name="repeat-outline"
           size={21}
-          color={reposted ? '#10B981' : '#9CA3AF'}
+          color={reposted ? '#A03048' : '#9CA3AF'}
         />
         {(repostCount ?? 0) > 0 && (
-          <Text style={[s.actionCount, reposted && { color: '#10B981' }]}>
+          <Text style={[s.actionCount, reposted && { color: '#A03048' }]}>
             {formatCount(repostCount ?? 0)}
           </Text>
         )}
       </TouchableOpacity>
 
-      {/* Share icon inside left group */}
+      {/* Share */}
       <TouchableOpacity onPress={onShare} style={s.actionBtn} hitSlop={8}>
-        <Ionicons name="paper-plane-outline" size={19} color="#9CA3AF" />
+        <Image
+          source={shared ? PostIcons.shareSelect : PostIcons.shareUnselect}
+          style={{ width: 20, height: 20 }}
+          contentFit="contain"
+        />
       </TouchableOpacity>
     </View>
 
-    {/* Right: bookmark pushed to right */}
+    {/* Right: bookmark */}
     <TouchableOpacity
       onPress={onSave}
       onLongPress={onSaveLongPress}
@@ -895,10 +920,12 @@ export const PostCard = React.memo(({
           <ActionBar
             liked={!!post.is_liked}
             likeCount={post.like_count}
+            commented={!!post.is_commented}
             commentCount={post.comment_count}
             reposted={!!post.is_reposted}
             repostCount={post.repost_count ?? 0}
             saved={!!post.is_saved}
+            shared={!!post.is_shared}
             onLike={() => toggleLike(post.post_id)}
             onComment={onPress}
             onRepost={handleRepostPress}
@@ -909,10 +936,27 @@ export const PostCard = React.memo(({
                 const plainText = stripHtml(post.content);
                 const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
                 
-                await Share.share({
+                const result = await Share.share({
                   title: 'Paltuu Social Post',
                   message: shareText,
                 });
+
+                if (result.action === Share.sharedAction) {
+                  // Mark as shared locally in cache / feed queries
+                  queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+                    if (!old?.pages) return old;
+                    return {
+                      ...old,
+                      pages: old.pages.map((page: any) => ({
+                        ...page,
+                        posts: page.posts.map((p: any) =>
+                          p.post_id === post.post_id ? { ...p, is_shared: true } : p
+                        ),
+                      })),
+                    };
+                  });
+                  queryClient.invalidateQueries({ queryKey: ['social-profile', post.user_id] });
+                }
               } catch (err: any) {
                 Alert.alert('Error', err.message);
               }

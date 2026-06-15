@@ -57,6 +57,57 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
     onSuccess: () => {
       setCommentText('');
       queryClient.invalidateQueries({ queryKey: ['comments', normalizedPostId] });
+      
+      // Update social feed & profile query caches to select comment icon and increment count
+      const updatePostInQueryData = (old: any) => {
+        if (!old) return old;
+        
+        // Handle paginated queries like social-feed
+        if (old.pages) {
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              posts: page.posts.map((p: any) =>
+                String(p.post_id) === String(normalizedPostId)
+                  ? { ...p, is_commented: true, comment_count: (p.comment_count || 0) + 1 }
+                  : p
+              ),
+            })),
+          };
+        }
+        
+        // Handle profile posts/reposts
+        if (old.posts) {
+          return {
+            ...old,
+            posts: old.posts.map((p: any) =>
+              String(p.post_id) === String(normalizedPostId)
+                ? { ...p, is_commented: true, comment_count: (p.comment_count || 0) + 1 }
+                : p
+            ),
+          };
+        }
+
+        // Handle single post queries
+        if (old.post_id && String(old.post_id) === String(normalizedPostId)) {
+          return {
+            ...old,
+            is_commented: true,
+            comment_count: (old.comment_count || 0) + 1,
+          };
+        }
+        
+        return old;
+      };
+
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, updatePostInQueryData);
+      queryClient.setQueriesData({ queryKey: ['post', normalizedPostId] }, updatePostInQueryData);
+      queryClient.setQueriesData({ queryKey: ['social-profile'] }, updatePostInQueryData);
+      
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['post', normalizedPostId] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile'] });
     },
   });
 

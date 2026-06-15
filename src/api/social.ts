@@ -51,6 +51,8 @@ export interface SocialPost {
   is_reposted?: boolean;
   is_following?: boolean;
   is_saved?: boolean;
+  is_commented?: boolean;
+  is_shared?: boolean;
   pet_name?: string;
   pet_id?: number;
   // Repost fields (flat structure from backend)
