@@ -21,6 +21,11 @@ const PRIMARY = '#A03048';
 const MUTED = '#C4C4C4';
 const BG = '#fff';
 
+const PostIcons = {
+  pawSelect: require('../../../assets/icons/paw-like-select.svg'),
+  pawUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+};
+
 /* ── Helpers ── */
 const formatTime = (dateStr: string) => {
   try {
@@ -157,13 +162,21 @@ const CommentRow = ({
       <TouchableOpacity
         onPress={() => onExpand(item.parentId!)}
         style={{
-          flexDirection: 'row', alignItems: 'center',
-          paddingVertical: 8, paddingLeft: 16 + depth * 20,
-          gap: 10, backgroundColor: BG,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 8,
+          paddingLeft: 16 + (depth - 1) * 32 + 34 + 10, // Indent to align directly with the content column
+          backgroundColor: BG,
+          gap: 12,
         }}
       >
-        <View style={{ width: 2, height: 18, borderRadius: 1, backgroundColor: lineColor }} />
-        <Text style={{ fontSize: 12, fontWeight: '700', color: PRIMARY }}>
+        {/* Horizontal thread line */}
+        <View style={{
+          width: 32,
+          height: 1,
+          backgroundColor: '#DBDBDB',
+        }} />
+        <Text style={{ fontSize: 12, fontWeight: '700', color: '#8E8E8E' }}>
           View {item.collapsedCount} {item.collapsedCount === 1 ? 'reply' : 'replies'}
         </Text>
       </TouchableOpacity>
@@ -171,77 +184,76 @@ const CommentRow = ({
   }
 
   return (
-    <View style={{ backgroundColor: BG, paddingTop: 12, paddingBottom: 4, paddingRight: 16 }}>
-      <View style={{ flexDirection: 'row', paddingLeft: 16 }}>
+    <View style={{ backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: 16 + depth * 32 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
 
-        {/* Indent lines */}
-        {Array.from({ length: depth }).map((_, i) => (
-          <View
-            key={i}
-            style={{
-              width: 2, borderRadius: 1, marginRight: 18,
-              backgroundColor: i === depth - 1 ? lineColor : '#F3F4F6',
-            }}
+        {/* Left Side: Avatar + Thread Guideline Line */}
+        <View style={{ alignItems: 'center', marginRight: 10, width: 34 }}>
+          <Avatar
+            name={item.author_name}
+            uri={item.author_image}
+            size={32}
           />
-        ))}
+          {depth > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: 36,
+              bottom: -20,
+              width: 1.5,
+              backgroundColor: lineColor,
+              opacity: 0.7,
+            }} />
+          )}
+        </View>
 
-        {/* Body */}
-        <View style={{ flex: 1 }}>
-
-          {/* Author row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <Avatar
-              name={item.author_name}
-              uri={item.author_image}
-              size={depth === 0 ? 30 : 24}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#111' }}>
-                {item.author_name}
-              </Text>
-              <Text style={{ fontSize: 11, color: MUTED }}>{formatTime(item.created_at)}</Text>
-            </View>
+        {/* Middle/Content Side: Author name, comment text, replies button, actions */}
+        <View style={{ flex: 1, marginRight: 8 }}>
+          {/* Author Name + Time elapsed */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#111' }}>
+              {item.author_name}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>• {formatTime(item.created_at)}</Text>
           </View>
 
-          {/* Content */}
-          <Text style={{ fontSize: 14, color: '#1a1a1a', lineHeight: 21, letterSpacing: -0.1 }}>
+          {/* Comment Text */}
+          <Text style={{ fontSize: 14, color: '#262626', lineHeight: 18 }}>
             {item.content}
           </Text>
 
-          {/* Actions */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 8, marginBottom: 4 }}>
-            <TouchableOpacity
-              onPress={() => onToggleLike(item.comment_id)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              hitSlop={8}
-            >
-              <Ionicons
-                name={item.liked ? 'paw' : 'paw-outline'}
-                size={13}
-                color={item.liked ? PRIMARY : MUTED}
-              />
-              {item.like_count > 0 && (
-                <Text style={{ fontSize: 12, fontWeight: '600', color: item.liked ? PRIMARY : '#9CA3AF' }}>
-                  {item.like_count}
-                </Text>
-              )}
-            </TouchableOpacity>
-
+          {/* Actions: Reply, Hide Replies */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
             <TouchableOpacity onPress={() => onReply(item)} hitSlop={8}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#9CA3AF' }}>Reply</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#8E8E8E' }}>Reply</Text>
             </TouchableOpacity>
 
             {item.replies?.length > 0 && (
               <TouchableOpacity onPress={() => onExpand(item.comment_id)} hitSlop={8}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#9CA3AF' }}>Hide</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#8E8E8E' }}>Hide</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
-      </View>
 
-      {/* Row separator */}
-      <View style={{ height: 0.5, backgroundColor: '#F9FAFB', marginTop: 8, marginLeft: 16 + depth * 20 }} />
+        {/* Right Side: Like button aligned to the right edge */}
+        <TouchableOpacity
+          onPress={() => onToggleLike(item.comment_id)}
+          style={{ alignItems: 'center', justifyContent: 'center', padding: 6, minWidth: 28 }}
+          hitSlop={8}
+        >
+          <Image
+            source={item.liked ? PostIcons.pawSelect : PostIcons.pawUnselect}
+            style={{ width: 14, height: 14 }}
+            contentFit="contain"
+          />
+          {item.like_count > 0 && (
+            <Text style={{ fontSize: 10, fontWeight: '600', color: item.liked ? PRIMARY : '#8E8E8E', marginTop: 2 }}>
+              {item.like_count}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 };
@@ -307,7 +319,36 @@ export default function PostDetailScreen() {
       setText('');
       setReplyingTo(null);
       queryClient.invalidateQueries({ queryKey: ['comments', id] });
+      
+      // Update the local post query details to change comment state/count immediately
+      queryClient.setQueryData(['post', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          is_commented: true,
+          comment_count: (old.comment_count || 0) + 1
+        };
+      });
+
+      // Also update the paginated social feed cache
+      const updatePostInFeed = (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.map((p: any) =>
+              String(p.post_id) === String(id)
+                ? { ...p, is_commented: true, comment_count: (p.comment_count || 0) + 1 }
+                : p
+            ),
+          })),
+        };
+      };
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, updatePostInFeed);
+      
       queryClient.invalidateQueries({ queryKey: ['post', id] });
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
     },
   });
 
@@ -355,14 +396,25 @@ export default function PostDetailScreen() {
   const renderItem = useCallback(({ item }: { item: any }) => {
     switch (item.type) {
       case 'post':
+        // Determine if the current user has commented by scanning the comments list
+        const hasUserCommented = !!commentsData?.comments?.some(
+          (c: any) => String(c.user_id) === String(user?.id)
+        );
+        const postWithCommentState = postData
+          ? {
+              ...postData,
+              is_commented: postData.is_commented || hasUserCommented,
+            }
+          : null;
+
         return (
           <>
             <PostCard
-              post={postData!}
+              post={postWithCommentState!}
               onPress={() => {}} // Static in detail view
               onPlusPress={(uid) => setSelectedUserId(uid)}
             />
-            <View style={{ height: 8, backgroundColor: '#F9FAFB' }} />
+            <View style={{ height: 1.5, backgroundColor: '#E5E7EB' }} />
           </>
         );
       case 'comments_header':
@@ -426,7 +478,7 @@ export default function PostDetailScreen() {
           renderItem={renderItem}
           keyExtractor={item => item.key}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120, backgroundColor: BG }}
+          contentContainerStyle={{ paddingBottom: 60, backgroundColor: BG }}
           style={{ backgroundColor: BG }}
         />
 
@@ -435,7 +487,7 @@ export default function PostDetailScreen() {
           backgroundColor: BG,
           borderTopWidth: 0.5,
           borderTopColor: '#F3F4F6',
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 16,
+          paddingBottom: 10, // Use a small fixed spacing since tab navigation handles safe area insets
         }}>
 
           {/* Reply banner */}
