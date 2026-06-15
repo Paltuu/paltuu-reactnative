@@ -16,7 +16,6 @@ import Animated, {
   interpolate,
   useAnimatedProps,
 } from "react-native-reanimated";
-import { SymbolView } from "expo-symbols";
 import { BlurView, type BlurViewProps } from "expo-blur";
 import type { SearchBarProps } from "./SearchBar.types";
 import { runOnJS } from "react-native-reanimated";
@@ -50,6 +49,9 @@ export const SearchBar = ({
   const [isFocused, setIsFocused] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0 });
   const inputRef = useRef<TextInput>(null);
+
+  const Container = Platform.OS === 'ios' ? BlurView : View;
+  const containerProps = Platform.OS === 'ios' ? { intensity: 20, tint: 'light' as const } : {};
 
   const focusProgress = useSharedValue(0);
   const clearButtonScale = useSharedValue(0);
@@ -244,9 +246,8 @@ export const SearchBar = ({
             Platform.OS === "android" && animatedAndroidBlurStylez,
           ]}
         >
-          <BlurView
-            intensity={20}
-            tint="light"
+          <Container
+            {...containerProps}
             style={styles.blurContainer}
           >
             <TouchableOpacity 
@@ -321,7 +322,7 @@ export const SearchBar = ({
                 )}
               </AnimatedView>
             </TouchableOpacity>
-          </BlurView>
+          </Container>
         </AnimatedView>
 
         <AnimatedView

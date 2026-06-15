@@ -46,7 +46,8 @@ const PostGridItem = ({ post, onPress }: { post: SocialPost, onPress: () => void
     >
       <Image 
         source={{ uri: imageUri }}
-        className="w-full h-full bg-gray-100"
+        style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6' }}
+        contentFit="cover"
       />
       {isMultiMedia && (
         <View className="absolute top-2 right-2 shadow-sm">
