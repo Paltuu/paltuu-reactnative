@@ -255,9 +255,7 @@ export default function HomeScreen() {
   });
 
   const posts = useMemo(() => {
-    const rawPosts = data?.pages.flatMap(p => p.posts) ?? [];
-    const shuffledRaw = [...rawPosts].sort(() => Math.random() - 0.5);
-    return [...MOCK_POSTS, ...shuffledRaw];
+    return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
 
   if (isLoading && !posts.length) {
