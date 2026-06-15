@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -75,9 +75,16 @@ export default function PrivacyScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-          <TouchableOpacity className="flex-row items-center justify-between p-4">
+          <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
             <Text className="font-body text-gray-700">Download my data</Text>
             <Feather name="download" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => Linking.openURL('https://paltuu.pk/privacy-policy')}
+            className="flex-row items-center justify-between p-4"
+          >
+            <Text className="font-body text-gray-700">View Privacy Policy</Text>
+            <Feather name="external-link" size={18} color="#9CA3AF" />
           </TouchableOpacity>
         </View>
 

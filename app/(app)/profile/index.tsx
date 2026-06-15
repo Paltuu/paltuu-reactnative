@@ -486,7 +486,7 @@ export default function ProfileScreen() {
         <PetCard
           item={item}
           user={profile}
-          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id } })}
+          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id, from: 'profile' } })}
         />
       );
     }

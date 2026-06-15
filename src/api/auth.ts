@@ -25,5 +25,10 @@ export const authApi = {
     // This is not in v1 yet, using relative path
     const { data } = await client.get('../my-profile');
     return data;
+  },
+
+  async deleteAccount() {
+    const { data } = await client.delete('/users/me');
+    return data;
   }
 };
