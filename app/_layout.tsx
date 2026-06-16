@@ -141,6 +141,7 @@ export default function RootLayout() {
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                  <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
                   {/* Post detail: slides in from the right, covers the tab bar */}
                   <Stack.Screen
                     name="post/[id]"
