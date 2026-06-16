@@ -59,7 +59,7 @@ export const getDynamicAppConfig = (
       name: APP_NAME,
       bundleIdentifier: BUNDLE_IDENTIFIER,
       packageName: PACKAGE_NAME,
-      scheme: SCHEME,
+      scheme: [SCHEME, BUNDLE_IDENTIFIER],
     };
   }
   if (environment === "preview") {
@@ -67,13 +67,13 @@ export const getDynamicAppConfig = (
       name: `${APP_NAME} (Preview)`,
       bundleIdentifier: `${BUNDLE_IDENTIFIER}.preview`,
       packageName: `${PACKAGE_NAME}.preview`,
-      scheme: `${SCHEME}-preview`,
+      scheme: [`${SCHEME}-preview`, `${BUNDLE_IDENTIFIER}.preview`],
     };
   }
   return {
     name: `${APP_NAME} (Dev)`,
     bundleIdentifier: `${BUNDLE_IDENTIFIER}.dev`,
     packageName: `${PACKAGE_NAME}.dev`,
-    scheme: `${SCHEME}-dev`,
+    scheme: [`${SCHEME}-dev`, `${BUNDLE_IDENTIFIER}.dev`],
   };
 };

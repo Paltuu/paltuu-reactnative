@@ -48,8 +48,8 @@ export default function LoginScreen() {
         throw new Error('API URL is not configured.');
       }
 
-      const authUrl = `${apiBaseUrl}/v1/auth/google/mobile`;
       const redirectUrl = Linking.createURL('oauth2redirect');
+      const authUrl = `${apiBaseUrl}/v1/auth/google/mobile?app_redirect=${encodeURIComponent(redirectUrl)}`;
 
       console.log('[Google Sign-In] Initiating session:', { authUrl, redirectUrl });
 
