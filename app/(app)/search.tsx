@@ -294,7 +294,7 @@ export default function SearchScreen() {
       return (
         <PostCompactItem 
           post={item} 
-          onPress={() => router.push(`/(app)/post/${item.post_id}`)}
+          onPress={() => router.push(`/post/${item.post_id}`)}
         />
       );
     }

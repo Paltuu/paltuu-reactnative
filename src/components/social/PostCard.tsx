@@ -50,8 +50,8 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export const CARD_H_MARGIN = 0;         // card left/right margin from screen
 export const CARD_V_MARGIN = 0;         // card top/bottom margin
 export const CARD_INNER_PAD = 14;       // inner horizontal padding (left side only for text)
-export const AVATAR_SIZE = 38;
-export const COL_GAP = 12;             // gap between avatar column and content column
+export const AVATAR_SIZE = 42;
+export const COL_GAP = 9;              // gap between avatar column and content column
 
 // Total card width
 const CARD_W = SCREEN_W - CARD_H_MARGIN * 2;
@@ -110,7 +110,7 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: CARD_INNER_PAD,
     gap: COL_GAP,
-    marginBottom: 2,
+    marginBottom: 0,
   },
   avatarFallback: {
     width: AVATAR_SIZE,
@@ -191,6 +191,9 @@ const s = StyleSheet.create({
   caption: {
     marginLeft: MEDIA_LEFT_OFFSET,
     marginRight: 14,
+    // Pull up so the caption starts right after the username, ignoring the
+    // taller avatar's overhang below the name/username stack.
+    marginTop: -10,
     marginBottom: 4,
   },
   mediaScroll: {
@@ -218,12 +221,17 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingLeft: MEDIA_LEFT_OFFSET,
     paddingRight: 14,
-    marginTop: 12,
+    marginTop: 6,
   },
   actionGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
+    gap: 6,
+  },
+  rightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
   },
   actionBtn: {
     flexDirection: 'row',
@@ -232,8 +240,13 @@ const s = StyleSheet.create({
   actionCount: {
     fontSize: 13,
     color: '#9CA3AF',
-    marginLeft: 4,
     fontWeight: '500',
+  },
+  // Reserved space for a count so the row layout never shifts when a
+  // like/comment/repost flips between 0 and 1+.
+  countSlot: {
+    minWidth: 22,
+    marginLeft: 4,
   },
   originalPostContainer: {
     padding: 12,
@@ -548,7 +561,7 @@ const ActionBar = ({
   onShare: () => void;
 }) => (
   <View style={s.actionBar}>
-    {/* Left group: paw-like, comment, repost, share */}
+    {/* Left group: paw-like, comment, repost */}
     <View style={s.actionGroup}>
       {/* Like / paw */}
       <TouchableOpacity onPress={onLike} style={s.actionBtn} hitSlop={8}>
@@ -557,25 +570,21 @@ const ActionBar = ({
           style={{ width: 20, height: 20 }}
           contentFit="contain"
         />
-        {likeCount > 0 && (
-          <Text style={[s.actionCount, liked && { color: '#A03048' }]}>
-            {formatCount(likeCount)}
-          </Text>
-        )}
+        <Text style={[s.actionCount, s.countSlot, liked && { color: '#A03048' }]}>
+          {likeCount > 0 ? formatCount(likeCount) : ''}
+        </Text>
       </TouchableOpacity>
 
-      {/* Comment */}
+      {/* Comment — icon stays unselected; only like & repost highlight */}
       <TouchableOpacity onPress={onComment} style={s.actionBtn} hitSlop={8}>
         <Image
-          source={commented ? PostIcons.commentSelect : PostIcons.commentUnselect}
+          source={PostIcons.commentUnselect}
           style={{ width: 20, height: 20 }}
           contentFit="contain"
         />
-        {commentCount > 0 && (
-          <Text style={[s.actionCount, commented && { color: '#A03048' }]}>
-            {formatCount(commentCount)}
-          </Text>
-        )}
+        <Text style={[s.actionCount, s.countSlot]}>
+          {commentCount > 0 ? formatCount(commentCount) : ''}
+        </Text>
       </TouchableOpacity>
 
       {/* Repost — keep Ionicons, no custom SVG */}
@@ -585,14 +594,14 @@ const ActionBar = ({
           size={21}
           color={reposted ? '#A03048' : '#9CA3AF'}
         />
-        {(repostCount ?? 0) > 0 && (
-          <Text style={[s.actionCount, reposted && { color: '#A03048' }]}>
-            {formatCount(repostCount ?? 0)}
-          </Text>
-        )}
+        <Text style={[s.actionCount, s.countSlot, reposted && { color: '#A03048' }]}>
+          {(repostCount ?? 0) > 0 ? formatCount(repostCount ?? 0) : ''}
+        </Text>
       </TouchableOpacity>
+    </View>
 
-      {/* Share */}
+    {/* Right group: share + bookmark, pinned to the far right */}
+    <View style={s.rightGroup}>
       <TouchableOpacity onPress={onShare} style={s.actionBtn} hitSlop={8}>
         <Image
           source={shared ? PostIcons.shareSelect : PostIcons.shareUnselect}
@@ -600,22 +609,21 @@ const ActionBar = ({
           contentFit="contain"
         />
       </TouchableOpacity>
-    </View>
 
-    {/* Right: bookmark */}
-    <TouchableOpacity
-      onPress={onSave}
-      onLongPress={onSaveLongPress}
-      delayLongPress={400}
-      style={[s.actionBtn, { marginLeft: 'auto' }]}
-      hitSlop={8}
-    >
-      <Ionicons
-        name={saved ? 'bookmark' : 'bookmark-outline'}
-        size={19}
-        color={saved ? '#A03048' : '#9CA3AF'}
-      />
-    </TouchableOpacity>
+      <TouchableOpacity
+        onPress={onSave}
+        onLongPress={onSaveLongPress}
+        delayLongPress={400}
+        style={s.actionBtn}
+        hitSlop={8}
+      >
+        <Ionicons
+          name={saved ? 'bookmark' : 'bookmark-outline'}
+          size={19}
+          color={saved ? '#A03048' : '#9CA3AF'}
+        />
+      </TouchableOpacity>
+    </View>
   </View>
 );
 
@@ -623,11 +631,14 @@ const ActionBar = ({
 export const PostCard = React.memo(({
   post,
   onPress,
+  onComment,
   onPlusPress,
   isVideoPlaying,
 }: {
   post: SocialPost;
   onPress: () => void;
+  /** Override for the comment action. Defaults to opening the bottom-sheet comment composer. */
+  onComment?: () => void;
   onPlusPress?: (userId: number) => void;
   /** Pass true when this card's video should autoplay (controlled by FlatList viewability) */
   isVideoPlaying?: boolean;
@@ -645,6 +656,28 @@ export const PostCard = React.memo(({
 
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
+
+  // ── Repost display model ──────────────────────────────────────────────
+  // Quote repost = repost WITH a caption → reads like a normal post with the
+  //   original embedded (no "reposted" header).
+  // Plain repost = repost WITHOUT a caption → only the "{user} reposted" header,
+  //   and the original is rendered AS the post (original author + content + media),
+  //   with no reposter author block / embedded card.
+  const isRepost = post.post_type === 'repost';
+  const isQuoteRepost = isRepost && !!caption;
+  const isPlainRepost = isRepost && !caption;
+
+  const displayName = isPlainRepost ? (post.original_author_name || 'User') : (post.author_name || 'User');
+  const displayUsername = isPlainRepost
+    ? (post.original_social_username ?? post.original_post?.social_username)
+    : post.social_username;
+  const displayImage = isPlainRepost ? post.original_author_image : post.author_image;
+  const displayUserId = isPlainRepost
+    ? (post.original_user_id ?? post.original_post?.user_id ?? post.user_id)
+    : post.user_id;
+  const displayTime = isPlainRepost ? formatTime(post.original_post?.created_at || post.created_at) : timeAgo;
+  const bodyContent = isPlainRepost ? stripHtml(post.original_content || '') : caption;
+  const bodyMedia = isPlainRepost ? (post.original_media ?? []) : (post.media ?? []);
 
   // Scale animation for the card
   const scale = useSharedValue(1);
@@ -684,7 +717,7 @@ export const PostCard = React.memo(({
 
   const handleImagePress = (index: number) => {
     setViewerIndex(index);
-    setViewerMedia(post.media?.map((m: any) => ({
+    setViewerMedia(bodyMedia?.map((m: any) => ({
       url: m.url,
       type: m.media_type,
       thumbnail_url: m.thumbnail_url
@@ -845,8 +878,8 @@ export const PostCard = React.memo(({
           onPressOut={onPressOut}
           style={s.card}
         >
-          {/* ── Reposted indicator ── */}
-          {post.post_type === 'repost' && (
+          {/* ── Reposted indicator (plain reposts only; quote reposts read like a normal post) ── */}
+          {isPlainRepost && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 64, marginBottom: 4 }}>
               <Ionicons name="repeat" size={14} color="#666" />
               <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', marginLeft: 4 }}>
@@ -855,33 +888,35 @@ export const PostCard = React.memo(({
             </View>
           )}
 
-          {/* ── Row 1: Avatar + name/username + time + menu ── */}
+          {/* ── Row 1: Avatar + name/username + time + menu ──
+               For plain reposts this shows the ORIGINAL author so the card reads
+               like a normal post under the "reposted" heading. */}
           <AuthorBlock
-            name={post.author_name || 'User'}
-            username={post.social_username}
-            uri={post.author_image}
-            timeAgo={timeAgo}
-            onPlusPress={showPlus ? () => onPlusPress?.(post.user_id) : undefined}
+            name={displayName}
+            username={displayUsername}
+            uri={displayImage}
+            timeAgo={displayTime}
+            onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
             onMenuPress={handleMenu}
-            onAvatarPress={() => router.push(`/(app)/profile/${post.user_id}`)}
+            onAvatarPress={() => router.push(`/(app)/profile/${displayUserId}`)}
           />
 
           {/* ── Pet chip (optional) ── */}
-          {post.pet_name && (
+          {post.pet_name && !isPlainRepost && (
             <View style={s.petChipRow}>
               <PetChip name={post.pet_name} />
             </View>
           )}
 
-          {/* ── Caption (Quote or Original) ── */}
-          {!!caption && (
+          {/* ── Body text: quote text for normal/quote posts, original text for plain reposts ── */}
+          {!!bodyContent && (
             <View style={s.caption}>
-              {renderContent(caption)}
+              {renderContent(bodyContent)}
             </View>
           )}
 
-          {/* ── Original Post (if this is a repost/quote) ── */}
-          {post.post_type === 'repost' && (
+          {/* ── Embedded original (quote reposts only) ── */}
+          {isQuoteRepost && (
             <View style={{ marginLeft: 64, marginRight: 14, marginTop: 2 }}>
               <OriginalPostPreview
                 authorName={post.original_author_name}
@@ -907,10 +942,11 @@ export const PostCard = React.memo(({
             </View>
           )}
 
-          {/* ── Media (only if not a repost, or if original has no media) ── */}
-          {post.post_type !== 'repost' && post.media?.length > 0 && (
+          {/* ── Media: post media for normal posts, original media for plain reposts.
+               (Quote reposts show media inside the embedded original above.) ── */}
+          {!isQuoteRepost && bodyMedia?.length > 0 && (
             <MediaBlock
-              media={post.media}
+              media={bodyMedia}
               onImagePress={handleImagePress}
               isPlaying={isVideoPlaying}
             />
@@ -927,7 +963,7 @@ export const PostCard = React.memo(({
             saved={!!post.is_saved}
             shared={!!post.is_shared}
             onLike={() => toggleLike(post.post_id)}
-            onComment={onPress}
+            onComment={onComment ?? (() => router.push(`/comment/${post.post_id}`))}
             onRepost={handleRepostPress}
             onSave={() => toggleSave(post.post_id, !!post.is_saved)}
             onSaveLongPress={() => setSaveSheetVisible(true)}

@@ -29,7 +29,7 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
     }
 
     const routes: Record<string, (parts: string[]) => string> = {
-      '/social/post': (p) => `/(app)/post/${p[2]}`,
+      '/social/post': (p) => `/post/${p[2]}`,
       '/profile':     (p) => `/(app)/profile/${p[1]}`,
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
       '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,

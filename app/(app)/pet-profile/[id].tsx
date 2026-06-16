@@ -424,7 +424,7 @@ export default function PetProfileScreen() {
                 renderItem={({ item }) => (
                   <PostCard
                     post={item}
-                    onPress={() => router.push({ pathname: '/(app)/post/[id]', params: { id: item.post_id } })}
+                    onPress={() => router.push({ pathname: '/post/[id]', params: { id: item.post_id } })}
                   />
                 )}
                 onEndReached={() => { if (hasMorePosts) fetchPosts(); }}

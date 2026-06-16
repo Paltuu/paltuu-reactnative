@@ -58,7 +58,9 @@ export interface SocialPost {
   // Repost fields (flat structure from backend)
   original_post_id?: string;
   original_content?: string;
+  original_user_id?: number;
   original_author_name?: string;
+  original_social_username?: string;
   original_author_image?: string;
   original_media?: SocialPostMedia[];
   original_post?: SocialPost;
@@ -132,10 +134,18 @@ export const socialApi = {
     return data as { comments: any[]; has_more: boolean; next_cursor: string | null };
   },
 
-  async postComment(postId: string | number, content: string, parentId?: string | number) {
+  async postComment(
+    postId: string | number,
+    content: string,
+    parentId?: string | number,
+    extras?: { media?: any[]; petProfileTags?: number[] }
+  ) {
     const { data } = await client.post(`/social/posts/${postId}/comments`, {
       content,
-      parent_comment_id: parentId
+      parent_comment_id: parentId,
+      // Only include optional fields when present so older backends ignore them gracefully.
+      ...(extras?.media?.length ? { media: extras.media } : {}),
+      ...(extras?.petProfileTags?.length ? { pet_profile_tags: extras.petProfileTags } : {}),
     });
     return data;
   },

@@ -223,7 +223,7 @@ export default function UserProfileScreen() {
         author_image: profile?.profile_image_url,
         social_username: profile?.social_username || profile?.username,
       };
-      return <PostCardShared post={postWithAuthor} onPress={() => router.push(`/(app)/post/${item.post_id}`)} />;
+      return <PostCardShared post={postWithAuthor} onPress={() => router.push(`/post/${item.post_id}`)} />;
     }
     if (activeTab === 'Pets') return <PetCard item={item} user={profile} />;
     return <RepostCard item={item} user={profile} />;

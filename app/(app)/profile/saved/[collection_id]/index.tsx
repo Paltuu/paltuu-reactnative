@@ -83,7 +83,7 @@ export default function CollectionPostsScreen() {
           renderItem={({ item }) => (
             <PostCard
               post={item}
-              onPress={() => router.push(`/(app)/post/${item.post_id}`)}
+              onPress={() => router.push(`/post/${item.post_id}`)}
               onPlusPress={(uid) => setSelectedUserId(uid)}
               isVideoPlaying={playingPostId === item.post_id}
             />

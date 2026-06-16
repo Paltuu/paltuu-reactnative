@@ -141,6 +141,17 @@ export default function RootLayout() {
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                  {/* Post detail: slides in from the right, covers the tab bar */}
+                  <Stack.Screen
+                    name="post/[id]"
+                    options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                  />
+                  {/* Comment composer: slides up from the bottom, full screen so the
+                      keyboard-avoiding view can measure the whole window reliably */}
+                  <Stack.Screen
+                    name="comment/[id]"
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                  />
                 </Stack>
               )}
             </BottomSheetModalProvider>
