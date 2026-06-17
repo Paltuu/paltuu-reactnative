@@ -12,9 +12,11 @@ export const useSocialActions = () => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       await queryClient.cancelQueries({ queryKey: ['social-trending'] });
       await queryClient.cancelQueries({ queryKey: ['social-search'] });
+      await queryClient.cancelQueries({ queryKey: ['post', String(postId)] });
 
       // 2. Snapshot previous values
       const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousPost = queryClient.getQueryData(['post', String(postId)]);
 
       // 3. Optimistically update
       queryClient.setQueryData(['social-feed'], (old: any) => {
@@ -38,15 +40,30 @@ export const useSocialActions = () => {
         };
       });
 
-      return { previousFeed };
+      // Also update the post-detail cache so the like reflects instantly there.
+      queryClient.setQueryData(['post', String(postId)], (old: any) => {
+        if (!old) return old;
+        const newLiked = !old.is_liked;
+        return {
+          ...old,
+          is_liked: newLiked,
+          like_count: newLiked ? (old.like_count || 0) + 1 : Math.max(0, (old.like_count || 0) - 1),
+        };
+      });
+
+      return { previousFeed, previousPost, postId };
     },
     onError: (err, postId, context) => {
       if (context?.previousFeed) {
         queryClient.setQueryData(['social-feed'], context.previousFeed);
       }
+      if (context?.previousPost) {
+        queryClient.setQueryData(['post', String(postId)], context.previousPost);
+      }
     },
-    onSettled: () => {
+    onSettled: (data, err, postId) => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['post', String(postId)] });
     },
   });
 

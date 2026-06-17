@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Pressable,
-  TextInput, Platform, Keyboard,
+  TextInput, Platform, Keyboard, StyleSheet,
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -21,8 +21,15 @@ import {
   useCommentDraft,
   ComposerToolbar,
   ComposerMediaGrid,
-  ComposerPetSelector,
 } from '../../src/components/social/CommentComposer';
+import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+
+type SortBy = 'top' | 'newest' | 'oldest';
+const SORT_OPTIONS: { key: SortBy; label: string }[] = [
+  { key: 'top', label: 'Top' },
+  { key: 'newest', label: 'Newest' },
+  { key: 'oldest', label: 'Oldest' },
+];
 
 const PRIMARY = '#A03048';
 const MUTED = '#C4C4C4';
@@ -131,21 +138,29 @@ const Avatar = ({ name, uri, size = 36 }: { name: string; uri?: string | null; s
   );
 };
 
-/* ── Comments section header ── */
-const CommentsHeader = ({ count }: { count: number }) => (
-  <View style={{
-    paddingHorizontal: 16, paddingVertical: 11,
-    backgroundColor: BG,
-    borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
-  }}>
-    <Text style={{ fontSize: 12, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 }}>
-      COMMENTS · {count}
-    </Text>
+/* ── Sort selector (sits between the post and the comments) ── */
+const SortSelector = ({ value, onChange }: { value: SortBy; onChange: (v: SortBy) => void }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG }}>
+    {SORT_OPTIONS.map((opt) => {
+      const active = opt.key === value;
+      return (
+        <TouchableOpacity
+          key={opt.key}
+          onPress={() => onChange(opt.key)}
+          activeOpacity={0.7}
+          style={{
+            paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999,
+            backgroundColor: active ? '#fdf0f2' : '#F3F4F6',
+          }}
+        >
+          <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? PRIMARY : '#6B7280' }}>
+            {opt.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
   </View>
 );
-
-/* ── Depth line colors ── */
-const DEPTH_COLORS = [MUTED, PRIMARY, '#7c3aed', '#059669', '#0ea5e9'];
 
 /* ── Single comment ── */
 const CommentRow = ({
@@ -156,8 +171,9 @@ const CommentRow = ({
   onToggleLike: (id: string) => void;
   onExpand: (id: string) => void;
 }) => {
+  // Replies are distinguished by a small indent per depth — no thread lines.
   const depth = Math.min(item.depth, 4);
-  const lineColor = DEPTH_COLORS[depth % DEPTH_COLORS.length];
+  const indent = 16 + depth * 24;
 
   /* Collapsed stub */
   if (item.isCollapsed) {
@@ -168,12 +184,10 @@ const CommentRow = ({
           flexDirection: 'row',
           alignItems: 'center',
           paddingVertical: 8,
-          paddingLeft: 16 + (depth - 1) * 32 + 34 + 10,
+          paddingLeft: indent + 42,
           backgroundColor: BG,
-          gap: 12,
         }}
       >
-        <View style={{ width: 32, height: 1, backgroundColor: '#DBDBDB' }} />
         <Text style={{ fontSize: 12, fontWeight: '700', color: '#8E8E8E' }}>
           View {item.collapsedCount} {item.collapsedCount === 1 ? 'reply' : 'replies'}
         </Text>
@@ -182,22 +196,12 @@ const CommentRow = ({
   }
 
   return (
-    <View style={{ backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: 16 + depth * 32 }}>
+    <View style={{ backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
 
-        {/* Left Side: Avatar + Thread Guideline Line */}
-        <View style={{ alignItems: 'center', marginRight: 10, width: 34 }}>
+        {/* Left Side: Avatar */}
+        <View style={{ marginRight: 10 }}>
           <Avatar name={item.author_name} uri={item.author_image} size={32} />
-          {depth > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: 36,
-              bottom: -20,
-              width: 1.5,
-              backgroundColor: lineColor,
-              opacity: 0.7,
-            }} />
-          )}
         </View>
 
         {/* Middle/Content Side */}
@@ -272,6 +276,8 @@ export default function PostDetailScreen() {
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [sortBy, setSortBy] = useState<SortBy>('top');
+  const [petSheetVisible, setPetSheetVisible] = useState(false);
 
   // Track keyboard height so the floating composer can stick directly above it.
   // (Android defaults to adjustResize, so the window already excludes the keyboard
@@ -342,14 +348,29 @@ export default function PostDetailScreen() {
   /* ── Data ── */
   const flatComments = useMemo(() => {
     const tree = buildTree(commentsData?.comments ?? []);
-    return flatten(tree, expanded);
-  }, [commentsData, expanded]);
+    const cmp = (a: Comment, b: Comment) => {
+      if (sortBy === 'top') {
+        return (b.like_count || 0) - (a.like_count || 0) ||
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (sortBy === 'oldest') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); // newest
+    };
+    const sortRec = (list: Comment[]): Comment[] => {
+      list.sort(cmp);
+      list.forEach((c) => sortRec(c.replies));
+      return list;
+    };
+    return flatten(sortRec(tree), expanded);
+  }, [commentsData, expanded, sortBy]);
 
   const listData = useMemo(() => {
     if (!postData) return [];
     return [
       { type: 'post', key: 'post' },
-      { type: 'comments_header', key: 'ch' },
+      { type: 'sort', key: 'sort' },
       ...(flatComments.length === 0
         ? [{ type: 'empty', key: 'empty' }]
         : flatComments.map(c => ({ type: 'comment', key: c.comment_id, data: c }))),
@@ -375,12 +396,13 @@ export default function PostDetailScreen() {
               onComment={openComposer}
               onPlusPress={(uid) => setSelectedUserId(uid)}
             />
-            <View style={{ height: 1.5, backgroundColor: '#E5E7EB' }} />
+            {/* Very thin grey line separating the post from the comments */}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB' }} />
           </>
         );
       }
-      case 'comments_header':
-        return <CommentsHeader count={flatComments.length} />;
+      case 'sort':
+        return <SortSelector value={sortBy} onChange={setSortBy} />;
       case 'empty':
         return <EmptyComments />;
       case 'comment':
@@ -395,7 +417,7 @@ export default function PostDetailScreen() {
       default:
         return null;
     }
-  }, [postData, commentsData, flatComments, handleReply, handleExpand, openComposer, user?.id]);
+  }, [postData, commentsData, handleReply, handleExpand, openComposer, user?.id, sortBy]);
 
   /* ── Loading ── */
   if (postLoading) {
@@ -527,7 +549,7 @@ export default function PostDetailScreen() {
                     autoFocus
                   />
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
-                  <ComposerPetSelector
+                  <SelectedPetsRow
                     petProfiles={draft.petProfiles}
                     selectedPets={draft.selectedPets}
                     onToggle={draft.togglePet}
@@ -544,6 +566,7 @@ export default function PostDetailScreen() {
               <ComposerToolbar
                 onImage={draft.pickImage}
                 onCamera={draft.pickCamera}
+                onPet={() => setPetSheetVisible(true)}
                 count={draft.media.length}
               />
               <TouchableOpacity
@@ -570,6 +593,15 @@ export default function PostDetailScreen() {
         userId={selectedUserId}
         visible={selectedUserId !== null}
         onClose={() => setSelectedUserId(null)}
+      />
+
+      <PetTagSheet
+        visible={petSheetVisible}
+        onClose={() => setPetSheetVisible(false)}
+        petProfiles={draft.petProfiles}
+        selectedPets={draft.selectedPets}
+        onToggle={draft.togglePet}
+        onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
       />
     </View>
   );

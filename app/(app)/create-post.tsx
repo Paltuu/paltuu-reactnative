@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Dimensions,
   Alert,
@@ -21,6 +22,7 @@ import { socialApi } from '../../src/api/social';
 import { petProfilesApi } from '../../src/api/petProfiles';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -204,10 +206,22 @@ export default function CreatePostScreen() {
     params.initialPetProfileId ? [Number(params.initialPetProfileId)] : []
   );
   const [milestone, setMilestone] = useState('');
+  const [petSheetVisible, setPetSheetVisible] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
+  // flush above the keyboard when it's open.
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   useEffect(() => {
     if (user?.id) {
@@ -621,55 +635,27 @@ export default function CreatePostScreen() {
             </View>
           )}
 
-          {/* ── Pet selector ── */}
-          <View className="mt-5 px-4">
-            <View className="flex-row items-center gap-2 mb-3">
-              <Ionicons name="paw-outline" size={15} color="#a03048" />
-              <Text className="font-headingSemi text-dark" style={{ fontSize: 13 }}>
-                Tag a pet
-              </Text>
-              {selectedPets.length > 0 && (
-                <View className="bg-primary/10 rounded-full px-2 py-0.5">
-                  <Text className="text-primary font-headingSemi" style={{ fontSize: 11 }}>
-                    {selectedPets.length} selected
-                  </Text>
-                </View>
-              )}
+          {/* ── Tagged pets (tagging is triggered from the toolbar paw button) ── */}
+          {selectedPets.length > 0 && (
+            <View className="mt-4 px-4">
+              <SelectedPetsRow
+                petProfiles={petProfiles}
+                selectedPets={selectedPets}
+                onToggle={togglePet}
+              />
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {petProfiles.map((pet) => (
-                <PetChip
-                  key={pet.pet_profile_id}
-                  pet={pet}
-                  selected={selectedPets.includes(pet.pet_profile_id)}
-                  onPress={() => togglePet(pet.pet_profile_id)}
-                />
-              ))}
-              <TouchableOpacity
-                onPress={() => router.push('/(app)/pet-profile/create')}
-                className="flex-row items-center gap-2 px-3 py-2 rounded-full border border-dashed border-gray-300 mr-2"
-              >
-                <Ionicons name="add" size={14} color="#9CA3AF" />
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: '#9CA3AF',
-                    fontFamily: 'Montserrat_600SemiBold',
-                  }}
-                >
-                  Add pet
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
+          )}
 
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* ── Bottom toolbar ── */}
+        {/* ── Bottom toolbar — sticks directly above the keyboard ── */}
         <View
           className="border-t border-gray-100 bg-surface flex-row items-center px-4 gap-5"
-          style={{ height: 56, paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0 }}
+          style={{
+            paddingTop: 10,
+            paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
+          }}
         >
           <TouchableOpacity onPress={pickMedia} hitSlop={8}>
             <Ionicons name="image-outline" size={24} color="#a03048" />
@@ -679,16 +665,8 @@ export default function CreatePostScreen() {
             <Ionicons name="camera-outline" size={24} color="#a03048" />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={pickVideo} hitSlop={8}>
-            <Ionicons name="videocam-outline" size={24} color="#a03048" />
-          </TouchableOpacity>
-
-          <TouchableOpacity hitSlop={8}>
-            <Ionicons name="location-outline" size={24} color="#a03048" />
-          </TouchableOpacity>
-
-          <TouchableOpacity hitSlop={8}>
-            <MaterialCommunityIcons name="pound" size={22} color="#a03048" />
+          <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
+            <Ionicons name="paw-outline" size={24} color="#a03048" />
           </TouchableOpacity>
 
           {mediaItems.length > 0 && (
@@ -698,6 +676,15 @@ export default function CreatePostScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      <PetTagSheet
+        visible={petSheetVisible}
+        onClose={() => setPetSheetVisible(false)}
+        petProfiles={petProfiles}
+        selectedPets={selectedPets}
+        onToggle={togglePet}
+        onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
     </View>
   );
 }

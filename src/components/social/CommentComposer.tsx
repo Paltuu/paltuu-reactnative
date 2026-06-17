@@ -3,11 +3,10 @@
 // screen (app/post/[id].tsx). Keeps media-picking, pet tagging and the submit
 // + cache-update logic in one place so the two surfaces stay in sync.
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
@@ -15,13 +14,6 @@ import { petProfilesApi } from '../../api/petProfiles';
 import { useAuthStore } from '../../stores/authStore';
 
 const PRIMARY = '#a03048';
-
-const PET_EMOJI: Record<string, string> = {
-  cat: '🐱',
-  dog: '🐶',
-  bird: '🐦',
-  default: '🐾',
-};
 
 export type DraftMedia = { uri: string; type: 'image' };
 
@@ -197,61 +189,17 @@ export const ComposerMediaGrid = ({
   );
 };
 
-/* ── Pet tag selector (horizontal chips) ── */
-export const ComposerPetSelector = ({
-  petProfiles,
-  selectedPets,
-  onToggle,
-}: {
-  petProfiles: any[];
-  selectedPets: number[];
-  onToggle: (id: number) => void;
-}) => {
-  if (!petProfiles.length) return null;
-  return (
-    <View style={{ marginTop: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-        <Ionicons name="paw-outline" size={14} color={PRIMARY} />
-        <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151' }}>Tag a pet</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {petProfiles.map((pet) => {
-          const selected = selectedPets.includes(pet.pet_profile_id);
-          const emoji = PET_EMOJI[String(pet?.species || 'default').toLowerCase()] ?? PET_EMOJI.default;
-          return (
-            <TouchableOpacity
-              key={pet.pet_profile_id}
-              onPress={() => onToggle(pet.pet_profile_id)}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, marginRight: 8,
-                borderWidth: 1,
-                backgroundColor: selected ? '#fdf0f2' : '#fff',
-                borderColor: selected ? PRIMARY : '#E5E7EB',
-              }}
-            >
-              <Text style={{ fontSize: 14 }}>{emoji}</Text>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? PRIMARY : '#374151' }}>
-                {pet.name}
-              </Text>
-              {selected && <Ionicons name="checkmark-circle" size={14} color={PRIMARY} />}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-};
-
-/* ── Icon toolbar (image / camera / pet / location / hashtag) ── */
+/* ── Icon toolbar — gallery + camera + pet tagging only ── */
 export const ComposerToolbar = ({
   onImage,
   onCamera,
+  onPet,
   count,
   maxCount = 4,
 }: {
   onImage: () => void;
   onCamera: () => void;
+  onPet?: () => void;
   count: number;
   maxCount?: number;
 }) => (
@@ -262,15 +210,11 @@ export const ComposerToolbar = ({
     <TouchableOpacity onPress={onCamera} hitSlop={8}>
       <Ionicons name="camera-outline" size={23} color={PRIMARY} />
     </TouchableOpacity>
-    <TouchableOpacity hitSlop={8}>
-      <Ionicons name="happy-outline" size={23} color={PRIMARY} />
-    </TouchableOpacity>
-    <TouchableOpacity hitSlop={8}>
-      <Ionicons name="location-outline" size={23} color={PRIMARY} />
-    </TouchableOpacity>
-    <TouchableOpacity hitSlop={8}>
-      <MaterialCommunityIcons name="pound" size={21} color={PRIMARY} />
-    </TouchableOpacity>
+    {onPet && (
+      <TouchableOpacity onPress={onPet} hitSlop={8}>
+        <Ionicons name="paw-outline" size={22} color={PRIMARY} />
+      </TouchableOpacity>
+    )}
     {count > 0 && (
       <View style={{ marginLeft: 'auto', backgroundColor: '#F3F4F6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '600' }}>{count}/{maxCount}</Text>

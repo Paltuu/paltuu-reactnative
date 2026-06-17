@@ -18,8 +18,8 @@ import {
   useCommentDraft,
   ComposerToolbar,
   ComposerMediaGrid,
-  ComposerPetSelector,
 } from '../../src/components/social/CommentComposer';
+import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
 
 const PRIMARY = '#a03048';
 const stripHtml = (s: string) => (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
@@ -53,6 +53,8 @@ export default function CommentComposerScreen() {
     postId: id as string,
     onPosted: () => router.back(),
   });
+
+  const [petSheetVisible, setPetSheetVisible] = useState(false);
 
   // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
   // flush above the keyboard when it's open.
@@ -156,14 +158,13 @@ export default function CommentComposerScreen() {
                     style={{ fontSize: 17, color: '#111', minHeight: 90, textAlignVertical: 'top', paddingTop: 8 }}
                   />
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
+                  <SelectedPetsRow
+                    petProfiles={draft.petProfiles}
+                    selectedPets={draft.selectedPets}
+                    onToggle={draft.togglePet}
+                  />
                 </View>
               </View>
-
-              <ComposerPetSelector
-                petProfiles={draft.petProfiles}
-                selectedPets={draft.selectedPets}
-                onToggle={draft.togglePet}
-              />
             </>
           )}
         </ScrollView>
@@ -178,10 +179,20 @@ export default function CommentComposerScreen() {
           <ComposerToolbar
             onImage={draft.pickImage}
             onCamera={draft.pickCamera}
+            onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
             count={draft.media.length}
           />
         </View>
       </KeyboardAvoidingView>
+
+      <PetTagSheet
+        visible={petSheetVisible}
+        onClose={() => setPetSheetVisible(false)}
+        petProfiles={draft.petProfiles}
+        selectedPets={draft.selectedPets}
+        onToggle={draft.togglePet}
+        onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
     </View>
   );
 }
