@@ -7,16 +7,20 @@ import {
   Text,
   Dimensions,
   Platform,
+  TextStyle,
+  StyleProp,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withDelay,
   interpolate,
-  useAnimatedProps,
+  Easing,
+  LinearTransition,
 } from "react-native-reanimated";
-import { BlurView, type BlurViewProps } from "expo-blur";
+import { BlurView } from "expo-blur";
 import type { SearchBarProps } from "./SearchBar.types";
 import { runOnJS } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,13 +28,131 @@ import { Ionicons } from "@expo/vector-icons";
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-const AnimatedBlurView =
-  Animated.createAnimatedComponent<BlurViewProps>(BlurView);
 
 const { width: screenWidth } = Dimensions.get("window");
 
+// ─── Staggered cycling placeholder ──────────────────────────────────────────
+
+const PLACEHOLDER_ENTER_DURATION = 300;
+const PLACEHOLDER_EXIT_DURATION = 200;
+const PLACEHOLDER_DELAY_INCREMENT = 30;
+
+const Character = ({
+  char,
+  index,
+  style,
+}: {
+  char: string;
+  index: number;
+  style?: StyleProp<TextStyle>;
+}) => {
+  const animationDelay = index * PLACEHOLDER_DELAY_INCREMENT;
+
+  const enteringAnimation = () => {
+    "worklet";
+    return {
+      initialValues: {
+        opacity: 0,
+        transform: [{ translateY: 20 }, { scale: 0.5 }],
+      },
+      animations: {
+        opacity: withDelay(
+          animationDelay,
+          withTiming(1, { duration: PLACEHOLDER_ENTER_DURATION }),
+        ),
+        transform: [
+          {
+            translateY: withDelay(
+              animationDelay,
+              withSpring(0, { damping: 15, stiffness: 150, mass: 0.9 }),
+            ),
+          },
+          {
+            scale: withDelay(
+              animationDelay,
+              withSpring(1, { damping: 15, stiffness: 150, mass: 0.9 }),
+            ),
+          },
+        ],
+      },
+    };
+  };
+
+  const exitingAnimation = () => {
+    "worklet";
+    return {
+      initialValues: {
+        opacity: 1,
+        transform: [{ translateY: 0 }, { scale: 1 }],
+      },
+      animations: {
+        opacity: withDelay(
+          animationDelay,
+          withTiming(0, { duration: PLACEHOLDER_EXIT_DURATION }),
+        ),
+        transform: [
+          {
+            translateY: withDelay(
+              animationDelay,
+              withTiming(-5, { duration: PLACEHOLDER_EXIT_DURATION }),
+            ),
+          },
+          {
+            scale: withDelay(
+              animationDelay,
+              withTiming(0.5, { duration: PLACEHOLDER_EXIT_DURATION }),
+            ),
+          },
+        ],
+      },
+    };
+  };
+
+  return (
+    <Animated.Text
+      entering={enteringAnimation}
+      exiting={exitingAnimation}
+      layout={LinearTransition.duration(180).easing(
+        Easing.bezier(0.25, 0.1, 0.25, 1),
+      )}
+      style={style}
+    >
+      {char}
+    </Animated.Text>
+  );
+};
+
+const StaggeredPlaceholder = ({
+  text,
+  style,
+}: {
+  text: string;
+  style?: StyleProp<TextStyle>;
+}) => {
+  const characters = Array.from(text);
+  return (
+    <Animated.View
+      style={styles.staggeredWrapper}
+      layout={LinearTransition.duration(300).easing(
+        Easing.bezier(0.25, 0.1, 0.25, 1),
+      )}
+    >
+      {characters.map((char, index) => (
+        <Character
+          key={`${char}-${index}-${text}`}
+          char={char}
+          index={index}
+          style={style}
+        />
+      ))}
+    </Animated.View>
+  );
+};
+
 export const SearchBar = ({
   placeholder = "Search",
+  placeholders,
+  placeholderInterval = 3000,
   onSearch,
   onClear,
   style,
@@ -48,7 +170,26 @@ export const SearchBar = ({
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0 });
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<TextInput>(null);
+
+  const hasCyclingPlaceholders = !!placeholders && placeholders.length > 0;
+
+  // Cycle through placeholders while idle (unfocused + empty).
+  useEffect(() => {
+    if (!hasCyclingPlaceholders || isFocused || query) return;
+    const timeout = setTimeout(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders!.length);
+    }, placeholderInterval);
+    return () => clearTimeout(timeout);
+  }, [
+    placeholderIndex,
+    isFocused,
+    query,
+    hasCyclingPlaceholders,
+    placeholders,
+    placeholderInterval,
+  ]);
 
   const Container = Platform.OS === 'ios' ? BlurView : View;
   const containerProps = Platform.OS === 'ios' ? { intensity: 20, tint: 'light' as const } : {};
@@ -91,22 +232,6 @@ export const SearchBar = ({
     return {
       opacity,
       transform: [{ translateX }],
-    };
-  });
-
-  const animatedBlurViewProps = useAnimatedProps(() => {
-    const blurAmount = withSpring(
-      interpolate(focusProgress.value, [0, 0.3, 0.5, 1], [0, 20, 30, 0]),
-    );
-    return {
-      intensity: blurAmount,
-    };
-  });
-
-  const animatedSearchContentStyle = useAnimatedStyle(() => {
-    return { 
-      paddingLeft: interpolate(focusProgress.value, [0, 1], [0, 12]),
-      justifyContent: 'flex-start', // Always flex-start, we use translation for centering
     };
   });
 
@@ -183,10 +308,9 @@ export const SearchBar = ({
   const handleFocus = () => {
     onSearchMount();
     setIsFocused(true);
-    focusProgress.value = withSpring(1, {
-      damping: 20,
-      stiffness: 150,
-      mass: 1,
+    focusProgress.value = withTiming(1, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
     });
   };
 
@@ -196,7 +320,10 @@ export const SearchBar = ({
     setQuery("");
     onSearchDone();
     onClear?.();
-    focusProgress.value = withTiming(0, { duration: 300 });
+    focusProgress.value = withTiming(0, {
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+    });
     clearButtonScale.value = withTiming(0);
     clearButtonOpacity.value = withTiming(0, { duration: 200 });
   };
@@ -255,9 +382,7 @@ export const SearchBar = ({
               onPress={() => inputRef.current?.focus()} 
               style={styles.searchContainer}
             >
-              <AnimatedView
-                style={[styles.searchContent, animatedSearchContentStyle]}
-              >
+              <AnimatedView style={styles.searchContent}>
                 <AnimatedView
                   style={[
                     styles.searchIconContainer,
@@ -269,12 +394,21 @@ export const SearchBar = ({
                 </AnimatedView>
 
                 <AnimatedView style={[{ flex: 1, position: 'relative' }, animatedInputWrapperStyle]}>
-                  {/* Centered "Search" placeholder overlay */}
-                  <AnimatedView 
+                  {/* Placeholder overlay — cycling staggered text, or static fallback */}
+                  <AnimatedView
                     pointerEvents="none"
-                    style={[{ position: 'absolute', left: 0, top: 0, bottom: 0, justifyContent: 'center' }, animatedPlaceholderStyle]}
+                    style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center' }, animatedPlaceholderStyle]}
                   >
-                    <Text style={{ color: '#8E8E93', fontSize: 16 }}>Search</Text>
+                    {hasCyclingPlaceholders ? (
+                      <StaggeredPlaceholder
+                        text={placeholders![placeholderIndex]}
+                        style={[styles.placeholderText, props?.inputStyle as TextStyle]}
+                      />
+                    ) : (
+                      <Text style={[styles.placeholderText, props?.inputStyle as TextStyle]}>
+                        {placeholder}
+                      </Text>
+                    )}
                   </AnimatedView>
 
                     <AnimatedTextInput
@@ -285,7 +419,11 @@ export const SearchBar = ({
                       props?.inputStyle,
                     ]}
                     cursorColor={props?.tint ?? "#A03048"}
-                    placeholder={placeholder}
+                    placeholder={
+                      hasCyclingPlaceholders
+                        ? placeholders![placeholderIndex]
+                        : placeholder
+                    }
                     placeholderTextColor={isFocused ? "#8E8E93" : "transparent"}
                     value={query}
                     onChangeText={handleChangeText}
@@ -299,18 +437,6 @@ export const SearchBar = ({
                   />
                 </AnimatedView>
 
-                {Platform.OS === "ios" && (
-                  <AnimatedBlurView
-                    style={[
-                      StyleSheet.absoluteFillObject,
-                      {
-                        overflow: "hidden",
-                      },
-                    ]}
-                    animatedProps={animatedBlurViewProps}
-                    pointerEvents={"none"}
-                  />
-                )}
                 {query.length > 0 && (
                   <AnimatedTouchable
                     onPress={handleClear}
@@ -355,7 +481,7 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     paddingHorizontal: 0,
-    paddingVertical: 8,
+    paddingVertical: 2,
   },
   searchRow: {
     flexDirection: "row",
@@ -363,12 +489,12 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {},
   blurContainer: {
-    borderRadius: 12,
+    borderRadius: 999,
     overflow: "hidden",
     backgroundColor: '#F3F4F6', // Light gray background
   },
   searchContainer: {
-    borderRadius: 12,
+    borderRadius: 999,
     minHeight: 40,
     justifyContent: "center",
   },
@@ -384,6 +510,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
+  },
+  staggeredWrapper: {
+    flexDirection: "row",
+    flexWrap: "nowrap",
+  },
+  placeholderText: {
+    color: "#8E8E93",
+    fontSize: 16,
+    fontWeight: "400",
   },
   input: {
     width: "100%",

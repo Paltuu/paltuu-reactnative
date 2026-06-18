@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext } from '../../src/context/HeaderContext';
-import { SearchBar } from '../../src/components/common/SearchBar';
+import { SearchHeader, SearchTab } from '../../src/components/common/SearchHeader';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../src/api/social';
@@ -24,7 +24,6 @@ import { MOCK_POSTS } from './index';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-type SearchTab = 'all' | 'posts' | 'users';
 const chunkArray = (array: any[], size: number) => {
   const chunked = [];
   for (let i = 0; i < array.length; i += size) {
@@ -81,17 +80,6 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
   </TouchableOpacity>
 );
 
-const TabItem = React.memo(({ title, active, onPress }: { title: string, active: boolean, onPress: () => void }) => (
-  <TouchableOpacity 
-    onPress={onPress}
-    className={`py-[10px] px-5 border-b-2 ${active ? 'border-primary' : 'border-transparent'}`}
-  >
-    <Text className={`text-[14px] ${active ? 'text-[#111] font-bold' : 'text-[#666] font-medium'}`}>
-      {title}
-    </Text>
-  </TouchableOpacity>
-));
-
 export default function SearchScreen() {
   const { toggleFollow } = useSocialActions();
   const insets = useSafeAreaInsets();
@@ -100,6 +88,7 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
+  const [stickyHeaderHeight, setStickyHeaderHeight] = useState(112);
 
   // Viewer State
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -198,35 +187,14 @@ export default function SearchScreen() {
   ), [router, toggleFollow]);
 
   const renderHeader = useMemo(() => (
-    <View className="pt-5">
-      <Text className="text-[32px] font-extrabold mb-[15px] px-4">
-        Explore
-      </Text>
-      
-      <View className="px-4 mb-2.5">
-        <SearchBar
-          placeholder="Search people or posts..."
-          onSearch={setSearchQuery}
-          onClear={() => setSearchQuery('')}
-          containerWidth={screenWidth - 32}
-          tint="#A03048"
-          centerWhenUnfocused={false}
-        />
-      </View>
-
-      <View className="flex-row border-b-[0.5px] border-[#EEE] px-2">
-        <TabItem title="All" active={activeTab === 'all'} onPress={() => setActiveTab('all')} />
-        <TabItem title="Posts" active={activeTab === 'posts'} onPress={() => setActiveTab('posts')} />
-        <TabItem title="People" active={activeTab === 'users'} onPress={() => setActiveTab('users')} />
-      </View>
-
+    <View>
       {!debouncedQuery && (
         <View style={{ padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}>
           <Text style={{ fontSize: 18, fontWeight: '800' }}>Trending Posts</Text>
         </View>
       )}
     </View>
-  ), [activeTab, debouncedQuery]);
+  ), [debouncedQuery]);
 
   const combinedData = useMemo(() => {
     const processPosts = (posts: SocialPost[], isTrending: boolean) => {
@@ -331,9 +299,9 @@ export default function SearchScreen() {
         ListHeaderComponent={renderHeader}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ 
-          paddingTop: insets.top,
-          paddingBottom: 100 
+        contentContainerStyle={{
+          paddingTop: insets.top + stickyHeaderHeight,
+          paddingBottom: 100
         }}
         onEndReached={() => {
           if (!debouncedQuery && hasNextTrending && !isFetchingMoreTrending) {
@@ -354,6 +322,20 @@ export default function SearchScreen() {
             </View>
           ) : null
         )}
+      />
+
+      <SearchHeader
+        placeholders={[
+          'Search users',
+          'Search vets',
+          'Search rescue shelters',
+          'Search posts',
+        ]}
+        onSearch={setSearchQuery}
+        onClear={() => setSearchQuery('')}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onHeightChange={setStickyHeaderHeight}
       />
 
       <ImageModal
