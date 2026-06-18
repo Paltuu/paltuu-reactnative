@@ -5,7 +5,7 @@
     "scheme": "paltuu",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/paltuu-app-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -22,8 +22,8 @@
       "package": "com.paltuu.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/paltuu-app-icon.png",
+        "backgroundColor": "#A03048"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

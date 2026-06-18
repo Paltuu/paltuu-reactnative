@@ -54,7 +54,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export const CARD_H_MARGIN = 0;         // card left/right margin from screen
 export const CARD_V_MARGIN = 0;         // card top/bottom margin
 export const CARD_INNER_PAD = 14;       // inner horizontal padding (left side only for text)
-export const AVATAR_SIZE = 42;
+export const AVATAR_SIZE = 36;
 export const COL_GAP = 9;              // gap between avatar column and content column
 
 // Total card width
@@ -133,7 +133,7 @@ const s = StyleSheet.create({
     right: -2,
     width: 18,
     height: 18,
-    backgroundColor: '#111',
+    backgroundColor: '#a03048',
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
@@ -142,14 +142,13 @@ const s = StyleSheet.create({
   },
   authorTextCol: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   authorNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   authorName: {
-    flex: 1,
     fontSize: 14,
     fontWeight: '700',
     color: '#111',
@@ -157,7 +156,6 @@ const s = StyleSheet.create({
   authorUsername: {
     fontSize: 13,
     color: '#666',
-    marginTop: -2,
   },
   timeAgo: {
     fontSize: 13,
@@ -195,10 +193,10 @@ const s = StyleSheet.create({
   caption: {
     marginLeft: MEDIA_LEFT_OFFSET,
     marginRight: 14,
-    // Pull up so the caption starts right after the username, ignoring the
-    // taller avatar's overhang below the name/username stack.
-    marginTop: -10,
-    marginBottom: 4,
+    // Pull up so the caption starts right after the single name/username line,
+    // ignoring the taller avatar's overhang below it (avatar 36 vs ~20 line).
+    marginTop: -18,
+    marginBottom: 6,
   },
   mediaScroll: {
     paddingLeft: MEDIA_LEFT_OFFSET,
@@ -305,6 +303,7 @@ const AuthorBlock = ({
             </View>
           )}
         </TouchableOpacity>
+        {/* Follow button — temporarily disabled
         {onPlusPress && (
           <TouchableOpacity
             onPress={onPlusPress}
@@ -314,14 +313,16 @@ const AuthorBlock = ({
             <Ionicons name="add" size={13} color="white" />
           </TouchableOpacity>
         )}
+        */}
       </View>
 
-      {/* Name + username stacked */}
+      {/* Name + username on a single line */}
       <View style={s.authorTextCol}>
         <View style={s.authorNameRow}>
           <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={{ flex: 1, marginRight: 8 }}>
-            <Text style={s.authorName} numberOfLines={1}>
-              {name || 'Anonymous'}
+            <Text numberOfLines={1}>
+              <Text style={s.authorName}>{name || 'Anonymous'}</Text>
+              {!!username && <Text style={s.authorUsername}>  @{username}</Text>}
             </Text>
           </TouchableOpacity>
           <Text style={s.timeAgo}>{timeAgo}</Text>
@@ -329,13 +330,6 @@ const AuthorBlock = ({
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
           </TouchableOpacity>
         </View>
-        {!!username && (
-          <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={{ alignSelf: 'flex-start' }}>
-            <Text style={s.authorUsername} numberOfLines={1}>
-              @{username}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -667,7 +661,10 @@ export const PostCard = React.memo(({
   // Plain repost = repost WITHOUT a caption → only the "{user} reposted" header,
   //   and the original is rendered AS the post (original author + content + media),
   //   with no reposter author block / embedded card.
-  const isRepost = post.post_type === 'repost';
+  // A post is only treated as a repost when it actually carries the original it
+  // points to — guards against posts mislabeled post_type:'repost' without any
+  // original_* data, which otherwise drew a stray "reposted" header.
+  const isRepost = post.post_type === 'repost' && !!post.original_post_id;
   const isQuoteRepost = isRepost && !!caption;
   const isPlainRepost = isRepost && !caption;
 
@@ -885,7 +882,11 @@ export const PostCard = React.memo(({
           {/* ── Reposted indicator (plain reposts only; quote reposts read like a normal post) ── */}
           {isPlainRepost && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 64, marginBottom: 4 }}>
-              <Ionicons name="repeat" size={14} color="#666" />
+              <Image
+                source={PostIcons.repostUnselect}
+                style={{ width: 14, height: 14 }}
+                contentFit="contain"
+              />
               <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', marginLeft: 4 }}>
                 {currentUser?.id === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
               </Text>
