@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -40,6 +40,15 @@ const DS = {
   gray500: '#6B7280',
   gray400: '#9CA3AF',
   gray100: '#F3F4F6',
+};
+
+const Icons = {
+  pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
+  pawUnselect: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
+  pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
+  pawLikeUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+  repostSelect: require('../../../assets/icons/repost-select.svg'),
+  repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
 };
 
 function formatCount(n: number = 0): string {
@@ -66,7 +75,7 @@ const PetCard = ({ item, user }: any) => {
         </View>
       </View>
       <View style={s.chipRow}>
-        <View style={s.chip}><MaterialCommunityIcons name="paw" size={11} color={DS.primary} /><Text style={s.chipText}>{item.pet_name}</Text></View>
+        <View style={s.chip}><ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" /><Text style={s.chipText}>{item.pet_name}</Text></View>
         {item.pet_breed && <View style={[s.chip, { backgroundColor: DS.gray100 }]}><Text style={[s.chipText, { color: DS.gray500 }]}>{item.pet_breed}</Text></View>}
       </View>
       {item.main_image && <Image source={{ uri: item.main_image }} style={s.cardMedia} resizeMode="cover" />}
@@ -85,11 +94,11 @@ const RepostCard = ({ item, user }: any) => {
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
         </View>
       </View>
-      <View style={s.repostLabel}><Ionicons name="repeat" size={13} color={DS.primary} /><Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text></View>
+      <View style={s.repostLabel}><ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" /><Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text></View>
       <View style={s.repostInset}><Text style={s.cardContent}>{item.content}</Text></View>
       <View style={s.thinDivider} />
       <View style={s.actionRow}>
-        <TouchableOpacity style={s.actionBtn}><MaterialCommunityIcons name="paw-outline" size={22} color={DS.gray400} /><Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text></TouchableOpacity>
+        <TouchableOpacity style={s.actionBtn}><ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" /><Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text></TouchableOpacity>
         <TouchableOpacity style={s.actionBtn}><Ionicons name="chatbubble-outline" size={20} color={DS.gray400} /></TouchableOpacity>
         <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]}><Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} /></TouchableOpacity>
       </View>
@@ -99,8 +108,8 @@ const RepostCard = ({ item, user }: any) => {
 
 const TAB_CONFIG = [
   { key: 'Posts', renderIcon: (active: boolean) => <Ionicons name={active ? 'grid' : 'grid-outline'} size={22} color={active ? DS.primary : DS.gray400} /> },
-  { key: 'Pets', renderIcon: (active: boolean) => <MaterialCommunityIcons name={active ? 'paw' : 'paw-outline'} size={24} color={active ? DS.primary : DS.gray400} /> },
-  { key: 'Reposts', renderIcon: (active: boolean) => <Ionicons name="repeat" size={24} color={active ? DS.primary : DS.gray400} /> },
+  { key: 'Pets', renderIcon: (active: boolean) => <ExpoImage source={active ? Icons.pawLikeSelect : Icons.pawLikeUnselect} style={{ width: 24, height: 24 }} contentFit="contain" /> },
+  { key: 'Reposts', renderIcon: (active: boolean) => <ExpoImage source={active ? Icons.repostSelect : Icons.repostUnselect} style={{ width: 24, height: 24 }} contentFit="contain" /> },
 ] as const;
 
 export default function UserProfileScreen() {
@@ -296,7 +305,7 @@ export default function UserProfileScreen() {
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity style={s.btnSecondary}>
-          <Ionicons name="share-social-outline" size={16} color={DS.primary} style={{ marginRight: 6 }} />
+          <Ionicons name="share-social-outline" size={16} color={DS.dark} style={{ marginRight: 6 }} />
           <Text style={s.btnSecondaryText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -343,7 +352,7 @@ export default function UserProfileScreen() {
                 <ActivityIndicator size="small" color={DS.primary} />
               ) : (
                 <>
-                  <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
+                  <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 40, height: 40 }} contentFit="contain" tintColor={DS.gray100} />
                   <Text style={s.emptyText}>Nothing here yet</Text>
                 </>
               )}

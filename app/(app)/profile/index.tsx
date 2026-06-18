@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -28,6 +28,15 @@ import { socialApi, SocialPost } from '../../../src/api/social';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
+
+const Icons = {
+  pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
+  pawUnselect: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
+  pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
+  pawLikeUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+  repostSelect: require('../../../assets/icons/repost-select.svg'),
+  repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
@@ -165,7 +174,7 @@ const PetCard = ({ item, user, onPress }: { item: any; user: any; onPress: () =>
 
       <View style={s.chipRow}>
         <View style={s.chip}>
-          <MaterialCommunityIcons name="paw" size={11} color={DS.primary} />
+          <ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" />
           <Text style={s.chipText}>{item.name}</Text>
         </View>
         {item.breed && (
@@ -212,7 +221,7 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
       </View>
 
       <View style={s.repostLabel}>
-        <Ionicons name="repeat" size={13} color={DS.primary} />
+        <ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" />
         <Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text>
       </View>
 
@@ -225,7 +234,7 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
       <View style={s.thinDivider} />
       <View style={s.actionRow}>
         <TouchableOpacity style={s.actionBtn}>
-          <MaterialCommunityIcons name="paw-outline" size={22} color={DS.gray400} />
+          <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" />
           <Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtn}>
@@ -251,13 +260,13 @@ const TAB_CONFIG = [
   {
     key: 'Pets',
     renderIcon: (active: boolean) => (
-      <MaterialCommunityIcons name={active ? 'paw' : 'paw-outline'} size={24} color={active ? DS.primary : DS.gray400} />
+      <ExpoImage source={active ? Icons.pawLikeSelect : Icons.pawLikeUnselect} style={{ width: 24, height: 24 }} contentFit="contain" />
     ),
   },
   {
     key: 'Reposts',
     renderIcon: (active: boolean) => (
-      <Ionicons name="repeat" size={24} color={active ? DS.primary : DS.gray400} />
+      <ExpoImage source={active ? Icons.repostSelect : Icons.repostUnselect} style={{ width: 24, height: 24 }} contentFit="contain" />
     ),
   },
 ] as const;
@@ -592,7 +601,7 @@ export default function ProfileScreen() {
           <Text style={s.btnSecondaryText}>Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.btnSecondary}>
-          <Ionicons name="share-social-outline" size={16} color={DS.primary} style={{ marginRight: 6 }} />
+          <Ionicons name="share-social-outline" size={16} color={DS.dark} style={{ marginRight: 6 }} />
           <Text style={s.btnSecondaryText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -673,7 +682,7 @@ export default function ProfileScreen() {
               <ActivityIndicator size="small" color={DS.primary} />
             ) : (
               <>
-                <MaterialCommunityIcons name="paw-outline" size={40} color={DS.gray100} />
+                <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 40, height: 40 }} contentFit="contain" tintColor={DS.gray100} />
                 <Text style={s.emptyText}>Nothing here yet</Text>
                 {activeTab === 'Pets' && (
                   <TouchableOpacity
@@ -1058,13 +1067,12 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     height: 40,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: DS.primary,
+    backgroundColor: DS.gray100,
   },
   btnSecondaryText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 14,
-    color: DS.primary,
+    color: DS.dark,
   },
 
   // ─ Tab bar ─
