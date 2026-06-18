@@ -24,6 +24,10 @@ const PostIcons = {
   commentUnselect: require('../../../assets/icons/comment-unselect.svg'),
   shareSelect: require('../../../assets/icons/share-select.svg'),
   shareUnselect: require('../../../assets/icons/share-unselect.svg'),
+  repostSelect: require('../../../assets/icons/repost-select.svg'),
+  repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
+  bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
+  bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
 };
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../../hooks/useSocialActions';
@@ -587,12 +591,12 @@ const ActionBar = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Repost — keep Ionicons, no custom SVG */}
+      {/* Repost */}
       <TouchableOpacity onPress={onRepost} style={s.actionBtn} hitSlop={8}>
-        <Ionicons
-          name="repeat-outline"
-          size={21}
-          color={reposted ? '#A03048' : '#9CA3AF'}
+        <Image
+          source={reposted ? PostIcons.repostSelect : PostIcons.repostUnselect}
+          style={{ width: 20, height: 20 }}
+          contentFit="contain"
         />
         <Text style={[s.actionCount, s.countSlot, reposted && { color: '#A03048' }]}>
           {(repostCount ?? 0) > 0 ? formatCount(repostCount ?? 0) : ''}
@@ -617,10 +621,10 @@ const ActionBar = ({
         style={s.actionBtn}
         hitSlop={8}
       >
-        <Ionicons
-          name={saved ? 'bookmark' : 'bookmark-outline'}
-          size={19}
-          color={saved ? '#A03048' : '#9CA3AF'}
+        <Image
+          source={saved ? PostIcons.bookmarkSelect : PostIcons.bookmarkUnselect}
+          style={{ width: 20, height: 20 }}
+          contentFit="contain"
         />
       </TouchableOpacity>
     </View>
