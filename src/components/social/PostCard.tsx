@@ -10,8 +10,6 @@ import {
   Modal,
   TextInput,
   Alert,
-  Platform,
-  ActionSheetIOS,
   Share,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -33,6 +31,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../../hooks/useSocialActions';
 import { SaveBottomSheet } from './SaveBottomSheet';
 import { ReportBottomSheet } from './ReportBottomSheet';
+import { RepostBottomSheet } from './RepostBottomSheet';
+import { PostOptionsBottomSheet } from './PostOptionsBottomSheet';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -728,8 +728,11 @@ export const PostCard = React.memo(({
 
   const showPlus = String(currentUser?.id) !== String(post.user_id) && !post.is_following;
   const [saveSheetVisible, setSaveSheetVisible] = useState(false);
+  const [optionsSheetVisible, setOptionsSheetVisible] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const isOwnPost = String(currentUser?.id) === String(post.user_id);
 
-  const { toggleLike, deletePost, toggleSave } = useSocialActions();
+  const { toggleLike, deletePost, toggleSave, toggleFollow } = useSocialActions();
 
   const handleDelete = () => {
     Alert.alert(
@@ -793,55 +796,12 @@ export const PostCard = React.memo(({
     );
   };
 
-  const handleMenu = () => {
-    const isOwnPost = String(currentUser?.id) === String(post.user_id);
+  const handleUnfollow = () => {
+    toggleFollow(post.user_id);
+  };
 
-    if (Platform.OS === 'ios') {
-      const options = isOwnPost 
-        ? ['Cancel', 'Edit Post', 'Delete Post'] 
-        : ['Cancel', 'Report Post', 'Block User'];
-      
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          destructiveButtonIndex: isOwnPost ? 2 : 2,
-          cancelButtonIndex: 0,
-          title: 'Post Options',
-        },
-        (buttonIndex) => {
-          if (isOwnPost) {
-            if (buttonIndex === 1) handleEdit();
-            else if (buttonIndex === 2) handleDelete();
-          } else {
-            if (buttonIndex === 1) setReportSheetVisible(true);
-            else if (buttonIndex === 2) handleBlock();
-          }
-        }
-      );
-    } else {
-      // Android
-      if (isOwnPost) {
-        Alert.alert(
-          'Post Options',
-          undefined,
-          [
-            { text: 'Edit Post', onPress: handleEdit },
-            { text: 'Delete Post', style: 'destructive', onPress: handleDelete },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Post Options',
-          undefined,
-          [
-            { text: 'Report Post', onPress: () => setReportSheetVisible(true) },
-            { text: 'Block User', style: 'destructive', onPress: handleBlock },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
-      }
-    }
+  const handleHide = () => {
+    setIsHidden(true);
   };
 
   const repostMutation = useMutation({
@@ -869,6 +829,27 @@ export const PostCard = React.memo(({
     setIsRepostModalVisible(false);
     setIsQuoteModalVisible(true);
   };
+
+  if (isHidden) {
+    return (
+      <View
+        style={[
+          s.card,
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: CARD_INNER_PAD,
+          },
+        ]}
+      >
+        <Text style={{ color: '#666', fontSize: 14, fontWeight: '500' }}>Post hidden</Text>
+        <TouchableOpacity onPress={() => setIsHidden(false)} hitSlop={8}>
+          <Text style={{ color: '#A03048', fontSize: 14, fontWeight: '700' }}>Undo</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -902,7 +883,7 @@ export const PostCard = React.memo(({
             uri={displayImage}
             timeAgo={displayTime}
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
-            onMenuPress={handleMenu}
+            onMenuPress={() => setOptionsSheetVisible(true)}
             onAvatarPress={() => router.push(`/(app)/profile/${displayUserId}`)}
           />
 
@@ -1020,40 +1001,14 @@ export const PostCard = React.memo(({
         postId={post.post_id}
       />
 
-      {/* ── Repost Options Modal ── */}
-      <Modal
+      {/* ── Repost Options Sheet ── */}
+      <RepostBottomSheet
         visible={isRepostModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsRepostModalVisible(false)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
-          onPress={() => setIsRepostModalVisible(false)}
-        >
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' }}>Repost</Text>
-
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}
-              onPress={handleQuickRepost}
-            >
-              <Ionicons name="repeat" size={24} color="#111" />
-              <Text style={{ marginLeft: 15, fontSize: 16, fontWeight: '500' }}>
-                {post.is_reposted ? 'Undo Repost' : 'Repost'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15 }}
-              onPress={handleQuotePost}
-            >
-              <Ionicons name="create-outline" size={24} color="#111" />
-              <Text style={{ marginLeft: 15, fontSize: 16, fontWeight: '500' }}>Quote Post</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
+        onClose={() => setIsRepostModalVisible(false)}
+        isReposted={!!post.is_reposted}
+        onRepost={handleQuickRepost}
+        onQuote={handleQuotePost}
+      />
 
       {/* ── Quote Post Composer ── */}
       <Modal
@@ -1123,6 +1078,22 @@ export const PostCard = React.memo(({
         onClose={() => setReportSheetVisible(false)}
         targetType="post"
         targetId={post.post_id}
+      />
+
+      {/* ── Three-dots Post Options Sheet ── */}
+      <PostOptionsBottomSheet
+        visible={optionsSheetVisible}
+        onClose={() => setOptionsSheetVisible(false)}
+        isOwnPost={isOwnPost}
+        isFollowing={!!post.is_following}
+        isSaved={!!post.is_saved}
+        onSave={() => toggleSave(post.post_id, !!post.is_saved)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onReport={() => setReportSheetVisible(true)}
+        onBlock={handleBlock}
+        onUnfollow={handleUnfollow}
+        onHide={handleHide}
       />
     </>
   );

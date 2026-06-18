@@ -67,7 +67,11 @@ export const MainHeader: React.FC = () => {
 
                 <TouchableOpacity style={styles.iconButton} onPress={onHeartPress}>
                     <View style={{ position: 'relative' }}>
-                        <Ionicons name="heart-outline" size={24} color="#000" />
+                        <Image
+                            source={require('../../../assets/icons/heart-unselect.svg')}
+                            style={{ width: 24, height: 24 }}
+                            tintColor="#000000"
+                        />
                         {unreadCount > 0 && (
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>
