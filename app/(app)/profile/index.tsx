@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -28,6 +29,7 @@ import { socialApi, SocialPost } from '../../../src/api/social';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
+import { HamburgerIcon } from '../../../src/components/ui/hamburger-icon';
 
 const Icons = {
   pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
@@ -40,7 +42,6 @@ const Icons = {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
-const COVER_H = 210;
 const AVATAR_SIZE = 96;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -289,6 +290,7 @@ export default function ProfileScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
+  const menuProgress = useSharedValue(0);
 
   const userId = user?.id;
 
@@ -375,6 +377,7 @@ export default function ProfileScreen() {
 
   const openMenu = () => {
     setMenuVisible(true);
+    menuProgress.value = withTiming(1, { duration: 250 });
     Animated.spring(menuSlideX, {
       toValue: 0,
       useNativeDriver: true,
@@ -384,6 +387,7 @@ export default function ProfileScreen() {
   };
 
   const closeMenu = () => {
+    menuProgress.value = withTiming(0, { duration: 220 });
     Animated.timing(menuSlideX, {
       toValue: MENU_WIDTH,
       duration: 220,
@@ -507,34 +511,18 @@ export default function ProfileScreen() {
 
   const ListHeader = () => (
     <View style={s.headerWrapper}>
-      {/* Top action bar — floats over cover */}
+      {/* Top action bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         <View style={{ width: 40 }} />
-        <TouchableOpacity style={s.menuBtn} onPress={openMenu}>
-          <Ionicons name="menu" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Cover photo */}
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => setImageModal('cover')}
-      >
-        <View style={[s.coverWrapper, { height: COVER_H + insets.top }]}>
-          {profile?.cover_photo_url ? (
-            <Image
-              source={{ uri: profile.cover_photo_url }}
-              style={[s.coverImage, { backgroundColor: '#FFFFFF' }]}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={s.coverPlaceholder} />
-          )}
-          <View style={s.coverEditHint}>
-            <Ionicons name="camera-outline" size={16} color="rgba(255,255,255,0.85)" />
-          </View>
+        <View style={s.menuBtn}>
+          <HamburgerIcon
+            progress={menuProgress}
+            size={26}
+            color="#000000"
+            onPress={() => (menuVisible ? closeMenu() : openMenu())}
+          />
         </View>
-      </TouchableOpacity>
+      </View>
 
       {/* Avatar */}
       <View style={s.avatarCenter}>
@@ -543,11 +531,7 @@ export default function ProfileScreen() {
             uri={profile?.profile_image_url}
             size={AVATAR_SIZE}
             initials={initials}
-            style={s.avatarBorder}
           />
-          <View style={s.avatarEditBadge}>
-            <Ionicons name="camera" size={12} color="#FFFFFF" />
-          </View>
         </TouchableOpacity>
       </View>
 
@@ -926,73 +910,25 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // ─ Top bar (floats over cover) ─
+  // ─ Top bar ─
   topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
-    zIndex: 10,
   },
   menuBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  // ─ Cover ─
-  coverWrapper: {
-    marginHorizontal: 4,
-    marginTop: 0,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-  },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  coverPlaceholder: {
-    flex: 1,
-    backgroundColor: DS.primaryLight,
-  },
-  coverEditHint: {
-    position: 'absolute',
-    bottom: 10,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: 12,
-    padding: 5,
   },
 
   // ─ Avatar ─
   avatarCenter: {
     alignItems: 'center',
-    marginTop: -(AVATAR_SIZE / 2),
+    marginTop: 8,
     marginBottom: 12,
-  },
-  avatarBorder: {
-    borderWidth: 4,
-    borderColor: DS.surface,
-  },
-  avatarEditBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: DS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: DS.surface,
   },
 
   // ─ Identity ─

@@ -28,7 +28,6 @@ import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSh
 import { useMutation } from '@tanstack/react-query';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COVER_H = 210;
 const AVATAR_SIZE = 96;
 
 const DS = {
@@ -242,24 +241,18 @@ export default function UserProfileScreen() {
     <View style={s.headerWrapper}>
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={s.menuBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
         {!isMe && !isBlockedByMe && !isBlockingMe && (
           <TouchableOpacity style={[s.menuBtn, { marginLeft: 'auto' }]} onPress={handleProfileMenu}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+            <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
           </TouchableOpacity>
         )}
       </View>
 
-      <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('cover')}>
-        <View style={[s.coverWrapper, { height: COVER_H + insets.top }]}>
-          {profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.coverImage} resizeMode="cover" /> : <View style={s.coverPlaceholder} />}
-        </View>
-      </TouchableOpacity>
-
       <View style={s.avatarCenter}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('profile')}>
-          <AvatarCircle uri={profile?.profile_image_url} size={AVATAR_SIZE} initials={initials} style={s.avatarBorder} />
+          <AvatarCircle uri={profile?.profile_image_url} size={AVATAR_SIZE} initials={initials} />
         </TouchableOpacity>
       </View>
 
@@ -383,13 +376,9 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DS.bg },
   center: { justifyContent: 'center', alignItems: 'center' },
   headerWrapper: { backgroundColor: DS.surface, marginBottom: 4 },
-  topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 14, zIndex: 10 },
-  menuBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.28)', alignItems: 'center', justifyContent: 'center' },
-  coverWrapper: { marginHorizontal: 4, borderRadius: 8, overflow: 'hidden', backgroundColor: '#FFFFFF' },
-  coverImage: { width: '100%', height: '100%' },
-  coverPlaceholder: { flex: 1, backgroundColor: DS.primaryLight },
-  avatarCenter: { alignItems: 'center', marginTop: -(AVATAR_SIZE / 2), marginBottom: 12 },
-  avatarBorder: { borderWidth: 3, borderColor: '#FFFFFF' },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14 },
+  menuBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  avatarCenter: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
   displayName: { fontSize: 20, fontWeight: '800', color: DS.dark, textAlign: 'center' },
   usernameText: { fontSize: 14, color: DS.gray500, textAlign: 'center', marginTop: 2 },
   bio: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginTop: 12, paddingHorizontal: 32, lineHeight: 20 },
