@@ -13,6 +13,7 @@ import {
   Modal,
   Alert,
   ScrollView,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -187,6 +188,15 @@ export default function UserProfileScreen() {
     }
   });
 
+  const handleShareProfile = async () => {
+    try {
+      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\npaltuu://profile/${profile?.user_id ?? userId}`;
+      await Share.share({ title: 'Paltuu Profile', message: shareText });
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
   const handleProfileMenu = () => {
     import('react-native').then(({ ActionSheetIOS, Platform, Alert }) => {
       if (Platform.OS === 'ios') {
@@ -243,11 +253,16 @@ export default function UserProfileScreen() {
         <TouchableOpacity style={s.menuBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
-        {!isMe && !isBlockedByMe && !isBlockingMe && (
-          <TouchableOpacity style={[s.menuBtn, { marginLeft: 'auto' }]} onPress={handleProfileMenu}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' }}>
+          <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
+            <Ionicons name="share-social-outline" size={22} color="#000000" />
           </TouchableOpacity>
-        )}
+          {!isMe && !isBlockedByMe && !isBlockingMe && (
+            <TouchableOpacity style={s.menuBtn} onPress={handleProfileMenu}>
+              <Ionicons name="ellipsis-horizontal" size={24} color="#000000" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={s.avatarCenter}>
@@ -258,7 +273,6 @@ export default function UserProfileScreen() {
 
       <Text style={s.displayName}>{profile?.name || 'User'}</Text>
       <Text style={s.usernameText}>@{profile?.social_username || profile?.username || 'user'}</Text>
-      {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
 
       <View style={s.statsRow}>
         <TouchableOpacity style={s.statItem} onPress={() => router.push({ pathname: '/(app)/follow-list', params: { userId: profile?.user_id, type: 'followers', name: profile?.name } })}>
@@ -276,6 +290,8 @@ export default function UserProfileScreen() {
           <Text style={s.statLabel}>Posts</Text>
         </View>
       </View>
+
+      {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
 
       <View style={s.btnRow}>
         {isMe ? (
@@ -297,10 +313,6 @@ export default function UserProfileScreen() {
             )}
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity style={s.btnSecondary}>
-          <Ionicons name="share-social-outline" size={16} color={DS.dark} style={{ marginRight: 6 }} />
-          <Text style={s.btnSecondaryText}>Share</Text>
-        </TouchableOpacity>
       </View>
 
       {!isLocked ? (
@@ -381,11 +393,11 @@ const s = StyleSheet.create({
   avatarCenter: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
   displayName: { fontSize: 20, fontWeight: '800', color: DS.dark, textAlign: 'center' },
   usernameText: { fontSize: 14, color: DS.gray500, textAlign: 'center', marginTop: 2 },
-  bio: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginTop: 12, paddingHorizontal: 32, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, paddingHorizontal: 20 },
+  bio: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginTop: 2, marginBottom: 4, paddingHorizontal: 32, lineHeight: 20 },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, marginBottom: 0, paddingHorizontal: 20 },
   statItem: { alignItems: 'center', paddingHorizontal: 15 },
-  statValue: { fontSize: 17, fontWeight: '800', color: DS.dark },
-  statLabel: { fontSize: 12, color: DS.gray500, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statValue: { fontSize: 15, fontWeight: '800', color: DS.dark },
+  statLabel: { fontSize: 11, color: DS.gray500, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
   statSep: { width: 1, height: 24, backgroundColor: '#E5E7EB' },
   btnRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 24, gap: 10 },
   btnPrimary: { flex: 1, height: 44, backgroundColor: DS.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

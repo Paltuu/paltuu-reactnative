@@ -288,6 +288,7 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState<'profile' | 'cover' | null>(null);
   const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nameBlockWidth, setNameBlockWidth] = useState(0);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const menuProgress = useSharedValue(0);
@@ -393,6 +394,17 @@ export default function ProfileScreen() {
       duration: 220,
       useNativeDriver: true,
     }).start(() => setMenuVisible(false));
+  };
+
+  // ── Share profile ────────────────────────────────────────────────────────────
+
+  const handleShareProfile = async () => {
+    try {
+      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\npaltuu://profile/${profile?.user_id ?? userId}`;
+      await Share.share({ title: 'Paltuu Profile', message: shareText });
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
   };
 
   // ── Image upload ────────────────────────────────────────────────────────────
@@ -514,13 +526,18 @@ export default function ProfileScreen() {
       {/* Top action bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         <View style={{ width: 40 }} />
-        <View style={s.menuBtn}>
-          <HamburgerIcon
-            progress={menuProgress}
-            size={26}
-            color="#000000"
-            onPress={() => (menuVisible ? closeMenu() : openMenu())}
-          />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
+            <Ionicons name="share-social-outline" size={22} color="#000000" />
+          </TouchableOpacity>
+          <View style={s.menuBtn}>
+            <HamburgerIcon
+              progress={menuProgress}
+              size={26}
+              color="#000000"
+              onPress={() => (menuVisible ? closeMenu() : openMenu())}
+            />
+          </View>
         </View>
       </View>
 
@@ -535,13 +552,31 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Identity */}
-      <Text style={s.displayName}>{profile?.name || 'User'}</Text>
-      <Text style={s.usernameText}>
-        @{profile?.social_username || profile?.username || 'user'}
-      </Text>
-
-      {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
+      {/* Identity — name/username always stay screen-centered; the Edit pill
+          floats just to their right, positioned off the measured text width
+          so it never pulls the centered block off-center. */}
+      <View style={{ alignItems: 'center', position: 'relative' }}>
+        <View
+          style={{ alignItems: 'center' }}
+          onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
+        >
+          <Text style={s.displayName}>{profile?.name || 'User'}</Text>
+          <Text style={s.usernameText}>
+            @{profile?.social_username || profile?.username || 'user'}
+          </Text>
+        </View>
+        {nameBlockWidth > 0 && (
+          <TouchableOpacity
+            style={[
+              s.editSmallBtn,
+              { position: 'absolute', left: '50%', marginLeft: nameBlockWidth / 2 + 14, top: 5 },
+            ]}
+            onPress={() => router.push('/(app)/profile/edit')}
+          >
+            <Text style={s.editSmallBtnText}>Edit</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Stats */}
       <View style={s.statsRow}>
@@ -579,16 +614,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Action buttons */}
-      <View style={s.btnRow}>
-        <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(app)/profile/edit')}>
-          <Text style={s.btnSecondaryText}>Edit Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.btnSecondary}>
-          <Ionicons name="share-social-outline" size={16} color={DS.dark} style={{ marginRight: 6 }} />
-          <Text style={s.btnSecondaryText}>Share</Text>
-        </TouchableOpacity>
-      </View>
+      {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
 
       {/* Icon tab bar */}
       <View style={s.tabBar}>
@@ -934,7 +960,7 @@ const s = StyleSheet.create({
   // ─ Identity ─
   displayName: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 24,
+    fontSize: 23,
     color: DS.dark,
     textAlign: 'center',
     letterSpacing: -0.3,
@@ -947,6 +973,17 @@ const s = StyleSheet.create({
     marginTop: 2,
     marginBottom: 8,
   },
+  editSmallBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: DS.gray100,
+  },
+  editSmallBtnText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 11,
+    color: DS.dark,
+  },
   bio: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
@@ -954,7 +991,8 @@ const s = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 20,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 16,
   },
 
   // ─ Stats ─
@@ -963,7 +1001,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 2,
+    marginBottom: 6,
   },
   statItem: {
     flex: 1,
@@ -971,13 +1010,13 @@ const s = StyleSheet.create({
   },
   statValue: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 20,
+    fontSize: 17,
     color: DS.dark,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontFamily: 'DMSans_400Regular',
-    fontSize: 12,
+    fontSize: 11,
     color: DS.gray400,
     marginTop: 2,
     textTransform: 'uppercase',
@@ -987,28 +1026,6 @@ const s = StyleSheet.create({
     width: 1,
     height: 32,
     backgroundColor: DS.gray100,
-  },
-
-  // ─ Buttons ─
-  btnRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  btnSecondary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: DS.gray100,
-  },
-  btnSecondaryText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 14,
-    color: DS.dark,
   },
 
   // ─ Tab bar ─
