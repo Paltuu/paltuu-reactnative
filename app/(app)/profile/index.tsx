@@ -614,7 +614,21 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {!!profile?.bio && <Text style={s.bio}>{profile.bio}</Text>}
+      {profile?.bio ? (
+        <Text style={s.bio}>{profile.bio}</Text>
+      ) : (
+        <TouchableOpacity style={s.addBioBtn} onPress={() => router.push('/(app)/profile/edit')}>
+          <ExpoImage
+            source={require('../../../assets/icons/plus-solid.svg')}
+            style={{ width: 10, height: 10 }}
+            contentFit="contain"
+            tintColor="#000000"
+          />
+          <Text style={s.addBioBtnText}>Add Bio</Text>
+          <Text style={s.addBioBtnDot}>·</Text>
+          <Text style={s.addBioBtnExample} numberOfLines={1}>I am a cat rescuer...</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Icon tab bar */}
       <View style={s.tabBar}>
@@ -993,6 +1007,34 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 2,
     marginBottom: 16,
+  },
+  addBioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: DS.gray100,
+    marginTop: 2,
+    marginBottom: 16,
+    maxWidth: SCREEN_WIDTH - 80,
+  },
+  addBioBtnText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 13,
+    color: '#000000',
+  },
+  addBioBtnDot: {
+    fontSize: 13,
+    color: DS.gray400,
+  },
+  addBioBtnExample: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 13,
+    color: '#000000',
+    flexShrink: 1,
   },
 
   // ─ Stats ─
