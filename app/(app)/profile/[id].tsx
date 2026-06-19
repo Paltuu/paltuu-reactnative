@@ -197,6 +197,34 @@ export default function UserProfileScreen() {
     }
   };
 
+  const unblockMutation = useMutation({
+    mutationFn: () => socialApi.unblockUser(userId),
+    onSuccess: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'success', text1: 'User unblocked' });
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+    },
+    onError: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'error', text1: 'Could not unblock user' });
+      });
+    }
+  });
+
+  const handleUnblock = () => {
+    Alert.alert(
+      'Unblock User',
+      `Unblock ${profile?.name}? They will be able to see your profile and posts again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Unblock', style: 'default', onPress: () => unblockMutation.mutate() },
+      ]
+    );
+  };
+
   const handleProfileMenu = () => {
     import('react-native').then(({ ActionSheetIOS, Platform, Alert }) => {
       if (Platform.OS === 'ios') {
@@ -298,9 +326,21 @@ export default function UserProfileScreen() {
           <TouchableOpacity style={s.btnSecondary} onPress={() => router.push('/(app)/profile')}>
             <Text style={s.btnSecondaryText}>Go to My Profile</Text>
           </TouchableOpacity>
-        ) : !isBlockedByMe && !isBlockingMe ? (
-          <TouchableOpacity 
-            style={[s.btnPrimary, profile?.is_following && s.btnSecondary]} 
+        ) : isBlockedByMe ? (
+          <TouchableOpacity
+            style={s.btnPrimary}
+            onPress={handleUnblock}
+            disabled={unblockMutation.isPending}
+          >
+            {unblockMutation.isPending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={s.btnPrimaryText}>Unblock</Text>
+            )}
+          </TouchableOpacity>
+        ) : !isBlockingMe ? (
+          <TouchableOpacity
+            style={[s.btnPrimary, profile?.is_following && s.btnSecondary]}
             onPress={() => toggleFollow(userId)}
             disabled={followMutationLoading}
           >
@@ -331,7 +371,7 @@ export default function UserProfileScreen() {
             {isBlockedByMe ? "You've blocked this account" : isBlockingMe ? "This account is not available" : "This account is private"}
           </Text>
           <Text style={{ fontSize: 14, color: DS.gray500, marginTop: 8, textAlign: 'center' }}>
-            {isBlockedByMe ? "You must unblock this user in Blocked Users to see their posts." : isBlockingMe ? "You cannot view this user's posts." : "Follow this user to see their posts and pets."}
+            {isBlockedByMe ? "Unblock this user to see their profile and posts." : isBlockingMe ? "You cannot view this user's posts." : "Follow this user to see their posts and pets."}
           </Text>
         </View>
       )}

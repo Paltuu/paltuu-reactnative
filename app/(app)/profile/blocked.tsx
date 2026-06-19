@@ -96,7 +96,9 @@ export default function BlockedUsersScreen() {
             </Text>
           }
           renderItem={({ item, index }) => (
-            <View
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push(`/(app)/profile/${item.user_id}`)}
               className={`flex-row items-center justify-between p-4 bg-gray-50 border border-gray-100 ${index === 0 ? 'rounded-t-2xl' : ''
                 } ${index === blockedUsers.length - 1 ? 'rounded-b-2xl' : ''} ${index !== blockedUsers.length - 1 ? 'border-b-0' : ''
                 }`}
@@ -127,12 +129,12 @@ export default function BlockedUsersScreen() {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => handleUnblock(item)}
+                onPress={(e) => { e.stopPropagation(); handleUnblock(item); }}
                 className="bg-primary/10 px-4 py-2 rounded-xl"
               >
                 <Text className="text-primary font-headingSemi text-xs">Unblock</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
           ListFooterComponent={
             isFetchingNextPage ? (
