@@ -26,20 +26,26 @@ interface PostOptionsBottomSheetProps {
 interface OptionRowProps {
   icon?: keyof typeof Ionicons.glyphMap;
   customIcon?: any;
+  customIconTint?: string;
   label: string;
   onPress: () => void;
   destructive?: boolean;
   isLast?: boolean;
 }
 
-const OptionRow = ({ icon, customIcon, label, onPress, destructive, isLast }: OptionRowProps) => (
+const OptionRow = ({ icon, customIcon, customIconTint, label, onPress, destructive, isLast }: OptionRowProps) => (
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.7}
     className={`flex-row items-center gap-4 py-4 ${isLast ? '' : 'border-b border-gray-100'}`}
   >
     {customIcon ? (
-      <Image source={customIcon} style={{ width: 22, height: 22 }} contentFit="contain" />
+      <Image
+        source={customIcon}
+        style={{ width: 22, height: 22 }}
+        contentFit="contain"
+        tintColor={customIconTint}
+      />
     ) : (
       <Ionicons name={icon!} size={22} color={destructive ? '#DC2626' : '#111'} />
     )}
@@ -75,6 +81,7 @@ export const PostOptionsBottomSheet = ({
           <View className="px-5 pt-2 pb-8">
             <OptionRow
               customIcon={isSaved ? bookmarkSelectIcon : bookmarkUnselectIcon}
+              customIconTint="#000000"
               label={isSaved ? 'Unsave Post' : 'Save Post'}
               onPress={run(onSave)}
             />

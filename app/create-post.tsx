@@ -10,7 +10,6 @@ import {
   Platform,
   Dimensions,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,6 +23,7 @@ import { useSocialActions } from '../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
+import SpinButton from '../src/components/ui/spin-button';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -481,15 +481,6 @@ export default function CreatePostScreen() {
     .slice(0, 2)
     .toUpperCase();
 
-  const uploadStageLabel = (): string => {
-    if (uploadStage === 'compressing') {
-      return `Compressing ${Math.round(compressionProgress * 100)}%`;
-    }
-    if (uploadStage === 'uploading') {
-      return `Uploading ${Math.round(uploadProgress * 100)}%`;
-    }
-    return 'Finalizing...';
-  };
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -503,7 +494,7 @@ export default function CreatePostScreen() {
         {/* ── Top bar — exactly mirrors MainHeader's height/spacing ── */}
         <View
           className="flex-row items-center justify-between border-b border-gray-100"
-          style={{ height: HEADER_HEIGHT, paddingHorizontal: 14 }}
+          style={{ height: HEADER_HEIGHT, paddingHorizontal: 14, position: 'relative' }}
         >
           <TouchableOpacity
             onPress={() => router.back()}
@@ -516,37 +507,46 @@ export default function CreatePostScreen() {
             />
           </TouchableOpacity>
 
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <SpinButton
+            idleText={isEditMode ? 'Save' : 'Post'}
+            activeText={isEditMode ? 'Saving' : 'Posting'}
+            controlled
+            isActive={isPosting}
+            disabled={!canPost}
+            showSpinner={false}
+            onPress={(active) => { if (active) handlePost(); }}
+            colors={{
+              idle: { background: 'transparent', text: '#a03048' },
+              active: { background: 'transparent', text: '#a03048' },
+            }}
+            buttonStyle={{
+              paddingHorizontal: 4,
+              paddingVertical: 8,
+              borderRadius: 0,
+              fontSize: 14,
+              fontWeight: '700',
+              fontFamily: 'Montserrat_700Bold',
+            }}
+          />
+
+          {/* Absolutely centered so the SpinButton's variable width (Post vs.
+              Posting) never shifts it off-center. */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Text className="font-headingSemi text-dark" style={{ fontSize: 15 }}>
               {isEditMode ? 'Edit post' : 'New post'}
             </Text>
           </View>
-
-          <TouchableOpacity
-            onPress={handlePost}
-            disabled={!canPost || isPosting}
-            className="px-4 py-1.5 rounded-full"
-            style={{ backgroundColor: canPost ? '#a03048' : '#E5E7EB' }}
-          >
-            {isPosting ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, paddingVertical: 6 }}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={{ fontSize: 11, color: '#fff', fontFamily: 'Montserrat_600SemiBold' }}>
-                  {uploadStageLabel()}
-                </Text>
-              </View>
-            ) : (
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Montserrat_700Bold',
-                  color: canPost ? '#fff' : '#9CA3AF',
-                }}
-              >
-                {isEditMode ? 'Save' : 'Post'}
-              </Text>
-            )}
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -555,12 +555,21 @@ export default function CreatePostScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Post type tabs — hidden for now, coming back later ── */}
+          <View style={{ height: 16 }} />
 
           {/* ── Author row ── */}
           <View className="flex-row items-start px-4 gap-3">
-            <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mt-0.5">
-              <Text className="text-primary font-headingSemi text-sm">{initials}</Text>
-            </View>
+            {user?.profile_image_url ? (
+              <Image
+                source={{ uri: user.profile_image_url }}
+                style={{ width: 40, height: 40, borderRadius: 20, marginTop: 2 }}
+                contentFit="cover"
+              />
+            ) : (
+              <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mt-0.5">
+                <Text className="text-primary font-headingSemi text-sm">{initials}</Text>
+              </View>
+            )}
 
             <View className="flex-1">
               <Text className="font-headingSemi text-dark mb-1" style={{ fontSize: 14 }}>

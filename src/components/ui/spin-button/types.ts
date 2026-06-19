@@ -55,6 +55,10 @@ interface ButtonStyleConfig {
   readonly fontWeight: TextStyle["fontWeight"];
   /** Not part of the original component — lets us match this app's custom font families. */
   readonly fontFamily?: string;
+  /** Not part of the original component — keeps the button from resizing as idleText/activeText swap. */
+  readonly minWidth?: number;
+  readonly borderWidth?: number;
+  readonly borderColor?: string;
 }
 
 interface SpinButtonProps {
@@ -70,6 +74,8 @@ interface SpinButtonProps {
   readonly disabled?: boolean;
   readonly controlled?: boolean;
   readonly isActive?: boolean;
+  /** Not part of the original component — lets callers drop the floating spinner badge entirely. */
+  readonly showSpinner?: boolean;
 }
 
 interface TextAnimationProps {

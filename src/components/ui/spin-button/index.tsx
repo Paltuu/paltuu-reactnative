@@ -220,6 +220,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({
   disabled = false,
   controlled = false,
   isActive,
+  showSpinner = true,
 }) => {
   const [internalState, setInternalState] = useState<boolean>(initialState);
 
@@ -379,6 +380,9 @@ const SpinButton: React.FC<SpinButtonProps> = ({
             paddingHorizontal: mergedButtonStyle.paddingHorizontal,
             paddingVertical: mergedButtonStyle.paddingVertical,
             borderRadius: mergedButtonStyle.borderRadius,
+            minWidth: mergedButtonStyle.minWidth,
+            borderWidth: mergedButtonStyle.borderWidth,
+            borderColor: mergedButtonStyle.borderColor,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
@@ -407,38 +411,40 @@ const SpinButton: React.FC<SpinButtonProps> = ({
           exitFinal={DEFAULT_CHARACTER_EXIT_FINAL}
         />
 
-        <Animated.View
-          style={[
-            {
-              position: "absolute",
-              right: mergedSpinnerConfig.position.right,
-              bottom: mergedSpinnerConfig.position.bottom,
-              width: mergedSpinnerConfig.containerSize,
-              height: mergedSpinnerConfig.containerSize,
-              backgroundColor: mergedSpinnerConfig.containerBackground,
-              borderRadius: 99,
-              justifyContent: "center",
-              alignItems: "center",
-            },
-            animatedSpinnerContainerStyle,
-          ]}
-        >
+        {showSpinner && (
           <Animated.View
-            style={{
-              width: mergedSpinnerConfig.size,
-              height: mergedSpinnerConfig.size,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
+            style={[
+              {
+                position: "absolute",
+                right: mergedSpinnerConfig.position.right,
+                bottom: mergedSpinnerConfig.position.bottom,
+                width: mergedSpinnerConfig.containerSize,
+                height: mergedSpinnerConfig.containerSize,
+                backgroundColor: mergedSpinnerConfig.containerBackground,
+                borderRadius: 99,
+                justifyContent: "center",
+                alignItems: "center",
+              },
+              animatedSpinnerContainerStyle,
+            ]}
           >
-            <CircularLoader
-              activeColor={mergedSpinnerConfig.color}
-              size={mergedSpinnerConfig.size}
-              strokeWidth={mergedSpinnerConfig.strokeWidth}
-              duration={800}
-            />
+            <Animated.View
+              style={{
+                width: mergedSpinnerConfig.size,
+                height: mergedSpinnerConfig.size,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <CircularLoader
+                activeColor={mergedSpinnerConfig.color}
+                size={mergedSpinnerConfig.size}
+                strokeWidth={mergedSpinnerConfig.strokeWidth}
+                duration={800}
+              />
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
+        )}
       </Animated.View>
     </Pressable>
   );
