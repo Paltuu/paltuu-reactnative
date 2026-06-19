@@ -57,14 +57,64 @@ function formatCount(n: number = 0): string {
   return String(n);
 }
 
-const AvatarCircle = ({ uri, size, initials, style }: any) => (
-  <View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: DS.gray100 }, style]}>
-    {uri ? <Image source={{ uri }} style={{ width: size, height: size, backgroundColor: '#FFFFFF' }} resizeMode="cover" /> : <Text style={{ fontSize: size * 0.36, fontWeight: '600', color: DS.primary }}>{initials}</Text>}
+const AvatarCircle = ({
+  uri,
+  size,
+  initials,
+  style,
+}: {
+  uri?: string | null;
+  size: number;
+  initials: string;
+  style?: any;
+}) => (
+  <View
+    style={[
+      {
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: DS.gray100,
+      },
+      style,
+    ]}
+  >
+    {uri ? (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
+        resizeMode="cover"
+      />
+    ) : (
+      <Text
+        style={{
+          fontSize: size * 0.36,
+          fontFamily: 'Montserrat_600SemiBold',
+          color: DS.primary,
+        }}
+      >
+        {initials}
+      </Text>
+    )}
   </View>
 );
 
-const PetCard = ({ item, user }: any) => {
-  const initials = (user?.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+// Field names differ from the own-profile PetCard (pet_name/pet_breed/main_image
+// vs. name/breed/avatar_url) since this screen reads from a different endpoint
+// (socialApi.getPets vs. petProfilesApi.getUserPetProfiles) — styling matches exactly.
+const PetCard = ({ item, user }: { item: any; user: any }) => {
+  const initials = (user?.name || 'U')
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
@@ -74,17 +124,38 @@ const PetCard = ({ item, user }: any) => {
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
         </View>
       </View>
+
       <View style={s.chipRow}>
-        <View style={s.chip}><ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" /><Text style={s.chipText}>{item.pet_name}</Text></View>
-        {item.pet_breed && <View style={[s.chip, { backgroundColor: DS.gray100 }]}><Text style={[s.chipText, { color: DS.gray500 }]}>{item.pet_breed}</Text></View>}
+        <View style={s.chip}>
+          <ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" />
+          <Text style={s.chipText}>{item.pet_name}</Text>
+        </View>
+        {item.pet_breed && (
+          <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
+            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.pet_breed}</Text>
+          </View>
+        )}
       </View>
-      {item.main_image && <Image source={{ uri: item.main_image }} style={s.cardMedia} resizeMode="cover" />}
+
+      {item.main_image && (
+        <Image
+          source={{ uri: item.main_image }}
+          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
+          resizeMode="cover"
+        />
+      )}
     </View>
   );
 };
 
-const RepostCard = ({ item, user }: any) => {
-  const initials = (user?.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+const RepostCard = ({ item, user }: { item: any; user: any }) => {
+  const initials = (user?.name || 'U')
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
@@ -94,13 +165,30 @@ const RepostCard = ({ item, user }: any) => {
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
         </View>
       </View>
-      <View style={s.repostLabel}><ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" /><Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text></View>
-      <View style={s.repostInset}><Text style={s.cardContent}>{item.content}</Text></View>
+
+      <View style={s.repostLabel}>
+        <ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" />
+        <Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text>
+      </View>
+
+      <View style={s.repostInset}>
+        <Text style={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}>
+          {item.content}
+        </Text>
+      </View>
+
       <View style={s.thinDivider} />
       <View style={s.actionRow}>
-        <TouchableOpacity style={s.actionBtn}><ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" /><Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text></TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn}><Ionicons name="chatbubble-outline" size={20} color={DS.gray400} /></TouchableOpacity>
-        <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]}><Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} /></TouchableOpacity>
+        <TouchableOpacity style={s.actionBtn}>
+          <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" />
+          <Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.actionBtn}>
+          <Ionicons name="chatbubble-outline" size={20} color={DS.gray400} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]}>
+          <Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -428,48 +516,147 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DS.bg },
   center: { justifyContent: 'center', alignItems: 'center' },
   headerWrapper: { backgroundColor: DS.surface, marginBottom: 4 },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
   menuBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   avatarCenter: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
-  displayName: { fontSize: 20, fontWeight: '800', color: DS.dark, textAlign: 'center' },
-  usernameText: { fontSize: 14, color: DS.gray500, textAlign: 'center', marginTop: 2 },
-  bio: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginTop: 2, marginBottom: 4, paddingHorizontal: 32, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20, marginBottom: 0, paddingHorizontal: 20 },
-  statItem: { alignItems: 'center', paddingHorizontal: 15 },
-  statValue: { fontSize: 15, fontWeight: '800', color: DS.dark },
-  statLabel: { fontSize: 11, color: DS.gray500, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  statSep: { width: 1, height: 24, backgroundColor: '#E5E7EB' },
-  btnRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 24, gap: 10 },
+
+  // ─ Identity ─ (synced with profile/index.tsx)
+  displayName: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 23,
+    color: DS.dark,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  usernameText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+    color: DS.gray500,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  bio: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+    color: DS.gray500,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
+    marginTop: 2,
+    marginBottom: 16,
+  },
+
+  // ─ Stats ─ (synced with profile/index.tsx)
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 17,
+    color: DS.dark,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 11,
+    color: DS.gray400,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statSep: { width: 1, height: 32, backgroundColor: DS.gray100 },
+
+  // ─ Follow / Go-to-my-profile row — own-profile screen has no equivalent
+  // (Edit/Share live in the top bar there instead), so these are [id]-only.
+  btnRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 4, marginBottom: 12, gap: 10 },
   btnPrimary: { flex: 1, height: 44, backgroundColor: DS.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   btnSecondary: { flex: 1, height: 44, backgroundColor: DS.gray100, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   btnSecondaryText: { color: DS.dark, fontSize: 15, fontWeight: '600' },
-  tabBar: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F3F4F6', marginTop: 20 },
-  tabItem: { flex: 1, height: 50, alignItems: 'center', justifyContent: 'center' },
-  tabUnderline: { position: 'absolute', bottom: 0, width: 40, height: 3, backgroundColor: DS.primary, borderRadius: 1.5 },
+
+  // ─ Tab bar ─ (synced with profile/index.tsx)
+  tabBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: DS.gray100,
+    backgroundColor: DS.surface,
+  },
+  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative' },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    width: 32,
+    height: 2.5,
+    backgroundColor: DS.primary,
+    borderRadius: 2,
+  },
+
+  // ─ List ─
   postDivider: { height: 8, backgroundColor: DS.bg },
-  card: { backgroundColor: '#FFFFFF', padding: 16 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  cardName: { fontSize: 15, fontWeight: '700', color: DS.dark },
-  cardMeta: { fontSize: 13, color: DS.gray500 },
-  chipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: DS.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
-  chipText: { fontSize: 12, color: DS.primary, fontWeight: '600' },
-  cardMedia: { width: '100%', height: 240, borderRadius: 12, marginTop: 4 },
-  repostLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginLeft: 52 },
-  repostLabelText: { fontSize: 13, color: DS.gray500, fontWeight: '600' },
-  repostInset: { marginLeft: 52, padding: 12, backgroundColor: DS.gray100, borderRadius: 12 },
-  cardContent: { fontSize: 15, color: DS.dark, lineHeight: 22 },
-  thinDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionCount: { fontSize: 14, color: DS.gray500, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { color: DS.gray400, marginTop: 12, fontSize: 15 },
-  imgModalBg: { flex: 1, backgroundColor: 'black' },
-  imgModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  imgModalClose: { padding: 8 },
-  imgModalTitle: { color: 'white', fontSize: 17, fontWeight: '600' },
-  imgModalContent: { flex: 1, justifyContent: 'center' },
-  imgModalImage: { width: '100%', height: '100%' },
+
+  // ─ Card ─ (synced with profile/index.tsx)
+  card: { backgroundColor: DS.surface, paddingTop: 14 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
+  cardName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 15, color: DS.dark },
+  cardMeta: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: DS.gray500, marginTop: 1 },
+  cardContent: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+    color: DS.dark,
+    lineHeight: 21,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  cardMedia: { width: '100%', aspectRatio: 4 / 3, backgroundColor: DS.gray100 },
+
+  // ─ Actions ─
+  thinDivider: { height: 0.5, backgroundColor: DS.gray100, marginHorizontal: 16, marginTop: 8 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 16 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionCount: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: DS.gray400 },
+
+  // ─ Pet chips ─
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, marginBottom: 10 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: DS.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  chipText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 11, color: DS.primary },
+
+  // ─ Repost ─
+  repostLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, marginBottom: 8 },
+  repostLabelText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: DS.primary },
+  repostInset: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: DS.bg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DS.gray100,
+  },
+
+  // ─ Empty state ─
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
+  emptyText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: DS.gray400 },
+
+  // ─ Image modal ─
+  imgModalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
+  imgModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  imgModalClose: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  imgModalTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 16, color: '#FFFFFF' },
+  imgModalContent: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  imgModalImage: { width: SCREEN_WIDTH, height: SCREEN_WIDTH, backgroundColor: '#000000' },
 });
