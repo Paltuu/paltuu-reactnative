@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Dimensions,
   StyleSheet,
-  Animated,
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -23,12 +22,7 @@ import { useAuthStore } from '../../../src/stores/authStore';
 import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 
-const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-
-const { width, height } = Dimensions.get('window');
-const HERO_HEIGHT = height * 0.38;
-const AVATAR_SIZE = 96;
+const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
 
 // Species → emoji badge mapping for personality
@@ -69,38 +63,17 @@ export default function PetProfileScreen() {
   const [isConverting, setIsConverting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Scroll-driven hero parallax
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const heroTranslate = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT],
-    outputRange: [0, -HERO_HEIGHT * 0.3],
-    extrapolate: 'clamp',
-  });
-  const heroOpacity = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT * 0.7],
-    outputRange: [1, 0.3],
-    extrapolate: 'clamp',
-  });
-  const navBgOpacity = scrollY.interpolate({
-    inputRange: [HERO_HEIGHT * 0.5, HERO_HEIGHT],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  const headerTintColor = scrollY.interpolate({
-    inputRange: [HERO_HEIGHT * 0.5, HERO_HEIGHT],
-    outputRange: ['#FFFFFF', '#111827'],
-    extrapolate: 'clamp',
-  });
-
-  const btnBgColor = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT * 0.5],
-    outputRange: ['rgba(0,0,0,0.3)', 'rgba(0,0,0,0)'],
-    extrapolate: 'clamp',
-  });
-
   const isOwner = user?.id && profile?.owner_id && Number(user.id) === Number(profile.owner_id);
-  const heroImage = photos.find((p) => p.ordering === 0)?.photo_url ?? profile?.avatar_url ?? null;
+
+  const goBack = () => {
+    if (from === 'profile') {
+      router.push('/(app)/profile/index');
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push('/(app)/profile/index');
+    }
+  };
 
   useEffect(() => { fetchProfile(); }, [petId]);
   useEffect(() => {
@@ -209,18 +182,7 @@ export default function PetProfileScreen() {
       <View style={[s.center, { paddingTop: insets.top }]}>
         <Ionicons name="paw-outline" size={56} color="#E5E7EB" />
         <Text style={s.emptyTitle}>Profile not found</Text>
-        <TouchableOpacity
-          onPress={() => {
-            if (from === 'profile') {
-              router.push('/(app)/profile/index');
-            } else if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push('/(app)/profile/index');
-            }
-          }}
-          style={s.backBtn}
-        >
+        <TouchableOpacity onPress={goBack} style={s.backBtn}>
           <Text style={s.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -231,53 +193,8 @@ export default function PetProfileScreen() {
   return (
     <View style={s.root}>
 
-      {/* ── Floating Transparent / Filled Nav Bar ── */}
-      <Animated.View style={[s.navBar, { height: insets.top + 56, paddingTop: insets.top }]}>
-        {/* Solid fill fades in on scroll */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFFFFF', opacity: navBgOpacity }]} />
-        <View style={s.navContent}>
-          <TouchableOpacity
-            onPress={() => {
-              if (from === 'profile') {
-                router.push('/(app)/profile/index');
-              } else if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.push('/(app)/profile/index');
-              }
-            }}
-            style={s.navBtn}
-          >
-            <Ionicons name="chevron-back" size={22} color="#a03048" />
-          </TouchableOpacity>
-          <Animated.Text style={[s.navTitle, { opacity: navBgOpacity, color: headerTintColor }]}>
-            {profile.name}
-          </Animated.Text>
-          <View style={s.navActions}>
-            {isOwner && (
-              <>
-                <TouchableOpacity
-                  onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
-                  style={s.navIconBtn}
-                >
-                  <Ionicons name="create-outline" size={20} color="#a03048" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
-                  style={s.navIconBtn}
-                >
-                  <Ionicons name="images-outline" size={20} color="#a03048" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Animated.View>
-
       {/* ── Scrollable Body ── */}
-      <Animated.ScrollView
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
-        scrollEventThrottle={16}
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
@@ -286,44 +203,34 @@ export default function PetProfileScreen() {
             onRefresh={handleRefresh}
             colors={['#a03048']}
             tintColor="#a03048"
-            progressViewOffset={insets.top + 56}
           />
         }
       >
-        {/* ── CINEMATIC HERO BANNER ── */}
-        <View style={s.heroContainer}>
-          <Animated.View style={[s.heroBg, { transform: [{ translateY: heroTranslate }], opacity: heroOpacity }]}>
-            {heroImage ? (
-              <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
-            ) : (
-              <LinearGradient colors={['#a03048', '#6B1228']} style={StyleSheet.absoluteFillObject} />
-            )}
-          </Animated.View>
-          {/* Deep gradient scrim that bleeds into white content */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.18)', 'rgba(255,255,255,1)']}
-            locations={[0.2, 0.65, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
+        {/* ── Top bar ── */}
+        <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity onPress={goBack} style={s.menuBtn}>
+            <Ionicons name="chevron-back" size={24} color="#000000" />
+          </TouchableOpacity>
+          {isOwner && (
+            <View style={s.ownerActions}>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+                style={s.menuBtn}
+              >
+                <Ionicons name="create-outline" size={22} color="#000000" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
+                style={s.menuBtn}
+              >
+                <Ionicons name="images-outline" size={22} color="#000000" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
-        {/* ── IDENTITY BLOCK (Avatar overlaps hero) ── */}
+        {/* ── IDENTITY BLOCK ── */}
         <View style={s.identityBlock}>
-          {/* Avatar circle */}
-          <View style={s.avatarRing}>
-            {profile.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} contentFit="cover" />
-            ) : (
-              <LinearGradient colors={['#FAF0F2', '#f3e0e4']} style={s.avatarPlaceholder}>
-                <Text style={s.avatarEmoji}>{getSpeciesEmoji(profile.species)}</Text>
-              </LinearGradient>
-            )}
-            {/* Species emoji badge */}
-            <View style={s.speciesBadge}>
-              <Text style={{ fontSize: 14 }}>{getSpeciesEmoji(profile.species)}</Text>
-            </View>
-          </View>
-
           {/* Name + meta */}
           <Text style={s.petName}>{profile.name}</Text>
           {(profile.breed || profile.species) && (
@@ -563,7 +470,7 @@ export default function PetProfileScreen() {
             </View>
           </View>
         )}
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
@@ -572,102 +479,31 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 32 },
 
-  // ── NAV BAR ──
-  navBar: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    zIndex: 100,
-  },
-  navContent: {
+  // ── TOP BAR ──
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 56,
+    paddingHorizontal: 14,
   },
-  navBtn: {
-    width: 38, height: 38,
-    borderRadius: 19,
+  menuBtn: {
+    width: 40, height: 40,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#a03048',
   },
-  navTitle: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontFamily: 'DMSans_700Bold',
-    letterSpacing: -0.3,
-  },
-  navActions: { flexDirection: 'row', gap: 4 },
-  navIconBtn: {
-    width: 38, height: 38,
-    borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#a03048',
-  },
-
-  // ── HERO ──
-  heroContainer: {
-    height: HERO_HEIGHT,
-    overflow: 'hidden',
-  },
-  heroBg: {
-    ...StyleSheet.absoluteFillObject,
-    height: HERO_HEIGHT * 1.3, // Extra height for parallax travel
-    backgroundColor: '#a03048',
-  },
+  ownerActions: { flexDirection: 'row', marginLeft: 'auto', gap: 4 },
 
   // ── IDENTITY ──
   identityBlock: {
     alignItems: 'center',
-    marginTop: -(AVATAR_SIZE / 2 + 8),
+    marginTop: 8,
     paddingBottom: 20,
     paddingHorizontal: 24,
   },
-  avatarRing: {
-    width: AVATAR_SIZE + 8,
-    height: AVATAR_SIZE + 8,
-    borderRadius: (AVATAR_SIZE + 8) / 2,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#FAF0F2',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  avatarImage: { width: '100%', height: '100%' },
-  avatarPlaceholder: {
-    width: '100%', height: '100%',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarEmoji: { fontSize: 38 },
-  speciesBadge: {
-    position: 'absolute',
-    bottom: 2, right: 2,
-    width: 26, height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 4,
-  },
   petName: {
-    marginTop: 14,
-    fontSize: 26,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 24,
+    fontFamily: 'Montserrat_700Bold',
     color: '#111827',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   petBreed: {
     marginTop: 4,
