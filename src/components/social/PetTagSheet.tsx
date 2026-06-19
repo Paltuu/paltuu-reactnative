@@ -3,12 +3,17 @@
 // - SelectedPetsRow: the tagged pets shown as removable avatar chips.
 // - PetTagSheet: a bottom sheet listing the user's pets (avatar + name + species)
 //   with multi-select checkmarks, a search box, and an "add a new pet" row.
-import React, { useMemo, useState } from 'react';
+//   Uses the same custom BottomSheet as RepostBottomSheet / PostOptionsBottomSheet
+//   for a consistent slide-up feel (rounded sheet, drag handle, gesture dismiss).
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, Pressable, Modal, FlatList, TextInput,
+  View, Text, TouchableOpacity, Modal, FlatList, TextInput,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheet } from '../ui/bottom-sheet';
+import type { BottomSheetMethods } from '../ui/bottom-sheet/types';
 
 const PRIMARY = '#a03048';
 
@@ -104,6 +109,15 @@ export const PetTagSheet = ({
   onAddPet?: () => void;
 }) => {
   const [query, setQuery] = useState('');
+  const sheetRef = useRef<BottomSheetMethods>(null);
+  const snapPoints = useMemo(() => ['55%', '85%'] as const, []);
+
+  useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(() => sheetRef.current?.expand(), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -111,26 +125,18 @@ export const PetTagSheet = ({
     return petProfiles.filter((p) => String(p.name).toLowerCase().includes(q));
   }, [petProfiles, query]);
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 22, borderTopRightRadius: 22,
-            paddingBottom: 24, maxHeight: '75%',
-          }}
-        >
-          {/* Grabber */}
-          <View style={{ alignItems: 'center', paddingTop: 10 }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' }} />
-          </View>
+  if (!visible) return null;
 
+  const handleDone = () => sheetRef.current?.close();
+
+  return (
+    <Modal visible transparent animationType="none" onRequestClose={handleDone}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheet ref={sheetRef} snapPoints={snapPoints} onClose={onClose}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10 }}>
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#111' }}>Tag your pets</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity onPress={handleDone} hitSlop={8}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: PRIMARY }}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -157,7 +163,7 @@ export const PetTagSheet = ({
             data={filtered}
             keyExtractor={(item) => String(item.pet_profile_id)}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4 }}
+            contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 32 }}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', paddingVertical: 28, gap: 8 }}>
                 <Ionicons name="paw-outline" size={32} color="#D1D5DB" />
@@ -207,8 +213,8 @@ export const PetTagSheet = ({
               ) : null
             }
           />
-        </Pressable>
-      </Pressable>
+        </BottomSheet>
+      </GestureHandlerRootView>
     </Modal>
   );
 };

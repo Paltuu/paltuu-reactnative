@@ -15,8 +15,8 @@ const Icons = {
   homeUnselect: require('../../assets/icons/home-unselect.svg'),
   searchSelect: require('../../assets/icons/search-select.svg'),
   searchUnselect: require('../../assets/icons/search-unselect.svg'),
-  pawSelect: require('../../assets/icons/MAIN_PAW_select.svg'),
-  pawUnselect: require('../../assets/icons/MAIN_PAW_unselect.svg'),
+  pawSelect: require('../../assets/icons/paw-like-select.svg'),
+  pawUnselect: require('../../assets/icons/paw-like-unselect.svg'),
 };
 
 function LayoutContent() {
@@ -27,7 +27,7 @@ function LayoutContent() {
 
   useEffect(() => {
     setOnPlusPress(() => {
-      router.push('/(app)/create-post');
+      router.push('/create-post');
     });
     setOnHeartPress(() => {
       router.push('/(app)/notifications');
@@ -211,7 +211,6 @@ function LayoutContent() {
         <Tabs.Screen name="vet/[id]" options={{ href: null }} />
         <Tabs.Screen name="create" options={{ href: null }} />
         <Tabs.Screen name="create-pet" options={{ href: null }} />
-        <Tabs.Screen name="create-post" options={{ href: null, tabBarStyle: { display: 'none' } }} />
         <Tabs.Screen name="create-lost-found" options={{ href: null }} />
         <Tabs.Screen name="my-listings" options={{ href: null }} />
         <Tabs.Screen name="my-applications" options={{ href: null }} />

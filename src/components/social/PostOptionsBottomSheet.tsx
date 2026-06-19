@@ -1,7 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionSheetModal } from '../ui/bottom-sheet/ActionSheetModal';
+
+const bookmarkSelectIcon = require('../../../assets/icons/bookmark-select.svg');
+const bookmarkUnselectIcon = require('../../../assets/icons/bookmark-unselect.svg');
+const writePostIcon = require('../../../assets/icons/write-post-solid.svg');
 
 interface PostOptionsBottomSheetProps {
   visible: boolean;
@@ -19,20 +24,25 @@ interface PostOptionsBottomSheetProps {
 }
 
 interface OptionRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
+  customIcon?: any;
   label: string;
   onPress: () => void;
   destructive?: boolean;
   isLast?: boolean;
 }
 
-const OptionRow = ({ icon, label, onPress, destructive, isLast }: OptionRowProps) => (
+const OptionRow = ({ icon, customIcon, label, onPress, destructive, isLast }: OptionRowProps) => (
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.7}
     className={`flex-row items-center gap-4 py-4 ${isLast ? '' : 'border-b border-gray-100'}`}
   >
-    <Ionicons name={icon} size={22} color={destructive ? '#DC2626' : '#111'} />
+    {customIcon ? (
+      <Image source={customIcon} style={{ width: 22, height: 22 }} contentFit="contain" />
+    ) : (
+      <Ionicons name={icon!} size={22} color={destructive ? '#DC2626' : '#111'} />
+    )}
     <Text className={`text-base font-headingSemi ${destructive ? 'text-red-600' : 'text-dark'}`}>
       {label}
     </Text>
@@ -63,19 +73,15 @@ export const PostOptionsBottomSheet = ({
 
         return (
           <View className="px-5 pt-2 pb-8">
-            <Text className="text-lg font-heading text-dark text-center mb-4">
-              Post Options
-            </Text>
-
             <OptionRow
-              icon={isSaved ? 'bookmark' : 'bookmark-outline'}
+              customIcon={isSaved ? bookmarkSelectIcon : bookmarkUnselectIcon}
               label={isSaved ? 'Unsave Post' : 'Save Post'}
               onPress={run(onSave)}
             />
 
             {isOwnPost ? (
               <>
-                <OptionRow icon="create-outline" label="Edit Post" onPress={run(onEdit)} />
+                <OptionRow customIcon={writePostIcon} label="Edit Post" onPress={run(onEdit)} />
                 <OptionRow
                   icon="trash-outline"
                   label="Delete Post"

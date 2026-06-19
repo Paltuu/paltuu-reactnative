@@ -518,7 +518,10 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "#8E8E93",
     fontSize: 16,
+    fontFamily: "System",
     fontWeight: "400",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   input: {
     width: "100%",

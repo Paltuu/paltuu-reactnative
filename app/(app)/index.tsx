@@ -4,6 +4,8 @@ import {
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
@@ -141,6 +143,22 @@ export default function HomeScreen() {
   );
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
+  // Swiping from the left edge towards the right opens the composer — it
+  // slides in from the left (see Stack.Screen options for "create-post"),
+  // so this gesture mirrors that direction rather than the usual edge-back swipe.
+  const openComposeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-1_000_000, 10])
+        .failOffsetY([-20, 20])
+        .onEnd((event) => {
+          if (event.translationX > 60 || event.velocityX > 500) {
+            runOnJS(router.push)('/create-post');
+          }
+        }),
+    [router]
+  );
+
   const {
     data, fetchNextPage, hasNextPage,
     isFetchingNextPage, refetch, isLoading, isRefetching,
@@ -205,6 +223,22 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Invisible left-edge strip — swiping right from here opens the composer,
+          matching its slide-from-left entrance. Thin + edge-pinned so it doesn't
+          steal vertical scrolls or the post media carousels in the middle of the feed. */}
+      <GestureDetector gesture={openComposeGesture}>
+        <View
+          pointerEvents="box-only"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: HEADER_HEIGHT + insets.top,
+            bottom: 0,
+            width: 20,
+          }}
+        />
+      </GestureDetector>
 
       {/* Pull-to-refresh spinner — same round ActivityIndicator as profile/search */}
       {isRefetching && (

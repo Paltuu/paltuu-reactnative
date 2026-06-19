@@ -17,12 +17,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuthStore } from '../../src/stores/authStore';
-import { socialApi } from '../../src/api/social';
-import { petProfilesApi } from '../../src/api/petProfiles';
-import { useSocialActions } from '../../src/hooks/useSocialActions';
+import { useAuthStore } from '../src/stores/authStore';
+import { socialApi } from '../src/api/social';
+import { petProfilesApi } from '../src/api/petProfiles';
+import { useSocialActions } from '../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
+import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -499,18 +500,27 @@ export default function CreatePostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        {/* ── Top bar ── */}
+        {/* ── Top bar — exactly mirrors MainHeader's height/spacing ── */}
         <View
-          className="flex-row items-center justify-between px-4 border-b border-gray-100"
-          style={{ height: 52 }}
+          className="flex-row items-center justify-between border-b border-gray-100"
+          style={{ height: HEADER_HEIGHT, paddingHorizontal: 14 }}
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="close" size={24} color="#111" />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Image
+              source={require('../assets/icons/plus-solid.svg')}
+              style={{ width: 24, height: 24, transform: [{ rotate: '45deg' }] }}
+              tintColor="#111111"
+            />
           </TouchableOpacity>
 
-          <Text className="font-headingSemi text-dark" style={{ fontSize: 15 }}>
-            {isEditMode ? 'Edit post' : 'New post'}
-          </Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text className="font-headingSemi text-dark" style={{ fontSize: 15 }}>
+              {isEditMode ? 'Edit post' : 'New post'}
+            </Text>
+          </View>
 
           <TouchableOpacity
             onPress={handlePost}
@@ -544,21 +554,7 @@ export default function CreatePostScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Post type tabs ── */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}
-          >
-            {POST_TYPES.map((item) => (
-              <TypeTab
-                key={item.key}
-                item={item}
-                active={postType === item.key}
-                onPress={() => setPostType(item.key as PostType)}
-              />
-            ))}
-          </ScrollView>
+          {/* ── Post type tabs — hidden for now, coming back later ── */}
 
           {/* ── Author row ── */}
           <View className="flex-row items-start px-4 gap-3">

@@ -147,6 +147,15 @@ export default function RootLayout() {
                     name="post/[id]"
                     options={{ animation: 'slide_from_right', gestureEnabled: true }}
                   />
+                  {/* Create post: slides in from the left, swipe-back exits the same way */}
+                  <Stack.Screen
+                    name="create-post"
+                    options={{
+                      animation: 'slide_from_left',
+                      gestureEnabled: true,
+                      animationMatchesGesture: true,
+                    }}
+                  />
                   {/* Comment composer: slides up from the bottom, full screen so the
                       keyboard-avoiding view can measure the whole window reliably */}
                   <Stack.Screen

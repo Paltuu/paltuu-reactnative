@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext } from '../../context/HeaderContext';
@@ -54,7 +53,11 @@ export const MainHeader: React.FC = () => {
         >
             <View style={styles.container}>
                 <TouchableOpacity style={styles.iconButton} onPress={onPlusPress}>
-                    <Ionicons name="add" size={28} color="#000" />
+                    <Image
+                        source={require('../../../assets/icons/plus-solid.svg')}
+                        style={{ width: 24, height: 24 }}
+                        tintColor="#000000"
+                    />
                 </TouchableOpacity>
 
                 <View style={styles.logoContainer}>
@@ -116,7 +119,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 14,
         height: HEADER_HEIGHT,
     },
     logoContainer: {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,18 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Modal,
-  TextInput,
   Alert,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+  BottomSheetBackdrop,
+} from '@gorhom/bottom-sheet';
 
 const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
@@ -652,6 +657,26 @@ export const PostCard = React.memo(({
   const [quoteContent, setQuoteContent] = useState('');
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
 
+  // ── Quote Post composer — slides up as a bottom sheet, matching CommentsBottomSheet ──
+  const quoteSheetRef = useRef<BottomSheetModal>(null);
+  const quoteSnapPoints = useMemo(() => ['60%', '90%'], []);
+
+  useEffect(() => {
+    if (isQuoteModalVisible) {
+      const timer = setTimeout(() => quoteSheetRef.current?.present(), 0);
+      return () => clearTimeout(timer);
+    } else {
+      quoteSheetRef.current?.dismiss();
+    }
+  }, [isQuoteModalVisible]);
+
+  const renderQuoteBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} />
+    ),
+    []
+  );
+
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
 
@@ -747,7 +772,7 @@ export const PostCard = React.memo(({
 
   const handleEdit = () => {
     router.push({
-      pathname: '/(app)/create-post',
+      pathname: '/create-post',
       params: {
         editId: post.post_id,
         initialCaption: post.content,
@@ -1010,49 +1035,30 @@ export const PostCard = React.memo(({
         onQuote={handleQuotePost}
       />
 
-      {/* ── Quote Post Composer ── */}
-      <Modal
-        visible={isQuoteModalVisible}
-        animationType="slide"
-        onRequestClose={() => setIsQuoteModalVisible(false)}
+      {/* ── Quote Post Composer — slides up just like the Comments sheet ── */}
+      <BottomSheetModal
+        ref={quoteSheetRef}
+        index={0}
+        snapPoints={quoteSnapPoints}
+        onDismiss={() => setIsQuoteModalVisible(false)}
+        backdropComponent={renderQuoteBackdrop}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: 'white', borderRadius: 24 }}
+        handleIndicatorStyle={{ backgroundColor: '#E5E7EB', width: 40 }}
       >
-        <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: 60 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, alignItems: 'center', marginBottom: 20 }}>
-            <TouchableOpacity onPress={() => setIsQuoteModalVisible(false)}>
-              <Text style={{ fontSize: 16, color: '#666' }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => repostMutation.mutate(quoteContent)}
-              disabled={repostMutation.isPending}
-              style={{ backgroundColor: '#A03048', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '700' }}>Post</Text>
-            </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          {/* Header */}
+          <View className="items-center py-2 border-b border-gray-100">
+            <Text className="text-base font-headingBold text-dark">Quote Post</Text>
           </View>
 
-          <View style={{ paddingHorizontal: 20 }}>
-            {/* User header inside composer */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-              <Image
-                source={{ uri: currentUser?.profile_image_url || 'https://via.placeholder.com/150' }}
-                style={{ width: 34, height: 34, borderRadius: 17, marginRight: 10 }}
-              />
-              <View>
-                <Text style={{ fontWeight: '700', fontSize: 15 }}>{currentUser?.name || 'User'}</Text>
-              </View>
-            </View>
-
-            <TextInput
-              autoFocus
-              multiline
-              placeholder="Add a comment..."
-              value={quoteContent}
-              onChangeText={setQuoteContent}
-              style={{ fontSize: 18, minHeight: 80, textAlignVertical: 'top', color: '#111' }}
-            />
-
+          {/* Scrollable content */}
+          <BottomSheetScrollView
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Composer Action Toolbar */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginVertical: 15, paddingBottom: 5 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 }}>
               <TouchableOpacity><Ionicons name="image-outline" size={22} color="#A03048" /></TouchableOpacity>
               <TouchableOpacity><Ionicons name="happy-outline" size={22} color="#A03048" /></TouchableOpacity>
               <TouchableOpacity><Ionicons name="list-outline" size={22} color="#A03048" /></TouchableOpacity>
@@ -1061,18 +1067,43 @@ export const PostCard = React.memo(({
             </View>
 
             {/* Preview of the original post */}
-            <View style={{ marginTop: 0 }}>
-              <OriginalPostPreview
-                authorName={post.author_name}
-                authorImage={post.author_image}
-                content={post.content}
-                media={post.media}
-                createdAt={post.created_at}
-              />
-            </View>
+            <OriginalPostPreview
+              authorName={post.author_name}
+              authorImage={post.author_image}
+              content={post.content}
+              media={post.media}
+              createdAt={post.created_at}
+            />
+          </BottomSheetScrollView>
+
+          {/* Input row — floating at bottom, mirrors CommentsBottomSheet */}
+          <View className="px-5 py-3 border-t border-gray-100 bg-white flex-row items-center">
+            <Image
+              source={{ uri: currentUser?.profile_image_url || 'https://via.placeholder.com/150' }}
+              style={{ width: 32, height: 32, borderRadius: 16, marginRight: 12 }}
+            />
+            <BottomSheetTextInput
+              placeholder="Add a comment..."
+              className="flex-1 min-h-[40px] max-h-[100px] text-sm font-body text-dark"
+              placeholderTextColor="#9CA3AF"
+              value={quoteContent}
+              onChangeText={setQuoteContent}
+              multiline
+            />
+            <TouchableOpacity
+              className="ml-3"
+              onPress={() => repostMutation.mutate(quoteContent)}
+              disabled={repostMutation.isPending}
+            >
+              {repostMutation.isPending ? (
+                <ActivityIndicator size="small" color="#A03048" />
+              ) : (
+                <Text className="text-sm font-headingBold text-primary">Post</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </BottomSheetModal>
       <ReportBottomSheet
         visible={reportSheetVisible}
         onClose={() => setReportSheetVisible(false)}
