@@ -94,8 +94,7 @@ export const petApi = {
   },
 
   async getProfile(userId: string) {
-    // Reverting to the primary profile endpoint used by the web app (relative to v1)
-    const { data } = await client.get(`../my-profile/${userId}`);
+    const { data } = await client.get(`/users/profile/${userId}`);
     return data;
   }
 };
