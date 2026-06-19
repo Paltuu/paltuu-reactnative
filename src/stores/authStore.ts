@@ -23,24 +23,6 @@ interface AuthState {
   fetchProfile: () => Promise<void>;
 }
 
-// Simple base64 decoder to parse JWT without external libs
-const decodeJWT = (token: string) => {
-  try {
-    const base64Payload = token.split('.')[1];
-    // Polyfill for atob in React Native
-    const base64 = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      Buffer.from(base64, 'base64')
-        .toString('binary')
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-};
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -78,29 +60,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!accessToken) return;
 
     try {
-      const payload = decodeJWT(accessToken);
-      const userId = payload?.user_id || payload?.id;
-      
-      if (userId) {
-        const { petApi } = require('../api/pets');
-        const userData = await petApi.getProfile(userId);
-        
-        if (userData) {
-          const mappedUser: User = {
-            id: String(userData.id || userData.user_id || userId),
-            email: userData.email,
-            name: userData.name || userData.email,
-            role: userData.role || "regular user",
-            profile_image_url: userData.profile_image_url || null,
-            phone_number: userData.phone_number || userData.phone || null,
-          };
-          
-          await storage.saveUser(mappedUser);
-          set({ user: mappedUser });
-        }
+      const client = require('../api/client').default;
+      const { data } = await client.get('/profile');
+
+      if (data) {
+        const mappedUser: User = {
+          id: String(data.user_id),
+          email: data.email,
+          name: data.name || data.email,
+          role: data.role || 'regular user',
+          profile_image_url: data.profile_image_url || null,
+          phone_number: data.phone_number || null,
+        };
+        await storage.saveUser(mappedUser);
+        set({ user: mappedUser });
       }
     } catch (e) {
-      // Quietly fail - we'll just use the default email/state
       console.log('Profile fetch skipped or unavailable');
     }
   },

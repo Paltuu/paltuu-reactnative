@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -23,7 +22,6 @@ import { useAuthStore } from '../../src/stores/authStore';
 // Required for Android browser redirect handling
 WebBrowser.maybeCompleteAuthSession();
 
-const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
@@ -62,16 +60,35 @@ export default function LoginScreen() {
         const token = queryParams?.token;
         const refreshToken = queryParams?.refreshToken;
         const error = queryParams?.error;
+        const userId = queryParams?.userId;
+        const name = queryParams?.name;
+        const email = queryParams?.email;
+        const role = queryParams?.role;
+        const profile_image_url = queryParams?.profile_image_url;
 
         if (error) {
           throw new Error(decodeURIComponent(Array.isArray(error) ? error[0] : error));
         }
 
-        const tokenStr = Array.isArray(token) ? token[0] : token;
-        const refreshStr = Array.isArray(refreshToken) ? refreshToken[0] : refreshToken;
+        const str = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
+
+        const tokenStr = str(token);
+        const refreshStr = str(refreshToken);
+        const userIdStr = str(userId);
+        const emailStr = str(email);
+        const nameStr = str(name);
+        const roleStr = str(role);
+        const avatarStr = str(profile_image_url);
 
         if (tokenStr && refreshStr) {
-          await setAuth(null, tokenStr, refreshStr);
+          const googleUser = (userIdStr && emailStr) ? {
+            id: userIdStr,
+            email: emailStr,
+            name: nameStr || emailStr,
+            role: roleStr || 'regular user',
+            profile_image_url: avatarStr || null,
+          } : null;
+          await setAuth(googleUser as any, tokenStr, refreshStr);
           Toast.show({
             type: 'success',
             text1: 'Welcome!',
