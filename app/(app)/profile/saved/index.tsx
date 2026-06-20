@@ -1,25 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
+  StyleSheet,
+  StatusBar,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, Collection } from '../../../../src/api/social';
+
+const PRIMARY = '#A03048';
+
+const PALETTE = [
+  { bg: '#FDF0F2', icon: '#A03048' },
+  { bg: '#EFF6FF', icon: '#3B82F6' },
+  { bg: '#F0FDF4', icon: '#16A34A' },
+  { bg: '#FFF7ED', icon: '#EA580C' },
+  { bg: '#F5F3FF', icon: '#7C3AED' },
+  { bg: '#ECFDF5', icon: '#059669' },
+];
 
 export default function SavedCollectionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
 
-  // 1. Fetch Collections
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['social-collections'],
     queryFn: () => socialApi.getCollections(),
   });
 
   const collections = data?.collections || [];
 
-  // 2. Create Collection Mutation
   const createMutation = useMutation({
     mutationFn: (name: string) => socialApi.createCollection(name),
     onSuccess: () => {
@@ -28,9 +50,8 @@ export default function SavedCollectionsScreen() {
       queryClient.invalidateQueries({ queryKey: ['social-collections'] });
     },
     onError: (error: any) => {
-      const errMsg = error.response?.data?.error?.message || 'Failed to create collection';
-      Alert.alert('Error', errMsg);
-    }
+      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to create collection');
+    },
   });
 
   const handleCreate = () => {
@@ -38,128 +59,139 @@ export default function SavedCollectionsScreen() {
     createMutation.mutate(newCollectionName.trim());
   };
 
-  const renderCollectionCard = ({ item }: { item: Collection }) => {
+  const renderCard = ({ item, index }: { item: Collection; index: number }) => {
+    const palette = PALETTE[index % PALETTE.length];
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(app)/profile/saved/${item.collection_id}`)}
-        activeOpacity={0.8}
-        className="flex-row items-center justify-between p-4 bg-surface rounded-2xl border border-gray-100 mb-4"
+        activeOpacity={0.75}
+        style={styles.card}
       >
-        <View className="flex-row items-center gap-4">
-          <View className="w-12 h-12 rounded-2xl bg-primary/10 items-center justify-center">
-            <Ionicons 
-              name={item.is_default ? "bookmarks" : "folder"} 
-              size={24} 
-              color="#A03048" 
-            />
-          </View>
-          <View>
-            <Text className="text-base font-headingSemi text-dark">{item.name}</Text>
-            <Text className="text-xs font-body text-gray-500">{item.post_count} posts</Text>
-          </View>
+        {/* Thumbnail block */}
+        <View style={[styles.cardThumb, { backgroundColor: palette.bg }]}>
+          <Ionicons
+            name={item.is_default ? 'bookmarks' : 'folder-open'}
+            size={36}
+            color={palette.icon}
+          />
+          {item.post_count > 0 && (
+            <View style={[styles.countBadge, { backgroundColor: palette.icon }]}>
+              <Text style={styles.countBadgeText}>{item.post_count}</Text>
+            </View>
+          )}
         </View>
 
-        <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+        {/* Info */}
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.cardSub}>{item.post_count} {item.post_count === 1 ? 'post' : 'posts'}</Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={16} color="#D1D5DB" style={{ marginRight: 16 }} />
       </TouchableOpacity>
     );
   };
 
   return (
-    <View className="flex-1 bg-bg">
-      {/* Top Header */}
-      <View className="flex-row items-center justify-between px-5 h-[56px] bg-surface border-b border-gray-100">
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="chevron-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <Text className="font-heading text-xl text-dark">Saved Posts</Text>
-        </View>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" />
 
-        <TouchableOpacity 
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.navigate('/(app)/profile')} hitSlop={12} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#111" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Saved</Text>
+        <TouchableOpacity
           onPress={() => setCreateModalVisible(true)}
-          className="w-8 h-8 rounded-full bg-primary/10 items-center justify-center"
+          style={styles.addBtn}
+          hitSlop={8}
         >
-          <Ionicons name="add" size={20} color="#A03048" />
+          <Ionicons name="add" size={22} color={PRIMARY} />
         </TouchableOpacity>
       </View>
 
-      {/* Main List */}
+      {/* ── List ── */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#A03048" />
+        <View style={styles.center}>
+          <ActivityIndicator color={PRIMARY} size="large" />
         </View>
       ) : (
         <FlatList
           data={collections}
           keyExtractor={(item) => item.collection_id.toString()}
-          renderItem={renderCollectionCard}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 120 }}
-          refreshing={isLoading}
+          renderItem={renderCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={isRefetching}
           onRefresh={refetch}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
-            <View className="py-24 items-center px-10">
-              <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4">
-                <Ionicons name="bookmark-outline" size={32} color="#A03048" />
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="bookmark-outline" size={40} color={PRIMARY} />
               </View>
-              <Text className="font-heading text-base text-dark mb-1 text-center">Save items for later</Text>
-              <Text className="font-body text-gray-500 text-xs text-center leading-5 mb-6">
-                Bookmark posts and organize them into neat folders for easy access anytime.
+              <Text style={styles.emptyTitle}>Nothing saved yet</Text>
+              <Text style={styles.emptyBody}>
+                Bookmark posts from your feed to find them here whenever you want.
               </Text>
-              
               <TouchableOpacity
                 onPress={() => setCreateModalVisible(true)}
-                className="bg-primary px-6 h-12 rounded-xl items-center justify-center"
+                style={styles.emptyAction}
               >
-                <Text className="text-sm font-headingSemi text-white">Create Collection</Text>
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.emptyActionText}>New Collection</Text>
               </TouchableOpacity>
             </View>
           }
         />
       )}
 
-      {/* Create Collection Modal */}
+      {/* ── Create modal ── */}
       <Modal
         visible={createModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setCreateModalVisible(false)}
       >
-        <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <View className="bg-surface rounded-2xl w-full p-5 shadow-lg">
-            <Text className="font-heading text-lg text-dark mb-2">New Collection</Text>
-            <Text className="font-body text-gray-500 text-xs mb-4">
-              Enter a name to group your saved social posts.
-            </Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIcon}>
+                <Ionicons name="folder-open" size={22} color={PRIMARY} />
+              </View>
+              <Text style={styles.modalTitle}>New Collection</Text>
+            </View>
+            <Text style={styles.modalSub}>Give your collection a name to get started.</Text>
 
             <TextInput
               autoFocus
-              placeholder="e.g. Health Tips, Cute Dogs, Recipes"
-              className="bg-bg border border-gray-100 rounded-xl px-4 h-12 text-sm font-body text-dark mb-6"
+              placeholder="e.g. Pet Care Tips, Cute Dogs..."
+              style={styles.modalInput}
               placeholderTextColor="#9CA3AF"
               value={newCollectionName}
               onChangeText={setNewCollectionName}
               maxLength={50}
+              onSubmitEditing={handleCreate}
+              returnKeyType="done"
             />
 
-            <View className="flex-row items-center justify-end gap-3">
-              <TouchableOpacity 
-                onPress={() => {
-                  setCreateModalVisible(false);
-                  setNewCollectionName('');
-                }}
-                className="px-4 py-2"
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => { setCreateModalVisible(false); setNewCollectionName(''); }}
+                style={styles.modalCancel}
               >
-                <Text className="text-sm font-headingSemi text-gray-500">Cancel</Text>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCreate}
                 disabled={!newCollectionName.trim() || createMutation.isPending}
-                className="bg-primary px-5 py-2.5 rounded-xl"
+                style={[styles.modalCreate, !newCollectionName.trim() && { opacity: 0.4 }]}
               >
                 {createMutation.isPending ? (
-                  <ActivityIndicator color="white" size="small" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text className="text-sm font-headingSemi text-white">Create</Text>
+                  <Text style={styles.modalCreateText}>Create</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -169,3 +201,133 @@ export default function SavedCollectionsScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FAFAFA' },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E7EB',
+  },
+  backBtn: { padding: 4, marginRight: 4 },
+  headerTitle: { flex: 1, fontSize: 19, fontWeight: '700', color: '#111', fontFamily: 'Montserrat_700Bold' },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FDF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  statsStrip: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statNumber: { fontSize: 22, fontWeight: '700', color: '#111', fontFamily: 'Montserrat_700Bold' },
+  statLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontFamily: 'DMSans_400Regular' },
+  statDivider: { width: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginVertical: 6 },
+
+  listContent: { padding: 16, paddingBottom: 120 },
+
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  cardThumb: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  countBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  countBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  cardInfo: { flex: 1, paddingHorizontal: 14 },
+  cardName: { fontSize: 15, fontWeight: '600', color: '#111', fontFamily: 'Montserrat_600SemiBold' },
+  cardSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2, fontFamily: 'DMSans_400Regular' },
+  separator: { height: 10 },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  emptyState: { paddingTop: 80, alignItems: 'center', paddingHorizontal: 40 },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FDF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginBottom: 8, fontFamily: 'Montserrat_700Bold' },
+  emptyBody: { fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, fontFamily: 'DMSans_400Regular', marginBottom: 28 },
+  emptyAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyActionText: { fontSize: 14, fontWeight: '600', color: '#fff', fontFamily: 'Montserrat_600SemiBold' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 20, width: '100%', padding: 24, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  modalIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FDF0F2', alignItems: 'center', justifyContent: 'center' },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: '#111', fontFamily: 'Montserrat_700Bold' },
+  modalSub: { fontSize: 13, color: '#9CA3AF', marginBottom: 20, fontFamily: 'DMSans_400Regular' },
+  modalInput: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+    color: '#111',
+    fontFamily: 'DMSans_400Regular',
+    marginBottom: 20,
+    backgroundColor: '#FAFAFA',
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  modalCancel: { paddingHorizontal: 16, paddingVertical: 10 },
+  modalCancelText: { fontSize: 14, color: '#6B7280', fontWeight: '600', fontFamily: 'Montserrat_600SemiBold' },
+  modalCreate: { backgroundColor: PRIMARY, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, minWidth: 80, alignItems: 'center' },
+  modalCreateText: { fontSize: 14, color: '#fff', fontWeight: '600', fontFamily: 'Montserrat_600SemiBold' },
+});

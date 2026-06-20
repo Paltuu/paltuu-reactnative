@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../../../src/api/social';
 import PostCard from '../../../../../src/components/social/PostCard';
@@ -9,6 +10,7 @@ import { QuickProfileModal } from '../../../index';
 
 export default function CollectionPostsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { collection_id } = useLocalSearchParams();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [playingPostId, setPlayingPostId] = useState<string | null>(null);
@@ -58,18 +60,17 @@ export default function CollectionPostsScreen() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
   return (
-    <View className="flex-1 bg-bg">
+    <View style={{ flex: 1, backgroundColor: '#FAFAFA', paddingTop: insets.top }}>
+      <StatusBar barStyle="dark-content" />
       {/* Top Header */}
-      <View className="flex-row items-center justify-between px-5 h-[56px] bg-surface border-b border-gray-100">
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="chevron-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <Text className="font-heading text-xl text-dark" numberOfLines={1}>
-            {collectionName}
-          </Text>
-        </View>
-        <View className="w-8" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' }}>
+        <TouchableOpacity onPress={() => router.navigate('/(app)/profile/saved')} hitSlop={12} style={{ padding: 4, marginRight: 4 }}>
+          <Ionicons name="chevron-back" size={24} color="#111" />
+        </TouchableOpacity>
+        <Text style={{ flex: 1, fontSize: 19, fontWeight: '700', color: '#111', fontFamily: 'Montserrat_700Bold' }} numberOfLines={1}>
+          {collectionName}
+        </Text>
+        <View style={{ width: 36 }} />
       </View>
 
       {/* Posts List */}
@@ -114,13 +115,13 @@ export default function CollectionPostsScreen() {
             )
           }
           ListEmptyComponent={
-            <View className="py-24 items-center px-10">
-              <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4">
-                <Ionicons name="bookmark-outline" size={32} color="#6B7280" />
+            <View style={{ paddingTop: 80, alignItems: 'center', paddingHorizontal: 40 }}>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#FDF0F2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                <Ionicons name="bookmark-outline" size={36} color="#A03048" />
               </View>
-              <Text className="font-heading text-base text-dark mb-1 text-center">No posts here yet</Text>
-              <Text className="font-body text-gray-500 text-xs text-center leading-5">
-                Bookmark posts from your feed and organize them into this collection!
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#111', marginBottom: 8, fontFamily: 'Montserrat_700Bold' }}>Nothing here yet</Text>
+              <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, fontFamily: 'DMSans_400Regular' }}>
+                Bookmark posts from your feed and they'll appear in this collection.
               </Text>
             </View>
           }
