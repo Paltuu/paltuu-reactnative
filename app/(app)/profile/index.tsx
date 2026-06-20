@@ -30,6 +30,7 @@ import { socialApi, SocialPost } from '../../../src/api/social';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
+import { MentionText } from '../../../src/components/social/MentionText';
 import { HamburgerIcon } from '../../../src/components/ui/hamburger-icon';
 
 const Icons = {
@@ -228,9 +229,10 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
       </View>
 
       <View style={s.repostInset}>
-        <Text style={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}>
-          {item.content}
-        </Text>
+        <MentionText
+          content={item.content}
+          textStyle={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}
+        />
       </View>
 
       <View style={s.thinDivider} />

@@ -49,6 +49,7 @@ import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
 import VideoPlayer from './VideoPlayer';
+import { MentionText, mentionsToPlainText } from './MentionText';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -387,11 +388,7 @@ const OriginalPostPreview = ({
         )}
       </View>
 
-      {!!content && (
-        <Text style={{ fontSize: 14, color: '#111', lineHeight: 19, marginBottom: 8 }}>
-          {stripHtml(content || '')}
-        </Text>
-      )}
+      <MentionText content={content} textStyle={{ fontSize: 14, color: '#111', lineHeight: 19, marginBottom: 8 }} />
 
       {media && media.length > 0 && (
         <Pressable
@@ -702,7 +699,10 @@ export const PostCard = React.memo(({
     ? (post.original_user_id ?? post.original_post?.user_id ?? post.user_id)
     : post.user_id;
   const displayTime = isPlainRepost ? formatTime(post.original_post?.created_at || post.created_at) : timeAgo;
-  const bodyContent = isPlainRepost ? stripHtml(post.original_content || '') : caption;
+  // Raw (un-stripped) content for MentionText to render — `caption` above
+  // stays the stripped-text version since it's also used as a truthiness
+  // signal for the quote-vs-plain repost layout decision.
+  const bodyContent = isPlainRepost ? (post.original_content || '') : (post.content || '');
   const bodyMedia = isPlainRepost ? (post.original_media ?? []) : (post.media ?? []);
 
   // Scale animation for the card
@@ -714,27 +714,6 @@ export const PostCard = React.memo(({
   const onPressIn = () => { scale.value = 0.98; };
   const onPressOut = () => { scale.value = 1; };
 
-  const renderContent = (text: string) => {
-    const parts = text.split(/(#\w+)/g);
-    return (
-      <Text className="text-[15px] leading-[22px] text-[#111] tracking-tight">
-        {parts.map((part, i) => {
-          if (part.startsWith('#')) {
-            return (
-              <Text
-                key={i}
-                className="text-primary font-bold"
-                onPress={() => router.push(`/(app)/search?q=${encodeURIComponent(part)}`)}
-              >
-                {part}
-              </Text>
-            );
-          }
-          return part;
-        })}
-      </Text>
-    );
-  };
 
   const imageUrls = useMemo(
     () => post.media?.map((m: any) => ({ url: m.url })) ?? [],
@@ -922,7 +901,10 @@ export const PostCard = React.memo(({
           {/* ── Body text: quote text for normal/quote posts, original text for plain reposts ── */}
           {!!bodyContent && (
             <View style={s.caption}>
-              {renderContent(bodyContent)}
+              <MentionText
+                content={bodyContent}
+                textStyle={{ fontSize: 15, lineHeight: 22, color: '#111', letterSpacing: -0.4 }}
+              />
             </View>
           )}
 
@@ -980,7 +962,7 @@ export const PostCard = React.memo(({
             onSaveLongPress={() => setSaveSheetVisible(true)}
             onShare={async () => {
               try {
-                const plainText = stripHtml(post.content);
+                const plainText = mentionsToPlainText(post.content);
                 const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
                 
                 const result = await Share.share({

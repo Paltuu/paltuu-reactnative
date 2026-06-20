@@ -12,6 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { petProfilesApi } from '../../api/petProfiles';
 import { useAuthStore } from '../../stores/authStore';
+import { useMentionInput, MentionSuggestionDropdown, appendMention } from './MentionInput';
 
 const PRIMARY = '#a03048';
 
@@ -34,6 +35,16 @@ export const useCommentDraft = ({
   const [media, setMedia] = useState<DraftMedia[]>([]);
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
+
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps } = useMentionInput({
+    value: text,
+    onChange: setText,
+  });
+
+  // Programmatic insert (e.g. the "replying to @username" prefill) — splices
+  // a real, encoded mention token rather than plain unlinked text.
+  const insertMention = (mention: { type: 'user' | 'pet'; id: number; name: string }) =>
+    setText((prev) => appendMention(prev, mention));
 
   useEffect(() => {
     if (user?.id) {
@@ -146,6 +157,9 @@ export const useCommentDraft = ({
   return {
     text,
     setText,
+    insertMention,
+    mentionTriggers,
+    mentionInputProps,
     media,
     pickImage,
     pickCamera,

@@ -22,6 +22,7 @@ import { petProfilesApi } from '../src/api/petProfiles';
 import { useSocialActions } from '../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
+import { useMentionInput, MentionSuggestionDropdown } from '../src/components/social/MentionInput';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import SpinButton from '../src/components/ui/spin-button';
 
@@ -193,7 +194,16 @@ export default function CreatePostScreen() {
   const isEditMode = !!editId;
 
   const [postType, setPostType] = useState<PostType>((params.initialPostType as PostType) || 'post');
+  // `caption` is the same string that gets sent to the API as `content` — it
+  // already carries any {@}[name](type:id) mention tokens inline. The
+  // mention library renders those as styled "@Name" in the TextInput while
+  // keeping `caption` itself as the encoded value, so edit-mode pre-fill
+  // (initialCaption, which IS the stored encoded content) needs no decoding.
   const [caption, setCaption] = useState((params.initialCaption as string) || '');
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps } = useMentionInput({
+    value: caption,
+    onChange: setCaption,
+  });
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
 
   /**
@@ -579,8 +589,7 @@ export default function CreatePostScreen() {
               {/* Caption input */}
               <TextInput
                 ref={inputRef}
-                value={caption}
-                onChangeText={setCaption}
+                {...mentionInputProps}
                 placeholder={
                   postType === 'diary'
                     ? 'Write a diary entry for your pet...'
@@ -602,6 +611,8 @@ export default function CreatePostScreen() {
                   fontFamily: 'DMSans_400Regular',
                 }}
               />
+
+              <MentionSuggestionDropdown {...mentionTriggers.mention} />
 
               {/* Milestone selector */}
               {postType === 'milestone' && (

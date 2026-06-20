@@ -24,6 +24,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
+import { MentionText } from '../../../src/components/social/MentionText';
 import { useSocialActions } from '../../../src/hooks/useSocialActions';
 import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
 import { useMutation } from '@tanstack/react-query';
@@ -172,9 +173,10 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
       </View>
 
       <View style={s.repostInset}>
-        <Text style={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}>
-          {item.content}
-        </Text>
+        <MentionText
+          content={item.content}
+          textStyle={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}
+        />
       </View>
 
       <View style={s.thinDivider} />

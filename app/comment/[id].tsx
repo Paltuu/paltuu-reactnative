@@ -20,10 +20,10 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
+import { MentionText } from '../../src/components/social/MentionText';
 
 const PRIMARY = '#a03048';
-const stripHtml = (s: string) => (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-
 const Avatar = ({ name, uri, size = 40 }: { name?: string; uri?: string | null; size?: number }) => {
   const initials = (name || 'U').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   if (uri) {
@@ -124,11 +124,10 @@ export default function CommentComposerScreen() {
                       <Text style={{ fontSize: 14, color: '#9CA3AF', marginLeft: 6 }}>@{post.social_username}</Text>
                     )}
                   </View>
-                  {!!stripHtml(post.content) && (
-                    <Text style={{ fontSize: 15, color: '#111', lineHeight: 21, marginTop: 2 }}>
-                      {stripHtml(post.content)}
-                    </Text>
-                  )}
+                  <MentionText
+                    content={post.content}
+                    textStyle={{ fontSize: 15, color: '#111', lineHeight: 21, marginTop: 2 }}
+                  />
                   {post.media?.length > 0 && (
                     <Image
                       source={{ uri: post.media[0].thumbnail_url || post.media[0].url }}
@@ -151,12 +150,12 @@ export default function CommentComposerScreen() {
                     ref={inputRef}
                     autoFocus
                     multiline
-                    value={draft.text}
-                    onChangeText={draft.setText}
+                    {...draft.mentionInputProps}
                     placeholder="Post your reply"
                     placeholderTextColor="#9CA3AF"
                     style={{ fontSize: 17, color: '#111', minHeight: 90, textAlignVertical: 'top', paddingTop: 8 }}
                   />
+                  <MentionSuggestionDropdown {...draft.mentionTriggers.mention} />
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}

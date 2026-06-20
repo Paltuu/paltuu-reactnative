@@ -87,10 +87,32 @@ export interface Collection {
   is_default?: boolean;
 }
 
+export interface MentionSuggestionPet {
+  type: 'pet';
+  pet_profile_id: number;
+  name: string;
+  species: string;
+  avatar_url: string | null;
+}
+
+export interface MentionSuggestionUser {
+  type: 'user';
+  user_id: number;
+  name: string;
+  social_username: string;
+  profile_image_url: string | null;
+  is_following: boolean;
+}
+
 export const socialApi = {
   async search(query: string, type: 'all' | 'posts' | 'users' = 'all') {
     const { data } = await client.get(`/explore/search?q=${encodeURIComponent(query)}&type=${type}`);
     return data as { results: any };
+  },
+
+  async suggestMentions(query: string) {
+    const { data } = await client.get(`/social/mentions/suggest?q=${encodeURIComponent(query)}`);
+    return data as { pets: MentionSuggestionPet[]; users: MentionSuggestionUser[] };
   },
 
   async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' = 'following') {

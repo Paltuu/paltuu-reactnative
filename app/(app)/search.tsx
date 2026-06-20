@@ -20,6 +20,7 @@ import { PostCard } from '../../src/components/social/PostCard';
 import { useDebounce } from '../../src/hooks/useDebounce';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import ImageModal from '../../src/components/common/ImageModal';
+import { mentionsToPlainText } from '../../src/components/social/MentionText';
 import { MOCK_POSTS } from './index';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -57,7 +58,7 @@ const PostGridItem = ({ post, onPress }: { post: SocialPost, onPress: () => void
         <View className="absolute inset-0 bg-black/10 items-center justify-center p-2">
           <Ionicons name="repeat" size={24} color="white" />
           <Text className="text-white text-[10px] font-bold text-center" numberOfLines={2}>
-            {post.original_content}
+            {mentionsToPlainText(post.original_content)}
           </Text>
         </View>
       )}
@@ -72,7 +73,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => v
       <Ionicons name="ellipsis-horizontal" size={14} color="#666" />
     </View>
     <Text className="text-[16px] text-[#111] font-extrabold mb-1" numberOfLines={1}>
-      {(post.content || '').split('\n')[0].replace(/<[^>]*>/g, '').trim() || 'Media Post'}
+      {mentionsToPlainText(post.content).split('\n')[0].trim() || 'Media Post'}
     </Text>
     <Text className="text-[13px] text-[#666]">
       {(post.like_count ?? 0) + (post.comment_count ?? 0) + (post.repost_count ?? 0)} posts · {post.author_name}

@@ -23,6 +23,8 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
+import { MentionText } from '../../src/components/social/MentionText';
 
 type SortBy = 'top' | 'newest' | 'oldest';
 const SORT_OPTIONS: { key: SortBy; label: string }[] = [
@@ -54,6 +56,7 @@ const formatTime = (dateStr: string) => {
 /* ── Types ── */
 interface Comment {
   comment_id: string;
+  user_id: number;
   author_name: string;
   author_image: string | null;
   social_username: string | null;
@@ -213,9 +216,7 @@ const CommentRow = ({
             <Text style={{ fontSize: 11, color: '#9CA3AF' }}>• {formatTime(item.created_at)}</Text>
           </View>
 
-          <Text style={{ fontSize: 14, color: '#262626', lineHeight: 18 }}>
-            {item.content}
-          </Text>
+          <MentionText content={item.content} textStyle={{ fontSize: 14, color: '#262626', lineHeight: 18 }} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
             <TouchableOpacity onPress={() => onReply(item)} hitSlop={8}>
@@ -327,7 +328,15 @@ export default function PostDetailScreen() {
 
   const handleReply = useCallback((comment: FlatComment) => {
     setReplyingTo(comment);
-    draft.setText(`@${comment.social_username ?? comment.author_name} `);
+    // Prefill with a real, encoded mention so it renders as a tappable link
+    // and actually notifies the person being replied to — not just cosmetic
+    // text. Falls back to plain (unlinked) text if they have no username set
+    // (a real mention requires one — see lib/mentions.ts validateMentions).
+    if (comment.social_username) {
+      draft.insertMention({ type: 'user', id: comment.user_id, name: comment.social_username });
+    } else {
+      draft.setText(`@${comment.author_name} `);
+    }
     setComposerExpanded(true);
     setTimeout(() => inputRef.current?.focus(), 60);
   }, [draft]);
@@ -540,14 +549,14 @@ export default function PostDetailScreen() {
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <TextInput
                     ref={inputRef}
-                    value={draft.text}
-                    onChangeText={draft.setText}
+                    {...draft.mentionInputProps}
                     placeholder={replyingTo ? `Reply to ${replyingTo.author_name}...` : 'Post your reply'}
                     placeholderTextColor="#C4C4C4"
                     style={{ fontSize: 15, color: '#111', minHeight: 40, maxHeight: 120, textAlignVertical: 'top', paddingTop: 8 }}
                     multiline
                     autoFocus
                   />
+                  <MentionSuggestionDropdown {...draft.mentionTriggers.mention} />
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}
