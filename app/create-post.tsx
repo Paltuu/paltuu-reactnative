@@ -24,7 +24,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
 import { useMentionInput, MentionSuggestionDropdown } from '../src/components/social/MentionInput';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
-import SpinButton from '../src/components/ui/spin-button';
+import PaltuuButton from '../src/components/ui/PaltuuButton';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -501,9 +501,9 @@ export default function CreatePostScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        {/* ── Top bar — exactly mirrors MainHeader's height/spacing ── */}
+        {/* ── Top bar ── */}
         <View
-          className="flex-row items-center justify-between border-b border-gray-100"
+          className="flex-row items-center border-b border-gray-100"
           style={{ height: HEADER_HEIGHT, paddingHorizontal: 14, position: 'relative' }}
         >
           <TouchableOpacity
@@ -517,30 +517,7 @@ export default function CreatePostScreen() {
             />
           </TouchableOpacity>
 
-          <SpinButton
-            idleText={isEditMode ? 'Save' : 'Post'}
-            activeText={isEditMode ? 'Saving' : 'Posting'}
-            controlled
-            isActive={isPosting}
-            disabled={!canPost}
-            showSpinner={false}
-            onPress={(active) => { if (active) handlePost(); }}
-            colors={{
-              idle: { background: 'transparent', text: '#a03048' },
-              active: { background: 'transparent', text: '#a03048' },
-            }}
-            buttonStyle={{
-              paddingHorizontal: 4,
-              paddingVertical: 8,
-              borderRadius: 0,
-              fontSize: 14,
-              fontWeight: '700',
-              fontFamily: 'Montserrat_700Bold',
-            }}
-          />
-
-          {/* Absolutely centered so the SpinButton's variable width (Post vs.
-              Posting) never shifts it off-center. */}
+          {/* Centered title */}
           <View
             pointerEvents="none"
             style={{
@@ -665,31 +642,47 @@ export default function CreatePostScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* ── Bottom toolbar — sticks directly above the keyboard ── */}
+        {/* ── Bottom toolbar ── */}
         <View
-          className="border-t border-gray-100 bg-surface flex-row items-center px-4 gap-5"
           style={{
             paddingTop: 10,
             paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
+            paddingHorizontal: 16,
+            borderTopWidth: 1,
+            borderTopColor: '#F3F4F6',
+            backgroundColor: '#fff',
+            gap: 10,
           }}
         >
-          <TouchableOpacity onPress={pickMedia} hitSlop={8}>
-            <Ionicons name="image-outline" size={24} color="#a03048" />
-          </TouchableOpacity>
+          {/* Post / Save CTA */}
+          <PaltuuButton
+            label={isEditMode ? 'Save' : 'Post'}
+            successLabel={isEditMode ? 'Saved!' : 'Posted!'}
+            loading={isPosting}
+            disabled={!canPost}
+            onPress={handlePost}
+          />
 
-          <TouchableOpacity onPress={pickCamera} hitSlop={8}>
-            <Ionicons name="camera-outline" size={24} color="#a03048" />
-          </TouchableOpacity>
+          {/* Media tools row */}
+          <View className="flex-row items-center gap-5">
+            <TouchableOpacity onPress={pickMedia} hitSlop={8}>
+              <Ionicons name="image-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
-            <Ionicons name="paw-outline" size={24} color="#a03048" />
-          </TouchableOpacity>
+            <TouchableOpacity onPress={pickCamera} hitSlop={8}>
+              <Ionicons name="camera-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
 
-          {mediaItems.length > 0 && (
-            <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
-              <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
-            </View>
-          )}
+            <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
+              <Ionicons name="paw-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
+
+            {mediaItems.length > 0 && (
+              <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
+                <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
+              </View>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
 

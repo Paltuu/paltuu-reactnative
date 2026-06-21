@@ -12,6 +12,8 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
+
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -344,17 +346,13 @@ export default function CreateLostFoundScreen() {
         />
 
         {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitBtn, isLoading && { opacity: 0.5 }]}
+        <PaltuuButton
+          label="Submit Report"
+          successLabel="Report submitted!"
           onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitBtnText}>Submit Report</Text>
-          )}
-        </TouchableOpacity>
+          loading={isLoading}
+          style={{ marginHorizontal: 16, marginBottom: 16 }}
+        />
       </ScrollView>
     </View>
   );

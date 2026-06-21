@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, Collection } from '../../../../src/api/social';
@@ -176,23 +177,19 @@ export default function SavedCollectionsScreen() {
               returnKeyType="done"
             />
 
-            <View style={styles.modalActions}>
+            <View style={{ marginTop: 8 }}>
+              <PaltuuButton
+                label="Create Collection"
+                successLabel="Created!"
+                onPress={handleCreate}
+                loading={createMutation.isPending}
+                disabled={!newCollectionName.trim()}
+              />
               <TouchableOpacity
                 onPress={() => { setCreateModalVisible(false); setNewCollectionName(''); }}
-                style={styles.modalCancel}
+                style={{ alignItems: 'center', paddingVertical: 12 }}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleCreate}
-                disabled={!newCollectionName.trim() || createMutation.isPending}
-                style={[styles.modalCreate, !newCollectionName.trim() && { opacity: 0.4 }]}
-              >
-                {createMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalCreateText}>Create</Text>
-                )}
               </TouchableOpacity>
             </View>
           </View>

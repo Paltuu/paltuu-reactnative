@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { CustomInput } from '../../src/components/common/CustomInput';
-import { PrimaryButton } from '../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
 export default function RegisterScreen() {
@@ -114,8 +114,9 @@ export default function RegisterScreen() {
 
             {/* CTA */}
             <View className="mt-6">
-              <PrimaryButton
-                title="Send Verification Code"
+              <PaltuuButton
+                label="Send Verification Code"
+                successLabel="Code sent!"
                 onPress={handleRegisterPress}
                 loading={sendOtp.isPending}
               />

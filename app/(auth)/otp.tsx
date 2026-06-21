@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { CustomInput } from '../../src/components/common/CustomInput';
-import { PrimaryButton } from '../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
 export default function OTPScreen() {
@@ -63,8 +63,9 @@ export default function OTPScreen() {
               placeholder="000000"
             />
 
-            <PrimaryButton 
-              title="Verify & Create Account" 
+            <PaltuuButton
+              label="Verify & Create Account"
+              successLabel="Welcome to Paltuu!"
               onPress={handleVerify}
               loading={register.isPending}
             />

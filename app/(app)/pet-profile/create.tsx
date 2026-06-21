@@ -21,7 +21,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
 import CustomInput from '../../../src/components/common/CustomInput';
-import PrimaryButton from '../../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../../src/components/ui/PaltuuButton';
 
 const ALLOWED_SPECIES = [
   { label: 'Dog 🐶', value: 'Dog' },
@@ -368,8 +368,9 @@ export default function CreatePetProfileScreen() {
           </View>
 
           {/* Save Button */}
-          <PrimaryButton
-            title={isEditMode ? 'Save Changes' : 'Create Profile'}
+          <PaltuuButton
+            label={isEditMode ? 'Save Changes' : 'Create Profile'}
+            successLabel={isEditMode ? 'Saved!' : 'Profile Created!'}
             onPress={handleSave}
             loading={isLoading || isUploading}
           />

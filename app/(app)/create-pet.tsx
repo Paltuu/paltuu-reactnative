@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { usePetStore } from '../../src/stores/petStore';
 import CustomInput from '../../src/components/common/CustomInput';
-import PrimaryButton from '../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
 
 const { width } = Dimensions.get('window');
 
@@ -492,8 +492,9 @@ export default function CreatePetScreen() {
           {/* Navigation */}
           <View style={s.navRow}>
             <View style={{ flex: 1 }}>
-              <PrimaryButton
-                title={currentStep === 3 ? 'Launch Listing' : 'Continue'}
+              <PaltuuButton
+                label={currentStep === 3 ? 'Launch Listing' : 'Continue'}
+                successLabel={currentStep === 3 ? 'Listed!' : undefined}
                 onPress={currentStep === 3 ? handleSubmit : nextStep}
                 loading={isLoading}
               />

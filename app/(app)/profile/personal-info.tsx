@@ -7,7 +7,7 @@ import { useAuthStore } from '../../../src/stores/authStore';
 import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
 import CustomInput from '../../../src/components/common/CustomInput';
-import PrimaryButton from '../../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../../src/components/ui/PaltuuButton';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -101,8 +101,9 @@ export default function PersonalInfoScreen() {
           </View>
 
           {/* Save Button */}
-          <PrimaryButton
-            title="Save Changes"
+          <PaltuuButton
+            label="Save Changes"
+            successLabel="Saved!"
             onPress={handleSave}
             loading={updateMutation.isPending}
           />

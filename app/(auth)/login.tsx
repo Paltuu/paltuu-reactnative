@@ -15,7 +15,8 @@ import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { CustomInput } from '../../src/components/common/CustomInput';
-import { PrimaryButton } from '../../src/components/common/PrimaryButton';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
+import GoogleButton from '../../src/components/ui/GoogleButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
 import { useAuthStore } from '../../src/stores/authStore';
 
@@ -199,10 +200,12 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* CTA */}
-            <PrimaryButton
-              title="Sign In"
+            <PaltuuButton
+              label="Sign In"
+              successLabel="Welcome back!"
               onPress={handleLogin}
               loading={login.isPending}
+              disabled={isGoogleLoading}
             />
 
             {/* Divider */}
@@ -212,31 +215,11 @@ export default function LoginScreen() {
               <View className="flex-1 h-[1px] bg-gray-200" />
             </View>
 
-            {/* Google Login Button */}
-            <TouchableOpacity
+            <GoogleButton
               onPress={handleGoogleSignIn}
-              disabled={isGoogleLoading || login.isPending}
-              style={{
-                height: 54,
-                borderWidth: 1.5,
-                borderColor: '#E5E7EB',
-                borderRadius: 16,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#FFFFFF',
-                opacity: isGoogleLoading ? 0.5 : 1,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 10 }} />
-              <Text className="text-dark text-base font-headingSemi">Continue with Google</Text>
-            </TouchableOpacity>
+              loading={isGoogleLoading}
+              disabled={login.isPending}
+            />
           </View>
 
           {/* ── Footer ── */}
