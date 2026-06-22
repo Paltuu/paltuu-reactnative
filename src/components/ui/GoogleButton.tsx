@@ -22,8 +22,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path, ClipPath, Rect, G, Defs } from 'react-native-svg';
 
-const BTN_H  = 58;
-const SPEED  = 420;
+const BTN_H = 58;
+const SPEED = 420;
 const EASING = Easing.bezier(0.65, 0, 0.35, 1);
 
 interface GoogleButtonProps {
@@ -91,12 +91,12 @@ export default function GoogleButton({
   style,
 }: GoogleButtonProps) {
   const naturalWidth = useRef(300);
-  const prevLoading  = useRef(false);
+  const prevLoading = useRef(false);
 
-  const btnWidth   = useSharedValue(300);
-  const contentOp  = useSharedValue(1);
-  const spinnerOp  = useSharedValue(0);
-  const spinDeg    = useSharedValue(0);
+  const btnWidth = useSharedValue(300);
+  const contentOp = useSharedValue(1);
+  const spinnerOp = useSharedValue(0);
+  const spinDeg = useSharedValue(0);
   const pressScale = useSharedValue(1);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
@@ -113,8 +113,8 @@ export default function GoogleButton({
 
     if (loading) {
       contentOp.value = withTiming(0, { duration: 180 });
-      btnWidth.value   = withTiming(BTN_H, { duration: SPEED, easing: EASING });
-      spinnerOp.value  = withDelay(180, withTiming(1, { duration: 180 }));
+      btnWidth.value = withTiming(BTN_H, { duration: SPEED, easing: EASING });
+      spinnerOp.value = withDelay(180, withTiming(1, { duration: 180 }));
       cancelAnimation(spinDeg);
       spinDeg.value = withRepeat(
         withTiming(360, { duration: 750, easing: Easing.linear }),
@@ -123,8 +123,8 @@ export default function GoogleButton({
     } else if (was) {
       spinnerOp.value = withTiming(0, { duration: 150 });
       cancelAnimation(spinDeg);
-      spinDeg.value   = 0;
-      btnWidth.value  = withDelay(80, withTiming(naturalWidth.current, { duration: SPEED, easing: EASING }));
+      spinDeg.value = 0;
+      btnWidth.value = withDelay(80, withTiming(naturalWidth.current, { duration: SPEED, easing: EASING }));
       contentOp.value = withDelay(280, withTiming(1, { duration: 200 }));
     }
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -133,9 +133,9 @@ export default function GoogleButton({
     width: btnWidth.value,
     transform: [{ scale: pressScale.value }],
   }));
-  const contentStyle  = useAnimatedStyle(() => ({ opacity: contentOp.value }));
-  const spinnerStyle  = useAnimatedStyle(() => ({
-    opacity:   spinnerOp.value,
+  const contentStyle = useAnimatedStyle(() => ({ opacity: contentOp.value }));
+  const spinnerStyle = useAnimatedStyle(() => ({
+    opacity: spinnerOp.value,
     transform: [{ rotate: `${spinDeg.value}deg` }],
   }));
 
@@ -169,38 +169,38 @@ export default function GoogleButton({
 
 const s = StyleSheet.create({
   pill: {
-    height:          BTN_H,
+    height: BTN_H,
     backgroundColor: '#FFFFFF',
-    borderRadius:    999,
-    overflow:        'hidden',
-    alignItems:      'center',
-    justifyContent:  'center',
-    borderWidth:     1.5,
-    borderColor:     '#E5E7EB',
+    borderRadius: 999,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
     ...Platform.select({
       ios: {
-        shadowColor:   '#000',
-        shadowOffset:  { width: 0, height: 2 },
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius:  8,
+        shadowRadius: 8,
       },
       android: { elevation: 2 },
     }),
   },
   row: {
-    position:       'absolute',
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            10,
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   label: {
-    fontSize:    16,
-    color:       '#1F1F1F',
-    fontFamily:  'Montserrat_600SemiBold',
+    fontSize: 16,
+    color: '#1F1F1F',
+    fontFamily: 'Montserrat_600SemiBold',
     letterSpacing: 0.1,
   },
   layer: {
-    position:   'absolute',
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },

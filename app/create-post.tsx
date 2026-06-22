@@ -534,6 +534,18 @@ export default function CreatePostScreen() {
               {isEditMode ? 'Edit post' : 'New post'}
             </Text>
           </View>
+
+          {/* Post / Save — compact PaltuuButton pinned to the right edge */}
+          <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
+            <PaltuuButton
+              compact
+              label={isEditMode ? 'Save' : 'Post'}
+              successLabel={isEditMode ? 'Saved!' : 'Posted!'}
+              loading={isPosting}
+              disabled={!canPost}
+              onPress={handlePost}
+            />
+          </View>
         </View>
 
         <ScrollView
@@ -651,18 +663,8 @@ export default function CreatePostScreen() {
             borderTopWidth: 1,
             borderTopColor: '#F3F4F6',
             backgroundColor: '#fff',
-            gap: 10,
           }}
         >
-          {/* Post / Save CTA */}
-          <PaltuuButton
-            label={isEditMode ? 'Save' : 'Post'}
-            successLabel={isEditMode ? 'Saved!' : 'Posted!'}
-            loading={isPosting}
-            disabled={!canPost}
-            onPress={handlePost}
-          />
-
           {/* Media tools row */}
           <View className="flex-row items-center gap-5">
             <TouchableOpacity onPress={pickMedia} hitSlop={8}>
