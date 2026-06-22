@@ -3,7 +3,7 @@
     "name": "Paltuu",
     "slug": "paltuu",
     "scheme": "paltuu",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/paltuu-app-icon.png",
     "userInterfaceStyle": "light",
@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.paltuu.app",
+      "versionCode": 8,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/paltuu-app-icon.png",
