@@ -56,6 +56,13 @@ export default function CommentComposerScreen() {
 
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
+  // While the user is typing/selecting a mention, the post-being-replied-to
+  // context and bottom toolbar hide so the full-width suggestion list can
+  // fill all remaining space down to the keyboard. The reply TextInput stays
+  // mounted at a stable tree position throughout (see render below), so
+  // toggling this never costs focus or cursor position.
+  const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
+
   // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
   // flush above the keyboard when it's open.
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -102,7 +109,7 @@ export default function CommentComposerScreen() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 }}
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -110,8 +117,10 @@ export default function CommentComposerScreen() {
             <ActivityIndicator color={PRIMARY} style={{ marginTop: 40 }} />
           ) : (
             <>
-              {/* ── Post being replied to ── */}
-              <View style={{ flexDirection: 'row' }}>
+              {/* ── Post being replied to — hidden (not unmounted) while a
+                    mention is active, so the suggestion list can take its
+                    place without disturbing the reply input below ── */}
+              <View style={{ flexDirection: 'row', paddingHorizontal: 16, display: mentionActive ? 'none' : 'flex' }}>
                 <View style={{ alignItems: 'center', width: 40 }}>
                   <Avatar name={post.author_name} uri={post.author_image} size={40} />
                   {/* Thread line connecting to the reply avatar below */}
@@ -142,8 +151,9 @@ export default function CommentComposerScreen() {
                 </View>
               </View>
 
-              {/* ── Reply draft row ── */}
-              <View style={{ flexDirection: 'row', marginTop: 4 }}>
+              {/* ── Reply draft row — the TextInput always stays mounted
+                    here, at a stable position, regardless of mention state ── */}
+              <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 16 }}>
                 <Avatar name={user?.name} uri={user?.profile_image_url} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <TextInput
@@ -153,9 +163,19 @@ export default function CommentComposerScreen() {
                     {...draft.mentionInputProps}
                     placeholder="Post your reply"
                     placeholderTextColor="#9CA3AF"
-                    style={{ fontSize: 17, color: '#111', minHeight: 90, textAlignVertical: 'top', paddingTop: 8 }}
+                    style={{ fontSize: 17, color: '#111', minHeight: mentionActive ? undefined : 90, textAlignVertical: 'top', paddingTop: 8 }}
                   />
+                </View>
+              </View>
+
+              {/* ── Below the input: full-width mention suggestions filling
+                    remaining space, or the normal media/pet attachments ── */}
+              {mentionActive ? (
+                <View style={{ flex: 1, marginTop: 6, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
                   <MentionSuggestionDropdown {...draft.mentionTriggers.mention} />
+                </View>
+              ) : (
+                <View style={{ paddingHorizontal: 16, marginLeft: 52 }}>
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}
@@ -163,25 +183,29 @@ export default function CommentComposerScreen() {
                     onToggle={draft.togglePet}
                   />
                 </View>
-              </View>
+              )}
             </>
           )}
         </ScrollView>
 
-        {/* ── Bottom toolbar — sticky directly above the keyboard ── */}
-        <View style={{
-          borderTopWidth: 0.5, borderTopColor: '#F0F0F0',
-          paddingHorizontal: 16, paddingTop: 12,
-          paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 12),
-          backgroundColor: '#fff',
-        }}>
-          <ComposerToolbar
-            onImage={draft.pickImage}
-            onCamera={draft.pickCamera}
-            onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
-            count={draft.media.length}
-          />
-        </View>
+        {/* ── Bottom toolbar — sticky directly above the keyboard; hidden
+              while mention suggestions are showing so the list reaches
+              all the way down to the keyboard ── */}
+        {!mentionActive && (
+          <View style={{
+            borderTopWidth: 0.5, borderTopColor: '#F0F0F0',
+            paddingHorizontal: 16, paddingTop: 12,
+            paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 12),
+            backgroundColor: '#fff',
+          }}>
+            <ComposerToolbar
+              onImage={draft.pickImage}
+              onCamera={draft.pickCamera}
+              onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
+              count={draft.media.length}
+            />
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       <PetTagSheet

@@ -17,8 +17,9 @@
 // single id per mention, not a separate type field — see lib/mentions.ts on
 // the backend, which parses this exact wire format.
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useMentions } from 'react-native-controlled-mentions';
 import type { TriggersConfig, SuggestionsProvidedProps, Suggestion } from 'react-native-controlled-mentions';
 import { useQuery } from '@tanstack/react-query';
@@ -26,6 +27,7 @@ import { socialApi, type MentionSuggestionPet, type MentionSuggestionUser } from
 import { useDebounce } from '../../hooks/useDebounce';
 
 const PRIMARY = '#a03048';
+const SHEET_BG = '#fff';
 
 type MentionTriggerName = 'mention';
 
@@ -109,9 +111,11 @@ const Avatar = ({ uri, fallbackText, emoji, size = 36 }: { uri?: string | null; 
 };
 
 /**
- * The "@" suggestion dropdown — your pets first, then suggested people,
- * exactly matching what `GET /social/mentions/suggest` returns. Renders as a
- * lightweight inline card (not a bottom sheet) so it never interrupts typing.
+ * The "@" suggestion list — your pets first, then suggested people, exactly
+ * matching what `GET /social/mentions/suggest` returns. Renders full-width,
+ * edge-to-edge (no card/shadow/rounded corners) so that when the host screen
+ * gives this component `flex: 1` directly below the input, it fills all
+ * remaining space down to the keyboard — matching the in-app @mention UX.
  *
  * Selecting a row calls the library's `onSelect`, which is what actually
  * splices the `{@}[name](id)` token into `value` — this component never
@@ -133,8 +137,6 @@ export function MentionSuggestionDropdown({ keyword, onSelect }: SuggestionsProv
     const pets = data?.pets ?? [];
     const users = data?.users ?? [];
 
-    if (!isLoading && pets.length === 0 && users.length === 0) return null;
-
     type Row =
         | { kind: 'pet'; pet: MentionSuggestionPet }
         | { kind: 'user'; user: MentionSuggestionUser };
@@ -146,75 +148,69 @@ export function MentionSuggestionDropdown({ keyword, onSelect }: SuggestionsProv
 
     const handleSelect = (suggestion: Suggestion) => onSelect(suggestion);
 
-    return (
-        <View
-            style={{
-                backgroundColor: '#fff',
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                maxHeight: 260,
-                marginTop: 6,
-                shadowColor: '#000',
-                shadowOpacity: 0.08,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 3,
-                overflow: 'hidden',
-            }}
-        >
-            {isLoading && rows.length === 0 ? (
-                <View style={{ padding: 14, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color={PRIMARY} />
-                </View>
-            ) : (
-                <FlatList
-                    data={rows}
-                    keyboardShouldPersistTaps="handled"
-                    keyExtractor={(row) =>
-                        row.kind === 'pet' ? `pet:${row.pet.pet_profile_id}` : `user:${row.user.user_id}`
-                    }
-                    renderItem={({ item: row }) => {
-                        if (row.kind === 'pet') {
-                            const { pet } = row;
-                            return (
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        handleSelect({ id: `pet:${pet.pet_profile_id}`, name: pet.name })
-                                    }
-                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9 }}
-                                >
-                                    <Avatar uri={pet.avatar_url} emoji={PET_EMOJI[pet.species?.toLowerCase()] ?? PET_EMOJI.default} />
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111' }}>{pet.name}</Text>
-                                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>Your pet · {pet.species}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        }
+    if (isLoading && rows.length === 0) {
+        return (
+            <View style={{ flex: 1, backgroundColor: SHEET_BG, paddingTop: 24, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+            </View>
+        );
+    }
 
-                        const { user } = row;
-                        return (
-                            <TouchableOpacity
-                                onPress={() =>
-                                    handleSelect({ id: `user:${user.user_id}`, name: user.social_username || '' })
-                                }
-                                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9 }}
-                            >
-                                <Avatar uri={user.profile_image_url} fallbackText={initialsFor(user.name)} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#111' }}>
-                                        {user.social_username ? `@${user.social_username}` : user.name}
-                                    </Text>
-                                    {!!user.social_username && (
-                                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>{user.name}</Text>
-                                    )}
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    }}
-                />
+    if (rows.length === 0) {
+        return <View style={{ flex: 1, backgroundColor: SHEET_BG }} />;
+    }
+
+    return (
+        <FlatList
+            data={rows}
+            style={{ flex: 1, backgroundColor: SHEET_BG }}
+            keyboardShouldPersistTaps="handled"
+            keyExtractor={(row) =>
+                row.kind === 'pet' ? `pet:${row.pet.pet_profile_id}` : `user:${row.user.user_id}`
+            }
+            ItemSeparatorComponent={() => (
+                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 + 36 + 12 }} />
             )}
-        </View>
+            renderItem={({ item: row }) => {
+                if (row.kind === 'pet') {
+                    const { pet } = row;
+                    return (
+                        <TouchableOpacity
+                            onPress={() => handleSelect({ id: `pet:${pet.pet_profile_id}`, name: pet.name })}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}
+                        >
+                            <Avatar uri={pet.avatar_url} emoji={PET_EMOJI[pet.species?.toLowerCase()] ?? PET_EMOJI.default} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>{pet.name}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                                    <Ionicons name="paw" size={11} color="#9CA3AF" />
+                                    <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Your pet · {pet.species}</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                }
+
+                const { user } = row;
+                return (
+                    <TouchableOpacity
+                        onPress={() => handleSelect({ id: `user:${user.user_id}`, name: user.social_username || '' })}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}
+                    >
+                        <Avatar uri={user.profile_image_url} fallbackText={initialsFor(user.name)} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>{user.name}</Text>
+                            <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 1 }}>@{user.social_username}</Text>
+                            {user.is_following && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                    <Ionicons name="person" size={11} color="#9CA3AF" />
+                                    <Text style={{ fontSize: 11.5, color: '#9CA3AF' }}>Following</Text>
+                                </View>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                );
+            }}
+        />
     );
 }

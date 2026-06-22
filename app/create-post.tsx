@@ -491,6 +491,12 @@ export default function CreatePostScreen() {
     .slice(0, 2)
     .toUpperCase();
 
+  // When typing/selecting a mention, the area below the caption input swaps
+  // from the normal compose content (media grid, milestone selector, toolbar)
+  // to a full-width suggestion list filling all the way down to the keyboard
+  // — matching the in-app @mention UX. The caption TextInput itself never
+  // moves/unmounts across this toggle, so focus and cursor position survive.
+  const mentionActive = mentionTriggers.mention.keyword !== undefined;
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -550,13 +556,16 @@ export default function CreatePostScreen() {
 
         <ScrollView
           className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* ── Post type tabs — hidden for now, coming back later ── */}
           <View style={{ height: 16 }} />
 
-          {/* ── Author row ── */}
+          {/* ── Author row — always mounted at a stable position so the
+                caption TextInput never loses focus/cursor when the mention
+                suggestion list opens/closes below it ── */}
           <View className="flex-row items-start px-4 gap-3">
             {user?.profile_image_url ? (
               <Image
@@ -595,97 +604,112 @@ export default function CreatePostScreen() {
                   fontSize: 15,
                   lineHeight: 22,
                   color: '#111',
-                  minHeight: 100,
+                  // No minHeight while a mention is active — the suggestion
+                  // list below must start right at the end of the typed
+                  // text, not after a tall empty box reserved for captions.
+                  minHeight: mentionActive ? undefined : 100,
                   textAlignVertical: 'top',
                   fontFamily: 'DMSans_400Regular',
                 }}
               />
+            </View>
+          </View>
 
+          {/* ── Below the input: either the normal compose content, or a
+                full-width mention suggestion list filling all remaining
+                space down to the keyboard (toolbar hides to make room) ── */}
+          {mentionActive ? (
+            <View style={{ flex: 1, marginTop: 10, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
               <MentionSuggestionDropdown {...mentionTriggers.mention} />
-
+            </View>
+          ) : (
+            <>
               {/* Milestone selector */}
               {postType === 'milestone' && (
                 <MilestoneSelector value={milestone} onChange={setMilestone} />
               )}
-            </View>
-          </View>
 
-          {/* ── Media grid ── */}
-          {mediaItems.length > 0 && (
-            <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
-              {mediaItems.map((item, i) => (
-                <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
-                  <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              {/* ── Media grid ── */}
+              {mediaItems.length > 0 && (
+                <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
+                  {mediaItems.map((item, i) => (
+                    <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
+                      <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
 
-                  {/* Video badge */}
-                  {item.type === 'video' && (
-                    <View style={{
-                      position: 'absolute', bottom: 4, left: 4,
-                      backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
-                      paddingHorizontal: 4, paddingVertical: 2,
-                      flexDirection: 'row', alignItems: 'center', gap: 2,
-                    }}>
-                      <Ionicons name="videocam" size={10} color="#fff" />
+                      {/* Video badge */}
+                      {item.type === 'video' && (
+                        <View style={{
+                          position: 'absolute', bottom: 4, left: 4,
+                          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
+                          paddingHorizontal: 4, paddingVertical: 2,
+                          flexDirection: 'row', alignItems: 'center', gap: 2,
+                        }}>
+                          <Ionicons name="videocam" size={10} color="#fff" />
+                        </View>
+                      )}
+
+                      <TouchableOpacity
+                        onPress={() => removeMedia(i)}
+                        className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
+                      >
+                        <Ionicons name="close" size={12} color="#fff" />
+                      </TouchableOpacity>
                     </View>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={() => removeMedia(i)}
-                    className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
-                  >
-                    <Ionicons name="close" size={12} color="#fff" />
-                  </TouchableOpacity>
+                  ))}
                 </View>
-              ))}
-            </View>
-          )}
+              )}
 
-          {/* ── Tagged pets (tagging is triggered from the toolbar paw button) ── */}
-          {selectedPets.length > 0 && (
-            <View className="mt-4 px-4">
-              <SelectedPetsRow
-                petProfiles={petProfiles}
-                selectedPets={selectedPets}
-                onToggle={togglePet}
-              />
-            </View>
-          )}
+              {/* ── Tagged pets (tagging is triggered from the toolbar paw button) ── */}
+              {selectedPets.length > 0 && (
+                <View className="mt-4 px-4">
+                  <SelectedPetsRow
+                    petProfiles={petProfiles}
+                    selectedPets={selectedPets}
+                    onToggle={togglePet}
+                  />
+                </View>
+              )}
 
-          <View style={{ height: 120 }} />
+              <View style={{ height: 120 }} />
+            </>
+          )}
         </ScrollView>
 
-        {/* ── Bottom toolbar ── */}
-        <View
-          style={{
-            paddingTop: 10,
-            paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
-            paddingHorizontal: 16,
-            borderTopWidth: 1,
-            borderTopColor: '#F3F4F6',
-            backgroundColor: '#fff',
-          }}
-        >
-          {/* Media tools row */}
-          <View className="flex-row items-center gap-5">
-            <TouchableOpacity onPress={pickMedia} hitSlop={8}>
-              <Ionicons name="image-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+        {/* ── Bottom toolbar — hidden while mention suggestions are showing,
+              so the list extends all the way down to the keyboard ── */}
+        {!mentionActive && (
+          <View
+            style={{
+              paddingTop: 10,
+              paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
+              paddingHorizontal: 16,
+              borderTopWidth: 1,
+              borderTopColor: '#F3F4F6',
+              backgroundColor: '#fff',
+            }}
+          >
+            {/* Media tools row */}
+            <View className="flex-row items-center gap-5">
+              <TouchableOpacity onPress={pickMedia} hitSlop={8}>
+                <Ionicons name="image-outline" size={24} color="#a03048" />
+              </TouchableOpacity>
 
-            <TouchableOpacity onPress={pickCamera} hitSlop={8}>
-              <Ionicons name="camera-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+              <TouchableOpacity onPress={pickCamera} hitSlop={8}>
+                <Ionicons name="camera-outline" size={24} color="#a03048" />
+              </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
-              <Ionicons name="paw-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
+                <Ionicons name="paw-outline" size={24} color="#a03048" />
+              </TouchableOpacity>
 
-            {mediaItems.length > 0 && (
-              <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
-                <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
-              </View>
-            )}
+              {mediaItems.length > 0 && (
+                <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
+                  <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
 
       <PetTagSheet

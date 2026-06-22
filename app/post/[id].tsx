@@ -314,6 +314,13 @@ export default function PostDetailScreen() {
     },
   });
 
+  // While typing/selecting a mention, the floating composer expands upward
+  // to cover the post+comments behind it, so its full-width suggestion list
+  // can fill all the way down to the keyboard — the reply banner and toolbar
+  // hide to make room. The TextInput stays mounted at a stable position
+  // throughout, so this never costs focus.
+  const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
+
   /* ── Handlers ── */
   const openComposer = useCallback(() => {
     setReplyingTo(null);
@@ -511,6 +518,10 @@ export default function PostDetailScreen() {
 
           <View style={{
             position: 'absolute', left: 0, right: 0,
+            // While a mention is active, the box expands upward (stopping
+            // just below the navbar) so the suggestion list has room to
+            // fill all the way down to the keyboard, full width.
+            top: mentionActive ? insets.top + 48 : undefined,
             bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
             zIndex: 50, elevation: 24,
             backgroundColor: BG,
@@ -519,44 +530,58 @@ export default function PostDetailScreen() {
             shadowOpacity: 0.1, shadowRadius: 10,
             paddingBottom: Platform.OS === 'ios' ? 8 : (insets.bottom > 0 ? insets.bottom : 8),
           }}>
-            {/* Reply banner (replying to a specific comment) */}
-            {replyingTo && (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                paddingHorizontal: 16, paddingVertical: 8,
-                backgroundColor: '#fdf0f2',
-                borderBottomWidth: 0.5, borderBottomColor: '#f5d0d8',
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="return-down-forward-outline" size={14} color={PRIMARY} />
-                  <Text style={{ fontSize: 12, color: PRIMARY, fontWeight: '600' }}>
-                    Replying to {replyingTo.author_name}
-                  </Text>
+            <View style={{ flex: mentionActive ? 1 : undefined }}>
+              {/* Reply banner (replying to a specific comment) — hidden while
+                  a mention is active to make room for the suggestion list */}
+              {replyingTo && !mentionActive && (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  paddingHorizontal: 16, paddingVertical: 8,
+                  backgroundColor: '#fdf0f2',
+                  borderBottomWidth: 0.5, borderBottomColor: '#f5d0d8',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="return-down-forward-outline" size={14} color={PRIMARY} />
+                    <Text style={{ fontSize: 12, color: PRIMARY, fontWeight: '600' }}>
+                      Replying to {replyingTo.author_name}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => { setReplyingTo(null); draft.setText(''); }}
+                    hitSlop={10}
+                  >
+                    <Ionicons name="close" size={16} color={PRIMARY} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={() => { setReplyingTo(null); draft.setText(''); }}
-                  hitSlop={10}
-                >
-                  <Ionicons name="close" size={16} color={PRIMARY} />
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {/* Text field + pet tagger (above the toolbar) */}
-            <View style={{ paddingHorizontal: 12, paddingTop: 10 }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Avatar name={user?.name || 'U'} uri={user?.profile_image_url} size={32} />
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <TextInput
-                    ref={inputRef}
-                    {...draft.mentionInputProps}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.author_name}...` : 'Post your reply'}
-                    placeholderTextColor="#C4C4C4"
-                    style={{ fontSize: 15, color: '#111', minHeight: 40, maxHeight: 120, textAlignVertical: 'top', paddingTop: 8 }}
-                    multiline
-                    autoFocus
-                  />
+              {/* Text field — always mounted at a stable position, regardless
+                  of mention state, so it never loses focus */}
+              <View style={{ paddingHorizontal: 12, paddingTop: 10 }}>
+                <View style={{ flexDirection: 'row' }}>
+                  <Avatar name={user?.name || 'U'} uri={user?.profile_image_url} size={32} />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <TextInput
+                      ref={inputRef}
+                      {...draft.mentionInputProps}
+                      placeholder={replyingTo ? `Reply to ${replyingTo.author_name}...` : 'Post your reply'}
+                      placeholderTextColor="#C4C4C4"
+                      style={{ fontSize: 15, color: '#111', minHeight: mentionActive ? undefined : 40, maxHeight: 120, textAlignVertical: 'top', paddingTop: 8 }}
+                      multiline
+                      autoFocus
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Below the input: full-width mention suggestions filling
+                  remaining space, or the normal media/pet attachments */}
+              {mentionActive ? (
+                <View style={{ flex: 1, marginTop: 6, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
                   <MentionSuggestionDropdown {...draft.mentionTriggers.mention} />
+                </View>
+              ) : (
+                <View style={{ paddingHorizontal: 12, marginLeft: 42 }}>
                   <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}
@@ -564,35 +589,38 @@ export default function PostDetailScreen() {
                     onToggle={draft.togglePet}
                   />
                 </View>
-              </View>
-            </View>
+              )}
 
-            {/* Toolbar / quick-access bar + Reply — stuck to the keyboard */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center',
-              paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6,
-            }}>
-              <ComposerToolbar
-                onImage={draft.pickImage}
-                onCamera={draft.pickCamera}
-                onPet={() => setPetSheetVisible(true)}
-                count={draft.media.length}
-              />
-              <TouchableOpacity
-                onPress={handleSend}
-                disabled={!draft.canSubmit}
-                style={{
-                  marginLeft: 'auto',
-                  backgroundColor: draft.canSubmit ? PRIMARY : '#E5E7EB',
-                  borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
-                }}
-              >
-                {draft.isSubmitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={{ color: draft.canSubmit ? '#fff' : '#9CA3AF', fontWeight: '700', fontSize: 14 }}>Reply</Text>
-                )}
-              </TouchableOpacity>
+              {/* Toolbar / quick-access bar + Reply — stuck to the keyboard;
+                  hidden while mention suggestions are showing */}
+              {!mentionActive && (
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6,
+                }}>
+                  <ComposerToolbar
+                    onImage={draft.pickImage}
+                    onCamera={draft.pickCamera}
+                    onPet={() => setPetSheetVisible(true)}
+                    count={draft.media.length}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSend}
+                    disabled={!draft.canSubmit}
+                    style={{
+                      marginLeft: 'auto',
+                      backgroundColor: draft.canSubmit ? PRIMARY : '#E5E7EB',
+                      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
+                    }}
+                  >
+                    {draft.isSubmitting ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={{ color: draft.canSubmit ? '#fff' : '#9CA3AF', fontWeight: '700', fontSize: 14 }}>Reply</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </>
