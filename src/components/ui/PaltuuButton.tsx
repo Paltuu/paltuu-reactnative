@@ -3,10 +3,10 @@
  *
  * Idle  → press → [collapse to circle + spinner] → [expand + success flash] → idle
  *
- * Usage:
- *   <PaltuuButton label="Log in"   successLabel="Logged in"  loading={isPending} onPress={handleLogin} />
- *   <PaltuuButton label="Post"     successLabel="Posted!"    loading={isPending} onPress={handlePost} />
- *   <PaltuuButton compact label="Post" successLabel="Posted!" loading={isPending} onPress={handlePost} />
+ * compact prop: shrinks to a small inline pill suitable for headers/toolbars.
+ *   - height 34 instead of 58
+ *   - sizes to content width (not full-width)
+ *   - same animation
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -28,16 +28,13 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-// ─── Design tokens ───────────────────────────────────────────────────────────
+const PRIMARY      = '#a03048';
+const SPEED        = 420;
+const SUCCESS_HOLD = 1000;
+const EASING_CURVE = Easing.bezier(0.65, 0, 0.35, 1);
 
-const PRIMARY       = '#a03048';
-const BTN_H_FULL    = 58;
-const BTN_H_COMPACT = 34;
-const SPEED         = 420;
-const SUCCESS_HOLD  = 1000;
-const EASING        = Easing.bezier(0.65, 0, 0.35, 1);
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const FULL_H    = 58;
+const COMPACT_H = 34;
 
 interface PaltuuButtonProps {
   label: string;
@@ -46,11 +43,9 @@ interface PaltuuButtonProps {
   disabled?: boolean;
   onPress: () => void;
   style?: ViewStyle;
-  /** Compact variant — smaller pill that sizes to its content; use in headers */
+  /** Shrinks to a small inline pill — use in headers / toolbars */
   compact?: boolean;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PaltuuButton({
   label,
@@ -61,14 +56,14 @@ export default function PaltuuButton({
   style,
   compact = false,
 }: PaltuuButtonProps) {
-  const BTN_H = compact ? BTN_H_COMPACT : BTN_H_FULL;
+  const BTN_H = compact ? COMPACT_H : FULL_H;
 
   const naturalWidth = useRef<number>(compact ? 80 : 300);
   const prevLoading  = useRef<boolean>(false);
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Updated every render so handleLayout (empty useCallback deps) always sees
-  // the current loading state and doesn't cancel an in-flight animation.
+  // Updated during render so the onLayout callback always sees current loading
+  // state even though handleLayout has empty useCallback deps (no stale closure).
   const isLoadingRef = useRef(false);
   isLoadingRef.current = loading;
 
@@ -79,6 +74,8 @@ export default function PaltuuButton({
   const spinDeg    = useSharedValue(0);
   const pressScale = useSharedValue(1);
 
+  // onLayout on the Pressable (stable — doesn't animate) captures the
+  // container width on first render and after orientation change.
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > BTN_H) {
@@ -97,8 +94,8 @@ export default function PaltuuButton({
       if (successTimer.current) clearTimeout(successTimer.current);
       labelOp.value   = withTiming(0, { duration: 180 });
       successOp.value = withTiming(0, { duration: 120 });
-      btnWidth.value  = withTiming(BTN_H, { duration: SPEED, easing: EASING });
-      spinnerOp.value = withDelay(180, withTiming(1, { duration: 180 }));
+      btnWidth.value  = withTiming(BTN_H, { duration: SPEED, easing: EASING_CURVE });
+      spinnerOp.value = withDelay(200, withTiming(1, { duration: 180 }));
       cancelAnimation(spinDeg);
       spinDeg.value = withRepeat(
         withTiming(360, { duration: 750, easing: Easing.linear }),
@@ -111,7 +108,7 @@ export default function PaltuuButton({
       spinDeg.value  = 0;
       btnWidth.value = withDelay(
         80,
-        withTiming(naturalWidth.current, { duration: SPEED, easing: EASING }),
+        withTiming(naturalWidth.current, { duration: SPEED, easing: EASING_CURVE }),
       );
       if (successLabel) {
         successOp.value = withDelay(200, withTiming(1, { duration: 200 }));
@@ -145,10 +142,30 @@ export default function PaltuuButton({
 
   const canPress = !loading && !disabled;
 
-  // SVG spinner size scales with button height
-  const svgSize  = compact ? 26 : 44;
-  const strokeW  = compact ? 4   : 5.5;
-  const fontSize = compact ? 13  : 17;
+  // Spinner and text sizing differ between full and compact
+  const spinnerSize  = compact ? 22 : 38;
+  const spinnerBorder = compact ? 2.5 : 3.5;
+  const fontSize     = compact ? 13 : 17;
+  const hPadding     = compact ? 16 : 0;
+
+  const pillStyle: ViewStyle = {
+    height:          BTN_H,
+    backgroundColor: disabled && !loading ? '#D1D5DB' : PRIMARY,
+    borderRadius:    999,
+    overflow:        'hidden',
+    alignItems:      'center',
+    justifyContent:  'center',
+    paddingHorizontal: compact ? hPadding : 0,
+    ...Platform.select({
+      ios: {
+        shadowColor:   '#000',
+        shadowOffset:  { width: 0, height: compact ? 4 : 8 },
+        shadowOpacity: compact ? 0.12 : 0.18,
+        shadowRadius:  compact ? 8 : 14,
+      },
+      android: { elevation: compact ? 3 : 6 },
+    }),
+  };
 
   return (
     <Pressable
@@ -162,9 +179,8 @@ export default function PaltuuButton({
       accessibilityState={{ busy: loading, disabled }}
       style={compact ? s.pressableCompact : s.pressableFull}
     >
-      {/* Center the pill so it collapses symmetrically rather than to one edge */}
       <View style={s.centerWrap}>
-        <Animated.View style={[compact ? s.pillCompact : s.pill, containerAnimStyle, style]}>
+        <Animated.View style={[pillStyle, containerAnimStyle, style]}>
 
           {/* Idle label */}
           <Animated.Text
@@ -175,14 +191,14 @@ export default function PaltuuButton({
             {label}
           </Animated.Text>
 
-          {/* Spinner — border-arc View, no SVG needed */}
+          {/* Spinner */}
           <Animated.View style={[s.layer, spinnerAnimStyle]} pointerEvents="none">
             <View
               style={{
-                width:          svgSize,
-                height:         svgSize,
-                borderRadius:   svgSize / 2,
-                borderWidth:    strokeW,
+                width:          spinnerSize,
+                height:         spinnerSize,
+                borderRadius:   spinnerSize / 2,
+                borderWidth:    spinnerBorder,
                 borderColor:    'rgba(255,255,255,0.22)',
                 borderTopColor: '#ffffff',
               }}
@@ -192,7 +208,7 @@ export default function PaltuuButton({
           {/* Success label */}
           {successLabel ? (
             <Animated.Text
-              style={[s.text, { fontSize: compact ? 12 : 16 }, successAnimStyle]}
+              style={[s.text, { fontSize }, successAnimStyle]}
               numberOfLines={1}
               allowFontScaling={false}
               pointerEvents="none"
@@ -207,8 +223,6 @@ export default function PaltuuButton({
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   pressableFull: {
     width: '100%',
@@ -219,43 +233,12 @@ const s = StyleSheet.create({
   centerWrap: {
     alignItems: 'center',
   },
-  pill: {
-    height:          BTN_H_FULL,
-    backgroundColor: PRIMARY,
-    borderRadius:    999,
-    overflow:        'hidden',
-    alignItems:      'center',
-    justifyContent:  'center',
-    ...Platform.select({
-      ios: {
-        shadowColor:   '#000',
-        shadowOffset:  { width: 0, height: 8 },
-        shadowOpacity: 0.18,
-        shadowRadius:  14,
-      },
-      android: { elevation: 6 },
-    }),
-  },
-  pillCompact: {
-    height:           BTN_H_COMPACT,
-    backgroundColor:  PRIMARY,
-    borderRadius:     999,
-    overflow:         'hidden',
-    alignItems:       'center',
-    justifyContent:   'center',
-    paddingHorizontal: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor:   '#000',
-        shadowOffset:  { width: 0, height: 4 },
-        shadowOpacity: 0.14,
-        shadowRadius:  8,
-      },
-      android: { elevation: 3 },
-    }),
-  },
   layer: {
     position:       'absolute',
+    top:            0,
+    left:           0,
+    right:          0,
+    bottom:         0,
     alignItems:     'center',
     justifyContent: 'center',
   },

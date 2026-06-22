@@ -535,8 +535,8 @@ export default function CreatePostScreen() {
             </Text>
           </View>
 
-          {/* Post / Save — compact PaltuuButton pinned to the right edge */}
-          <View style={{ position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' }}>
+          {/* Post / Save — compact PaltuuButton, right-aligned in header */}
+          <View style={{ marginLeft: 'auto' }}>
             <PaltuuButton
               compact
               label={isEditMode ? 'Save' : 'Post'}
