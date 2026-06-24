@@ -48,6 +48,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: EAS_PROJECT_ID,
       },
     },
+    plugins: [
+      ...(config.plugins ?? []),
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission:
+            'Paltuu uses your location to show pets, vets, and shelters near you.',
+        },
+      ],
+    ],
   };
 };
 

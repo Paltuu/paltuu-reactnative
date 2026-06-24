@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useAuthStore } from '../src/stores/authStore';
+import { useLocationStore } from '../src/stores/locationStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
 import { handleDeepLink } from '../src/services/deepLinks';
@@ -80,6 +81,12 @@ export default function RootLayout() {
   // 1. Initial Hydration
   useEffect(() => {
     hydrate();
+  }, []);
+
+  // 1b. Ask for location permission up front, then resolve nearest city
+  // (pets/listings are stored by city, not raw coordinates).
+  useEffect(() => {
+    useLocationStore.getState().resolveCity();
   }, []);
 
   // 2. Navigation Protection Logic

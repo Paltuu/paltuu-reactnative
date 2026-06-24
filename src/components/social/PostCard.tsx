@@ -866,7 +866,8 @@ export const PostCard = React.memo(({
         >
           {/* ── Reposted indicator (plain reposts only; quote reposts read like a normal post) ── */}
           {isPlainRepost && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 64, marginBottom: 4 }}>
+            // Icon sits in the avatar gutter; the text lines up with the author name (MEDIA_LEFT_OFFSET).
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: MEDIA_LEFT_OFFSET - 18, marginBottom: 4 }}>
               <Image
                 source={PostIcons.repostUnselect}
                 style={{ width: 14, height: 14 }}

@@ -8,146 +8,26 @@ import {
   Dimensions,
   Platform,
   TextStyle,
-  StyleProp,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
-  withDelay,
   interpolate,
   Easing,
-  LinearTransition,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import type { SearchBarProps } from "./SearchBar.types";
 import { runOnJS } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { StaggeredPlaceholder } from "./CyclingText";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 const { width: screenWidth } = Dimensions.get("window");
-
-// ─── Staggered cycling placeholder ──────────────────────────────────────────
-
-const PLACEHOLDER_ENTER_DURATION = 300;
-const PLACEHOLDER_EXIT_DURATION = 200;
-const PLACEHOLDER_DELAY_INCREMENT = 30;
-
-const Character = ({
-  char,
-  index,
-  style,
-}: {
-  char: string;
-  index: number;
-  style?: StyleProp<TextStyle>;
-}) => {
-  const animationDelay = index * PLACEHOLDER_DELAY_INCREMENT;
-
-  const enteringAnimation = () => {
-    "worklet";
-    return {
-      initialValues: {
-        opacity: 0,
-        transform: [{ translateY: 20 }, { scale: 0.5 }],
-      },
-      animations: {
-        opacity: withDelay(
-          animationDelay,
-          withTiming(1, { duration: PLACEHOLDER_ENTER_DURATION }),
-        ),
-        transform: [
-          {
-            translateY: withDelay(
-              animationDelay,
-              withSpring(0, { damping: 15, stiffness: 150, mass: 0.9 }),
-            ),
-          },
-          {
-            scale: withDelay(
-              animationDelay,
-              withSpring(1, { damping: 15, stiffness: 150, mass: 0.9 }),
-            ),
-          },
-        ],
-      },
-    };
-  };
-
-  const exitingAnimation = () => {
-    "worklet";
-    return {
-      initialValues: {
-        opacity: 1,
-        transform: [{ translateY: 0 }, { scale: 1 }],
-      },
-      animations: {
-        opacity: withDelay(
-          animationDelay,
-          withTiming(0, { duration: PLACEHOLDER_EXIT_DURATION }),
-        ),
-        transform: [
-          {
-            translateY: withDelay(
-              animationDelay,
-              withTiming(-5, { duration: PLACEHOLDER_EXIT_DURATION }),
-            ),
-          },
-          {
-            scale: withDelay(
-              animationDelay,
-              withTiming(0.5, { duration: PLACEHOLDER_EXIT_DURATION }),
-            ),
-          },
-        ],
-      },
-    };
-  };
-
-  return (
-    <Animated.Text
-      entering={enteringAnimation}
-      exiting={exitingAnimation}
-      layout={LinearTransition.duration(180).easing(
-        Easing.bezier(0.25, 0.1, 0.25, 1),
-      )}
-      style={style}
-    >
-      {char}
-    </Animated.Text>
-  );
-};
-
-const StaggeredPlaceholder = ({
-  text,
-  style,
-}: {
-  text: string;
-  style?: StyleProp<TextStyle>;
-}) => {
-  const characters = Array.from(text);
-  return (
-    <Animated.View
-      style={styles.staggeredWrapper}
-      layout={LinearTransition.duration(300).easing(
-        Easing.bezier(0.25, 0.1, 0.25, 1),
-      )}
-    >
-      {characters.map((char, index) => (
-        <Character
-          key={`${char}-${index}-${text}`}
-          char={char}
-          index={index}
-          style={style}
-        />
-      ))}
-    </Animated.View>
-  );
-};
 
 export const SearchBar = ({
   placeholder = "Search",
@@ -510,10 +390,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 8,
-  },
-  staggeredWrapper: {
-    flexDirection: "row",
-    flexWrap: "nowrap",
   },
   placeholderText: {
     color: "#8E8E93",

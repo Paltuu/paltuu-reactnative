@@ -3,6 +3,7 @@ export const FONTS = {
   headingSemi: 'Montserrat_600SemiBold',
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
+  bodyBold: 'DMSans_700Bold',
 };
 
 export const TYPOGRAPHY = {
