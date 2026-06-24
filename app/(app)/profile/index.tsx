@@ -21,7 +21,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -31,7 +30,6 @@ import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 import { MentionText } from '../../../src/components/social/MentionText';
-import { HamburgerIcon } from '../../../src/components/ui/hamburger-icon';
 
 const Icons = {
   pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
@@ -304,7 +302,6 @@ export default function ProfileScreen() {
   const bioInputRef = useRef<TextInput>(null);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
-  const menuProgress = useSharedValue(0);
 
   const userId = user?.id;
 
@@ -426,7 +423,6 @@ export default function ProfileScreen() {
     menuSlideX.setValue(MENU_WIDTH);
     setMenuVisible(true);
     setTimeout(() => {
-      menuProgress.value = withTiming(1, { duration: 250 });
       Animated.timing(menuSlideX, {
         toValue: 0,
         duration: 250,
@@ -436,7 +432,6 @@ export default function ProfileScreen() {
   };
 
   const closeMenu = () => {
-    menuProgress.value = withTiming(0, { duration: 220 });
     Animated.timing(menuSlideX, {
       toValue: MENU_WIDTH,
       duration: 220,
@@ -594,16 +589,21 @@ export default function ProfileScreen() {
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
-              <Ionicons name="share-social-outline" size={22} color="#000000" />
-            </TouchableOpacity>
-            <View style={s.menuBtn}>
-              <HamburgerIcon
-                progress={menuProgress}
-                size={26}
-                color="#000000"
-                onPress={() => (menuVisible ? closeMenu() : openMenu())}
+              <ExpoImage
+                source={require('../../../assets/icons/share-solid.svg')}
+                style={{ width: 22, height: 22 }}
+                contentFit="contain"
+                tintColor="#000000"
               />
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
+              <ExpoImage
+                source={require('../../../assets/icons/hamburger-solid.svg')}
+                style={{ width: 24, height: 24 }}
+                contentFit="contain"
+                tintColor="#000000"
+              />
+            </TouchableOpacity>
           </View>
         )}
       </View>
