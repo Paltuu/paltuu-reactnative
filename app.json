@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.paltuu.app",
-      "versionCode": 7,
+      "versionCode": 10,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/paltuu-app-icon.png",
