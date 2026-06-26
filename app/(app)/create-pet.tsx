@@ -271,7 +271,7 @@ export default function CreatePetScreen() {
       >
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => currentStep > 1 ? prevStep() : router.back()} style={s.headerBtn}>
+          <TouchableOpacity onPress={() => currentStep > 1 ? prevStep() : router.replace('/(app)/pets')} style={s.headerBtn}>
             <Ionicons name="arrow-back" size={20} color="#374151" />
           </TouchableOpacity>
           <Text style={s.headerTitle}>

@@ -152,20 +152,41 @@ export default function AdoptScreen() {
   const renderHeader = () => (
     <View style={{ paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
-            Adopt a Pet
-          </Text>
-          <Text style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
-            Find your new best friend today
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+          <TouchableOpacity 
+            onPress={() => router.replace('/(app)/pets')}
+            style={{ 
+              width: 40, 
+              height: 40, 
+              borderRadius: 20, 
+              backgroundColor: '#FFF', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <Ionicons name="arrow-back" size={22} color="#111" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+              Adopt a Pet
+            </Text>
+            <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+              Find your new best friend
+            </Text>
+          </View>
         </View>
         <View 
           style={{ 
             backgroundColor: 'rgba(160, 48, 72, 0.1)', 
             paddingHorizontal: 12, 
             paddingVertical: 6, 
-            borderRadius: 12 
+            borderRadius: 12,
+            marginLeft: 8,
           }}
         >
           <Text style={{ color: '#a03048', fontWeight: '700', fontSize: 12 }}>

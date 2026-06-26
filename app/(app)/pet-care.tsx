@@ -55,9 +55,29 @@ export default function PetCareScreen() {
         refreshing={isLoading}
         ListHeaderComponent={
           <View className="px-5 pt-4 pb-2">
-            <View className="mb-6">
-              <Text className="font-heading text-3xl text-dark">Pet Care</Text>
-              <Text className="font-body text-gray-400 text-xs mt-1">Find the best veterinary care for your pet</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 12 }}>
+              <TouchableOpacity 
+                onPress={() => router.replace('/(app)/pets')}
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: 20, 
+                  backgroundColor: '#FFF', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }}
+              >
+                <Ionicons name="arrow-back" size={22} color="#111" />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text className="font-heading text-3xl text-dark">Pet Care</Text>
+                <Text className="font-body text-gray-400 text-xs mt-1">Find the best veterinary care for your pet</Text>
+              </View>
             </View>
 
             {/* Search Bar */}

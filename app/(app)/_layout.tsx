@@ -95,13 +95,23 @@ function LayoutContent() {
           name="pets"
           options={{
             title: 'Pets',
-            tabBarIcon: ({ focused }) => (
-              <Image
-                source={focused ? Icons.pawSelect : Icons.pawUnselect}
-                style={{ width: 26, height: 26 }}
-                contentFit="contain"
-              />
-            ),
+            tabBarIcon: ({ focused }) => {
+              const isPawActive = focused || 
+                pathname === '/pets' || 
+                pathname === '/adopt' || 
+                pathname === '/pet-care' || 
+                pathname === '/create-pet' || 
+                pathname === '/lost-found' ||
+                pathname?.includes('/clinic') ||
+                pathname?.includes('/vet');
+              return (
+                <Image
+                  source={isPawActive ? Icons.pawSelect : Icons.pawUnselect}
+                  style={{ width: 26, height: 26 }}
+                  contentFit="contain"
+                />
+              );
+            },
           }}
         />
         <Tabs.Screen
