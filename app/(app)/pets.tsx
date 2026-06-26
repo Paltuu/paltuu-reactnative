@@ -135,7 +135,7 @@ export default function PetsHubScreen() {
           </View>
           <View style={styles.heroIllustrationSpace}>
             <Image
-              source={require('../../assets/man-huugging-dog.png')}
+              source={require('../../assets/pets-hub/huugging.png')}
               style={styles.heroIllustrationImg}
               contentFit="contain"
             />
@@ -194,18 +194,16 @@ export default function PetsHubScreen() {
             onPress={() => router.push('/(app)/pet-care' as any)}
             style={styles.squareTile}
           >
-            <View style={styles.squareIllustration}>
+            <View style={styles.squareHeader}>
+              <Text style={styles.squareLabel}>Find Vets</Text>
+              <Text style={styles.squareSub}>& Clinics Near You</Text>
+            </View>
+            <View style={styles.clinicIllustrationContainer}>
               <Image
-                source={require('../../assets/clinic.png')}
+                source={require('../../assets/pets-hub/doctor.png')}
                 style={styles.clinicIllustrationImg}
                 contentFit="contain"
               />
-            </View>
-            <View style={styles.squareFooter}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.squareLabel}>Find Vets</Text>
-                <Text style={styles.squareSub}>& Clinics Near You</Text>
-              </View>
             </View>
           </TouchableOpacity>
 
@@ -216,7 +214,7 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../assets/home.png')}
+                source={require('../../assets/pets-hub/rehome.png')}
                 style={styles.squareIllustrationImg}
                 contentFit="contain"
               />
@@ -239,7 +237,7 @@ export default function PetsHubScreen() {
           style={styles.lostFoundStrip}
         >
           <Image
-            source={require('../../assets/lost.png')}
+            source={require('../../assets/pets-hub/sad.png')}
             style={styles.lostFoundImg}
             contentFit="contain"
           />
@@ -376,12 +374,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   squareIllustrationImg: {
-    width: 88,
-    height: 88,
+    width: 104,
+    height: 104,
   },
   clinicIllustrationImg: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
+  },
+  squareHeader: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  clinicIllustrationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   squareFooter: {
     flexDirection: 'row',
@@ -414,8 +421,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   lostFoundImg: {
-    width: 80,
-    height: 80,
+    width: 96,
+    height: 96,
   },
   lostFoundTextCol: {
     alignItems: 'flex-end',
