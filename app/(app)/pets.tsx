@@ -194,16 +194,18 @@ export default function PetsHubScreen() {
             onPress={() => router.push('/(app)/pet-care' as any)}
             style={styles.squareTile}
           >
-            <View style={styles.squareHeader}>
-              <Text style={styles.squareLabel}>Find Vets</Text>
-              <Text style={styles.squareSub}>& Clinics Near You</Text>
-            </View>
-            <View style={styles.clinicIllustrationContainer}>
+            <View style={styles.squareIllustration}>
               <Image
                 source={require('../../assets/pets-hub/doctor.png')}
                 style={styles.clinicIllustrationImg}
                 contentFit="contain"
               />
+            </View>
+            <View style={styles.squareFooter}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={styles.squareLabel}>Find Vets</Text>
+                <Text style={styles.squareSub}>& Clinics Near You</Text>
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -214,13 +216,13 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../assets/pets-hub/rehome.png')}
+                source={require('../../assets/pets-hub/playing.png')}
                 style={styles.squareIllustrationImg}
                 contentFit="contain"
               />
             </View>
             <View style={styles.squareFooter}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={styles.squareLabel}>Find a New Home</Text>
                 <Text style={styles.squareSub}>for Your Pet</Text>
               </View>
@@ -381,15 +383,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
   },
-  squareHeader: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-  },
-  clinicIllustrationContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
   squareFooter: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -400,11 +393,13 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bodyBold,
     fontSize: 15,
     color: DARK,
+    textAlign: 'center',
   },
   squareSub: {
     fontFamily: FONTS.bodyBold,
     fontSize: 15,
     color: DARK,
+    textAlign: 'center',
   },
 
   // ── Lost & Found strip
