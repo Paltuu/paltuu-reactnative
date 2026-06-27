@@ -1,17 +1,15 @@
-import { ConfigContext, ExpoConfig } from "expo/config";
+import { ExpoConfig } from "expo/config";
 
 const EAS_PROJECT_ID = "ec2af655-89d5-43dd-b5a5-b56101a3c24a";
 const PROJECT_SLUG = "paltuu";
 const OWNER = "paltuupk";
 
-// App production config
 const APP_NAME = "Paltuu";
 const BUNDLE_IDENTIFIER = "com.paltuu.app";
 const PACKAGE_NAME = "com.paltuu.app";
 const SCHEME = "paltuu";
 
-export default ({ config }: ConfigContext): ExpoConfig => {
-  // Determine environment based on APP_ENV (fallback to EAS_BUILD_PROFILE or development)
+export default (): ExpoConfig => {
   const APP_ENV =
     (process.env.APP_ENV as "development" | "preview" | "production") ||
     (process.env.EAS_BUILD_PROFILE as "development" | "preview" | "production") ||
@@ -22,39 +20,82 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const { name, bundleIdentifier, packageName, scheme } = getDynamicAppConfig(APP_ENV);
 
   return {
-    ...config,
-    name: name,
+    name,
     slug: PROJECT_SLUG,
-    scheme: scheme,
+    scheme,
+    version: "1.0.1",
+    orientation: "portrait",
+    icon: "./assets/paltuu-app-icon.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
     owner: OWNER,
+    splash: {
+      image: "./assets/icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff",
+    },
     ios: {
-      ...config.ios,
-      bundleIdentifier: bundleIdentifier,
+      supportsTablet: true,
+      bundleIdentifier,
+      googleServicesFile: "./GoogleService-Info.plist",
     },
     android: {
-      ...config.android,
       package: packageName,
+      versionCode: 10,
+      googleServicesFile: "./google-services.json",
+      adaptiveIcon: {
+        foregroundImage: "./assets/paltuu-app-icon.png",
+        backgroundColor: "#A03048",
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      permissions: ["android.permission.RECORD_AUDIO"],
+    },
+    web: {
+      favicon: "./assets/favicon.png",
     },
     updates: {
-      ...config.updates,
       url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     },
     runtimeVersion: {
       policy: "appVersion",
     },
     extra: {
-      ...config.extra,
+      router: {},
       eas: {
         projectId: EAS_PROJECT_ID,
       },
     },
     plugins: [
-      ...(config.plugins ?? []),
+      "expo-secure-store",
+      "expo-font",
+      "expo-router",
       [
-        'expo-location',
+        "expo-image-picker",
+        {
+          photosPermission: "Allow Paltuu to access your photos to share them in your posts.",
+          cameraPermission: "Allow Paltuu to access your camera to take photos of your pets.",
+        },
+      ],
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "expo-video",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static",
+          },
+        },
+      ],
+      "./plugins/with-rnfb-fix",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-location",
         {
           locationWhenInUsePermission:
-            'Paltuu uses your location to show pets, vets, and shelters near you.',
+            "Paltuu uses your location to show pets, vets, and shelters near you.",
         },
       ],
     ],
