@@ -80,7 +80,6 @@ export default function PetsHubScreen() {
   }, [isFocused, fadeAnim]);
 
   const { cityId, cityName } = useLocationStore();
-
   const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
     queryKey: ['nearby-pets', cityId],
     queryFn: () =>
@@ -128,23 +127,26 @@ export default function PetsHubScreen() {
   }, [isFocused, nearbyPages.length]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 16 }]}>
-      {/* ── Top Bar (non-scrollable) ───────────────────────── */}
-      <View style={styles.topBar}>
-        <Text style={styles.greetingTitle}>Hey {firstName}</Text>
-        <StaggeredPlaceholder
-          text={GREETING_LINES[greetingIndex]}
-          style={styles.greetingSubtitle}
-          wrap
-        />
-      </View>
-
+    <View style={styles.root}>
       {/* ── Scrollable Content ─────────────────────────────── */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 16 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Top Bar (now inside ScrollView) ───────────────── */}
+        <View style={styles.topBar}>
+          <Text style={styles.greetingTitle}>Hey {firstName}</Text>
+          <StaggeredPlaceholder
+            text={GREETING_LINES[greetingIndex]}
+            style={styles.greetingSubtitle}
+            wrap
+          />
+        </View>
+
         {/* Tile 1 — Adopt a Pet (Hero) */}
         <TouchableOpacity
           activeOpacity={0.9}
@@ -301,7 +303,6 @@ const styles = StyleSheet.create({
 
   // ── Top bar
   topBar: {
-    paddingHorizontal: H_PAD,
     marginBottom: 16,
   },
   greetingTitle: {

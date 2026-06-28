@@ -176,7 +176,7 @@ export default function HomeScreen() {
   if (isLoading && !posts.length) {
     return (
       <View className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#A03048" size="large" />
+        <ActivityIndicator color="#a03048" size="large" />
       </View>
     );
   }
@@ -206,20 +206,8 @@ export default function HomeScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={() =>
           isFetchingNextPage
-            ? <View className="py-5"><ActivityIndicator color="#A03048" /></View>
+            ? <View className="py-5"><ActivityIndicator color="#a03048" /></View>
             : <View className="h-5" />
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            // Hide the platform spinner; we show our own round ActivityIndicator
-            // overlay (matching profile/search) so the loader is consistent.
-            tintColor="transparent"
-            colors={['transparent']}
-            progressBackgroundColor="transparent"
-            progressViewOffset={HEADER_HEIGHT + insets.top}
-          />
         }
         showsVerticalScrollIndicator={false}
       />
@@ -239,22 +227,6 @@ export default function HomeScreen() {
           }}
         />
       </GestureDetector>
-
-      {/* Pull-to-refresh spinner — same round ActivityIndicator as profile/search */}
-      {isRefetching && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: HEADER_HEIGHT + insets.top + 12,
-            left: 0,
-            right: 0,
-            alignItems: 'center',
-          }}
-        >
-          <ActivityIndicator size="small" color="#A03048" />
-        </View>
-      )}
 
       <QuickProfileModal
         userId={selectedUserId}
