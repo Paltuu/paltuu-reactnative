@@ -124,14 +124,27 @@ const Separator = () => (
   <View style={{ height: 1, backgroundColor: '#F3F4F6' }} />
 );
 
+const TAB_HEIGHT = 42;
+
 /* ── Screen ── */
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onScroll } = useHeaderContext();
-  
+
+  const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [playingPostId, setPlayingPostId] = useState<string | null>(null);
+
+  // Check if user has interest picks (for cold-start banner)
+  const { data: interestsData } = useQuery({
+    queryKey: ['user-interests-check'],
+    queryFn: () => socialApi.getInterests(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const hasPicks = interestsData?.has_picks ?? false;
+  const forYouMode = hasPicks ? 'personalized' : 'global';
 
   // Only autoplay the video that's ≥60% visible in viewport
   const onViewableItemsChanged = useCallback(
@@ -143,9 +156,6 @@ export default function HomeScreen() {
   );
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
-  // Swiping from the left edge towards the right opens the composer — it
-  // slides in from the left (see Stack.Screen options for "create-post"),
-  // so this gesture mirrors that direction rather than the usual edge-back swipe.
   const openComposeGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -159,12 +169,14 @@ export default function HomeScreen() {
     [router]
   );
 
+  const feedMode = activeTab === 'following' ? 'following' : forYouMode;
+
   const {
     data, fetchNextPage, hasNextPage,
-    isFetchingNextPage, refetch, isLoading, isRefetching,
+    isFetchingNextPage, isLoading,
   } = useInfiniteQuery({
-    queryKey: ['social-feed'],
-    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, 'global'),
+    queryKey: ['social-feed', feedMode],
+    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, feedMode),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
   });
@@ -172,6 +184,8 @@ export default function HomeScreen() {
   const posts = useMemo(() => {
     return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
+
+  const topOffset = HEADER_HEIGHT + insets.top;
 
   if (isLoading && !posts.length) {
     return (
@@ -199,9 +213,24 @@ export default function HomeScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{
-          paddingTop: HEADER_HEIGHT + insets.top,
+          paddingTop: topOffset + TAB_HEIGHT,
           paddingBottom: 100,
         }}
+        ListHeaderComponent={
+          !hasPicks && activeTab === 'for-you' ? (
+            <TouchableOpacity
+              onPress={() => router.push('/interests')}
+              activeOpacity={0.8}
+              className="mx-4 my-3 bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center gap-3"
+            >
+              <View className="flex-1">
+                <Text className="font-headingSemi text-sm text-primary mb-0.5">Personalise your feed</Text>
+                <Text className="font-body text-xs text-gray-600">Tell us what pets you love and we'll show you more of it.</Text>
+              </View>
+              <Text className="font-headingSemi text-sm text-primary">Go →</Text>
+            </TouchableOpacity>
+          ) : null
+        }
         onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
         onEndReachedThreshold={0.5}
         ListFooterComponent={() =>
@@ -212,16 +241,64 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Invisible left-edge strip — swiping right from here opens the composer,
-          matching its slide-from-left entrance. Thin + edge-pinned so it doesn't
-          steal vertical scrolls or the post media carousels in the middle of the feed. */}
+      {/* Tab bar — sits below the main header */}
+      <View
+        style={{
+          position: 'absolute',
+          top: topOffset,
+          left: 0,
+          right: 0,
+          height: TAB_HEIGHT,
+          backgroundColor: '#fff',
+          borderBottomWidth: 1,
+          borderBottomColor: '#F3F4F6',
+          flexDirection: 'row',
+        }}
+      >
+        {(['for-you', 'following'] as const).map(tab => {
+          const label = tab === 'for-you' ? 'For You' : 'Following';
+          const active = activeTab === tab;
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text
+                style={{
+                  fontFamily: active ? 'Manrope-SemiBold' : 'Manrope-Regular',
+                  fontSize: 14,
+                  color: active ? '#a03048' : '#6B7280',
+                }}
+              >
+                {label}
+              </Text>
+              {active && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    height: 2,
+                    width: 48,
+                    backgroundColor: '#a03048',
+                    borderRadius: 1,
+                  }}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Left-edge swipe to open composer */}
       <GestureDetector gesture={openComposeGesture}>
         <View
           pointerEvents="box-only"
           style={{
             position: 'absolute',
             left: 0,
-            top: HEADER_HEIGHT + insets.top,
+            top: topOffset + TAB_HEIGHT,
             bottom: 0,
             width: 20,
           }}
