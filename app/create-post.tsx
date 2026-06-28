@@ -25,6 +25,7 @@ import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagShe
 import { useMentionInput, MentionSuggestionDropdown } from '../src/components/social/MentionInput';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
+import Toast from 'react-native-toast-message';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -474,6 +475,13 @@ export default function CreatePostScreen() {
       }
 
       router.back();
+      Toast.show({
+        type: 'info',
+        text1: 'Your post is live!',
+        text2: "We're categorizing it to improve recommendations.",
+        visibilityTime: 4000,
+        position: 'bottom',
+      });
     } catch (error: any) {
       console.error('Create Post Error:', error);
       Alert.alert('Error', error.message || 'Failed to create post');

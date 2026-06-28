@@ -115,10 +115,15 @@ export const socialApi = {
     return data as { pets: MentionSuggestionPet[]; users: MentionSuggestionUser[] };
   },
 
-  async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' = 'following') {
+  async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' | 'personalized' = 'following') {
     const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
+  },
+
+  async getInterests() {
+    const { data } = await client.get('/social/interests');
+    return data as { tag_ids: number[]; has_picks: boolean };
   },
 
   async getPostById(postId: string | number) {
