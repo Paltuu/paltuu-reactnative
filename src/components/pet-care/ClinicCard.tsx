@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { Clinic } from '../../types/models';
 
@@ -29,9 +30,10 @@ export const ClinicCard = ({ clinic, onPress }: ClinicCardProps) => {
         )}
 
         <Image
-          source={{ uri: clinic.logo_url || 'https://placehold.co/600x600/A03048/FFFFFF.png?text=' + clinic.name }}
+          source={clinic.logo_url || 'https://placehold.co/600x600/A03048/FFFFFF.png?text=' + clinic.name}
           className="w-full aspect-square rounded-2xl"
-          resizeMode="cover"
+          contentFit="cover"
+          transition={300}
         />
       </View>
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal,
@@ -104,7 +104,7 @@ export default function AdoptScreen() {
   };
 
   // --- Render Components ---
-  const renderPetCard = ({ item }: { item: any }) => (
+  const renderPetCard = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
@@ -147,9 +147,9 @@ export default function AdoptScreen() {
         </View>
       </View>
     </TouchableOpacity>
-  );
+  ), []);
 
-  const renderHeader = () => (
+  const renderHeader = useCallback(() => (
     <View style={{ paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
@@ -195,7 +195,7 @@ export default function AdoptScreen() {
         </View>
       </View>
     </View>
-  );
+  ), [pets.length]);
 
   return (
     <View className="flex-1 bg-gray-50">

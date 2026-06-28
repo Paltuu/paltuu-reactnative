@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 
 interface PetCardProps {
@@ -37,9 +38,10 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
     >
       <View className="relative">
         <Image 
-          source={{ uri: displayImage || 'https://placehold.co/600x400/A03048/FFFFFF.png?text=' + pet.pet_name }} 
+          source={displayImage || 'https://placehold.co/600x400/A03048/FFFFFF.png?text=' + pet.pet_name} 
           className="w-full h-48"
-          resizeMode="cover"
+          contentFit="cover"
+          transition={300}
         />
         <View className="absolute top-3 left-3 bg-black/40 px-3 py-1 rounded-full flex-row items-center">
           <Feather name="map-pin" size={10} color="white" />

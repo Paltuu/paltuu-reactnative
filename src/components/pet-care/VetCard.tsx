@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { Vet } from '../../types/models';
 
@@ -37,8 +38,10 @@ export const VetCard = ({ vet, onPress }: VetCardProps) => {
         className="flex-row items-center mb-4"
       >
         <Image
-          source={{ uri: vet.profile_image_url || 'https://placehold.co/200x200/A03048/FFFFFF.png?text=' + vet.name }}
+          source={vet.profile_image_url || 'https://placehold.co/200x200/A03048/FFFFFF.png?text=' + vet.name}
           className="w-16 h-16 rounded-full mr-4"
+          contentFit="cover"
+          transition={300}
         />
         <View className="flex-1">
           <Text className="font-heading text-lg text-primary">{formattedName}</Text>
