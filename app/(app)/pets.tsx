@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Animated as RNAnimated,
 } from 'react-native';
 import Animated, { SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -57,9 +58,30 @@ export default function PetsHubScreen() {
     return () => clearInterval(timer);
   }, [isFocused]);
 
+  const fadeAnim = useRef(new RNAnimated.Value(0.4)).current;
+  useEffect(() => {
+    if (!isFocused) return;
+    const animation = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(fadeAnim, {
+          toValue: 0.4,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [isFocused, fadeAnim]);
+
   const { cityId, cityName } = useLocationStore();
 
-  const { data: cityPetsData, isFetched: isCityPetsFetched } = useQuery({
+  const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
     queryKey: ['nearby-pets', cityId],
     queryFn: () =>
       petApi.getAdoptionPets({
@@ -74,11 +96,13 @@ export default function PetsHubScreen() {
   // we know what a better "no pets nearby" experience should look like
   // (e.g. nearest neighbouring cities instead of a blanket nationwide list).
   const noCityResults = isCityPetsFetched && cityPets.length === 0 && !!cityId;
-  const { data: fallbackPetsData } = useQuery({
+  const { data: fallbackPetsData, isPending: isFallbackPending } = useQuery({
     queryKey: ['nearby-pets-fallback'],
     queryFn: () => petApi.getAdoptionPets({ limit: NEARBY_FETCH_LIMIT }),
     enabled: noCityResults,
   });
+
+  const isNearbyLoading = isCityPetsPending || (noCityResults && isFallbackPending);
 
   const usingFallback = noCityResults && !!fallbackPetsData;
   const nearbyPets: any[] = usingFallback ? fallbackPetsData?.data ?? [] : cityPets;
@@ -165,26 +189,37 @@ export default function PetsHubScreen() {
           </View>
 
           <View style={styles.nearbyCirclesViewport}>
-            <Animated.View
-              key={nearbyPage}
-              entering={SlideInRight.duration(350)}
-              exiting={SlideOutLeft.duration(350)}
-              style={styles.nearbyCirclesRow}
-            >
-              {nearbyPages[nearbyPage].map((pet) => (
-                <View key={pet.pet_id} style={styles.nearbyCircle}>
-                  <Image
-                    source={
-                      getPetImage(pet)
-                        ? { uri: getPetImage(pet) }
-                        : require('../../assets/dog-placeholder.png')
-                    }
-                    style={styles.nearbyCircleImg}
-                    contentFit="cover"
-                  />
-                </View>
-              ))}
-            </Animated.View>
+            {isNearbyLoading ? (
+              <RNAnimated.View
+                style={{ opacity: fadeAnim }}
+                className="flex-row gap-3"
+              >
+                {Array.from({ length: NEARBY_VISIBLE_COUNT }).map((_, i) => (
+                  <View key={`skeleton-${i}`} style={styles.nearbyCircle} />
+                ))}
+              </RNAnimated.View>
+            ) : (
+              <Animated.View
+                key={nearbyPage}
+                entering={SlideInRight.duration(350)}
+                exiting={SlideOutLeft.duration(350)}
+                style={styles.nearbyCirclesRow}
+              >
+                {nearbyPages[nearbyPage].map((pet) => (
+                  <View key={pet.pet_id} style={styles.nearbyCircle}>
+                    <Image
+                      source={
+                        getPetImage(pet)
+                          ? { uri: getPetImage(pet) }
+                          : require('../../assets/dog-placeholder.png')
+                      }
+                      style={styles.nearbyCircleImg}
+                      contentFit="cover"
+                    />
+                  </View>
+                ))}
+              </Animated.View>
+            )}
           </View>
         </TouchableOpacity>
 
