@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useLocationStore } from '../../src/stores/locationStore';
 import { petApi } from '../../src/api/pets';
@@ -43,16 +44,18 @@ const getPetImage = (pet: any): string =>
 export default function PetsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
   const [greetingIndex, setGreetingIndex] = useState(0);
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => {
       setGreetingIndex((prev) => (prev + 1) % GREETING_LINES.length);
     }, GREETING_INTERVAL);
     return () => clearInterval(timer);
-  }, []);
+  }, [isFocused]);
 
   const { cityId, cityName } = useLocationStore();
 
@@ -93,12 +96,12 @@ export default function PetsHubScreen() {
     setNearbyPage(0);
   }, [nearbyPages.length]);
   useEffect(() => {
-    if (nearbyPages.length <= 1) return;
+    if (!isFocused || nearbyPages.length <= 1) return;
     const timer = setInterval(() => {
       setNearbyPage((prev) => (prev + 1) % nearbyPages.length);
     }, NEARBY_ROTATE_INTERVAL);
     return () => clearInterval(timer);
-  }, [nearbyPages.length]);
+  }, [isFocused, nearbyPages.length]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 16 }]}>
