@@ -25,6 +25,10 @@ import { MOCK_POSTS } from './index';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+const GRID_MARGIN = 16;
+const GRID_GAP = 8;
+const GRID_ITEM_SIZE = Math.floor((screenWidth - GRID_MARGIN * 2 - GRID_GAP * 2) / 3);
+
 const chunkArray = (array: any[], size: number) => {
   const chunked = [];
   for (let i = 0; i < array.length; i += size) {
@@ -35,16 +39,14 @@ const chunkArray = (array: any[], size: number) => {
 
 const PostGridItem = ({ post, onPress }: { post: SocialPost, onPress: () => void }) => {
   const imageUri = post.media?.[0]?.url || post.original_media?.[0]?.url || 'https://via.placeholder.com/300';
-  const size = screenWidth / 3;
   const isMultiMedia = (post.media?.length || 0) > 1 || (post.original_media?.length || 0) > 1;
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={onPress}
-      className="border-[0.5px] border-white"
-      style={{ width: size, height: size }}
+      style={{ width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE, borderRadius: 16, overflow: 'hidden' }}
     >
-      <Image 
+      <Image
         source={{ uri: imageUri }}
         style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6' }}
         contentFit="cover"
@@ -67,15 +69,15 @@ const PostGridItem = ({ post, onPress }: { post: SocialPost, onPress: () => void
 };
 
 const PostCompactItem = ({ post, onPress }: { post: SocialPost, onPress: () => void }) => (
-  <TouchableOpacity onPress={onPress} className="px-4 py-4 border-b-[0.5px] border-[#F0F0F0]">
+  <TouchableOpacity onPress={onPress} className="mx-4 my-1.5 px-4 py-4 rounded-2xl bg-white border border-gray-100">
     <View className="flex-row items-center justify-between mb-1">
-      <Text className="text-[13px] text-[#666] font-bold">Trending in Social</Text>
-      <Ionicons name="ellipsis-horizontal" size={14} color="#666" />
+      <Text className="text-[12px] text-[#999] font-medium tracking-wide uppercase">Trending in Social</Text>
+      <Ionicons name="ellipsis-horizontal" size={14} color="#bbb" />
     </View>
-    <Text className="text-[16px] text-[#111] font-extrabold mb-1" numberOfLines={1}>
+    <Text className="text-[15px] text-[#222] font-semibold mb-1" numberOfLines={1}>
       {mentionsToPlainText(post.content).split('\n')[0].trim() || 'Media Post'}
     </Text>
-    <Text className="text-[13px] text-[#666]">
+    <Text className="text-[12px] text-[#aaa]">
       {(post.like_count ?? 0) + (post.comment_count ?? 0) + (post.repost_count ?? 0)} posts · {post.author_name}
     </Text>
   </TouchableOpacity>
@@ -190,8 +192,8 @@ export default function SearchScreen() {
   const renderHeader = useMemo(() => (
     <View>
       {!debouncedQuery && (
-        <View style={{ padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}>
-          <Text style={{ fontSize: 18, fontWeight: '800' }}>Trending Posts</Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: '#222' }}>Trending Posts</Text>
         </View>
       )}
     </View>
@@ -251,8 +253,8 @@ export default function SearchScreen() {
   const renderItem = useCallback(({ item }: { item: any }) => {
     if (item.type === 'section_header') {
       return (
-        <View className="p-4 bg-[#F9F9F9]">
-          <Text className="text-base font-extrabold">{item.title}</Text>
+        <View className="px-4 pt-6 pb-2 bg-white">
+          <Text className="text-[15px] font-bold text-[#222]">{item.title}</Text>
         </View>
       );
     }
@@ -269,11 +271,11 @@ export default function SearchScreen() {
     }
     if (item.type === 'post_grid_row') {
       return (
-        <View className="flex-row">
+        <View style={{ flexDirection: 'row', marginHorizontal: GRID_MARGIN, gap: GRID_GAP, marginBottom: GRID_GAP }}>
           {item.posts.map((post: any) => (
-            <PostGridItem 
+            <PostGridItem
               key={post.post_id}
-              post={post} 
+              post={post}
               onPress={() => handleGridImagePress(post, 0)}
             />
           ))}

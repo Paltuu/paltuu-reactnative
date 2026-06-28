@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -117,38 +117,32 @@ interface NotificationSection {
 }
 
 const groupNotificationsByDate = (notifications: Notification[]): NotificationSection[] => {
-  const groups: Record<'Today' | 'Yesterday' | 'Earlier', Notification[]> = {
-    Today: [],
-    Yesterday: [],
-    Earlier: [],
+  const now = new Date();
+
+  const bucketFor = (createdAt: Date): string => {
+    const diffMs = now.getTime() - createdAt.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 1) return 'Today';
+    if (diffDays < 2) return 'Yesterday';
+    if (diffDays < 7) return 'This week';
+    if (diffDays < 30) return 'Last 30 days';
+    return 'Earlier';
   };
 
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  const order = ['Today', 'Yesterday', 'This week', 'Last 30 days', 'Earlier'];
+  const groups: Record<string, Notification[]> = {};
 
   notifications.forEach((item) => {
     const createdAt = new Date(item.created_at);
-    if (isNaN(createdAt.getTime())) {
-      groups.Earlier.push(item);
-      return;
-    }
-
-    const itemDateStr = createdAt.toDateString();
-    if (itemDateStr === today.toDateString()) {
-      groups.Today.push(item);
-    } else if (itemDateStr === yesterday.toDateString()) {
-      groups.Yesterday.push(item);
-    } else {
-      groups.Earlier.push(item);
-    }
+    const key = isNaN(createdAt.getTime()) ? 'Earlier' : bucketFor(createdAt);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
   });
 
-  return [
-    { title: 'Today', data: groups.Today },
-    { title: 'Yesterday', data: groups.Yesterday },
-    { title: 'Earlier', data: groups.Earlier },
-  ].filter((section) => section.data.length > 0);
+  return order
+    .filter((key) => groups[key]?.length > 0)
+    .map((key) => ({ title: key, data: groups[key] }));
 };
 
 /* ── Actor Avatar with Initials Fallback ── */
@@ -221,9 +215,14 @@ const NotificationRow = ({
   return (
     <Pressable
       onPress={() => onPress(item)}
-      className={`flex-row items-center px-4 py-3 border-l-4 ${
-        item.is_read ? 'bg-surface border-transparent' : 'bg-gray-50 border-primary'
-      }`}
+      className="flex-row items-center mx-4 my-2 px-4 py-4 rounded-2xl bg-white"
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.07,
+        shadowRadius: 8,
+        elevation: 3,
+      }}
     >
       {/* Avatar column */}
       <View className="relative mr-3.5">
@@ -232,7 +231,7 @@ const NotificationRow = ({
       </View>
 
       {/* Message Text column */}
-      <View className="flex-1 mr-2 gap-0.5">
+      <View className="flex-1 mr-2 gap-1">
         <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
           <Text className="font-headingSemi text-dark">{actorName} </Text>
           {formatBodyText(item.body)}
@@ -240,8 +239,8 @@ const NotificationRow = ({
         <Text className="font-body text-xs text-gray-light">{formatTime(item.created_at)}</Text>
       </View>
 
-      {/* Right Column: Photo preview OR unread indicator dot AND ellipsis options */}
-      <View className="flex-row items-center gap-2">
+      {/* Right Column: Photo preview OR unread dot + ellipsis */}
+      <View className="flex-col items-end gap-2">
         {item.image_url && item.type !== 'system_broadcast' ? (
           <Image
             source={{ uri: item.image_url }}
@@ -249,15 +248,14 @@ const NotificationRow = ({
             contentFit="cover"
           />
         ) : (
-          !item.is_read && <View className="w-2.5 h-2.5 rounded-full bg-primary" />
+          !item.is_read && <View className="w-2 h-2 rounded-full bg-primary" />
         )}
-
         <TouchableOpacity
           onPress={() => onOptionsPress(item)}
-          className="w-9 h-9 items-center justify-center rounded-full bg-gray-50 active:bg-gray-100"
+          className="w-8 h-8 items-center justify-center rounded-full active:bg-gray-100"
           hitSlop={8}
         >
-          <Ionicons name="ellipsis-horizontal" size={18} color="#555555" />
+          <Ionicons name="ellipsis-horizontal" size={16} color="#ccc" />
         </TouchableOpacity>
       </View>
     </Pressable>
@@ -431,6 +429,13 @@ export default function NotificationsScreen() {
     },
   });
 
+  // Mark all as read when screen opens
+  useEffect(() => {
+    if (unreadCount > 0) {
+      markAllReadMutation.mutate();
+    }
+  }, []);
+
   // Mutation to delete a notification
   const deleteMutation = useMutation({
     mutationFn: (id: number) => notificationsApi.deleteNotification(id),
@@ -499,7 +504,7 @@ export default function NotificationsScreen() {
   const bottomSheetSnapPoints = useMemo(() => ['36%'], []);
 
   return (
-    <View className="flex-1 bg-bg" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
       {/* Pinned Top Navigation Header */}
       <View className="bg-white px-5 py-3 flex-row items-center justify-between border-b border-gray-100">
         <View className="flex-row items-center gap-3">
@@ -510,28 +515,8 @@ export default function NotificationsScreen() {
           >
             <Ionicons name="chevron-back" size={22} color="#111" />
           </TouchableOpacity>
-          <View className="flex-row items-center gap-2">
             <Text className="font-heading text-2xl text-dark">Notifications</Text>
-            {unreadCount > 0 && (
-              <View className="bg-primary rounded-full px-2 py-0.5">
-                <Text className="font-headingSemi text-[10px] text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
-
-        {unreadCount > 0 && (
-          <TouchableOpacity
-            onPress={() => markAllReadMutation.mutate()}
-            className="flex-row items-center bg-primarySoft rounded-full px-3 py-1.5 gap-1 active:bg-primarySoft/60"
-            hitSlop={8}
-          >
-            <Ionicons name="checkmark-done" size={14} color={PRIMARY} />
-            <Text className="font-headingSemi text-xs text-primary">Mark all read</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Filter Tabs Row */}
@@ -553,15 +538,15 @@ export default function NotificationsScreen() {
             <NotificationRow item={item} onPress={handlePress} onOptionsPress={openOptionsSheet} />
           )}
           renderSectionHeader={({ section: { title } }) => (
-            <View className="bg-bg py-2.5 px-5">
-              <Text className="font-headingSemi text-[11px] text-gray uppercase tracking-widest">
+            <View className="flex-row items-center mx-6 my-4 gap-3">
+              <View className="flex-1 h-[0.5px] bg-gray-200" />
+              <Text className="font-headingSemi text-[11px] text-gray-400 uppercase tracking-widest">
                 {title}
               </Text>
+              <View className="flex-1 h-[0.5px] bg-gray-200" />
             </View>
           )}
-          ItemSeparatorComponent={() => (
-            <View className="h-[0.5px] bg-gray-100 mx-5" />
-          )}
+          ItemSeparatorComponent={null}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
