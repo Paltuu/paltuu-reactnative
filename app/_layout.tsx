@@ -94,12 +94,11 @@ export default function RootLayout() {
     if (isLoading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onInterestsScreen = segments[0] === 'interests';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login if not authenticated and not already in auth group
+    if (!isAuthenticated && !inAuthGroup && !onInterestsScreen) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to home if authenticated and trying to access auth screens
       router.replace('/(app)');
     }
   }, [isAuthenticated, isLoading, segments, fontsLoaded]);
@@ -148,6 +147,7 @@ export default function RootLayout() {
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                   <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                  <Stack.Screen name="interests" options={{ headerShown: false }} />
                   <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
                   {/* Post detail: slides in from the right, covers the tab bar */}
                   <Stack.Screen

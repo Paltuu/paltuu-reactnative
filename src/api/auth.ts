@@ -12,7 +12,7 @@ export const authApi = {
   },
   
   async sendOtp(email: string) {
-    const { data } = await client.post('../auth/mobile/otp/send', { email });
+    const { data } = await client.post('/auth/send-otp', { email });
     return data;
   },
   

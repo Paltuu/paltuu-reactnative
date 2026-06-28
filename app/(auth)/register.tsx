@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,136 +6,364 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Alert,
+  TextInput,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { CustomInput } from '../../src/components/common/CustomInput';
+import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
+const TOTAL_STEPS = 3;
+
+const STEPS = [
+  {
+    heading: "What's your email?",
+    subtext: "You'll use this to log in and get your verification code.",
+  },
+  {
+    heading: "What's your name?",
+    subtext: 'Add your name so other pet lovers can find you.',
+  },
+  {
+    heading: 'Create a password',
+    subtext: 'Must be at least 8 characters.',
+  },
+];
+
+function getPasswordStrength(pw: string): { level: 0 | 1 | 2 | 3; label: string; color: string } {
+  if (pw.length === 0) return { level: 0, label: '', color: '#E5E7EB' };
+  const hasLower = /[a-z]/.test(pw);
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasNumber = /[0-9]/.test(pw);
+  const hasSymbol = /[^a-zA-Z0-9]/.test(pw);
+  const score = [hasLower || hasUpper, hasNumber, hasSymbol, pw.length >= 10].filter(Boolean).length;
+  if (pw.length < 8) return { level: 1, label: 'Weak', color: '#EF4444' };
+  if (score <= 2) return { level: 2, label: 'Fair', color: '#F59E0B' };
+  return { level: 3, label: 'Strong', color: '#10B981' };
+}
+
 export default function RegisterScreen() {
-  const [name, setName] = useState('');
+  const [step, setStep] = useState(0);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const router = useRouter();
   const { sendOtp } = useAuthActions();
 
-  const handleRegisterPress = () => {
-    if (!name || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  const strength = getPasswordStrength(password);
 
-    sendOtp.mutate(email.trim().toLowerCase(), {
-      onSuccess: () => {
-        router.push({
-          pathname: '/(auth)/otp',
-          params: { name, email, password },
-        });
-      },
-      onError: (error: any) => {
-        Alert.alert('Error', error.response?.data?.message || 'Failed to send OTP');
-      },
-    });
+  const handleNext = () => {
+    if (step === 0) {
+      if (!email.trim() || !email.includes('@')) {
+        Alert.alert('Invalid email', 'Please enter a valid email address.');
+        return;
+      }
+      setStep(1);
+    } else if (step === 1) {
+      if (!name.trim()) {
+        Alert.alert('Name required', 'Please enter your full name.');
+        return;
+      }
+      setStep(2);
+    } else {
+      if (password.length < 8) {
+        Alert.alert('Password too short', 'Password must be at least 8 characters.');
+        return;
+      }
+      sendOtp.mutate(email.trim().toLowerCase(), {
+        onSuccess: () => {
+          router.push({
+            pathname: '/(auth)/otp',
+            params: { name, email, password },
+          });
+        },
+        onError: (error: any) => {
+          Alert.alert('Error', error.response?.data?.message || 'Failed to send verification code.');
+        },
+      });
+    }
   };
 
+  const handleBack = () => {
+    if (step === 0) {
+      router.back();
+    } else {
+      setStep((prev) => prev - 1);
+    }
+  };
+
+  const { heading, subtext } = STEPS[step];
+
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView style={styles.safe}>
+      {/* Top bar: back + progress */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={handleBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
+
+        <View style={styles.progressRow}>
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.progressSegment,
+                i <= step ? styles.progressFilled : styles.progressEmpty,
+              ]}
+            />
+          ))}
+        </View>
+
+        <View style={{ width: 26 }} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ── Hero / Branding ── */}
-          <View className="bg-primary px-5 pt-8 pb-16 items-center rounded-b-[40px]">
-            {/* Decorative blobs */}
-            <View
-              className="absolute top-4 right-6 w-20 h-20 rounded-full bg-white/10"
-              pointerEvents="none"
-            />
-            <View
-              className="absolute bottom-6 left-4 w-12 h-12 rounded-full bg-white/10"
-              pointerEvents="none"
-            />
-
+        <View style={styles.body}>
+          {/* Logo */}
+          <View style={styles.logoWrap}>
             <Image
               source={require('../../assets/icon.png')}
-              style={{ width: 140, height: 52 }}
+              style={{ width: 120, height: 45 }}
               resizeMode="contain"
             />
-
-            <Text className="font-body text-sm text-white/70 mt-3 tracking-widest uppercase">
-              your pet's social home
-            </Text>
           </View>
 
-          {/* ── Card that floats over hero ── */}
-          <View className="mx-5 -mt-8 bg-surface rounded-2xl p-6 shadow-sm border border-gray-100">
-            <Text className="font-heading text-2xl text-dark mb-1">
-              Create Account
-            </Text>
-            <Text className="font-body text-sm text-gray-500 mb-6">
-              Join Paltuu and connect with pet lovers near you.
-            </Text>
+          {/* Step heading */}
+          <Text style={styles.heading}>{heading}</Text>
+          <Text style={styles.subtext}>{subtext}</Text>
 
-            {/* Inputs */}
-            <CustomInput
-              label="Full Name"
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. John Doe"
-              leftIcon="person-outline"
-            />
-
-            <CustomInput
-              label="Email"
+          {/* Email */}
+          {step === 0 && (
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
               value={email}
               onChangeText={setEmail}
+              placeholder="e.g. john@example.com"
+              placeholderTextColor="#B0B7C3"
               keyboardType="email-address"
               autoCapitalize="none"
-              placeholder="e.g. john@example.com"
-              leftIcon="mail-outline"
+              autoCorrect={false}
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
             />
+          )}
 
-            <CustomInput
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Min. 8 characters"
-              leftIcon="lock-closed-outline"
+          {/* Name */}
+          {step === 1 && (
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your full name"
+              placeholderTextColor="#B0B7C3"
+              autoCapitalize="words"
+              autoCorrect={false}
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
             />
+          )}
 
-            {/* CTA */}
-            <View className="mt-6">
-              <PaltuuButton
-                label="Send Verification Code"
-                successLabel="Code sent!"
-                onPress={handleRegisterPress}
-                loading={sendOtp.isPending}
-              />
+          {/* Password */}
+          {step === 2 && (
+            <View>
+              <View style={styles.passwordWrap}>
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.input, { paddingRight: 52 }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Min. 8 characters"
+                  placeholderTextColor="#B0B7C3"
+                  secureTextEntry={!showPassword}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleNext}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  style={styles.eyeBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color="#9CA3AF"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Password strength meter */}
+              {password.length > 0 && (
+                <View style={styles.strengthWrap}>
+                  <View style={styles.strengthBars}>
+                    {[1, 2, 3].map((bar) => (
+                      <View
+                        key={bar}
+                        style={[
+                          styles.strengthBar,
+                          { backgroundColor: strength.level >= bar ? strength.color : '#E5E7EB' },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                    {strength.label}
+                  </Text>
+                </View>
+              )}
             </View>
-          </View>
+          )}
+        </View>
 
-          {/* ── Footer ── */}
-          <View className="flex-row justify-center mt-6">
-            <Text className="font-body text-sm text-gray-500">
-              Already have an account?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text className="font-headingSemi text-sm text-primary">
-                Sign In
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+        {/* Bottom CTA */}
+        <View style={styles.bottom}>
+          <PaltuuButton
+            label={step === 2 ? 'Continue' : 'Next'}
+            successLabel={step === 2 ? 'Code sent!' : undefined}
+            onPress={handleNext}
+            loading={sendOtp.isPending}
+          />
+
+          {step === 0 && (
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  progressRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 3,
+    borderRadius: 99,
+  },
+  progressFilled: {
+    backgroundColor: '#a03048',
+  },
+  progressEmpty: {
+    backgroundColor: '#E5E7EB',
+  },
+  body: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  heading: {
+    fontSize: 26,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    marginBottom: 28,
+    lineHeight: 20,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#111827',
+    backgroundColor: '#FAFAFA',
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  strengthWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 10,
+  },
+  strengthBars: {
+    flexDirection: 'row',
+    gap: 4,
+    flex: 1,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 99,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    width: 44,
+    textAlign: 'right',
+  },
+  bottom: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  footerText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+  },
+  footerLink: {
+    fontSize: 14,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#a03048',
+  },
+});
