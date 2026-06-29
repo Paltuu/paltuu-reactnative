@@ -27,6 +27,7 @@ import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { NotificationProvider } from '../src/context/NotificationContext';
+import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
@@ -143,6 +144,7 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <StatusBar style="dark" />
             <BottomSheetModalProvider>
+            <SocialActionsProvider>
               {!fontsLoaded && !fontError ? null : (
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -171,6 +173,7 @@ export default function RootLayout() {
                   />
                 </Stack>
               )}
+            </SocialActionsProvider>
             </BottomSheetModalProvider>
           </SafeAreaProvider>
         </NotificationProvider>
