@@ -8,19 +8,16 @@ export const useSocialActions = () => {
   const likeMutation = useMutation({
     mutationFn: (postId: string | number) => socialApi.toggleLike(postId),
     onMutate: async (postId) => {
-      // 1. Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       await queryClient.cancelQueries({ queryKey: ['social-trending'] });
       await queryClient.cancelQueries({ queryKey: ['social-search'] });
       await queryClient.cancelQueries({ queryKey: ['post', String(postId)] });
 
-      // 2. Snapshot previous values
-      const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
       const previousPost = queryClient.getQueryData(['post', String(postId)]);
 
-      // 3. Optimistically update
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+        if (!old?.pages) return old;
         return {
           ...old,
           pages: old.pages.map((page: any) => ({
@@ -40,7 +37,6 @@ export const useSocialActions = () => {
         };
       });
 
-      // Also update the post-detail cache so the like reflects instantly there.
       queryClient.setQueryData(['post', String(postId)], (old: any) => {
         if (!old) return old;
         const newLiked = !old.is_liked;
@@ -51,12 +47,12 @@ export const useSocialActions = () => {
         };
       });
 
-      return { previousFeed, previousPost, postId };
+      return { previousFeedEntries, previousPost, postId };
     },
     onError: (err, postId, context) => {
-      if (context?.previousFeed) {
-        queryClient.setQueryData(['social-feed'], context.previousFeed);
-      }
+      context?.previousFeedEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       if (context?.previousPost) {
         queryClient.setQueryData(['post', String(postId)], context.previousPost);
       }
@@ -73,11 +69,11 @@ export const useSocialActions = () => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       await queryClient.cancelQueries({ queryKey: ['social-profile', String(userId)] });
 
-      const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
       const previousProfile = queryClient.getQueryData(['social-profile', String(userId)]);
 
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+        if (!old?.pages) return old;
         return {
           ...old,
           pages: old.pages.map((page: any) => ({
@@ -92,7 +88,6 @@ export const useSocialActions = () => {
         };
       });
 
-      // Also update quick profile if it exists
       queryClient.setQueryData(['social-profile-quick', userId], (old: any) => {
         if (!old) return old;
         return {
@@ -100,14 +95,13 @@ export const useSocialActions = () => {
           profile: {
             ...old.profile,
             is_following: !old.profile.is_following,
-            follower_count: old.profile.is_following 
+            follower_count: old.profile.is_following
               ? Math.max(0, old.profile.follower_count - 1)
               : old.profile.follower_count + 1
           }
         };
       });
 
-      // Also update full profile if it exists
       queryClient.setQueryData(['social-profile', String(userId)], (old: any) => {
         if (!old || !old.profile) return old;
         return {
@@ -115,19 +109,19 @@ export const useSocialActions = () => {
           profile: {
             ...old.profile,
             is_following: !old.profile.is_following,
-            follower_count: old.profile.is_following 
+            follower_count: old.profile.is_following
               ? Math.max(0, old.profile.follower_count - 1)
               : old.profile.follower_count + 1
           }
         };
       });
 
-      return { previousFeed, previousProfile };
+      return { previousFeedEntries, previousProfile };
     },
     onError: (err, userId, context) => {
-      if (context?.previousFeed) {
-        queryClient.setQueryData(['social-feed'], context.previousFeed);
-      }
+      context?.previousFeedEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       if (context?.previousProfile) {
         queryClient.setQueryData(['social-profile', String(userId)], context.previousProfile);
       }
@@ -146,10 +140,10 @@ export const useSocialActions = () => {
     mutationFn: (postId: string | number) => socialApi.deletePost(postId),
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
-      const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
 
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+        if (!old?.pages) return old;
         return {
           ...old,
           pages: old.pages.map((page: any) => ({
@@ -159,12 +153,12 @@ export const useSocialActions = () => {
         };
       });
 
-      return { previousFeed };
+      return { previousFeedEntries };
     },
     onError: (err, postId, context) => {
-      if (context?.previousFeed) {
-        queryClient.setQueryData(['social-feed'], context.previousFeed);
-      }
+      context?.previousFeedEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       Alert.alert('Error', 'Failed to delete post');
     },
     onSettled: () => {
@@ -174,7 +168,7 @@ export const useSocialActions = () => {
   });
 
   const updatePostMutation = useMutation({
-    mutationFn: ({ postId, payload }: { postId: string | number; payload: any }) => 
+    mutationFn: ({ postId, payload }: { postId: string | number; payload: any }) =>
       socialApi.updatePost(postId, payload),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
@@ -192,27 +186,19 @@ export const useSocialActions = () => {
       }
     },
     onMutate: async ({ postId, isSaved }) => {
-      // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       await queryClient.cancelQueries({ queryKey: ['social-profile'] });
       await queryClient.cancelQueries({ queryKey: ['social-trending'] });
 
-      // Save snapshots
-      const previousFeed = queryClient.getQueryData(['social-feed']);
+      const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
 
-      // Helper function to update posts array
-      const updatePostsArray = (posts: SocialPost[]) => {
-        return posts.map((p) => {
-          if (String(p.post_id) === String(postId)) {
-            return { ...p, is_saved: !isSaved };
-          }
-          return p;
-        });
-      };
+      const updatePostsArray = (posts: SocialPost[]) =>
+        posts.map((p) =>
+          String(p.post_id) === String(postId) ? { ...p, is_saved: !isSaved } : p
+        );
 
-      // Optimistic updates
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+        if (!old?.pages) return old;
         return {
           ...old,
           pages: old.pages.map((page: any) => ({
@@ -224,18 +210,15 @@ export const useSocialActions = () => {
 
       queryClient.setQueryData(['social-profile'], (old: any) => {
         if (!old || !old.posts) return old;
-        return {
-          ...old,
-          posts: updatePostsArray(old.posts),
-        };
+        return { ...old, posts: updatePostsArray(old.posts) };
       });
 
-      return { previousFeed };
+      return { previousFeedEntries };
     },
     onError: (err, variables, context) => {
-      if (context?.previousFeed) {
-        queryClient.setQueryData(['social-feed'], context.previousFeed);
-      }
+      context?.previousFeedEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       Alert.alert('Error', 'Failed to update bookmark status');
     },
     onSettled: (data, err, { postId }) => {
@@ -246,25 +229,11 @@ export const useSocialActions = () => {
     },
   });
 
-  const toggleLike = (postId: string | number) => {
-    likeMutation.mutate(postId);
-  };
-
-  const toggleFollow = (userId: string | number) => {
-    followMutation.mutate(userId);
-  };
-
-  const deletePost = (postId: string | number) => {
-    deletePostMutation.mutate(postId);
-  };
-
-  const updatePost = (postId: string | number, payload: any) => {
-    return updatePostMutation.mutateAsync({ postId, payload });
-  };
-
-  const toggleSave = (postId: string | number, isSaved: boolean) => {
-    saveMutation.mutate({ postId, isSaved });
-  };
+  const toggleLike = (postId: string | number) => { likeMutation.mutate(postId); };
+  const toggleFollow = (userId: string | number) => { followMutation.mutate(userId); };
+  const deletePost = (postId: string | number) => { deletePostMutation.mutate(postId); };
+  const updatePost = (postId: string | number, payload: any) => updatePostMutation.mutateAsync({ postId, payload });
+  const toggleSave = (postId: string | number, isSaved: boolean) => { saveMutation.mutate({ postId, isSaved }); };
 
   return {
     toggleLike,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useRef, useState, useCallback, useMemo, ReactNode } from 'react';
 import {
     useAnimatedScrollHandler,
     useSharedValue,
@@ -36,6 +36,8 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
     const setLoading = useCallback((v: boolean) => setIsLoading(v), []);
     const setOnPlusPress = useCallback((fn: () => void) => { plusRef.current = fn; }, []);
     const setOnHeartPress = useCallback((fn: () => void) => { heartRef.current = fn; }, []);
+    const onPlusPress = useCallback(() => plusRef.current(), []);
+    const onHeartPress = useCallback(() => heartRef.current(), []);
 
     const setHeaderEnabled = useCallback((v: boolean) => {
         headerEnabled.value = v ? 1 : 0;
@@ -82,20 +84,20 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         },
     });
 
+    const contextValue = useMemo(() => ({
+        headerTranslateY,
+        isLoading,
+        setLoading,
+        scrollHandler,
+        onPlusPress,
+        onHeartPress,
+        setOnPlusPress,
+        setOnHeartPress,
+        setHeaderEnabled,
+    }), [isLoading, setLoading, scrollHandler, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
+
     return (
-        <HeaderContext.Provider
-            value={{
-                headerTranslateY,
-                isLoading,
-                setLoading,
-                scrollHandler,
-                onPlusPress: () => plusRef.current(),
-                onHeartPress: () => heartRef.current(),
-                setOnPlusPress,
-                setOnHeartPress,
-                setHeaderEnabled,
-            }}
-        >
+        <HeaderContext.Provider value={contextValue}>
             {children}
         </HeaderContext.Provider>
     );
