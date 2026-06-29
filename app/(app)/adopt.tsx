@@ -214,6 +214,11 @@ export default function AdoptScreen() {
         }}
         onRefresh={refetch}
         refreshing={isRefetching}
+        windowSize={5}
+        maxToRenderPerBatch={6}
+        initialNumToRender={8}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) {
             fetchNextPage();

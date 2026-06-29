@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, TextInput,
@@ -85,14 +85,14 @@ export default function MarketplaceScreen() {
     setSortBy('');
   };
 
-  const renderProduct = ({ item }: { item: any }) => (
+  const renderProduct = useCallback(({ item }: { item: any }) => (
     <View style={{ flex: 0.5, padding: 8 }}>
-      <ProductCard 
-        product={item} 
+      <ProductCard
+        product={item}
         onPress={() => router.push({ pathname: '/(app)/product-details', params: { id: item.product_id } })}
       />
     </View>
-  );
+  ), [router]);
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -174,6 +174,11 @@ export default function MarketplaceScreen() {
             }
         }}
         onEndReachedThreshold={0.5}
+        windowSize={5}
+        maxToRenderPerBatch={6}
+        initialNumToRender={8}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         ListFooterComponent={() => (
             isFetchingNextPage ? (
                 <View className="py-6">
