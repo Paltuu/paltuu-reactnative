@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
+import Animated from 'react-native-reanimated';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -130,7 +131,7 @@ const TAB_HEIGHT = 42;
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
 
   const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -197,7 +198,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <FlatList
+      <Animated.FlatList
         data={posts}
         renderItem={({ item }) => (
           <PostCard
@@ -208,8 +209,7 @@ export default function HomeScreen() {
           />
         )}
         keyExtractor={item => item.post_id}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{

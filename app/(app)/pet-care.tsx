@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, TouchableOpacity,
   ActivityIndicator, TextInput
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
 import { getClinics } from '../../src/api/clinics';
 import { Ionicons, Feather, FontAwesome5 } from '@expo/vector-icons';
@@ -15,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function PetCareScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: clinics, isLoading, refetch } = useQuery({
@@ -45,12 +46,11 @@ export default function PetCareScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <FlatList
+      <Animated.FlatList
         data={filteredClinics}
         renderItem={renderClinicCard}
         keyExtractor={(item) => item.clinic_id.toString()}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
         onRefresh={refetch}
         refreshing={isLoading}
         ListHeaderComponent={

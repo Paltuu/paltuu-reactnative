@@ -4,6 +4,7 @@ import {
   ActivityIndicator, TextInput, ScrollView,
   Dimensions, RefreshControl
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
 import { bazaarApi, BazaarFilters } from '../../src/api/bazaar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -110,7 +111,7 @@ const ProductSection = ({ title, icon, filters, onSeeAll }: { title: string, ico
 export default function BazaarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
   const [search, setSearch] = useState('');
   const [isDowntime] = useState(false); // Mobile active for testing
 
@@ -142,9 +143,8 @@ export default function BazaarScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-      <ScrollView 
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+      <Animated.ScrollView
+        onScroll={scrollHandler}
         contentContainerStyle={{ 
           paddingTop: HEADER_HEIGHT + insets.top,
           paddingBottom: 100 
@@ -249,7 +249,7 @@ export default function BazaarScreen() {
           </ScrollView>
         </View>
 
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }

@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Dimensions, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  Dimensions,
+  ActivityIndicator,
   TouchableOpacity,
   RefreshControl
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,7 +87,7 @@ export default function SearchScreen() {
   const { toggleFollow } = useSocialActions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
@@ -295,13 +295,12 @@ export default function SearchScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <FlatList
+      <Animated.FlatList
         data={combinedData}
         renderItem={renderItem}
         keyExtractor={(item, index) => String(item.post_id || item.user_id || `idx-${index}`)}
         ListHeaderComponent={renderHeader}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
         contentContainerStyle={{
           paddingTop: insets.top + stickyHeaderHeight,
           paddingBottom: 100

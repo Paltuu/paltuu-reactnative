@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   Linking,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ import { useHeaderContext } from '../../src/context/HeaderContext';
 export default function LostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
 
   const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore();
   const [filter, setFilter] = useState<'lost' | 'found'>('lost');
@@ -83,13 +83,12 @@ export default function LostFoundScreen() {
           <Text className="font-body text-gray-500 mt-3">Fetching reports...</Text>
         </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={lostFoundPosts.filter((p: any) => p.post_type === filter)}
           renderItem={renderCard}
           keyExtractor={(item) => item.post_id?.toString()}
           numColumns={2}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
+          onScroll={scrollHandler}
           contentContainerStyle={{
             paddingHorizontal: 12,
             paddingBottom: 100,

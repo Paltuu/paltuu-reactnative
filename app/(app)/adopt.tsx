@@ -2,8 +2,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal,
-  Platform, StyleSheet, Animated, FlatList
+  Platform, StyleSheet, FlatList
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +41,7 @@ export default function AdoptScreen() {
   });
 
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
 
   // --- Infinite Query ---
   const {
@@ -199,13 +200,12 @@ export default function AdoptScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <FlatList
+      <Animated.FlatList
         data={pets}
         renderItem={renderPetCard}
         keyExtractor={(item) => item.pet_id.toString()}
         numColumns={2}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
         ListHeaderComponent={renderHeader}
         contentContainerStyle={{ 
           paddingHorizontal: 12, 

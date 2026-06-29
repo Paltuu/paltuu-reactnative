@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderContext } from '../../context/HeaderContext';
+import { useHeaderContext, HEADER_HEIGHT } from '../../context/HeaderContext';
 import { SearchBar } from './SearchBar';
 
 export type SearchTab = 'all' | 'posts' | 'users';
@@ -34,8 +35,6 @@ const TabItem = React.memo(
   ),
 );
 
-// Merged search bar + tab switcher, sticky at the top and animated exactly
-// like <MainHeader /> — slides away on scroll-down, reappears on scroll-up.
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
   placeholders,
   onSearch,
@@ -45,30 +44,23 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   onHeightChange,
 }) => {
   const insets = useSafeAreaInsets();
-  const { isVisible } = useHeaderContext();
+  const { headerTranslateY } = useHeaderContext();
+
+  // Keep height as SharedValue so the ratio runs on UI thread
+  const heightSV = useSharedValue(112);
   const [height, setHeight] = useState(112);
 
-  const animatedValue = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
-
-  useEffect(() => {
-    Animated.timing(animatedValue, {
-      toValue: isVisible ? 1 : 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
-  }, [isVisible]);
-
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-height, 0],
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value * (heightSV.value / HEADER_HEIGHT) }],
+  }));
 
   return (
     <Animated.View
-      style={[styles.wrapper, { top: insets.top, transform: [{ translateY }] }]}
+      style={[styles.wrapper, { top: insets.top }, animatedStyle]}
       onLayout={(e) => {
         const h = e.nativeEvent.layout.height;
         if (h && Math.abs(h - height) > 0.5) {
+          heightSV.value = h;
           setHeight(h);
           onHeightChange?.(h);
         }

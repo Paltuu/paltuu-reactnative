@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity,
-  ActivityIndicator, TextInput, FlatList,
+  ActivityIndicator, TextInput,
   Modal, ScrollView, SafeAreaView
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useBazaarStore } from '../../src/stores/bazaarStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
@@ -32,7 +33,7 @@ export default function MarketplaceScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { onScroll } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
 
   const { 
     products, 
@@ -161,7 +162,7 @@ export default function MarketplaceScreen() {
       </View>
 
       {/* Product List */}
-      <FlatList
+      <Animated.FlatList
         data={products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.product_id?.toString() || Math.random().toString()}
@@ -197,8 +198,7 @@ export default function MarketplaceScreen() {
         )}
         refreshing={isLoading && products.length > 0}
         onRefresh={() => fetchProducts({ keyword, categorySlug: category, petType, sortBy }, true)}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onScroll={scrollHandler}
       />
 
       {/* Filter Modal */}

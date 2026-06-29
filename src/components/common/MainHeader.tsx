@@ -1,56 +1,36 @@
-import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Text } from 'react-native';
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderContext } from '../../context/HeaderContext';
+import { useHeaderContext, HEADER_HEIGHT } from '../../context/HeaderContext';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsApi } from '../../api/notifications';
 import { useAuthStore } from '../../stores/authStore';
 
-export const HEADER_HEIGHT = 60;
+export { HEADER_HEIGHT };
 
 export const MainHeader: React.FC = () => {
     const insets = useSafeAreaInsets();
-    const { isVisible, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
+    const { headerTranslateY, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
     const { isAuthenticated } = useAuthStore();
 
-    // Fetch the live unread count
     const { data: unreadData } = useQuery({
         queryKey: ['unread-count'],
         queryFn: () => notificationsApi.getUnreadCount(),
-        refetchInterval: 30_000, // Poll every 30 seconds
-        staleTime: 30_000, // Important: deduplicate calls if multiple headers mount
+        refetchInterval: 30_000,
+        staleTime: 30_000,
         enabled: isAuthenticated,
     });
 
     const unreadCount = unreadData?.unread_count ?? 0;
 
-    const animatedValue = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
-
-    useEffect(() => {
-        Animated.timing(animatedValue, {
-            toValue: isVisible ? 1 : 0,
-            duration: 250,
-            useNativeDriver: true,
-        }).start();
-    }, [isVisible]);
-
-    // Only the header content (below status bar) slides away
-    const translateY = animatedValue.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-HEADER_HEIGHT, 0],
-    });
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: headerTranslateY.value }],
+    }));
 
     return (
-        <Animated.View
-            style={[
-                styles.wrapper,
-                {
-                    top: insets.top,
-                    transform: [{ translateY }]
-                }
-            ]}
-        >
+        <Animated.View style={[styles.wrapper, { top: insets.top }, animatedStyle]}>
             <View style={styles.container}>
                 <TouchableOpacity style={styles.iconButton} onPress={onPlusPress}>
                     <Image
@@ -86,7 +66,6 @@ export const MainHeader: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* Progress Bar Loader */}
             {isLoading && (
                 <View style={styles.loaderWrapper}>
                     <View style={styles.loaderBar} />
@@ -97,14 +76,6 @@ export const MainHeader: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    stopper: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1001,           // above the header content
-        backgroundColor: '#fff',
-    },
     wrapper: {
         position: 'absolute',
         left: 0,
@@ -169,5 +140,5 @@ const styles = StyleSheet.create({
         fontSize: 8,
         fontWeight: '700',
         lineHeight: 10,
-    }
+    },
 });
