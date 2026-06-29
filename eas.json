@@ -23,7 +23,6 @@
       }
     },
     "preview": {
-      "autoIncrement": true,
       "distribution": "internal",
       "channel": "preview",
       "env": {
@@ -32,7 +31,6 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "channel": "production",
       "env": {
         "APP_ENV": "production",

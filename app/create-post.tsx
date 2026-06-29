@@ -251,33 +251,7 @@ export default function CreatePostScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your photos to upload media.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        selectionLimit: 10,
-        allowsEditing: false,
-      });
-
-      if (!result.canceled && result.assets) {
-        const newItems: MediaItem[] = result.assets.map((a) => ({ uri: a.uri, type: 'image' }));
-        setMediaItems((prev) => [...prev, ...newItems].slice(0, 10));
-      }
-    } catch (error: any) {
-      console.error('Pick Media Error:', error);
-      Alert.alert('Error', 'An error occurred while picking photos. Please try again.');
-    }
-  };
-
-  const pickVideo = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your photos to pick a video.');
+        Alert.alert('Permission Denied', 'We need access to your photos and videos to upload media.');
         return;
       }
 
@@ -287,21 +261,28 @@ export default function CreatePostScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsMultipleSelection: false,
-        videoMaxDuration: 120, // 2 min max
-        quality: 1, // keep original — we compress on-device below
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10 - mediaItems.length,
+        allowsEditing: false,
+        videoMaxDuration: 120,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const ext = (asset.uri.split('.').pop() || 'mp4').toLowerCase();
-        const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
-        setMediaItems((prev) => [...prev, { uri: asset.uri, type: 'video', mime }]);
+      if (!result.canceled && result.assets) {
+        const newItems: MediaItem[] = result.assets.map((a) => {
+          if (a.type === 'video') {
+            const ext = (a.uri.split('.').pop() || 'mp4').toLowerCase();
+            const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+            return { uri: a.uri, type: 'video' as const, mime };
+          }
+          return { uri: a.uri, type: 'image' as const };
+        });
+        setMediaItems((prev) => [...prev, ...newItems].slice(0, 10));
       }
     } catch (error: any) {
-      console.error('Pick Video Error:', error);
-      Alert.alert('Error', 'An error occurred while picking a video.');
+      console.error('Pick Media Error:', error);
+      Alert.alert('Error', 'An error occurred while picking media. Please try again.');
     }
   };
 

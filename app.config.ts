@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -41,7 +41,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 10,
+      versionCode: 11,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -68,13 +68,27 @@ export default (): ExpoConfig => {
     },
     plugins: [
       "expo-secure-store",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          fonts: [
+            "./node_modules/@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/montserrat/500Medium/Montserrat_500Medium.ttf",
+            "./node_modules/@expo-google-fonts/montserrat/600SemiBold/Montserrat_600SemiBold.ttf",
+            "./node_modules/@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf",
+            "./node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf",
+            "./node_modules/@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf",
+          ],
+        },
+      ],
       "expo-router",
       [
         "expo-image-picker",
         {
-          photosPermission: "Allow Paltuu to access your photos to share them in your posts.",
-          cameraPermission: "Allow Paltuu to access your camera to take photos of your pets.",
+          photosPermission: "Allow Paltuu to access your photos and videos to share them in your posts.",
+          cameraPermission: "Allow Paltuu to access your camera to take photos and videos of your pets.",
+          microphonePermission: "Allow Paltuu to access your microphone to record video sound.",
         },
       ],
       "expo-web-browser",

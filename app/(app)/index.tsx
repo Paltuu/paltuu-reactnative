@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import Animated from 'react-native-reanimated';
 import {
   View, Text, TouchableOpacity,
@@ -17,8 +17,10 @@ import { socialApi, SocialPost, SocialProfile } from '../../src/api/social';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
-import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
+import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
+import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
+import { storage } from '../../src/utils/storage';
 
 // (Layout constants are now managed inside the shared PostCard)
 
@@ -125,17 +127,21 @@ const Separator = () => (
   <View style={{ height: 1, backgroundColor: '#F3F4F6' }} />
 );
 
-const TAB_HEIGHT = 42;
-
 /* ── Screen ── */
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { scrollHandler } = useHeaderContext();
 
-  const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [playingPostId, setPlayingPostId] = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
+
+  // Load persisted dismiss state on mount
+  useEffect(() => {
+    storage.isFeedBannerDismissed().then(dismissed => {
+      if (!dismissed) setBannerDismissed(false);
+    });
+  }, []);
 
   // Check if user has interest picks (for cold-start banner)
   const { data: interestsData } = useQuery({
@@ -147,11 +153,16 @@ export default function HomeScreen() {
   const hasPicks = interestsData?.has_picks ?? false;
   const forYouMode = hasPicks ? 'personalized' : 'global';
 
-  // Only autoplay the video that's ≥60% visible in viewport
+  const handleDismissBanner = useCallback(() => {
+    setBannerDismissed(true);
+    storage.dismissFeedBanner();
+  }, []);
+
+  // Only autoplay the video that's ≥60% visible in viewport.
+  // Uses module-level emitter so HomeScreen never re-renders on viewability change.
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: any[] }) => {
-      const first = viewableItems[0];
-      setPlayingPostId(first?.item?.post_id ?? null);
+      setPlayingPostId(viewableItems[0]?.item?.post_id ?? null);
     },
     []
   );
@@ -170,14 +181,12 @@ export default function HomeScreen() {
     [router]
   );
 
-  const feedMode = activeTab === 'following' ? 'following' : forYouMode;
-
   const {
     data, fetchNextPage, hasNextPage,
     isFetchingNextPage, isLoading,
   } = useInfiniteQuery({
-    queryKey: ['social-feed', feedMode],
-    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, feedMode),
+    queryKey: ['social-feed', forYouMode],
+    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
   });
@@ -186,7 +195,56 @@ export default function HomeScreen() {
     return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
 
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const listFooter = useMemo(() =>
+    isFetchingNextPage
+      ? <View className="py-5"><ActivityIndicator color="#a03048" /></View>
+      : <View className="h-5" />,
+  [isFetchingNextPage]);
+
+  const listHeader = useMemo(() => {
+    if (hasPicks || bannerDismissed) return null;
+    return (
+      <View className="mx-4 my-3 bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center gap-3">
+        <TouchableOpacity
+          onPress={() => router.push('/interests')}
+          activeOpacity={0.8}
+          className="flex-1"
+        >
+          <Text className="font-headingSemi text-sm text-primary mb-0.5">Personalise your feed</Text>
+          <Text className="font-body text-xs text-gray-600">Tell us what pets you love and we'll show you more of it.</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/interests')}
+          activeOpacity={0.8}
+        >
+          <Text className="font-headingSemi text-sm text-primary">Go →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleDismissBanner}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.6}
+        >
+          <Text className="text-gray-400 text-base leading-none">✕</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [hasPicks, bannerDismissed, handleDismissBanner, router]);
+
   const topOffset = HEADER_HEIGHT + insets.top;
+
+  // Stable renderItem — no playingPostId dep; video state is managed inside PostCard
+  // via the videoPlaySubscription emitter, so the FlatList never re-renders on scroll.
+  const renderFeedItem = useCallback(({ item }: { item: any }) => (
+    <PostCard
+      post={item}
+      onPress={() => router.push(`/post/${item.post_id}`)}
+      onPlusPress={(uid) => setSelectedUserId(uid)}
+    />
+  ), [router]);
 
   if (isLoading && !posts.length) {
     return (
@@ -197,99 +255,29 @@ export default function HomeScreen() {
   }
 
   return (
+    <PostCardModalsProvider>
     <View className="flex-1 bg-white">
       <Animated.FlatList
         data={posts}
-        renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            onPress={() => router.push(`/post/${item.post_id}`)}
-            onPlusPress={(uid) => setSelectedUserId(uid)}
-            isVideoPlaying={playingPostId === item.post_id}
-          />
-        )}
+        renderItem={renderFeedItem}
         keyExtractor={item => item.post_id}
         onScroll={scrollHandler}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{
-          paddingTop: topOffset + TAB_HEIGHT,
+          paddingTop: topOffset,
           paddingBottom: 100,
         }}
-        ListHeaderComponent={
-          !hasPicks && activeTab === 'for-you' ? (
-            <TouchableOpacity
-              onPress={() => router.push('/interests')}
-              activeOpacity={0.8}
-              className="mx-4 my-3 bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center gap-3"
-            >
-              <View className="flex-1">
-                <Text className="font-headingSemi text-sm text-primary mb-0.5">Personalise your feed</Text>
-                <Text className="font-body text-xs text-gray-600">Tell us what pets you love and we'll show you more of it.</Text>
-              </View>
-              <Text className="font-headingSemi text-sm text-primary">Go →</Text>
-            </TouchableOpacity>
-          ) : null
-        }
-        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+        windowSize={5}
+        maxToRenderPerBatch={2}
+        initialNumToRender={4}
+        updateCellsBatchingPeriod={100}
+        ListHeaderComponent={listHeader}
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          isFetchingNextPage
-            ? <View className="py-5"><ActivityIndicator color="#a03048" /></View>
-            : <View className="h-5" />
-        }
+        ListFooterComponent={listFooter}
         showsVerticalScrollIndicator={false}
       />
-
-      {/* Tab bar — sits below the main header */}
-      <View
-        style={{
-          position: 'absolute',
-          top: topOffset,
-          left: 0,
-          right: 0,
-          height: TAB_HEIGHT,
-          backgroundColor: '#fff',
-          borderBottomWidth: 1,
-          borderBottomColor: '#F3F4F6',
-          flexDirection: 'row',
-        }}
-      >
-        {(['for-you', 'following'] as const).map(tab => {
-          const label = tab === 'for-you' ? 'For You' : 'Following';
-          const active = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              activeOpacity={0.7}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text
-                style={{
-                  fontFamily: active ? 'Manrope-SemiBold' : 'Manrope-Regular',
-                  fontSize: 14,
-                  color: active ? '#a03048' : '#6B7280',
-                }}
-              >
-                {label}
-              </Text>
-              {active && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    height: 2,
-                    width: 48,
-                    backgroundColor: '#a03048',
-                    borderRadius: 1,
-                  }}
-                />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
 
       {/* Left-edge swipe to open composer */}
       <GestureDetector gesture={openComposeGesture}>
@@ -298,7 +286,7 @@ export default function HomeScreen() {
           style={{
             position: 'absolute',
             left: 0,
-            top: topOffset + TAB_HEIGHT,
+            top: topOffset,
             bottom: 0,
             width: 20,
           }}
@@ -311,5 +299,6 @@ export default function HomeScreen() {
         onClose={() => setSelectedUserId(null)}
       />
     </View>
+    </PostCardModalsProvider>
   );
 }

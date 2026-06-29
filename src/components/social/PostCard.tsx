@@ -9,16 +9,10 @@ import {
   StyleSheet,
   Alert,
   Share,
-  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import { subscribeToPlayingPost } from '../../utils/videoPlaySubscription';
 
 const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
@@ -32,24 +26,14 @@ const PostIcons = {
   bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
   bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
 };
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSocialActions } from '../../hooks/useSocialActions';
-import { SaveBottomSheet } from './SaveBottomSheet';
-import { ReportBottomSheet } from './ReportBottomSheet';
-import { RepostBottomSheet } from './RepostBottomSheet';
-import { PostOptionsBottomSheet } from './PostOptionsBottomSheet';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  interpolate
-} from 'react-native-reanimated';
-import ImageModal from '../common/ImageModal';
+import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
 import VideoPlayer from './VideoPlayer';
 import { MentionText, mentionsToPlainText } from './MentionText';
+import { usePostCardModals } from '../../context/PostCardModalsContext';
+import { useSocialActionsContext } from '../../context/SocialActionsContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -266,7 +250,7 @@ const s = StyleSheet.create({
 });
 
 // ─── Avatar + name/username column ───────────────────────────────────────────
-const AuthorBlock = ({
+const AuthorBlock = React.memo(({
   name,
   username,
   uri,
@@ -339,7 +323,7 @@ const AuthorBlock = ({
       </View>
     </View>
   );
-};
+});
 
 // ─── Pet chip ────────────────────────────────────────────────────────────────
 export const PetChip = ({ name }: { name: string }) => (
@@ -360,7 +344,7 @@ interface OriginalPostPreviewProps {
   onMediaPress?: (index: number) => void;
 }
 
-const OriginalPostPreview = ({
+export const OriginalPostPreview = ({
   authorName,
   authorImage,
   content,
@@ -417,7 +401,7 @@ const OriginalPostPreview = ({
 };
 // Images start at the avatar's left edge and stretch to the card's right edge.
 // The negative right margin removes the card's inner right padding so images bleed.
-const MediaBlock = ({
+const MediaBlock = React.memo(({
   media,
   onImagePress,
   isPlaying,
@@ -426,6 +410,41 @@ const MediaBlock = ({
   onImagePress?: (index: number) => void;
   isPlaying?: boolean;
 }) => {
+  const carouselImgH = Math.round(CAROUSEL_CARD_W * 1.05);
+
+  const renderCarouselItem = useCallback(({ item, index }: { item: SocialPostMedia; index: number }) => {
+    const isItemVideo = item.media_type === 'video';
+
+    if (isItemVideo) {
+      const videoUri = item.hls_url || item.url;
+      return (
+        <VideoPlayer
+          key={videoUri}
+          uri={videoUri}
+          thumbnailUri={item.thumbnail_url}
+          width={CAROUSEL_CARD_W}
+          height={carouselImgH}
+          borderRadius={14}
+          paused={!isPlaying}
+        />
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onImagePress?.(index)}
+      >
+        <Image
+          source={{ uri: item.url }}
+          style={{ width: CAROUSEL_CARD_W, height: carouselImgH, borderRadius: 14 }}
+          contentFit="cover"
+          transition={200}
+        />
+      </TouchableOpacity>
+    );
+  }, [onImagePress, isPlaying, carouselImgH]);
+
   if (!media?.length) return null;
 
   const isSingle = media.length === 1;
@@ -441,7 +460,6 @@ const MediaBlock = ({
         firstItem.video_status === 'processing' ||
         firstItem.video_status === 'pending';
       const videoUri = firstItem.hls_url || firstItem.url;
-      console.log('[VideoDebug] Rendering video player with URI:', videoUri);
       return (
         <View style={s.mediaWrapper}>
           <VideoPlayer
@@ -459,7 +477,7 @@ const MediaBlock = ({
     }
 
     const SINGLE_IMG_W = MEDIA_FULL_W - 24;
-    const imgH = Math.round(SINGLE_IMG_W / 1.125);
+    const singleImgH = Math.round(SINGLE_IMG_W / 1.125);
     return (
       <TouchableOpacity
         activeOpacity={0.9}
@@ -468,7 +486,7 @@ const MediaBlock = ({
       >
         <Image
           source={{ uri: firstItem.url }}
-          style={{ width: SINGLE_IMG_W, height: imgH, borderRadius: 14 }}
+          style={{ width: SINGLE_IMG_W, height: singleImgH, borderRadius: 14 }}
           contentFit="cover"
           transition={200}
         />
@@ -477,8 +495,6 @@ const MediaBlock = ({
   }
 
   // Carousel: square-ish cards, peek on the right
-  const imgH = Math.round(CAROUSEL_CARD_W * 1.05);
-
   return (
     <View style={[s.mediaWrapper, { overflow: 'visible' }]}>
       <FlatList
@@ -490,46 +506,15 @@ const MediaBlock = ({
         pagingEnabled={false}
         bounces={false}
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
-        style={{ height: imgH, overflow: 'visible' }}
+        style={{ height: carouselImgH, overflow: 'visible' }}
         keyExtractor={(_, i) => i.toString()}
-        renderItem={({ item, index }) => {
-          const isItemVideo = item.media_type === 'video';
-
-          if (isItemVideo) {
-            const videoUri = item.hls_url || item.url;
-            return (
-              <VideoPlayer
-                key={videoUri}
-                uri={videoUri}
-                thumbnailUri={item.thumbnail_url}
-                width={CAROUSEL_CARD_W}
-                height={imgH}
-                borderRadius={14}
-                paused={!isPlaying}
-              />
-            );
-          }
-
-          return (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => onImagePress?.(index)}
-            >
-              <Image
-                source={{ uri: item.url }}
-                style={{ width: CAROUSEL_CARD_W, height: imgH, borderRadius: 14 }}
-                contentFit="cover"
-                transition={200}
-              />
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderCarouselItem}
       />
     </View>
   );
-};
+});
 
-const ActionBar = ({
+const ActionBar = React.memo(({
   liked,
   likeCount,
   commented,
@@ -625,7 +610,7 @@ const ActionBar = ({
       </TouchableOpacity>
     </View>
   </View>
-);
+));
 
 // ─── Main PostCard ────────────────────────────────────────────────────────────
 export const PostCard = React.memo(({
@@ -633,46 +618,17 @@ export const PostCard = React.memo(({
   onPress,
   onComment,
   onPlusPress,
-  isVideoPlaying,
 }: {
   post: SocialPost;
   onPress: () => void;
-  /** Override for the comment action. Defaults to opening the bottom-sheet comment composer. */
   onComment?: () => void;
   onPlusPress?: (userId: number) => void;
-  /** Pass true when this card's video should autoplay (controlled by FlatList viewability) */
-  isVideoPlaying?: boolean;
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
-  const [viewerVisible, setViewerVisible] = useState(false);
-  const [viewerIndex, setViewerIndex] = useState(0);
-  const [viewerMedia, setViewerMedia] = useState<{ url: string; type?: 'image' | 'video'; thumbnail_url?: string }[]>([]);
-  const [isRepostModalVisible, setIsRepostModalVisible] = useState(false);
-  const [isQuoteModalVisible, setIsQuoteModalVisible] = useState(false);
-  const [quoteContent, setQuoteContent] = useState('');
-  const [reportSheetVisible, setReportSheetVisible] = useState(false);
-
-  // ── Quote Post composer — slides up as a bottom sheet, matching CommentsBottomSheet ──
-  const quoteSheetRef = useRef<BottomSheetModal>(null);
-  const quoteSnapPoints = useMemo(() => ['60%', '90%'], []);
-
-  useEffect(() => {
-    if (isQuoteModalVisible) {
-      const timer = setTimeout(() => quoteSheetRef.current?.present(), 0);
-      return () => clearTimeout(timer);
-    } else {
-      quoteSheetRef.current?.dismiss();
-    }
-  }, [isQuoteModalVisible]);
-
-  const renderQuoteBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} />
-    ),
-    []
-  );
+  const modals = usePostCardModals();
+  const actions = useSocialActionsContext();
 
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
@@ -705,38 +661,32 @@ export const PostCard = React.memo(({
   const bodyContent = isPlainRepost ? (post.original_content || '') : (post.content || '');
   const bodyMedia = isPlainRepost ? (post.original_media ?? []) : (post.media ?? []);
 
-  // Scale animation for the card
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(scale.value, { damping: 15, stiffness: 150 }) }],
-  }));
+  // Video autoplay — subscribe to the module-level emitter so the FlatList
+  // never re-renders when the playing post changes (only this card does).
+  const isPlayingRef = useRef(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  useEffect(() => {
+    return subscribeToPlayingPost(id => {
+      const playing = id === post.post_id;
+      if (isPlayingRef.current !== playing) {
+        isPlayingRef.current = playing;
+        setIsVideoPlaying(playing);
+      }
+    });
+  }, [post.post_id]);
 
-  const onPressIn = () => { scale.value = 0.98; };
-  const onPressOut = () => { scale.value = 1; };
-
-
-  const imageUrls = useMemo(
-    () => post.media?.map((m: any) => ({ url: m.url })) ?? [],
-    [post.media]
-  );
-
-  const handleImagePress = (index: number) => {
-    setViewerIndex(index);
-    setViewerMedia(bodyMedia?.map((m: any) => ({
+  const handleImagePress = useCallback((index: number) => {
+    const items = bodyMedia?.map((m: any) => ({
       url: m.url,
-      type: m.media_type,
-      thumbnail_url: m.thumbnail_url
-    })) ?? []);
-    setViewerVisible(true);
-  };
+      type: m.media_type as 'image' | 'video',
+      thumbnail_url: m.thumbnail_url,
+    })) ?? [];
+    modals?.showImageViewer(items, index);
+  }, [modals, bodyMedia]);
 
   const showPlus = String(currentUser?.id) !== String(post.user_id) && !post.is_following;
-  const [saveSheetVisible, setSaveSheetVisible] = useState(false);
-  const [optionsSheetVisible, setOptionsSheetVisible] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const isOwnPost = String(currentUser?.id) === String(post.user_id);
-
-  const { toggleLike, deletePost, toggleSave, toggleFollow } = useSocialActions();
 
   const handleDelete = () => {
     Alert.alert(
@@ -744,7 +694,7 @@ export const PostCard = React.memo(({
       'Are you sure you want to delete this post?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deletePost(post.post_id) },
+        { text: 'Delete', style: 'destructive', onPress: () => actions?.deletePost(post.post_id) },
       ]
     );
   };
@@ -761,78 +711,80 @@ export const PostCard = React.memo(({
     });
   };
 
-  const blockMutation = useMutation({
-    mutationFn: () => socialApi.blockUser(post.user_id),
-    onSuccess: () => {
-      import('react-native-toast-message').then((mod) => {
-        mod.default.show({ type: 'success', text1: 'User blocked' });
-      });
-      queryClient.setQueryData(['social-feed'], (old: any) => {
-        if (!old?.pages) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            posts: page.posts.filter((p: any) => p.user_id !== post.user_id)
-          }))
-        };
-      });
-      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
-      queryClient.invalidateQueries({ queryKey: ['social-profile', post.user_id] });
-      queryClient.invalidateQueries({ queryKey: ['social-search'] });
-      queryClient.invalidateQueries({ queryKey: ['social-explore'] });
-    },
-    onError: () => {
-      import('react-native-toast-message').then((mod) => {
-        mod.default.show({ type: 'error', text1: 'Could not block user' });
-      });
-    }
-  });
-
-  const handleBlock = () => {
-    Alert.alert(
-      'Block User',
-      `Are you sure you want to block ${post.author_name || 'this user'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
-      ]
-    );
-  };
-
-  const handleUnfollow = () => {
-    toggleFollow(post.user_id);
-  };
-
   const handleHide = () => {
     setIsHidden(true);
   };
 
-  const repostMutation = useMutation({
-    mutationFn: (quote?: string) =>
-      post.is_reposted && !quote
-        ? socialApi.undoRepost(post.post_id)
-        : socialApi.toggleRepost(post.post_id, quote),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
-      setIsRepostModalVisible(false);
-      setIsQuoteModalVisible(false);
-      setQuoteContent('');
-    },
-  });
+  const handleQuickRepost = useCallback(() => {
+    actions?.repost(post.post_id, !!post.is_reposted);
+  }, [actions, post.post_id, post.is_reposted]);
 
-  const handleRepostPress = () => {
-    setIsRepostModalVisible(true);
-  };
+  const handleQuotePost = useCallback(() => {
+    modals?.showQuoteSheet({
+      post,
+      onSubmitAsync: (content) =>
+        actions?.repost(post.post_id, !!post.is_reposted, content) ?? Promise.resolve(),
+    });
+  }, [modals, post, actions]);
 
-  const handleQuickRepost = () => {
-    repostMutation.mutate(undefined);
-  };
+  const handleRepostPress = useCallback(() => {
+    modals?.showRepostSheet({
+      isReposted: !!post.is_reposted,
+      onRepost: handleQuickRepost,
+      onQuote: handleQuotePost,
+    });
+  }, [modals, post.is_reposted, handleQuickRepost, handleQuotePost]);
 
-  const handleQuotePost = () => {
-    setIsRepostModalVisible(false);
-    setIsQuoteModalVisible(true);
-  };
+  const handleLike = useCallback(() => actions?.toggleLike(post.post_id), [actions, post.post_id]);
+  const handleSave = useCallback(() => actions?.toggleSave(post.post_id, !!post.is_saved), [actions, post.post_id, post.is_saved]);
+  const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(post.post_id), [modals, post.post_id]);
+  const handleCommentPress = useCallback(() => {
+    if (onComment) onComment();
+    else router.push(`/comment/${post.post_id}`);
+  }, [onComment, router, post.post_id]);
+  const handleMenuPress = useCallback(() => modals?.showOptionsSheet({
+    isOwnPost,
+    isFollowing: !!post.is_following,
+    isSaved: !!post.is_saved,
+    onSave: () => actions?.toggleSave(post.post_id, !!post.is_saved),
+    onEdit: handleEdit,
+    onDelete: handleDelete,
+    onReport: () => modals?.showReportSheet(post.post_id),
+    onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
+    onUnfollow: () => actions?.toggleFollow(post.user_id),
+    onHide: handleHide,
+  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide]);
+  const handleAvatarPress = useCallback(
+    () => router.push(`/(app)/profile/${displayUserId}`),
+    [router, displayUserId]
+  );
+  const handleShare = useCallback(async () => {
+    try {
+      const plainText = mentionsToPlainText(post.content);
+      const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
+      const result = await Share.share({
+        title: 'Paltuu Social Post',
+        message: shareText,
+      });
+      if (result.action === Share.sharedAction) {
+        queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              posts: page.posts.map((p: any) =>
+                p.post_id === post.post_id ? { ...p, is_shared: true } : p
+              ),
+            })),
+          };
+        });
+        queryClient.invalidateQueries({ queryKey: ['social-profile', post.user_id] });
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  }, [post.content, post.author_name, post.post_id, post.user_id, queryClient]);
 
   if (isHidden) {
     return (
@@ -856,13 +808,9 @@ export const PostCard = React.memo(({
   }
 
   return (
-    <>
-      <Animated.View style={animatedStyle}>
-        <Pressable
+    <Pressable
           onPress={onPress}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          style={s.card}
+          style={({ pressed }) => [s.card, pressed && { opacity: 0.92 }]}
         >
           {/* ── Reposted indicator (plain reposts only; quote reposts read like a normal post) ── */}
           {isPlainRepost && (
@@ -888,8 +836,8 @@ export const PostCard = React.memo(({
             uri={displayImage}
             timeAgo={displayTime}
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
-            onMenuPress={() => setOptionsSheetVisible(true)}
-            onAvatarPress={() => router.push(`/(app)/profile/${displayUserId}`)}
+            onMenuPress={handleMenuPress}
+            onAvatarPress={handleAvatarPress}
           />
 
           {/* ── Pet chip (optional) ── */}
@@ -924,13 +872,12 @@ export const PostCard = React.memo(({
                   }
                 }}
                 onMediaPress={(index) => {
-                  setViewerIndex(index);
-                  setViewerMedia(post.original_media?.map((m: SocialPostMedia) => ({
+                  const items = post.original_media?.map((m: SocialPostMedia) => ({
                     url: m.url,
-                    type: m.media_type,
-                    thumbnail_url: m.thumbnail_url
-                  })) ?? []);
-                  setViewerVisible(true);
+                    type: m.media_type as 'image' | 'video',
+                    thumbnail_url: m.thumbnail_url,
+                  })) ?? [];
+                  modals?.showImageViewer(items, index);
                 }}
               />
             </View>
@@ -956,164 +903,17 @@ export const PostCard = React.memo(({
             repostCount={post.repost_count ?? 0}
             saved={!!post.is_saved}
             shared={!!post.is_shared}
-            onLike={() => toggleLike(post.post_id)}
-            onComment={onComment ?? (() => router.push(`/comment/${post.post_id}`))}
+            onLike={handleLike}
+            onComment={handleCommentPress}
             onRepost={handleRepostPress}
-            onSave={() => toggleSave(post.post_id, !!post.is_saved)}
-            onSaveLongPress={() => setSaveSheetVisible(true)}
-            onShare={async () => {
-              try {
-                const plainText = mentionsToPlainText(post.content);
-                const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
-                
-                const result = await Share.share({
-                  title: 'Paltuu Social Post',
-                  message: shareText,
-                });
-
-                if (result.action === Share.sharedAction) {
-                  // Mark as shared locally in cache / feed queries
-                  queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
-                    if (!old?.pages) return old;
-                    return {
-                      ...old,
-                      pages: old.pages.map((page: any) => ({
-                        ...page,
-                        posts: page.posts.map((p: any) =>
-                          p.post_id === post.post_id ? { ...p, is_shared: true } : p
-                        ),
-                      })),
-                    };
-                  });
-                  queryClient.invalidateQueries({ queryKey: ['social-profile', post.user_id] });
-                }
-              } catch (err: any) {
-                Alert.alert('Error', err.message);
-              }
-            }}
+            onSave={handleSave}
+            onSaveLongPress={handleSaveLongPress}
+            onShare={handleShare}
           />
         </Pressable>
-      </Animated.View>
-
-
-      <ImageModal
-        mediaItems={viewerMedia}
-        visible={viewerVisible}
-        index={viewerIndex}
-        onClose={() => setViewerVisible(false)}
-      />
-
-      <SaveBottomSheet
-        visible={saveSheetVisible}
-        onClose={() => setSaveSheetVisible(false)}
-        postId={post.post_id}
-      />
-
-      {/* ── Repost Options Sheet ── */}
-      <RepostBottomSheet
-        visible={isRepostModalVisible}
-        onClose={() => setIsRepostModalVisible(false)}
-        isReposted={!!post.is_reposted}
-        onRepost={handleQuickRepost}
-        onQuote={handleQuotePost}
-      />
-
-      {/* ── Quote Post Composer — slides up just like the Comments sheet ── */}
-      <BottomSheetModal
-        ref={quoteSheetRef}
-        index={0}
-        snapPoints={quoteSnapPoints}
-        onDismiss={() => setIsQuoteModalVisible(false)}
-        backdropComponent={renderQuoteBackdrop}
-        enablePanDownToClose
-        backgroundStyle={{ backgroundColor: 'white', borderRadius: 24 }}
-        handleIndicatorStyle={{ backgroundColor: '#E5E7EB', width: 40 }}
-      >
-        <View style={{ flex: 1 }}>
-          {/* Header */}
-          <View className="items-center py-2 border-b border-gray-100">
-            <Text className="text-base font-headingBold text-dark">Quote Post</Text>
-          </View>
-
-          {/* Scrollable content */}
-          <BottomSheetScrollView
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Composer Action Toolbar */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 }}>
-              <TouchableOpacity><Ionicons name="image-outline" size={22} color="#A03048" /></TouchableOpacity>
-              <TouchableOpacity><Ionicons name="happy-outline" size={22} color="#A03048" /></TouchableOpacity>
-              <TouchableOpacity><Ionicons name="list-outline" size={22} color="#A03048" /></TouchableOpacity>
-              <TouchableOpacity><Ionicons name="stats-chart-outline" size={22} color="#A03048" /></TouchableOpacity>
-              <TouchableOpacity><Ionicons name="location-outline" size={22} color="#A03048" /></TouchableOpacity>
-            </View>
-
-            {/* Preview of the original post */}
-            <OriginalPostPreview
-              authorName={post.author_name}
-              authorImage={post.author_image}
-              content={post.content}
-              media={post.media}
-              createdAt={post.created_at}
-            />
-          </BottomSheetScrollView>
-
-          {/* Input row — floating at bottom, mirrors CommentsBottomSheet */}
-          <View className="px-5 py-3 border-t border-gray-100 bg-white flex-row items-center">
-            <Image
-              source={{ uri: currentUser?.profile_image_url || 'https://via.placeholder.com/150' }}
-              style={{ width: 32, height: 32, borderRadius: 16, marginRight: 12 }}
-            />
-            <BottomSheetTextInput
-              placeholder="Add a comment..."
-              className="flex-1 min-h-[40px] max-h-[100px] text-sm font-body text-dark"
-              placeholderTextColor="#9CA3AF"
-              value={quoteContent}
-              onChangeText={setQuoteContent}
-              multiline
-            />
-            <TouchableOpacity
-              className="ml-3"
-              onPress={() => repostMutation.mutate(quoteContent)}
-              disabled={repostMutation.isPending}
-            >
-              {repostMutation.isPending ? (
-                <ActivityIndicator size="small" color="#A03048" />
-              ) : (
-                <Text className="text-sm font-headingBold text-primary">Post</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </BottomSheetModal>
-      <ReportBottomSheet
-        visible={reportSheetVisible}
-        onClose={() => setReportSheetVisible(false)}
-        targetType="post"
-        targetId={post.post_id}
-      />
-
-      {/* ── Three-dots Post Options Sheet ── */}
-      <PostOptionsBottomSheet
-        visible={optionsSheetVisible}
-        onClose={() => setOptionsSheetVisible(false)}
-        isOwnPost={isOwnPost}
-        isFollowing={!!post.is_following}
-        isSaved={!!post.is_saved}
-        onSave={() => toggleSave(post.post_id, !!post.is_saved)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onReport={() => setReportSheetVisible(true)}
-        onBlock={handleBlock}
-        onUnfollow={handleUnfollow}
-        onHide={handleHide}
-      />
-    </>
   );
-});
+},
+(prev, next) => prev.post === next.post
+);
 
 export default PostCard;
-
-// ─── End of PostCard ───
-// ─── End of PostCard ───
