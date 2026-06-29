@@ -18,8 +18,7 @@ export const MainHeader: React.FC = () => {
     const { data: unreadData } = useQuery({
         queryKey: ['unread-count'],
         queryFn: () => notificationsApi.getUnreadCount(),
-        refetchInterval: 30_000,
-        staleTime: 30_000,
+        staleTime: 5 * 60 * 1000,
         enabled: isAuthenticated,
     });
 

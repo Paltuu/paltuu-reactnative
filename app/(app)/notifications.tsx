@@ -359,6 +359,7 @@ export default function NotificationsScreen() {
   const { data: unreadData } = useQuery({
     queryKey: ['unread-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
+    staleTime: 5 * 60 * 1000,
     enabled: isAuthenticated,
   });
 
