@@ -1,5 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import Animated from 'react-native-reanimated';
+import { FlashList } from '@shopify/flash-list';
+
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<SocialPost>);
 import {
   View, Text, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
@@ -124,7 +127,7 @@ export const MOCK_POSTS: SocialPost[] = [
 
 /* ── Separator ── */
 const Separator = () => (
-  <View style={{ height: 1, backgroundColor: '#F3F4F6' }} />
+  <View style={{ marginVertical: 10, height: 1, backgroundColor: '#F3F4F6' }} />
 );
 
 /* ── Screen ── */
@@ -257,10 +260,11 @@ export default function HomeScreen() {
   return (
     <PostCardModalsProvider>
     <View className="flex-1 bg-white">
-      <Animated.FlatList
+      <AnimatedFlashList
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={item => item.post_id}
+        estimatedItemSize={450}
         onScroll={scrollHandler}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
@@ -268,10 +272,7 @@ export default function HomeScreen() {
           paddingTop: topOffset,
           paddingBottom: 100,
         }}
-        windowSize={5}
-        maxToRenderPerBatch={2}
-        initialNumToRender={4}
-        updateCellsBatchingPeriod={100}
+        ItemSeparatorComponent={Separator}
         ListHeaderComponent={listHeader}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
