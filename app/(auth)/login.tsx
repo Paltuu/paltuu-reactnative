@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { CustomInput } from '../../src/components/common/CustomInput';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
@@ -186,9 +185,8 @@ export default function LoginScreen() {
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
-              placeholder="Enter your email or username"
-              leftIcon="mail-outline"
               keyboardType="email-address"
+              floating
             />
 
             <CustomInput
@@ -196,8 +194,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="Enter your password"
-              leftIcon="lock-closed-outline"
+              floating
             />
 
             {/* Forgot password */}
@@ -245,6 +242,7 @@ export default function LoginScreen() {
               disabled={isGoogleLoading}
               loaderType="dots"
               collapseOnLoad={false}
+              radius={12}
             />
 
             {/* Divider */}
@@ -258,6 +256,7 @@ export default function LoginScreen() {
               onPress={handleGoogleSignIn}
               loading={isGoogleLoading}
               disabled={login.isPending}
+              radius={12}
             />
 
             <View className="h-3" />
@@ -265,6 +264,7 @@ export default function LoginScreen() {
             <AppleButton
               onPress={handleAppleSignIn}
               disabled={login.isPending || isGoogleLoading}
+              radius={12}
             />
           </View>
 

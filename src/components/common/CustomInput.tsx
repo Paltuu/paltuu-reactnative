@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,10 @@ interface CustomInputProps extends TextInputProps {
   leftIcon?: keyof typeof Ionicons.glyphMap;
   prefix?: string;
   /** Forces password eye-toggle — already handled internally for secureTextEntry */
+  /** Web-style floating label that sits on the border instead of above the field (used on the login screen). */
+  floating?: boolean;
+  /** Background painted behind the floated label so it "cuts" the border line. Only used with `floating`. */
+  floatingBg?: string;
 }
 
 export const CustomInput: React.FC<CustomInputProps> = ({
@@ -26,11 +30,16 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   leftIcon,
   prefix,
   secureTextEntry,
+  floating = false,
+  floatingBg = '#FFFFFF',
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry ?? false);
   const borderAnim = useRef(new Animated.Value(0)).current;
+  const labelAnim = useRef(new Animated.Value(0)).current;
+
+  const hasValue = typeof props.value === 'string' && props.value.length > 0;
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
@@ -52,6 +61,14 @@ export const CustomInput: React.FC<CustomInputProps> = ({
     props.onBlur?.(e);
   };
 
+  useEffect(() => {
+    Animated.timing(labelAnim, {
+      toValue: isFocused || hasValue ? 1 : 0,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+  }, [isFocused, hasValue, labelAnim]);
+
   const borderColor = borderAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [error ? '#EF4444' : '#E5E7EB', error ? '#EF4444' : '#a03048'],
@@ -61,6 +78,85 @@ export const CustomInput: React.FC<CustomInputProps> = ({
     inputRange: [0, 1],
     outputRange: [0, 0.12],
   });
+
+  if (floating) {
+    const floatingBorderColor = borderAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [error ? '#EF4444' : '#D1D5DB', error ? '#EF4444' : '#a03048'],
+    });
+    const floatingBorderWidth = borderAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 2],
+    });
+    const labelTop = labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [16, -9],
+    });
+    const labelFontSize = labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [15, 12],
+    });
+    const labelColor = labelAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [error ? '#EF4444' : '#9CA3AF', error ? '#EF4444' : '#a03048'],
+    });
+
+    return (
+      <View style={floatingStyles.container}>
+        <Animated.View
+          style={[
+            floatingStyles.wrapper,
+            { borderColor: floatingBorderColor, borderWidth: floatingBorderWidth },
+          ]}
+        >
+          <TextInput
+            style={floatingStyles.input}
+            placeholder=""
+            secureTextEntry={isSecure}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            {...props}
+          />
+
+          {secureTextEntry && (
+            <TouchableOpacity
+              onPress={() => setIsSecure((v) => !v)}
+              style={styles.eyeBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isSecure ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color={isFocused ? '#a03048' : '#9CA3AF'}
+              />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+
+        <Animated.Text
+          pointerEvents="none"
+          style={[
+            floatingStyles.label,
+            {
+              top: labelTop,
+              fontSize: labelFontSize,
+              color: labelColor,
+              backgroundColor: floatingBg,
+            },
+          ]}
+        >
+          {label}
+        </Animated.Text>
+
+        {error ? (
+          <View style={styles.errorRow}>
+            <Ionicons name="alert-circle" size={12} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, containerClassName ? undefined : undefined]}>
@@ -203,6 +299,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Montserrat_400Regular',
     color: '#EF4444',
+  },
+});
+
+const floatingStyles = StyleSheet.create({
+  container: {
+    marginBottom: 20,
+    width: '100%',
+  },
+  wrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    paddingTop: 16,
+    paddingBottom: 10,
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#1F2937',
+  },
+  label: {
+    position: 'absolute',
+    left: 12,
+    fontFamily: 'DMSans_400Regular',
+    paddingHorizontal: 4,
   },
 });
 

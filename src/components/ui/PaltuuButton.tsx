@@ -50,6 +50,8 @@ interface PaltuuButtonProps {
   loaderType?: 'ring' | 'dots';
   /** Collapses the pill to a circle while loading (default). Set false to keep the button's size/shape and only swap its content. */
   collapseOnLoad?: boolean;
+  /** Corner radius. Defaults to a full pill (999); pass a smaller value (e.g. 12) to match a squared-off design. */
+  radius?: number;
 }
 
 export default function PaltuuButton({
@@ -62,6 +64,7 @@ export default function PaltuuButton({
   compact = false,
   loaderType = 'ring',
   collapseOnLoad = true,
+  radius = 999,
 }: PaltuuButtonProps) {
   const BTN_H = compact ? COMPACT_H : FULL_H;
 
@@ -162,7 +165,7 @@ export default function PaltuuButton({
   const pillStyle: ViewStyle = {
     height:          BTN_H,
     backgroundColor: disabled && !loading ? '#D1D5DB' : PRIMARY,
-    borderRadius:    999,
+    borderRadius:    radius,
     overflow:        'hidden',
     alignItems:      'center',
     justifyContent:  'center',

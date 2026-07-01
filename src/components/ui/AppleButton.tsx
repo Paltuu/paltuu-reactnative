@@ -32,6 +32,8 @@ interface AppleButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  /** Corner radius. Defaults to a full pill (999); pass a smaller value (e.g. 12) to match a squared-off design. */
+  radius?: number;
 }
 
 /** Apple logo from assets/icons/apple-logo-svgrepo-com.svg */
@@ -51,6 +53,7 @@ export default function AppleButton({
   loading = false,
   disabled = false,
   style,
+  radius = 999,
 }: AppleButtonProps) {
   const naturalWidth = useRef(300);
   const prevLoading  = useRef(false);
@@ -123,7 +126,7 @@ export default function AppleButton({
     >
       <View style={s.centerWrap}>
         <Animated.View
-          style={[s.pill, containerStyle, style]}
+          style={[s.pill, { borderRadius: radius }, containerStyle, style]}
         >
           {/* Logo + label */}
           <Animated.View style={[s.row, contentStyle]} pointerEvents="none">
