@@ -89,12 +89,17 @@ const formatCount = (n: number) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
+  cardWrapper: {},
   card: {
     paddingVertical: 12,
     backgroundColor: '#FFF',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F0F0',
     overflow: 'hidden',
+  },
+  postSeparator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginTop: 8,
+    marginBottom: 8,
   },
   cardPressed: {
     backgroundColor: '#F9F9F9',
@@ -808,6 +813,7 @@ export const PostCard = React.memo(({
   }
 
   return (
+    <View style={s.cardWrapper}>
     <Pressable
           onPress={onPress}
           style={({ pressed }) => [s.card, pressed && { opacity: 0.92 }]}
@@ -911,6 +917,8 @@ export const PostCard = React.memo(({
             onShare={handleShare}
           />
         </Pressable>
+    <View style={s.postSeparator} />
+    </View>
   );
 },
 (prev, next) => prev.post === next.post

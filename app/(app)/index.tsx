@@ -272,7 +272,6 @@ export default function HomeScreen() {
           paddingTop: topOffset,
           paddingBottom: 100,
         }}
-        ItemSeparatorComponent={Separator}
         ListHeaderComponent={listHeader}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
