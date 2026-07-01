@@ -155,7 +155,7 @@ export default function LoginScreen() {
                 tintColor="#ffffff"
               />
 
-              <Text className="font-body text-sm text-white/70 mt-3 tracking-widest uppercase">
+              <Text className="font-heading text-sm text-white/70 mt-3 tracking-widest uppercase">
                 The pet Super App
               </Text>
             </View>
@@ -287,7 +287,7 @@ export default function LoginScreen() {
       {__DEV__ && (
         <PawrvezDialog
           visible={showMascotDialog}
-          text="Woohoo! You're back! Shuja Gandu"
+          text="Woohoo! You're back! Login to find out what your paltuu has been up to while you were away!"
           actionLabel="Let's go!"
           onDismiss={() => setShowMascotDialog(false)}
         />
