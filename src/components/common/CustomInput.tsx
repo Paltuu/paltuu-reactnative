@@ -131,16 +131,15 @@ export const CustomInput: React.FC<CustomInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 20,
+    marginBottom: 10,
     width: '100%',
   },
   label: {
     fontSize: 12,
     fontFamily: 'Montserrat_600SemiBold',
     color: '#6B7280',
-    marginBottom: 8,
+    marginBottom: 5,
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
   },
   labelFocused: {
     color: '#a03048',
@@ -173,7 +172,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 52,
+    height: 42,
     fontSize: 15,
     fontFamily: 'DMSans_400Regular',
     color: '#111827',

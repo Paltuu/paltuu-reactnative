@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SplashScreen } from 'expo-router';
 import { useFonts } from 'expo-font';
@@ -73,11 +73,13 @@ export default function RootLayout() {
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_700Bold,
+    Pixeled: require('../assets/pixel/Pixeled.ttf'),
   });
 
   const { isAuthenticated, isLoading, hydrate, user } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   // 1. Initial Hydration
   useEffect(() => {
@@ -92,6 +94,9 @@ export default function RootLayout() {
 
   // 2. Navigation Protection Logic
   useEffect(() => {
+    // Wait for the root navigator to actually mount — dispatching before it's
+    // ready throws "Attempted to navigate before mounting the Root Layout".
+    if (!navigationState?.key) return;
     if (isLoading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -102,7 +107,7 @@ export default function RootLayout() {
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [isAuthenticated, isLoading, segments, fontsLoaded]);
+  }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key]);
 
   // 3. Notification query invalidation + deep link handler
   // Token registration & listener setup is handled by <NotificationProvider>.
@@ -145,34 +150,32 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <BottomSheetModalProvider>
             <SocialActionsProvider>
-              {!fontsLoaded && !fontError ? null : (
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                  <Stack.Screen name="interests" options={{ headerShown: false }} />
-                  <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
-                  {/* Post detail: slides in from the right, covers the tab bar */}
-                  <Stack.Screen
-                    name="post/[id]"
-                    options={{ animation: 'slide_from_right', gestureEnabled: true }}
-                  />
-                  {/* Create post: slides in from the left, swipe-back exits the same way */}
-                  <Stack.Screen
-                    name="create-post"
-                    options={{
-                      animation: 'slide_from_left',
-                      gestureEnabled: true,
-                      animationMatchesGesture: true,
-                    }}
-                  />
-                  {/* Comment composer: slides up from the bottom, full screen so the
-                      keyboard-avoiding view can measure the whole window reliably */}
-                  <Stack.Screen
-                    name="comment/[id]"
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                  />
-                </Stack>
-              )}
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                <Stack.Screen name="interests" options={{ headerShown: false }} />
+                <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
+                {/* Post detail: slides in from the right, covers the tab bar */}
+                <Stack.Screen
+                  name="post/[id]"
+                  options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                />
+                {/* Create post: slides in from the left, swipe-back exits the same way */}
+                <Stack.Screen
+                  name="create-post"
+                  options={{
+                    animation: 'slide_from_left',
+                    gestureEnabled: true,
+                    animationMatchesGesture: true,
+                  }}
+                />
+                {/* Comment composer: slides up from the bottom, full screen so the
+                    keyboard-avoiding view can measure the whole window reliably */}
+                <Stack.Screen
+                  name="comment/[id]"
+                  options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
+              </Stack>
             </SocialActionsProvider>
             </BottomSheetModalProvider>
           </SafeAreaProvider>

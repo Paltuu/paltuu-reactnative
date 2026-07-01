@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -17,8 +19,10 @@ import Toast from 'react-native-toast-message';
 import { CustomInput } from '../../src/components/common/CustomInput';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import GoogleButton from '../../src/components/ui/GoogleButton';
+import AppleButton from '../../src/components/ui/AppleButton';
 import { useAuthActions } from '../../src/hooks/useAuth';
 import { useAuthStore } from '../../src/stores/authStore';
+import { PawrvezTooltip, PawrvezDialog } from '../../src/components/common/mascot';
 
 // Required for Android browser redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -28,7 +32,10 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
   const { login } = useAuthActions();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -115,8 +122,17 @@ export default function LoginScreen() {
     }
   };
 
+  const handleAppleSignIn = () => {
+    Toast.show({
+      type: 'info',
+      text1: 'Coming soon',
+      text2: 'Apple Sign-In isn\'t available yet.',
+    });
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-bg">
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -127,36 +143,32 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Hero / Branding ── */}
-          <View className="bg-primary px-5 pt-8 pb-16 items-center rounded-b-[40px]">
-            {/* Decorative paw blobs */}
-            <View
-              className="absolute top-4 right-6 w-20 h-20 rounded-full bg-white/10"
-              pointerEvents="none"
-            />
-            <View
-              className="absolute bottom-6 left-4 w-12 h-12 rounded-full bg-white/10"
-              pointerEvents="none"
-            />
+          <View
+            className="bg-primary px-5 items-center justify-center rounded-b-[10px]"
+            style={{ height: screenHeight * 0.45 }}
+          >
+            <View style={{ alignItems: 'center', marginTop: -40 }}>
+              <Image
+                source={require('../../assets/paltuu_bilkul_tight.svg')}
+                style={{ width: 140, height: 74 }}
+                contentFit="contain"
+                tintColor="#ffffff"
+              />
 
-            <Image
-              source={require('../../assets/icon.png')}
-              style={{ width: 140, height: 52 }}
-              resizeMode="contain"
-            />
-
-            <Text className="font-body text-sm text-white/70 mt-3 tracking-widest uppercase">
-              your pet's social home
-            </Text>
+              <Text className="font-body text-sm text-white/70 mt-3 tracking-widest uppercase">
+                The pet Super App
+              </Text>
+            </View>
           </View>
 
           {/* ── Card that floats over hero ── */}
-          <View className="mx-5 -mt-8 bg-surface rounded-2xl p-6 shadow-sm border border-gray-100">
+          <View
+            className="mx-5 bg-surface rounded-[32px] p-6"
+            style={{ marginTop: -128 + screenHeight * 0.05 }}
+          >
             {/* Heading */}
-            <Text className="font-heading text-2xl text-dark mb-1">
+            <Text className="font-heading text-2xl text-dark text-center mb-6">
               Welcome back!
-            </Text>
-            <Text className="font-body text-sm text-gray-500 mb-6">
-              Sign in to see what your furry community is up to.
             </Text>
 
             {/* Error messages */}
@@ -189,15 +201,40 @@ export default function LoginScreen() {
             />
 
             {/* Forgot password */}
-            <TouchableOpacity
-              onPress={() => { }}
-              className="self-end mt-2 mb-6"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            <PawrvezTooltip
+              visible={showMascotTooltip}
+              text="Psst... enter your email and we'll send you a reset link!"
+              onDismiss={() => setShowMascotTooltip(false)}
+              placement="top"
             >
-              <Text className="font-headingSemi text-xs text-primary">
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowMascotTooltip(true)}
+                className="self-end mt-2 mb-6"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text className="font-headingSemi text-xs text-primary">
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            </PawrvezTooltip>
+
+            {/* DEV ONLY: Pawrvez mascot playground — remove once positioning is finalized */}
+            {__DEV__ && (
+              <View className="flex-row justify-center gap-3 mb-4">
+                <TouchableOpacity
+                  onPress={() => setShowMascotTooltip(true)}
+                  className="bg-gray-100 rounded-lg px-3 py-2"
+                >
+                  <Text className="font-body text-xs text-gray-700">Show tooltip</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowMascotDialog(true)}
+                  className="bg-gray-100 rounded-lg px-3 py-2"
+                >
+                  <Text className="font-body text-xs text-gray-700">Show dialog</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* CTA */}
             <PaltuuButton
@@ -206,6 +243,8 @@ export default function LoginScreen() {
               onPress={handleLogin}
               loading={login.isPending}
               disabled={isGoogleLoading}
+              loaderType="dots"
+              collapseOnLoad={false}
             />
 
             {/* Divider */}
@@ -219,6 +258,13 @@ export default function LoginScreen() {
               onPress={handleGoogleSignIn}
               loading={isGoogleLoading}
               disabled={login.isPending}
+            />
+
+            <View className="h-3" />
+
+            <AppleButton
+              onPress={handleAppleSignIn}
+              disabled={login.isPending || isGoogleLoading}
             />
           </View>
 
@@ -236,6 +282,16 @@ export default function LoginScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* DEV ONLY: Pawrvez mascot playground — remove once positioning is finalized */}
+      {__DEV__ && (
+        <PawrvezDialog
+          visible={showMascotDialog}
+          text="Woohoo! You're back! Shuja Gandu"
+          actionLabel="Let's go!"
+          onDismiss={() => setShowMascotDialog(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }

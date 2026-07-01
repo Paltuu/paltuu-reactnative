@@ -1,6 +1,6 @@
 /**
- * GoogleButton — white pill button with the real Google G logo.
- * Matches PaltuuButton's collapse-to-circle loading animation.
+ * AppleButton — white pill button with the Apple logo.
+ * Matches GoogleButton's theme and collapse-to-circle loading animation.
  */
 import React, { useEffect, useRef, useCallback } from 'react';
 import {
@@ -27,43 +27,31 @@ const BTN_H  = 46;
 const SPEED  = 420;
 const EASING = Easing.bezier(0.65, 0, 0.35, 1);
 
-interface GoogleButtonProps {
+interface AppleButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
 }
 
-/** Real multicolour Google "G" logo from assets/icons/google-color-svgrepo-com.svg */
-function GoogleG({ size = 22 }: { size?: number }) {
+/** Apple logo from assets/icons/apple-logo-svgrepo-com.svg */
+function AppleLogo({ size = 20 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="-0.5 0 48 48">
+    <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
-        fill="#FBBC05"
-        d="M9.82727273,24 C9.82727273,22.4757333 10.0804318,21.0144 10.5322727,19.6437333 L2.62345455,13.6042667 C1.08206818,16.7338667 0.213636364,20.2602667 0.213636364,24 C0.213636364,27.7365333 1.081,31.2608 2.62025,34.3882667 L10.5247955,28.3370667 C10.0772273,26.9728 9.82727273,25.5168 9.82727273,24"
-      />
-      <Path
-        fill="#EB4335"
-        d="M23.7136364,10.1333333 C27.025,10.1333333 30.0159091,11.3066667 32.3659091,13.2266667 L39.2022727,6.4 C35.0363636,2.77333333 29.6954545,0.533333333 23.7136364,0.533333333 C14.4268636,0.533333333 6.44540909,5.84426667 2.62345455,13.6042667 L10.5322727,19.6437333 C12.3545909,14.112 17.5491591,10.1333333 23.7136364,10.1333333"
-      />
-      <Path
-        fill="#34A853"
-        d="M23.7136364,37.8666667 C17.5491591,37.8666667 12.3545909,33.888 10.5322727,28.3562667 L2.62345455,34.3946667 C6.44540909,42.1557333 14.4268636,47.4666667 23.7136364,47.4666667 C29.4455,47.4666667 34.9177955,45.4314667 39.0249545,41.6181333 L31.5177727,35.8144 C29.3995682,37.1488 26.7323182,37.8666667 23.7136364,37.8666667"
-      />
-      <Path
-        fill="#4285F4"
-        d="M46.1454545,24 C46.1454545,22.6133333 45.9318182,21.12 45.6113636,19.7333333 L23.7136364,19.7333333 L23.7136364,28.8 L36.3181818,28.8 C35.6879545,31.8912 33.9724545,34.2677333 31.5177727,35.8144 L39.0249545,41.6181333 C43.3393409,37.6138667 46.1454545,31.6490667 46.1454545,24"
+        fill="#000000"
+        d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.09997 22C7.78997 22.05 6.79997 20.68 5.95997 19.47C4.24997 17 2.93997 12.45 4.69997 9.39C5.56997 7.87 7.12997 6.91 8.81997 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"
       />
     </Svg>
   );
 }
 
-export default function GoogleButton({
+export default function AppleButton({
   onPress,
   loading = false,
   disabled = false,
   style,
-}: GoogleButtonProps) {
+}: AppleButtonProps) {
   const naturalWidth = useRef(300);
   const prevLoading  = useRef(false);
 
@@ -130,7 +118,7 @@ export default function GoogleButton({
       onPressOut={() => { pressScale.value = withTiming(1, { duration: 120 }); }}
       disabled={!canPress}
       accessibilityRole="button"
-      accessibilityLabel="Continue with Google"
+      accessibilityLabel="Continue with Apple"
       style={s.pressable}
     >
       <View style={s.centerWrap}>
@@ -139,8 +127,8 @@ export default function GoogleButton({
         >
           {/* Logo + label */}
           <Animated.View style={[s.row, contentStyle]} pointerEvents="none">
-            <GoogleG size={22} />
-            <Text style={s.label}>Google</Text>
+            <AppleLogo size={28} />
+            <Text style={s.label}>Apple</Text>
           </Animated.View>
 
           {/* Spinner — dark arc on white button */}

@@ -29,11 +29,6 @@ export default (): ExpoConfig => {
     userInterfaceStyle: "light",
     newArchEnabled: true,
     owner: OWNER,
-    splash: {
-      image: "./assets/icon.png",
-      resizeMode: "contain",
-      backgroundColor: "#ffffff",
-    },
     ios: {
       supportsTablet: true,
       bundleIdentifier,
@@ -68,6 +63,39 @@ export default (): ExpoConfig => {
     },
     plugins: [
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/splash-logo-white.png",
+          imageWidth: 220,
+          resizeMode: "contain",
+          backgroundColor: "#a03048",
+          dark: {
+            image: "./assets/splash-logo-white.png",
+            backgroundColor: "#a03048",
+          },
+          ios: {
+            image: "./assets/splash-logo-white.png",
+            imageWidth: 220,
+            resizeMode: "contain",
+            backgroundColor: "#a03048",
+            dark: {
+              image: "./assets/splash-logo-white.png",
+              backgroundColor: "#a03048",
+            },
+          },
+          android: {
+            image: "./assets/splash-logo-white.png",
+            imageWidth: 220,
+            resizeMode: "contain",
+            backgroundColor: "#a03048",
+            dark: {
+              image: "./assets/splash-logo-white.png",
+              backgroundColor: "#a03048",
+            },
+          },
+        },
+      ],
       [
         "expo-font",
         {

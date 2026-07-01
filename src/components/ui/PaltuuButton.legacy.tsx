@@ -1,5 +1,6 @@
 /**
- * PaltuuButton — animated pill CTA button
+ * PaltuuButton (legacy) — animated pill CTA button with the original ring spinner.
+ * Kept for reference/reuse after the login screen switched to a Lottie loader.
  *
  * Idle  → press → [collapse to circle + spinner] → [expand + success flash] → idle
  *
@@ -27,14 +28,13 @@ import Animated, {
   cancelAnimation,
   Easing,
 } from 'react-native-reanimated';
-import { LoadingDots } from './LoadingDots';
 
 const PRIMARY      = '#a03048';
 const SPEED        = 420;
 const SUCCESS_HOLD = 1000;
 const EASING_CURVE = Easing.bezier(0.65, 0, 0.35, 1);
 
-const FULL_H    = 46;
+const FULL_H    = 58;
 const COMPACT_H = 34;
 
 interface PaltuuButtonProps {
@@ -46,10 +46,6 @@ interface PaltuuButtonProps {
   style?: ViewStyle;
   /** Shrinks to a small inline pill — use in headers / toolbars */
   compact?: boolean;
-  /** Loading indicator style: spinning ring (default) or bouncing dots */
-  loaderType?: 'ring' | 'dots';
-  /** Collapses the pill to a circle while loading (default). Set false to keep the button's size/shape and only swap its content. */
-  collapseOnLoad?: boolean;
 }
 
 export default function PaltuuButton({
@@ -60,8 +56,6 @@ export default function PaltuuButton({
   onPress,
   style,
   compact = false,
-  loaderType = 'ring',
-  collapseOnLoad = true,
 }: PaltuuButtonProps) {
   const BTN_H = compact ? COMPACT_H : FULL_H;
 
@@ -101,9 +95,7 @@ export default function PaltuuButton({
       if (successTimer.current) clearTimeout(successTimer.current);
       labelOp.value   = withTiming(0, { duration: 180 });
       successOp.value = withTiming(0, { duration: 120 });
-      if (collapseOnLoad) {
-        btnWidth.value = withTiming(BTN_H, { duration: SPEED, easing: EASING_CURVE });
-      }
+      btnWidth.value  = withTiming(BTN_H, { duration: SPEED, easing: EASING_CURVE });
       spinnerOp.value = withDelay(200, withTiming(1, { duration: 180 }));
       cancelAnimation(spinDeg);
       spinDeg.value = withRepeat(
@@ -115,12 +107,10 @@ export default function PaltuuButton({
       spinnerOp.value = withTiming(0, { duration: 150 });
       cancelAnimation(spinDeg);
       spinDeg.value  = 0;
-      if (collapseOnLoad) {
-        btnWidth.value = withDelay(
-          80,
-          withTiming(naturalWidth.current, { duration: SPEED, easing: EASING_CURVE }),
-        );
-      }
+      btnWidth.value = withDelay(
+        80,
+        withTiming(naturalWidth.current, { duration: SPEED, easing: EASING_CURVE }),
+      );
       if (successLabel) {
         successOp.value = withDelay(200, withTiming(1, { duration: 200 }));
         successTimer.current = setTimeout(() => {
@@ -142,8 +132,8 @@ export default function PaltuuButton({
     transform: [{ scale: pressScale.value }],
   }));
   const labelAnimStyle   = useAnimatedStyle(() => ({ opacity: labelOp.value }));
-  const spinnerAnimStyle = useAnimatedStyle(() => ({ opacity: spinnerOp.value }));
-  const ringAnimStyle    = useAnimatedStyle(() => ({
+  const spinnerAnimStyle = useAnimatedStyle(() => ({
+    opacity:   spinnerOp.value,
     transform: [{ rotate: `${spinDeg.value}deg` }],
   }));
   const successAnimStyle = useAnimatedStyle(() => ({ opacity: successOp.value }));
@@ -204,23 +194,16 @@ export default function PaltuuButton({
 
           {/* Spinner */}
           <Animated.View style={[s.layer, spinnerAnimStyle]} pointerEvents="none">
-            {loaderType === 'dots' ? (
-              <LoadingDots size={compact ? 6 : 8} gap={compact ? 5 : 7} color="#ffffff" />
-            ) : (
-              <Animated.View
-                style={[
-                  {
-                    width:          spinnerSize,
-                    height:         spinnerSize,
-                    borderRadius:   spinnerSize / 2,
-                    borderWidth:    spinnerBorder,
-                    borderColor:    'rgba(255,255,255,0.22)',
-                    borderTopColor: '#ffffff',
-                  },
-                  ringAnimStyle,
-                ]}
-              />
-            )}
+            <View
+              style={{
+                width:          spinnerSize,
+                height:         spinnerSize,
+                borderRadius:   spinnerSize / 2,
+                borderWidth:    spinnerBorder,
+                borderColor:    'rgba(255,255,255,0.22)',
+                borderTopColor: '#ffffff',
+              }}
+            />
           </Animated.View>
 
           {/* Success label */}
@@ -263,7 +246,8 @@ const s = StyleSheet.create({
   text: {
     position:      'absolute',
     color:         '#ffffff',
-    fontFamily:    'Montserrat_600SemiBold',
+    fontWeight:    '700',
+    fontFamily:    'Montserrat_700Bold',
     letterSpacing: 0.2,
   },
 });

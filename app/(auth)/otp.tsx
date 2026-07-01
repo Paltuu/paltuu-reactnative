@@ -12,15 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
+import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { useAuthActions } from '../../src/hooks/useAuth';
+import client from '../../src/api/client';
+
+/** Dev-only bypass code — the backend only accepts this outside production. */
+const DEV_OTP_BYPASS = '000000';
 
 export default function OTPScreen() {
-  const { name, email, password } = useLocalSearchParams<{
+  const { name, email, password, username } = useLocalSearchParams<{
     name: string;
     email: string;
     password?: string;
+    username?: string;
   }>();
   const [otp, setOtp] = useState('');
   const inputRef = useRef<TextInput>(null);
@@ -43,8 +48,15 @@ export default function OTPScreen() {
     register.mutate(
       { name, email: email.trim().toLowerCase(), password, otp: code },
       {
-        onSuccess: () => {
-          router.replace('/(auth)/username');
+        onSuccess: async () => {
+          if (username) {
+            try {
+              await client.patch('/social/profile/update', { social_username: username });
+            } catch {
+              // Non-fatal — the username can be picked up later from the profile screen.
+            }
+          }
+          router.replace('/interests');
         },
         onError: (error: any) => {
           Alert.alert('Error', error.response?.data?.message || 'Verification failed. Please try again.');
@@ -79,14 +91,7 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
-      </View>
+      <OnboardingHeader onBack={() => router.back()} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -135,6 +140,15 @@ export default function OTPScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {__DEV__ && (
+            <TouchableOpacity
+              onPress={() => submitOtp(DEV_OTP_BYPASS)}
+              style={styles.devSkip}
+            >
+              <Text style={styles.devSkipText}>Skip OTP (dev only)</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.bottom}>
@@ -155,11 +169,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  topBar: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
   body: {
     flex: 1,
     paddingHorizontal: 24,
@@ -169,6 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontFamily: 'Montserrat_700Bold',
     color: '#111827',
+    marginTop: 10,
     marginBottom: 8,
   },
   subtext: {
@@ -231,6 +241,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_600SemiBold',
     color: '#a03048',
+  },
+  devSkip: {
+    marginTop: 20,
+    alignSelf: 'center',
+  },
+  devSkipText: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#9CA3AF',
+    textDecorationLine: 'underline',
   },
   bottom: {
     paddingHorizontal: 24,

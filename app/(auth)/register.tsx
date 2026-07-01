@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -14,18 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
-import { useAuthActions } from '../../src/hooks/useAuth';
-
-const TOTAL_STEPS = 3;
+import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 
 const STEPS = [
   {
-    heading: "What's your email?",
-    subtext: "You'll use this to log in and get your verification code.",
-  },
-  {
     heading: "What's your name?",
     subtext: 'Add your name so other pet lovers can find you.',
+  },
+  {
+    heading: "What's your email?",
+    subtext: "You'll use this to log in and get your verification code.",
   },
   {
     heading: 'Create a password',
@@ -53,20 +50,19 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const router = useRouter();
-  const { sendOtp } = useAuthActions();
 
   const strength = getPasswordStrength(password);
 
   const handleNext = () => {
     if (step === 0) {
-      if (!email.trim() || !email.includes('@')) {
-        Alert.alert('Invalid email', 'Please enter a valid email address.');
+      if (!name.trim()) {
+        Alert.alert('Name required', 'Please enter your full name.');
         return;
       }
       setStep(1);
     } else if (step === 1) {
-      if (!name.trim()) {
-        Alert.alert('Name required', 'Please enter your full name.');
+      if (!email.trim() || !email.includes('@')) {
+        Alert.alert('Invalid email', 'Please enter a valid email address.');
         return;
       }
       setStep(2);
@@ -75,16 +71,9 @@ export default function RegisterScreen() {
         Alert.alert('Password too short', 'Password must be at least 8 characters.');
         return;
       }
-      sendOtp.mutate(email.trim().toLowerCase(), {
-        onSuccess: () => {
-          router.push({
-            pathname: '/(auth)/otp',
-            params: { name, email, password },
-          });
-        },
-        onError: (error: any) => {
-          Alert.alert('Error', error.response?.data?.message || 'Failed to send verification code.');
-        },
+      router.push({
+        pathname: '/(auth)/username',
+        params: { name, email, password },
       });
     }
   };
@@ -101,50 +90,36 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Top bar: back + progress */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={handleBack}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
-
-        <View style={styles.progressRow}>
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.progressSegment,
-                i <= step ? styles.progressFilled : styles.progressEmpty,
-              ]}
-            />
-          ))}
-        </View>
-
-        <View style={{ width: 26 }} />
-      </View>
+      <OnboardingHeader onBack={handleBack} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <View style={styles.body}>
-          {/* Logo */}
-          <View style={styles.logoWrap}>
-            <Image
-              source={require('../../assets/icon.png')}
-              style={{ width: 120, height: 45 }}
-              resizeMode="contain"
-            />
-          </View>
-
           {/* Step heading */}
           <Text style={styles.heading}>{heading}</Text>
           <Text style={styles.subtext}>{subtext}</Text>
 
-          {/* Email */}
+          {/* Name */}
           {step === 0 && (
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your full name"
+              placeholderTextColor="#B0B7C3"
+              autoCapitalize="words"
+              autoCorrect={false}
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
+            />
+          )}
+
+          {/* Email */}
+          {step === 1 && (
             <TextInput
               ref={inputRef}
               style={styles.input}
@@ -154,23 +129,6 @@ export default function RegisterScreen() {
               placeholderTextColor="#B0B7C3"
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus
-              returnKeyType="next"
-              onSubmitEditing={handleNext}
-            />
-          )}
-
-          {/* Name */}
-          {step === 1 && (
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your full name"
-              placeholderTextColor="#B0B7C3"
-              autoCapitalize="words"
               autoCorrect={false}
               autoFocus
               returnKeyType="next"
@@ -234,9 +192,7 @@ export default function RegisterScreen() {
         <View style={styles.bottom}>
           <PaltuuButton
             label={step === 2 ? 'Continue' : 'Next'}
-            successLabel={step === 2 ? 'Code sent!' : undefined}
             onPress={handleNext}
-            loading={sendOtp.isPending}
           />
 
           {step === 0 && (
@@ -258,43 +214,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  progressRow: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
-  },
-  progressSegment: {
-    flex: 1,
-    height: 3,
-    borderRadius: 99,
-  },
-  progressFilled: {
-    backgroundColor: '#a03048',
-  },
-  progressEmpty: {
-    backgroundColor: '#E5E7EB',
-  },
   body: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  logoWrap: {
-    alignItems: 'center',
-    marginBottom: 40,
+    paddingTop: 0,
   },
   heading: {
     fontSize: 26,
     fontFamily: 'Montserrat_700Bold',
     color: '#111827',
+    marginTop: 10,
     marginBottom: 8,
   },
   subtext: {

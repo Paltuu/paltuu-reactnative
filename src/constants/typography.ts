@@ -4,6 +4,7 @@ export const FONTS = {
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
   bodyBold: 'DMSans_700Bold',
+  pixel: 'Pixeled',
 };
 
 export const TYPOGRAPHY = {

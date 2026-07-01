@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
 import client from '../src/api/client';
 
 interface Tag {
@@ -98,10 +99,11 @@ export default function InterestsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
+      <OnboardingHeader />
       <FlatList
         ListHeaderComponent={
           <View className="px-6 pt-8 pb-4">
-            <Text className="font-heading text-3xl text-dark mb-2">What do you love?</Text>
+            <Text className="font-heading text-3xl text-dark mb-2 mt-[10px]">What do you love?</Text>
             <Text className="font-body text-gray-500 leading-6">
               Pick your interests so we can personalise your feed. You can always update these later.
             </Text>

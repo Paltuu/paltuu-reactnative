@@ -3,32 +3,41 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Alert,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
-import client from '../../src/api/client';
+import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
+import { useAuthActions } from '../../src/hooks/useAuth';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,30}$/;
 
 export default function UsernameScreen() {
+  const { name, email, password } = useLocalSearchParams<{
+    name: string;
+    email: string;
+    password: string;
+  }>();
   const [username, setUsername] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [forbiddenChars, setForbiddenChars] = useState<string[]>([]);
   const router = useRouter();
+  const { sendOtp } = useAuthActions();
 
   const isValid = USERNAME_REGEX.test(username);
 
   const handleChange = (text: string) => {
-    setUsername(text.toLowerCase().replace(/[^a-z0-9_.]/g, ''));
+    const lowered = text.toLowerCase();
+    const rejected = Array.from(new Set(lowered.match(/[^a-z0-9_.]/g) ?? []));
+    setForbiddenChars(rejected);
+    setUsername(lowered.replace(/[^a-z0-9_.]/g, ''));
   };
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
     if (!isValid) {
       Alert.alert(
         'Invalid username',
@@ -36,34 +45,37 @@ export default function UsernameScreen() {
       );
       return;
     }
-    setLoading(true);
-    try {
-      await client.patch('/social/profile/update', { social_username: username });
-      router.replace('/interests');
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'That username is already taken.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSkip = () => {
-    router.replace('/interests');
+    sendOtp.mutate(email.trim().toLowerCase(), {
+      onSuccess: () => {
+        router.push({
+          pathname: '/(auth)/otp',
+          params: { name, email, password, username },
+        });
+      },
+      onError: (error: any) => {
+        Alert.alert('Error', error.response?.data?.message || 'Failed to send verification code.');
+      },
+    });
   };
 
   const getHintColor = () => {
+    if (forbiddenChars.length > 0) return '#EF4444';
     if (username.length === 0) return '#9CA3AF';
     return isValid ? '#10B981' : '#EF4444';
   };
 
+  const getHintText = () => {
+    if (forbiddenChars.length > 0) {
+      return `You can't use ${forbiddenChars.join(', ')} in a username`;
+    }
+    if (username.length === 0) return 'Letters, numbers, underscores and periods only';
+    if (isValid) return `@${username} looks good!`;
+    return 'Min. 3 characters. Letters, numbers, _ and . only';
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <View style={{ width: 26 }} />
-        <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
+      <OnboardingHeader onBack={() => router.back()} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -93,10 +105,10 @@ export default function UsernameScreen() {
               onSubmitEditing={handleContinue}
               maxLength={30}
             />
-            {username.length > 0 && (
+            {(username.length > 0 || forbiddenChars.length > 0) && (
               <View style={styles.validIcon}>
                 <Ionicons
-                  name={isValid ? 'checkmark-circle' : 'close-circle'}
+                  name={isValid && forbiddenChars.length === 0 ? 'checkmark-circle' : 'close-circle'}
                   size={20}
                   color={getHintColor()}
                 />
@@ -106,11 +118,7 @@ export default function UsernameScreen() {
 
           {/* Hint */}
           <Text style={[styles.hint, { color: getHintColor() }]}>
-            {username.length === 0
-              ? 'Letters, numbers, underscores and periods only'
-              : isValid
-              ? `@${username} looks good!`
-              : 'Min. 3 characters. Letters, numbers, _ and . only'}
+            {getHintText()}
           </Text>
         </View>
 
@@ -118,12 +126,9 @@ export default function UsernameScreen() {
           <PaltuuButton
             label="Continue"
             onPress={handleContinue}
-            loading={loading}
+            loading={sendOtp.isPending}
             disabled={!isValid}
           />
-          <TouchableOpacity onPress={handleSkip} style={styles.skipFooter}>
-            <Text style={styles.skipFooterText}>I'll do this later</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -135,23 +140,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  skipBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  skipText: {
-    fontSize: 15,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: '#6B7280',
-  },
   body: {
     flex: 1,
     paddingHorizontal: 24,
@@ -161,6 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontFamily: 'Montserrat_700Bold',
     color: '#111827',
+    marginTop: 10,
     marginBottom: 8,
   },
   subtext: {
@@ -211,14 +200,5 @@ const styles = StyleSheet.create({
   bottom: {
     paddingHorizontal: 24,
     paddingBottom: 28,
-  },
-  skipFooter: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  skipFooterText: {
-    fontSize: 13,
-    fontFamily: 'DMSans_400Regular',
-    color: '#9CA3AF',
   },
 });
