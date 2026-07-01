@@ -36,6 +36,7 @@ const ART_INTERIOR_TOP = 85;
 const ART_INTERIOR_LEFT = 168;
 const ART_INTERIOR_RIGHT = 88;
 const ART_INTERIOR_BOTTOM = 384; // dead zone below the text area: tail + drop shadow
+const TEXT_LEFT_PADDING = 8; // extra left padding so text doesn't hug the border
 
 const DEFAULT_TYPING_SPEED_MS = 35;
 // Mouth flips on its own slower cadence, independent of how fast letters
@@ -100,7 +101,7 @@ export const PawrvezSpeechBubble: React.FC<PawrvezSpeechBubbleProps> = ({
   // Everything (art + interior insets) scales by this single factor.
   const artScale = bubbleWidth / ART_NATIVE_WIDTH;
   const padTop = ART_INTERIOR_TOP * artScale;
-  const padLeft = ART_INTERIOR_LEFT * artScale;
+  const padLeft = ART_INTERIOR_LEFT * artScale + TEXT_LEFT_PADDING;
   const padRight = ART_INTERIOR_RIGHT * artScale;
   const padBottom = ART_INTERIOR_BOTTOM * artScale;
   const interiorTextWidth = bubbleWidth - padLeft - padRight;
