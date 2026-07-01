@@ -46,7 +46,6 @@ export const PawrvezDialog: React.FC<PawrvezDialogProps> = ({
               mascotSize={72}
               fontSize={10}
               style={styles.bubbleRow}
-              textStyle={styles.bubbleText}
             />
             <Animated.View entering={FadeIn.delay(200).duration(200)}>
               {actionLabel ? (
@@ -76,10 +75,6 @@ const styles = StyleSheet.create({
   },
   bubbleRow: {
     alignItems: 'flex-end',
-  },
-  bubbleText: {
-    marginTop: -5,
-    marginLeft: 3,
   },
   actionButton: {
     alignSelf: 'center',

@@ -47,9 +47,22 @@ export const PawrvezTooltip: React.FC<PawrvezTooltipProps> = ({
 
   useEffect(() => {
     if (!visible) return;
-    anchorRef.current?.measureInWindow((x, y, width, height) => {
-      setAnchor({ x, y, width, height });
-    });
+    let raf: ReturnType<typeof requestAnimationFrame>;
+    let attempts = 0;
+    const measure = () => {
+      anchorRef.current?.measureInWindow((x, y, width, height) => {
+        // Layout can still be settling when `visible` flips (esp. inside a
+        // ScrollView); retry a few frames until we get a real position.
+        if (height === 0 && attempts < 5) {
+          attempts += 1;
+          raf = requestAnimationFrame(measure);
+          return;
+        }
+        setAnchor({ x, y, width, height });
+      });
+    };
+    raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
   }, [visible]);
 
   useEffect(() => {
