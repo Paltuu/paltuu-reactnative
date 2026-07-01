@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,49 +7,112 @@ import {
   Platform,
   Alert,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
-const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,30}$/;
+// ─── Client-side format validation (mirrors server rules exactly) ─────────────
+const FORMAT_REGEX = /^[a-z0-9_.]{1,30}$/;
 
+function clientValidate(handle: string): string | null {
+  if (handle.length === 0) return null;
+  if (handle.length > 30) return 'Max 30 characters';
+  if (!FORMAT_REGEX.test(handle)) return 'Letters, numbers, _ and . only';
+  if (handle.startsWith('.')) return 'Cannot start with a period';
+  if (handle.endsWith('.')) return 'Cannot end with a period';
+  if (handle.includes('..')) return 'Cannot contain consecutive periods';
+  return null; // null = format is valid
+}
+
+// ─── API availability check (no auth required) ────────────────────────────────
+async function checkUsernameAvailability(handle: string) {
+  const res = await axios.get(
+    `${process.env.EXPO_PUBLIC_API_URL}/v1/social/username/check`,
+    { params: { q: handle }, timeout: 5000 }
+  );
+  return res.data as { valid: boolean; available: boolean; error?: string };
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function UsernameScreen() {
   const { name, email, password } = useLocalSearchParams<{
     name: string;
     email: string;
     password: string;
   }>();
-  const [username, setUsername] = useState('');
+
+  const [rawInput, setRawInput] = useState('');
+  const [debouncedHandle, setDebouncedHandle] = useState('');
   const [forbiddenChars, setForbiddenChars] = useState<string[]>([]);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const { sendOtp } = useAuthActions();
 
-  const isValid = USERNAME_REGEX.test(username);
+  const formatError = clientValidate(rawInput);
+  const formatOk = rawInput.length > 0 && formatError === null;
 
+  // ── Debounce: fire the network check 350 ms after the user stops typing ──────
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (!formatOk) {
+      setDebouncedHandle('');
+      return;
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedHandle(rawInput);
+    }, 350);
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [rawInput, formatOk]);
+
+  // ── TanStack Query — enabled only when format is valid AND debounce settled ──
+  // Results are cached for 30 s, so re-typing the same handle won't re-fetch.
+  const {
+    data: checkResult,
+    isFetching: isChecking,
+    isError: checkFailed,
+  } = useQuery({
+    queryKey: ['username-check', debouncedHandle],
+    queryFn: () => checkUsernameAvailability(debouncedHandle),
+    enabled: debouncedHandle.length > 0,
+    staleTime: 30_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const isAvailable = checkResult?.valid && checkResult?.available;
+  // isPending = format passed but debounce hasn't fired yet OR network is in-flight
+  const isPending = formatOk && (debouncedHandle !== rawInput || isChecking);
+  const canContinue = formatOk && !isPending && isAvailable === true;
+
+  // ── Input handler ─────────────────────────────────────────────────────────
   const handleChange = (text: string) => {
     const lowered = text.toLowerCase();
     const rejected = Array.from(new Set(lowered.match(/[^a-z0-9_.]/g) ?? []));
     setForbiddenChars(rejected);
-    setUsername(lowered.replace(/[^a-z0-9_.]/g, ''));
+    setRawInput(lowered.replace(/[^a-z0-9_.]/g, ''));
   };
 
+  // ── Continue handler ──────────────────────────────────────────────────────
   const handleContinue = () => {
-    if (!isValid) {
-      Alert.alert(
-        'Invalid username',
-        'Username must be 3–30 characters and can only contain letters, numbers, underscores, and periods.'
-      );
-      return;
-    }
+    if (!canContinue) return;
     sendOtp.mutate(email.trim().toLowerCase(), {
       onSuccess: () => {
         router.push({
           pathname: '/(auth)/otp',
-          params: { name, email, password, username },
+          params: { name, email, password, username: rawInput },
         });
       },
       onError: (error: any) => {
@@ -58,19 +121,83 @@ export default function UsernameScreen() {
     });
   };
 
-  const getHintColor = () => {
-    if (forbiddenChars.length > 0) return '#EF4444';
-    if (username.length === 0) return '#9CA3AF';
-    return isValid ? '#10B981' : '#EF4444';
+  // ── Status icon ───────────────────────────────────────────────────────────
+  const renderStatusIcon = () => {
+    if (rawInput.length === 0) return null;
+
+    if (isPending) {
+      return (
+        <View style={styles.validIcon}>
+          <ActivityIndicator size="small" color="#a03048" />
+        </View>
+      );
+    }
+    if (formatError) {
+      return (
+        <View style={styles.validIcon}>
+          <Ionicons name="close-circle" size={20} color="#EF4444" />
+        </View>
+      );
+    }
+    if (checkFailed) {
+      return (
+        <View style={styles.validIcon}>
+          <Ionicons name="help-circle" size={20} color="#F59E0B" />
+        </View>
+      );
+    }
+    if (isAvailable === true) {
+      return (
+        <View style={styles.validIcon}>
+          <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+        </View>
+      );
+    }
+    if (isAvailable === false) {
+      return (
+        <View style={styles.validIcon}>
+          <Ionicons name="close-circle" size={20} color="#EF4444" />
+        </View>
+      );
+    }
+    return null;
   };
 
-  const getHintText = () => {
+  // ── Hint text ─────────────────────────────────────────────────────────────
+  const getHint = (): { text: string; color: string } => {
     if (forbiddenChars.length > 0) {
-      return `You can't use ${forbiddenChars.join(', ')} in a username`;
+      return { text: `You can't use ${forbiddenChars.join(', ')} in a username`, color: '#EF4444' };
     }
-    if (username.length === 0) return 'Letters, numbers, underscores and periods only';
-    if (isValid) return `@${username} looks good!`;
-    return 'Min. 3 characters. Letters, numbers, _ and . only';
+    if (rawInput.length === 0) {
+      return { text: 'Letters, numbers, underscores and periods only', color: '#9CA3AF' };
+    }
+    if (formatError) {
+      return { text: formatError, color: '#EF4444' };
+    }
+    if (isPending) {
+      return { text: `Checking @${rawInput}…`, color: '#6B7280' };
+    }
+    if (checkFailed) {
+      return { text: 'Could not verify — try again', color: '#F59E0B' };
+    }
+    if (isAvailable === true) {
+      return { text: `@${rawInput} is available!`, color: '#10B981' };
+    }
+    if (isAvailable === false) {
+      return { text: `@${rawInput} is already taken`, color: '#EF4444' };
+    }
+    return { text: 'Letters, numbers, underscores and periods only', color: '#9CA3AF' };
+  };
+
+  const hint = getHint();
+
+  // ── Dynamic border colour ─────────────────────────────────────────────────
+  const getBorderColor = () => {
+    if (rawInput.length === 0) return '#E5E7EB';
+    if (isPending) return '#a03048';
+    if (formatError || isAvailable === false) return '#EF4444';
+    if (isAvailable === true) return '#10B981';
+    return '#E5E7EB';
   };
 
   return (
@@ -88,13 +215,13 @@ export default function UsernameScreen() {
           </Text>
 
           {/* Input with @ prefix */}
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, { borderColor: getBorderColor() }]}>
             <View style={styles.prefixBox}>
               <Text style={styles.prefix}>@</Text>
             </View>
             <TextInput
               style={styles.input}
-              value={username}
+              value={rawInput}
               onChangeText={handleChange}
               placeholder="yourhandle"
               placeholderTextColor="#B0B7C3"
@@ -105,20 +232,12 @@ export default function UsernameScreen() {
               onSubmitEditing={handleContinue}
               maxLength={30}
             />
-            {(username.length > 0 || forbiddenChars.length > 0) && (
-              <View style={styles.validIcon}>
-                <Ionicons
-                  name={isValid && forbiddenChars.length === 0 ? 'checkmark-circle' : 'close-circle'}
-                  size={20}
-                  color={getHintColor()}
-                />
-              </View>
-            )}
+            {renderStatusIcon()}
           </View>
 
           {/* Hint */}
-          <Text style={[styles.hint, { color: getHintColor() }]}>
-            {getHintText()}
+          <Text style={[styles.hint, { color: hint.color }]}>
+            {hint.text}
           </Text>
         </View>
 
@@ -127,7 +246,7 @@ export default function UsernameScreen() {
             label="Continue"
             onPress={handleContinue}
             loading={sendOtp.isPending}
-            disabled={!isValid}
+            disabled={!canContinue || sendOtp.isPending}
           />
         </View>
       </KeyboardAvoidingView>
@@ -163,7 +282,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 14,
     backgroundColor: '#FAFAFA',
     overflow: 'hidden',
