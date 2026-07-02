@@ -4,6 +4,7 @@ import {
     useSharedValue,
     withTiming,
     SharedValue,
+    runOnUI,
 } from 'react-native-reanimated';
 
 export const HEADER_HEIGHT = 60;
@@ -13,6 +14,9 @@ interface HeaderContextValue {
     isLoading: boolean;
     setLoading: (v: boolean) => void;
     scrollHandler: ReturnType<typeof useAnimatedScrollHandler>;
+    /** Plain JS callback — use with non-animated lists (e.g. FlashList) */
+    handleScrollY: (y: number) => void;
+    handleScrollEnd: () => void;
     onPlusPress: () => void;
     onHeartPress: () => void;
     setOnPlusPress: (fn: () => void) => void;
@@ -53,6 +57,24 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         );
     };
 
+    const handleScrollY = useCallback((y: number) => {
+        runOnUI((yVal: number) => {
+            'worklet';
+            if (!headerEnabled.value) return;
+            const delta = yVal - lastY.value;
+            lastY.value = yVal;
+            if (yVal <= 0) { headerTranslateY.value = 0; return; }
+            headerTranslateY.value = Math.max(
+                -HEADER_HEIGHT,
+                Math.min(0, headerTranslateY.value - delta)
+            );
+        })(y);
+    }, []);
+
+    const handleScrollEnd = useCallback(() => {
+        runOnUI(snapHeader)();
+    }, []);
+
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => {
             'worklet';
@@ -89,12 +111,14 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         isLoading,
         setLoading,
         scrollHandler,
+        handleScrollY,
+        handleScrollEnd,
         onPlusPress,
         onHeartPress,
         setOnPlusPress,
         setOnHeartPress,
         setHeaderEnabled,
-    }), [isLoading, setLoading, scrollHandler, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
+    }), [isLoading, setLoading, scrollHandler, handleScrollY, handleScrollEnd, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
 
     return (
         <HeaderContext.Provider value={contextValue}>
