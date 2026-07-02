@@ -28,6 +28,7 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { NotificationProvider } from '../src/context/NotificationContext';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
+import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
@@ -151,6 +152,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <BottomSheetModalProvider>
             <SocialActionsProvider>
+            <PostCardModalsProvider>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
@@ -182,6 +184,7 @@ export default function RootLayout() {
                   options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
               </Stack>
+            </PostCardModalsProvider>
             </SocialActionsProvider>
             </BottomSheetModalProvider>
           </SafeAreaProvider>

@@ -20,7 +20,6 @@ import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tansta
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
-import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
 import { storage } from '../../src/utils/storage';
 
@@ -257,7 +256,6 @@ export default function HomeScreen() {
   }
 
   return (
-    <PostCardModalsProvider>
     <View className="flex-1 bg-white">
       <CustomFlashList
         style={{ flex: 1 }}
@@ -303,6 +301,5 @@ export default function HomeScreen() {
         onClose={() => setSelectedUserId(null)}
       />
     </View>
-    </PostCardModalsProvider>
   );
 }
