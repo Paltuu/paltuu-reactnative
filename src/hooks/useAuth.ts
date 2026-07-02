@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 
 export const useAuthActions = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
+  const setAuthAsNewUser = useAuthStore((state) => state.setAuthAsNewUser);
   const logoutStore = useAuthStore((state) => state.logout);
   const refreshTokenInStore = useAuthStore((state) => state.refreshToken);
 
@@ -26,7 +27,7 @@ export const useAuthActions = () => {
       const refreshToken = data.refreshToken || "";
 
       if (accessToken) {
-        setAuth(data.user || null, accessToken, refreshToken);
+        setAuthAsNewUser(data.user || null, accessToken, refreshToken);
       }
     },
   });

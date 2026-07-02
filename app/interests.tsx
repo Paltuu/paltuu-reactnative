@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
 import client from '../src/api/client';
+import { useAuthStore } from '../src/stores/authStore';
 
 interface Tag {
   tag_id: number;
@@ -35,6 +36,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const clearNewUser = useAuthStore((state) => state.clearNewUser);
   const [categories, setCategories] = useState<TagCategories>({ species: [], topic: [], content_type: [], mood: [] });
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -64,6 +66,7 @@ export default function InterestsScreen() {
 
   async function handleContinue() {
     if (selected.size === 0) {
+      clearNewUser();
       router.replace('/(app)');
       return;
     }
@@ -74,6 +77,7 @@ export default function InterestsScreen() {
       // Non-fatal — interests can be set later; proceed anyway
     } finally {
       setSaving(false);
+      clearNewUser();
       router.replace('/(app)');
     }
   }
@@ -91,14 +95,14 @@ export default function InterestsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-bg items-center justify-center">
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#FF6B35" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg">
+    <SafeAreaView className="flex-1 bg-white">
       <OnboardingHeader />
       <FlatList
         ListHeaderComponent={
@@ -165,7 +169,7 @@ export default function InterestsScreen() {
               )}
             </TouchableOpacity>
             {selected.size > 0 && (
-              <TouchableOpacity onPress={() => router.replace('/(app)')} className="mt-4 items-center">
+              <TouchableOpacity onPress={() => { clearNewUser(); router.replace('/(app)'); }} className="mt-4 items-center">
                 <Text className="font-body text-sm text-gray-400">Skip for now</Text>
               </TouchableOpacity>
             )}

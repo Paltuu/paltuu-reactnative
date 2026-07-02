@@ -269,7 +269,7 @@ export default function HomeScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{
-          paddingTop: topOffset,
+          paddingTop: topOffset + 8,
           paddingBottom: 100,
         }}
         ListHeaderComponent={listHeader}

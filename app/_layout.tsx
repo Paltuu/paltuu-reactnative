@@ -76,7 +76,7 @@ export default function RootLayout() {
     Pixeled: require('../assets/pixel/Pixeled.ttf'),
   });
 
-  const { isAuthenticated, isLoading, hydrate, user } = useAuthStore();
+  const { isAuthenticated, isLoading, hydrate, user, isNewUser } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -105,7 +105,8 @@ export default function RootLayout() {
     if (!isAuthenticated && !inAuthGroup && !onInterestsScreen) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace('/(app)');
+      const newUser = useAuthStore.getState().isNewUser;
+      router.replace(newUser ? '/interests' : '/(app)');
     }
   }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key]);
 

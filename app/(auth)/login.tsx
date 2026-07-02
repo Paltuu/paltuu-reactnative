@@ -154,8 +154,8 @@ export default function LoginScreen() {
                 tintColor="#ffffff"
               />
 
-              <Text className="font-heading text-sm text-white/70 mt-3 tracking-widest uppercase">
-                The pet Super App
+              <Text className="font-body text-sm text-white/70 mt-3 tracking-widest">
+                the pet super app
               </Text>
             </View>
           </View>
