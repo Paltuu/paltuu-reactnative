@@ -17,6 +17,7 @@ import { socialApi } from '../../src/api/social';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
+import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import {
   useCommentDraft,
   ComposerToolbar,
@@ -445,6 +446,7 @@ export default function PostDetailScreen() {
   }
 
   return (
+    <PostCardModalsProvider>
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="dark-content" />
 
@@ -641,5 +643,6 @@ export default function PostDetailScreen() {
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
       />
     </View>
+    </PostCardModalsProvider>
   );
 }

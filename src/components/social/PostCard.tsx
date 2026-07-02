@@ -431,6 +431,7 @@ const MediaBlock = React.memo(({
           height={carouselImgH}
           borderRadius={14}
           paused={!isPlaying}
+          onPress={() => onImagePress?.(index)}
         />
       );
     }
@@ -476,6 +477,7 @@ const MediaBlock = React.memo(({
             borderRadius={14}
             paused={!isPlaying}
             isProcessing={isProcessing}
+            onPress={() => onImagePress?.(0)}
           />
         </View>
       );
@@ -892,11 +894,13 @@ export const PostCard = React.memo(({
           {/* ── Media: post media for normal posts, original media for plain reposts.
                (Quote reposts show media inside the embedded original above.) ── */}
           {!isQuoteRepost && bodyMedia?.length > 0 && (
-            <MediaBlock
-              media={bodyMedia}
-              onImagePress={handleImagePress}
-              isPlaying={isVideoPlaying}
-            />
+            <View onStartShouldSetResponder={() => true}>
+              <MediaBlock
+                media={bodyMedia}
+                onImagePress={handleImagePress}
+                isPlaying={isVideoPlaying}
+              />
+            </View>
           )}
 
           {/* ── Action bar ── */}

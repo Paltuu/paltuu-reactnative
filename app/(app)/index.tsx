@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import Animated from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
 import {
-  View, Text, TouchableOpacity,
+  View, Text, TouchableOpacity, Platform,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -173,7 +173,7 @@ export default function HomeScreen() {
     () =>
       Gesture.Pan()
         .activeOffsetX([-1_000_000, 10])
-        .failOffsetY([-20, 20])
+        .failOffsetY([-5, 5])
         .onEnd((event) => {
           if (event.translationX > 60 || event.velocityX > 500) {
             runOnJS(router.push)('/create-post');
@@ -259,6 +259,7 @@ export default function HomeScreen() {
     <PostCardModalsProvider>
     <View className="flex-1 bg-white">
       <FlashList
+        style={{ flex: 1 }}
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={(item: SocialPost) => item.post_id}
@@ -279,7 +280,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Left-edge swipe to open composer */}
+      {/* Left-edge swipe to open composer — narrower on Android to avoid
+          overlapping the system back-gesture area */}
       <GestureDetector gesture={openComposeGesture}>
         <View
           pointerEvents="box-only"
@@ -288,7 +290,7 @@ export default function HomeScreen() {
             left: 0,
             top: topOffset,
             bottom: 0,
-            width: 20,
+            width: Platform.OS === 'android' ? 12 : 20,
           }}
         />
       </GestureDetector>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Modal, TouchableWithoutFeedback, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Modal, TouchableWithoutFeedback, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import PawrvezSpeechBubble from './PawrvezSpeechBubble';
 
 const ANCHOR_GAP = 10;
@@ -47,22 +47,38 @@ export const PawrvezTooltip: React.FC<PawrvezTooltipProps> = ({
 
   useEffect(() => {
     if (!visible) return;
-    let raf: ReturnType<typeof requestAnimationFrame>;
+    let rafId: ReturnType<typeof requestAnimationFrame> | undefined;
+    let timerId: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
-    const measure = () => {
+    // Android layout inside ScrollView+KeyboardAvoidingView settles much
+    // slower than iOS — more retries with setTimeout instead of rAF.
+    const MAX_ATTEMPTS = Platform.OS === 'android' ? 20 : 5;
+
+    const doMeasure = () => {
       anchorRef.current?.measureInWindow((x, y, width, height) => {
-        // Layout can still be settling when `visible` flips (esp. inside a
-        // ScrollView); retry a few frames until we get a real position.
-        if (height === 0 && attempts < 5) {
+        if (height === 0 && attempts < MAX_ATTEMPTS) {
           attempts += 1;
-          raf = requestAnimationFrame(measure);
+          if (Platform.OS === 'android') {
+            timerId = setTimeout(doMeasure, 40);
+          } else {
+            rafId = requestAnimationFrame(doMeasure);
+          }
           return;
         }
         setAnchor({ x, y, width, height });
       });
     };
-    raf = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(raf);
+
+    if (Platform.OS === 'android') {
+      timerId = setTimeout(doMeasure, 100);
+    } else {
+      rafId = requestAnimationFrame(doMeasure);
+    }
+
+    return () => {
+      if (rafId !== undefined) cancelAnimationFrame(rafId);
+      if (timerId !== undefined) clearTimeout(timerId);
+    };
   }, [visible]);
 
   useEffect(() => {

@@ -25,6 +25,8 @@ interface VideoPlayerProps {
   loop?: boolean;
   /** Processing state — show spinner instead of player */
   isProcessing?: boolean;
+  /** If provided, tapping the video calls this instead of toggling play/pause */
+  onPress?: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   paused = false,
   loop = true,
   isProcessing = false,
+  onPress,
 }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -115,7 +118,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <View style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}>
-      <TouchableOpacity activeOpacity={1} onPress={togglePlay} style={StyleSheet.absoluteFill}>
+      <TouchableOpacity activeOpacity={1} onPress={onPress ?? togglePlay} style={StyleSheet.absoluteFill}>
         <VideoView
           player={player}
           style={{ width, height }}
