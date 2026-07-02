@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import Animated from 'react-native-reanimated';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListProps } from '@shopify/flash-list';
 
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList<SocialPost>);
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 import {
   View, Text, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
@@ -263,9 +263,10 @@ export default function HomeScreen() {
       <AnimatedFlashList
         data={posts}
         renderItem={renderFeedItem}
-        keyExtractor={item => item.post_id}
+        keyExtractor={(item: SocialPost) => item.post_id}
         estimatedItemSize={450}
         onScroll={scrollHandler}
+        scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={{
