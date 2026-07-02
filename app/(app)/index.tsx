@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import Animated from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 import {
   View, Text, TouchableOpacity, Platform,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
@@ -132,7 +133,7 @@ const Separator = () => (
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { handleScrollY, handleScrollEnd } = useHeaderContext();
+  const { scrollHandler } = useHeaderContext();
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
@@ -258,14 +259,13 @@ export default function HomeScreen() {
   return (
     <PostCardModalsProvider>
     <View className="flex-1 bg-white">
-      <FlashList
+      <AnimatedFlashList
         style={{ flex: 1 }}
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={(item: SocialPost) => item.post_id}
-        onScroll={(e) => handleScrollY(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={handleScrollEnd}
-        onMomentumScrollEnd={handleScrollEnd}
+        estimatedItemSize={450}
+        onScroll={scrollHandler}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}

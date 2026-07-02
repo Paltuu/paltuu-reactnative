@@ -522,7 +522,7 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
             (scrollProps.onScroll as any)?.(event);
             (listElement.props as any).onScroll?.(event);
           },
-        });
+        } as any);
 
         return (
           <GestureDetector gesture={simultaneousGesture}>
@@ -546,7 +546,7 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
                 (scrollProps.onScroll as any)?.(event);
                 (listElement.props as any).onScroll?.(event);
               },
-            });
+            } as any);
           }
           return child;
         });

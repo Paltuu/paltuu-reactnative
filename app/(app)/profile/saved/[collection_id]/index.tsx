@@ -86,7 +86,6 @@ export default function CollectionPostsScreen() {
               post={item}
               onPress={() => router.push(`/post/${item.post_id}`)}
               onPlusPress={(uid) => setSelectedUserId(uid)}
-              isVideoPlaying={playingPostId === item.post_id}
             />
           )}
           keyExtractor={(item) => item.post_id.toString()}
