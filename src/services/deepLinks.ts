@@ -53,11 +53,11 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       if (__DEV__) {
         console.warn(`[Deep Link Router] No matching route found for: ${combinedPath}. Navigating to notifications screen.`);
       }
-      router.push('/(app)/notifications');
+      router.push('/notifications');
     }
   } catch (error) {
     console.error('[Deep Link Router] Error processing deep link URL:', error);
     // Always fallback gracefully to avoid app crashing
-    router.push('/(app)/notifications');
+    router.push('/notifications');
   }
 };

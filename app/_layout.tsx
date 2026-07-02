@@ -160,6 +160,11 @@ export default function RootLayout() {
                   name="post/[id]"
                   options={{ animation: 'slide_from_right', gestureEnabled: true }}
                 />
+                {/* Notifications: slides in from the right, covers the tab bar */}
+                <Stack.Screen
+                  name="notifications"
+                  options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                />
                 {/* Create post: slides in from the left, swipe-back exits the same way */}
                 <Stack.Screen
                   name="create-post"

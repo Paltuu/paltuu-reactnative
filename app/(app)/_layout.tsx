@@ -30,7 +30,7 @@ function LayoutContent() {
       router.push('/create-post');
     });
     setOnHeartPress(() => {
-      router.push('/(app)/notifications');
+      router.push('/notifications');
     });
   }, [router, setOnPlusPress, setOnHeartPress]);
 
@@ -228,7 +228,6 @@ function LayoutContent() {
         <Tabs.Screen name="marketplace" options={{ href: null }} />
         <Tabs.Screen name="apply-adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-details" options={{ href: null }} />
-        <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="follow-list" options={{ href: null }} />
       </Tabs>
     </View>
