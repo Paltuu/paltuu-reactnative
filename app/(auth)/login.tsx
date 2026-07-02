@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Toast from 'react-native-toast-message';
@@ -28,7 +28,8 @@ WebBrowser.maybeCompleteAuthSession();
 
 
 export default function LoginScreen() {
-  const [identifier, setIdentifier] = useState('');
+  const { email } = useLocalSearchParams<{ email?: string }>();
+  const [identifier, setIdentifier] = useState(() => (typeof email === 'string' ? email : ''));
   const [password, setPassword] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showMascotTooltip, setShowMascotTooltip] = useState(false);

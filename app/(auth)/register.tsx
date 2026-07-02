@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
+import { authApi } from '../../src/api/auth';
 
 const STEPS = [
   {
@@ -48,12 +49,13 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const router = useRouter();
 
   const strength = getPasswordStrength(password);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 0) {
       if (!name.trim()) {
         Alert.alert('Name required', 'Please enter your full name.');
@@ -61,11 +63,42 @@ export default function RegisterScreen() {
       }
       setStep(1);
     } else if (step === 1) {
-      if (!email.trim() || !email.includes('@')) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedEmail || !normalizedEmail.includes('@')) {
         Alert.alert('Invalid email', 'Please enter a valid email address.');
         return;
       }
-      setStep(2);
+
+      try {
+        setCheckingEmail(true);
+        const result = await authApi.checkEmail(normalizedEmail);
+
+        if (result.registered) {
+          Alert.alert(
+            'Email already registered',
+            'This email is already registered. Please sign in instead.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Sign In',
+                onPress: () => router.push({ pathname: '/(auth)/login', params: { email: normalizedEmail } }),
+              },
+            ]
+          );
+          return;
+        }
+
+        setEmail(normalizedEmail);
+        setStep(2);
+      } catch (error: any) {
+        Alert.alert(
+          'Unable to verify email',
+          error.response?.data?.message || 'Please try again in a moment.'
+        );
+      } finally {
+        setCheckingEmail(false);
+      }
     } else {
       if (password.length < 8) {
         Alert.alert('Password too short', 'Password must be at least 8 characters.');
@@ -193,6 +226,7 @@ export default function RegisterScreen() {
           <PaltuuButton
             label={step === 2 ? 'Continue' : 'Next'}
             onPress={handleNext}
+            loading={checkingEmail}
           />
 
           {step === 0 && (

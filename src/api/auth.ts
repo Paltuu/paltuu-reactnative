@@ -5,17 +5,24 @@ export const authApi = {
     const { data } = await client.post('/auth/login', credentials);
     return data;
   },
-  
+
+  async checkEmail(email: string) {
+    const { data } = await client.get('/auth/check-email', {
+      params: { email },
+    });
+    return data as { email: string; registered: boolean };
+  },
+
   async register(userData: any) {
     const { data } = await client.post('/auth/register', userData);
     return data;
   },
-  
+
   async sendOtp(email: string) {
     const { data } = await client.post('/auth/send-otp', { email });
     return data;
   },
-  
+
   async logout(refreshToken: string) {
     const { data } = await client.post('/auth/logout', { refreshToken });
     return data;

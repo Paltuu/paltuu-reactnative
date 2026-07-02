@@ -15,9 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { notificationsApi, Notification } from '../../src/api/notifications';
-import { handleDeepLink } from '../../src/services/deepLinks';
-import { useAuthStore } from '../../src/stores/authStore';
+import { notificationsApi, Notification } from '../src/api/notifications';
+import { handleDeepLink } from '../src/services/deepLinks';
+import { useAuthStore } from '../src/stores/authStore';
 
 // Paltuu Primary Branding Color
 const PRIMARY = '#A03048';
@@ -326,7 +326,7 @@ export default function NotificationsScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [filter, setFilter] = useState('All');
-  
+
   // Ref for bottom sheet
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
