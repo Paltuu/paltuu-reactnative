@@ -120,8 +120,8 @@ export default function PetCareScreen() {
             </View>
           )
         }
-        contentContainerStyle={{ 
-          paddingTop: HEADER_HEIGHT + insets.top + 8,
+        contentContainerStyle={{
+          paddingTop: insets.top + 8,
           paddingBottom: 100 
         }}
       />
