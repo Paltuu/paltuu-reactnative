@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
-import Animated from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
 const CustomFlashList = FlashList as any;
 import {
@@ -9,15 +8,12 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { socialApi, SocialPost, SocialProfile } from '../../src/api/social';
-import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../../src/stores/authStore';
+import { socialApi, SocialPost } from '../../src/api/social';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../src/components/social/PostCard';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
@@ -122,11 +118,6 @@ export const MOCK_POSTS: SocialPost[] = [
     ],
   }
 ];
-
-/* ── Separator ── */
-const Separator = () => (
-  <View style={{ marginVertical: 10, height: 1, backgroundColor: '#F3F4F6' }} />
-);
 
 /* ── Screen ── */
 export default function HomeScreen() {
@@ -262,7 +253,7 @@ export default function HomeScreen() {
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={(item: SocialPost) => item.post_id}
-        estimatedItemSize={450}
+        estimatedItemSize={350}
         onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
         onScrollEndDrag={handleScrollEnd}
         onMomentumScrollEnd={handleScrollEnd}
