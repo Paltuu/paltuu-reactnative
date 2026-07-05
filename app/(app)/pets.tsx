@@ -136,6 +136,9 @@ export default function PetsHubScreen() {
           { paddingTop: insets.top + 16 }
         ]}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
+        bounces={false}
+        overScrollMode="never"
       >
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
         <View style={styles.topBar}>
@@ -328,7 +331,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: TILE_BG,
     flexDirection: 'row',
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   heroText: {
     flex: 1,
