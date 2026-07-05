@@ -17,9 +17,13 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isNewUser: boolean;
+  /** True when a new OAuth (Google/Apple) account still needs to pick a username before personalization. */
+  needsUsername: boolean;
+  hasSeenOnboarding: boolean;
   setAuth: (user: User | null, accessToken: string, refreshToken: string) => Promise<void>;
-  setAuthAsNewUser: (user: User | null, accessToken: string, refreshToken: string) => Promise<void>;
+  setAuthAsNewUser: (user: User | null, accessToken: string, refreshToken: string, needsUsername?: boolean) => Promise<void>;
   clearNewUser: () => void;
+  markOnboardingSeen: () => Promise<void>;
   updateAccessToken: (accessToken: string) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
@@ -34,11 +38,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   isNewUser: false,
+  needsUsername: false,
+  hasSeenOnboarding: false,
 
-  setAuthAsNewUser: async (user, accessToken, refreshToken) => {
+  markOnboardingSeen: async () => {
+    await storage.markOnboardingSeen();
+    set({ hasSeenOnboarding: true });
+  },
+
+  setAuthAsNewUser: async (user, accessToken, refreshToken, needsUsername = false) => {
     await storage.saveToken(accessToken);
     await storage.saveRefreshToken(refreshToken);
-    set({ accessToken, refreshToken, isAuthenticated: true, isNewUser: true });
+    set({ accessToken, refreshToken, isAuthenticated: true, isNewUser: true, needsUsername });
     if (user) {
       await storage.saveUser(user);
       set({ user });
@@ -47,7 +58,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  clearNewUser: () => set({ isNewUser: false }),
+  clearNewUser: () => set({ isNewUser: false, needsUsername: false }),
 
   setAuth: async (user, accessToken, refreshToken) => {
     await storage.saveToken(accessToken);
@@ -103,6 +114,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await storage.getUser();
       const accessToken = await storage.getToken();
       const refreshToken = await storage.getRefreshToken();
+      const hasSeenOnboarding = await storage.isOnboardingSeen();
+
+      set({ hasSeenOnboarding });
 
       if (accessToken && refreshToken) {
         set({ user, accessToken, refreshToken, isAuthenticated: true });

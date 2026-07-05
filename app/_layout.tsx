@@ -77,7 +77,7 @@ export default function RootLayout() {
     Pixeled: require('../assets/pixel/Pixeled.ttf'),
   });
 
-  const { isAuthenticated, isLoading, hydrate, user, isNewUser } = useAuthStore();
+  const { isAuthenticated, isLoading, hydrate, user, isNewUser, hasSeenOnboarding } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -102,15 +102,23 @@ export default function RootLayout() {
     if (isLoading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const onInterestsScreen = segments[0] === 'interests';
+    // These live outside (auth) on purpose — they run mid-flow after tokens
+    // are already issued (post-OTP personalization, post-OAuth username), so
+    // they must be exempt from both the "logged out" and "logged in" redirects.
+    const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
+    const onOnboardingSlides = segments[0] === 'onboarding';
+    // Dev-only: always re-show the onboarding slides on launch (ignoring the
+    // persisted "seen" flag) so they're easy to iterate on without clearing
+    // storage every time. Production respects the flag as normal.
+    const shouldShowOnboarding = __DEV__ ? true : !hasSeenOnboarding;
 
-    if (!isAuthenticated && !inAuthGroup && !onInterestsScreen) {
-      router.replace('/(auth)/login');
+    if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
+      router.replace(shouldShowOnboarding ? '/onboarding' : '/(auth)/welcome');
     } else if (isAuthenticated && inAuthGroup) {
-      const newUser = useAuthStore.getState().isNewUser;
-      router.replace(newUser ? '/interests' : '/(app)');
+      const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
+      router.replace(!newUser ? '/(app)' : needsUsername ? '/oauth-username' : '/interests');
     }
-  }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key]);
+  }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key, hasSeenOnboarding]);
 
   // 3. Notification query invalidation + deep link handler
   // Token registration & listener setup is handled by <NotificationProvider>.
@@ -173,9 +181,11 @@ export default function RootLayout() {
             <SocialActionsProvider>
             <PostCardModalsProvider>
               <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
                 <Stack.Screen name="interests" options={{ headerShown: false }} />
+                <Stack.Screen name="oauth-username" options={{ headerShown: false }} />
                 <Stack.Screen name="oauth2redirect" options={{ headerShown: false }} />
                 {/* Post detail: slides in from the right, covers the tab bar */}
                 <Stack.Screen

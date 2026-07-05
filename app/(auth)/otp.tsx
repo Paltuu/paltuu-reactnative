@@ -91,7 +91,7 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <OnboardingHeader onBack={() => router.back()} />
+      <OnboardingHeader onBack={() => router.back()} variant="close" progress={5 / 6} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

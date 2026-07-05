@@ -8,8 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
+import { PawrvezTooltip } from '../src/components/common/mascot';
 import client from '../src/api/client';
 import { useAuthStore } from '../src/stores/authStore';
 
@@ -36,11 +37,20 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const { flow } = useLocalSearchParams<{ flow?: string }>();
+  const isOauthFlow = flow === 'oauth';
   const clearNewUser = useAuthStore((state) => state.clearNewUser);
   const [categories, setCategories] = useState<TagCategories>({ species: [], topic: [], content_type: [], mood: [] });
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
+
+  // Auto-surface the mascot tip shortly after arriving on this screen.
+  useEffect(() => {
+    const timer = setTimeout(() => setShowMascotTooltip(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -103,13 +113,27 @@ export default function InterestsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <OnboardingHeader />
+      <OnboardingHeader progress={isOauthFlow ? undefined : 1} />
       <FlatList
         ListHeaderComponent={
           <View className="px-6 pt-8 pb-4">
-            <Text className="font-heading text-3xl text-dark mb-2 mt-[10px]">What do you love?</Text>
+            {isOauthFlow && (
+              <Text className="font-headingSemi text-xs text-primary mb-1 uppercase tracking-wider">
+                Step 2 of 2
+              </Text>
+            )}
+            <PawrvezTooltip
+              visible={showMascotTooltip}
+              text="Help us find the right pets and posts for you"
+              onDismiss={() => setShowMascotTooltip(false)}
+              placement="top"
+            >
+              <Text className="font-heading text-3xl text-dark mb-2 mt-[10px]">
+                Let's set up your feed
+              </Text>
+            </PawrvezTooltip>
             <Text className="font-body text-gray-500 leading-6">
-              Pick your interests so we can personalise your feed. You can always update these later.
+              Choose what matters to you — you can change this anytime.
             </Text>
           </View>
         }
@@ -163,16 +187,16 @@ export default function InterestsScreen() {
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text className="font-headingSemi text-white text-base">
-                  {selected.size === 0 ? 'Skip for now' : 'Continue'}
-                </Text>
+                <Text className="font-headingSemi text-white text-base">Finish Setup</Text>
               )}
             </TouchableOpacity>
-            {selected.size > 0 && (
-              <TouchableOpacity onPress={() => { clearNewUser(); router.replace('/(app)'); }} className="mt-4 items-center">
-                <Text className="font-body text-sm text-gray-400">Skip for now</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={() => { clearNewUser(); router.replace('/(app)'); }}
+              className="mt-4 items-center"
+              disabled={saving}
+            >
+              <Text className="font-body text-sm text-gray-400">Skip for now</Text>
+            </TouchableOpacity>
           </View>
         }
       />

@@ -37,7 +37,7 @@ interface GoogleButtonProps {
 }
 
 /** Real multicolour Google "G" logo from assets/icons/google-color-svgrepo-com.svg */
-function GoogleG({ size = 22 }: { size?: number }) {
+export function GoogleG({ size = 22 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="-0.5 0 48 48">
       <Path

@@ -123,7 +123,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <OnboardingHeader onBack={handleBack} />
+      <OnboardingHeader onBack={handleBack} progress={(step + 1) / 6} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
