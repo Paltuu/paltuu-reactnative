@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -43,6 +44,16 @@ const Icons = {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = SCREEN_WIDTH;
 const AVATAR_SIZE = 96;
+const GRID_PADDING = 16;
+const GRID_GAP = 12;
+const PET_CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
+
+const SPECIES_EMOJI: Record<string, string> = {
+  cat: '🐱', dog: '🐶', bird: '🐦', rabbit: '🐰',
+  hamster: '🐹', fish: '🐠', turtle: '🐢', parrot: '🦜',
+};
+const getSpeciesEmoji = (species?: string | null) =>
+  SPECIES_EMOJI[species?.toLowerCase() ?? ''] ?? '🐾';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const DS = {
@@ -57,6 +68,12 @@ const DS = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function chunkPairs<T>(arr: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < arr.length; i += 2) rows.push(arr.slice(i, i + 2));
+  return rows;
+}
 
 function formatCount(n: number = 0): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -155,48 +172,34 @@ const MenuItem = ({
 
 // ─── Pet Card ─────────────────────────────────────────────────────────────────
 
-const PetCard = ({ item, user, onPress }: { item: any; user: any; onPress: () => void }) => {
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+const PetCard = ({ item, onPress }: { item: any; onPress: () => void }) => {
+  const metaLine = [item.breed, item.age].filter(Boolean).join(' · ');
 
   return (
-    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.9}>
-      <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.cardName}>{user?.name || 'User'}</Text>
-          <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
+    <TouchableOpacity style={s.petCard} onPress={onPress} activeOpacity={0.9}>
+      {item.avatar_url ? (
+        <ExpoImage source={{ uri: item.avatar_url }} style={s.petCardImage} contentFit="cover" />
+      ) : (
+        <View style={[s.petCardImage, s.petCardImageFallback]}>
+          <Text style={s.petCardFallbackEmoji}>{getSpeciesEmoji(item.species)}</Text>
         </View>
-      </View>
-
-      <View style={s.chipRow}>
-        <View style={s.chip}>
-          <ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" />
-          <Text style={s.chipText}>{item.name}</Text>
-        </View>
-        {item.breed && (
-          <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
-            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.breed}</Text>
-          </View>
-        )}
-        {item.age && (
-          <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
-            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.age}</Text>
-          </View>
-        )}
-      </View>
-
-      {item.avatar_url && (
-        <Image
-          source={{ uri: item.avatar_url }}
-          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
-          resizeMode="cover"
-        />
       )}
+
+      {item.is_listed_for_adoption && (
+        <View style={s.adoptionBadge}>
+          <Text style={s.adoptionBadgeText}>For Adoption</Text>
+        </View>
+      )}
+
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={s.petCardGradient}>
+        <View style={s.petCardNameRow}>
+          <Text style={s.petCardEmoji}>{getSpeciesEmoji(item.species)}</Text>
+          <Text style={s.petCardName} numberOfLines={1}>{item.name}</Text>
+        </View>
+        {!!metaLine && (
+          <Text style={s.petCardMeta} numberOfLines={1}>{metaLine}</Text>
+        )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 };
@@ -550,16 +553,24 @@ export default function ProfileScreen() {
       );
     }
     if (activeTab === 'Pets') {
+      const row = item as any[];
       return (
-        <PetCard
-          item={item}
-          user={profile}
-          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id, from: 'profile' } })}
-        />
+        <View style={s.petGridRow}>
+          {row.map((pet) => (
+            <PetCard
+              key={pet.pet_profile_id ?? pet.pet_id ?? pet.id}
+              item={pet}
+              onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: pet.pet_profile_id, from: 'profile' } })}
+            />
+          ))}
+          {row.length === 1 && <View style={{ width: PET_CARD_WIDTH }} />}
+        </View>
       );
     }
     return <RepostCard item={item} user={profile} />;
   };
+
+  const petRows = activeTab === 'Pets' ? chunkPairs(tabData.Pets) : [];
 
   const currentImageUri = selectedLocalAsset?.uri ||
     (imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url);
@@ -772,21 +783,10 @@ export default function ProfileScreen() {
       {activeTab === 'Pets' && (tabData.Pets?.length ?? 0) > 0 && (
         <TouchableOpacity
           onPress={() => router.push('/(app)/pet-profile/create')}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            paddingVertical: 12,
-            backgroundColor: '#ffffff',
-            borderBottomWidth: 0.5,
-            borderBottomColor: DS.gray100,
-          }}
+          style={s.addPetBtn}
         >
           <Ionicons name="add-circle-outline" size={18} color={DS.primary} />
-          <Text style={{ color: DS.primary, fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
-            Add Another Pet
-          </Text>
+          <Text style={s.addPetBtnText}>Add Another Pet</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -807,15 +807,17 @@ export default function ProfileScreen() {
   return (
     <View style={s.screen}>
       <FlatList
-        data={tabData[activeTab]}
+        key={activeTab}
+        data={activeTab === 'Pets' ? petRows : tabData[activeTab]}
         keyExtractor={(item, idx) =>
-          (item.post_id ?? item.pet_id ?? item.id ?? idx).toString()
+          activeTab === 'Pets'
+            ? `pet-row-${idx}`
+            : (item.post_id ?? item.id ?? idx).toString()
         }
         renderItem={renderItem}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        ItemSeparatorComponent={() => <View style={s.postDivider} />}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1339,12 +1341,6 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // ─ List ─
-  postDivider: {
-    height: 8,
-    backgroundColor: DS.bg,
-  },
-
   // ─ Card ─
   card: {
     backgroundColor: DS.surface,
@@ -1375,10 +1371,93 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 10,
   },
-  cardMedia: {
-    width: '100%',
-    aspectRatio: 4 / 3,
+  addPetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: DS.primaryLight,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  addPetBtnText: {
+    color: DS.primary,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 13,
+  },
+
+  // ─ Pet grid ─
+  petGridRow: {
+    flexDirection: 'row',
+    paddingHorizontal: GRID_PADDING,
+    gap: GRID_GAP,
+    marginBottom: GRID_GAP,
+  },
+  petCard: {
+    width: PET_CARD_WIDTH,
+    aspectRatio: 3 / 4,
+    borderRadius: 20,
+    overflow: 'hidden',
     backgroundColor: DS.gray100,
+  },
+  petCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  petCardImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DS.primaryLight,
+  },
+  petCardFallbackEmoji: {
+    fontSize: 46,
+  },
+  adoptionBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: DS.primary,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  adoptionBadgeText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 10,
+    color: '#fff',
+  },
+  petCardGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingTop: 32,
+    paddingBottom: 12,
+  },
+  petCardNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  petCardEmoji: {
+    fontSize: 13,
+  },
+  petCardName: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    color: '#fff',
+    flexShrink: 1,
+  },
+  petCardMeta: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
 
   // ─ Actions ─
@@ -1404,29 +1483,6 @@ const s = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     fontSize: 13,
     color: DS.gray400,
-  },
-
-  // ─ Pet chips ─
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: DS.primaryLight,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  chipText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 11,
-    color: DS.primary,
   },
 
   // ─ Repost ─
