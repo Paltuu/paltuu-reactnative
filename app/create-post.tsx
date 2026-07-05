@@ -512,24 +512,6 @@ export default function CreatePostScreen() {
             />
           </TouchableOpacity>
 
-          {/* Centered title */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text className="font-headingSemi text-dark" style={{ fontSize: 15 }}>
-              {isEditMode ? 'Edit post' : 'New post'}
-            </Text>
-          </View>
-
           {/* Post / Save — compact PaltuuButton, right-aligned in header */}
           <View style={{ marginLeft: 'auto' }}>
             <PaltuuButton
@@ -539,6 +521,7 @@ export default function CreatePostScreen() {
               loading={isPosting}
               disabled={!canPost}
               onPress={handlePost}
+              style={{ paddingHorizontal: 8 }}
             />
           </View>
         </View>
