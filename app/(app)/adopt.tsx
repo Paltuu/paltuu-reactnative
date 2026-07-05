@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal,
-  Platform, StyleSheet, FlatList
+  Platform, StyleSheet, FlatList, Animated as RNAnimated
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -104,14 +104,49 @@ export default function AdoptScreen() {
     router.push('/(app)/create-pet');
   };
 
+  const showSkeleton = isLoading && pets.length === 0;
+
+  // --- Skeleton pulse ---
+  const fadeAnim = useRef(new RNAnimated.Value(0.4)).current;
+  useEffect(() => {
+    if (!showSkeleton) return;
+    const animation = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(fadeAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        RNAnimated.timing(fadeAnim, { toValue: 0.4, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [showSkeleton, fadeAnim]);
+
+  const renderSkeletonGrid = () => (
+    <RNAnimated.View style={{ opacity: fadeAnim, flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 6 }}>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <View
+          key={i}
+          className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-200"
+          style={{ flex: 1, minWidth: '46%', maxWidth: '46%' }}
+        >
+          <View className="bg-gray-200" style={{ width: '100%', aspectRatio: 1, borderRadius: 16 }} />
+          <View className="py-4">
+            <View className="bg-gray-200 rounded-full mb-2" style={{ height: 14, width: '75%' }} />
+            <View className="bg-gray-200 rounded-full mb-2" style={{ height: 10, width: '50%' }} />
+            <View className="bg-gray-200 rounded-full" style={{ height: 10, width: '35%' }} />
+          </View>
+        </View>
+      ))}
+    </RNAnimated.View>
+  );
+
   // --- Render Components ---
   const renderPetCard = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
-      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5"
-      style={{ 
-        flex: 1, 
+      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-200"
+      style={{
+        flex: 1,
         maxWidth: '46%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -152,92 +187,90 @@ export default function AdoptScreen() {
 
   const renderHeader = useCallback(() => (
     <View style={{ paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-          <TouchableOpacity 
-            onPress={() => router.replace('/(app)/pets')}
-            style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: 20, 
-              backgroundColor: '#FFF', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1,
-              shadowRadius: 2,
-              elevation: 2,
-            }}
-          >
-            <Ionicons name="arrow-back" size={22} color="#111" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
-              Adopt a Pet
-            </Text>
-            <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
-              Find your new best friend
-            </Text>
-          </View>
-        </View>
-        <View 
-          style={{ 
-            backgroundColor: 'rgba(160, 48, 72, 0.1)', 
-            paddingHorizontal: 12, 
-            paddingVertical: 6, 
-            borderRadius: 12,
-            marginLeft: 8,
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <TouchableOpacity
+          onPress={() => router.replace('/(app)/pets')}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#FFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
           }}
         >
-          <Text style={{ color: '#a03048', fontWeight: '700', fontSize: 12 }}>
-            {pets.length} Available
+          <Ionicons name="arrow-back" size={22} color="#111" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+            Adopt a Pet
+          </Text>
+          <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+            Find your new best friend
           </Text>
         </View>
       </View>
     </View>
-  ), [pets.length]);
+  ), []);
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Animated.FlatList
-        data={pets}
-        renderItem={renderPetCard}
-        keyExtractor={(item) => item.pet_id.toString()}
-        numColumns={2}
-        onScroll={scrollHandler}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={{ 
-          paddingHorizontal: 12, 
-          paddingBottom: 120, 
-          paddingTop: insets.top + 8
-        }}
-        onRefresh={refetch}
-        refreshing={isRefetching}
-        windowSize={5}
-        maxToRenderPerBatch={6}
-        initialNumToRender={8}
-        removeClippedSubviews={true}
-        updateCellsBatchingPeriod={50}
-        onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
+    <View className="flex-1 bg-white">
+      {showSkeleton ? (
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 12,
+            paddingBottom: 120,
+            paddingTop: insets.top + 8,
+          }}
+        >
+          {renderHeader()}
+          {renderSkeletonGrid()}
+        </ScrollView>
+      ) : (
+        <Animated.FlatList
+          data={pets}
+          renderItem={renderPetCard}
+          keyExtractor={(item) => item.pet_id.toString()}
+          numColumns={2}
+          onScroll={scrollHandler}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={{
+            paddingHorizontal: 12,
+            paddingBottom: 120,
+            paddingTop: insets.top + 8
+          }}
+          onRefresh={refetch}
+          refreshing={isRefetching}
+          windowSize={5}
+          maxToRenderPerBatch={6}
+          initialNumToRender={8}
+          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="py-4">
+                <ActivityIndicator color="#a03048" />
+              </View>
+            ) : null
           }
-        }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <View className="py-4">
-              <ActivityIndicator color="#a03048" />
+          ListEmptyComponent={
+            <View className="py-20 items-center">
+              <Text className="font-body text-gray-500">No pets found matching these filters.</Text>
             </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View className="py-20 items-center">
-            <Text className="font-body text-gray-500">No pets found matching these filters.</Text>
-          </View>
-        }
-      />
+          }
+        />
+      )}
 
       {/* Floating Buttons */}
       <View 
@@ -285,11 +318,11 @@ export default function AdoptScreen() {
             backgroundColor: '#a03048',
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#a03048',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.35,
-            shadowRadius: 10,
-            elevation: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
           }}
         >
           <Ionicons name="add" size={28} color="#FFFFFF" />
