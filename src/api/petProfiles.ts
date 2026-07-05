@@ -16,6 +16,11 @@ export interface PetProfile {
   created_at: string;
   updated_at: string;
   age?: string | null; // calculated dynamically on backend
+  // Joined from `users` server-side (GET /pet-profiles/:id) — not present on
+  // list endpoints that don't join the owner.
+  owner_name?: string;
+  owner_social_username?: string | null;
+  owner_avatar?: string | null;
 }
 
 export interface PetProfilePhoto {

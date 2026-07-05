@@ -75,6 +75,7 @@ export default function RootLayout() {
     DMSans_500Medium,
     DMSans_700Bold,
     Pixeled: require('../assets/pixel/Pixeled.ttf'),
+    CandyBeans: require('../assets/fonts/Candy-Beans.otf'),
   });
 
   const { isAuthenticated, isLoading, hydrate, user, isNewUser, hasSeenOnboarding } = useAuthStore();

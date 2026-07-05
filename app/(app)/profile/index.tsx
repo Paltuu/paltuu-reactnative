@@ -21,7 +21,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -31,7 +30,8 @@ import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 import { MentionText } from '../../../src/components/social/MentionText';
-import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
+import { Avatar } from '../../../src/components/common/Avatar';
+import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 
 const Icons = {
   pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
@@ -45,16 +45,6 @@ const Icons = {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MENU_WIDTH = SCREEN_WIDTH;
 const AVATAR_SIZE = 96;
-const GRID_PADDING = 16;
-const GRID_GAP = 12;
-const PET_CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
-
-const SPECIES_EMOJI: Record<string, string> = {
-  cat: '🐱', dog: '🐶', bird: '🐦', rabbit: '🐰',
-  hamster: '🐹', fish: '🐠', turtle: '🐢', parrot: '🦜',
-};
-const getSpeciesEmoji = (species?: string | null) =>
-  SPECIES_EMOJI[species?.toLowerCase() ?? ''] ?? '🐾';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const DS = {
@@ -69,12 +59,6 @@ const DS = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function chunkPairs<T>(arr: T[]): T[][] {
-  const rows: T[][] = [];
-  for (let i = 0; i < arr.length; i += 2) rows.push(arr.slice(i, i + 2));
-  return rows;
-}
 
 function formatCount(n: number = 0): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -94,41 +78,6 @@ function formatDate(dateStr?: string): string {
     return 'now';
   }
 }
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const AvatarCircle = ({
-  uri,
-  size,
-  style,
-}: {
-  uri?: string | null;
-  size: number;
-  style?: any;
-}) => (
-  <View
-    style={[
-      {
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: DS.gray100,
-      },
-      style,
-    ]}
-  >
-    <Image
-      source={uri ? { uri } : NO_PROFILE_IMAGE}
-      style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
-      resizeMode="cover"
-    />
-  </View>
-);
 
 // ─── Menu Item ────────────────────────────────────────────────────────────────
 
@@ -154,42 +103,9 @@ const MenuItem = ({
   </TouchableOpacity>
 );
 
-// Internal PetCard and RepostCard remain for now as they are specific layouts
-// but we will use the shared PostCard for standard posts.
-
-// ─── Pet Card ─────────────────────────────────────────────────────────────────
-
-const PetCard = ({ item, onPress }: { item: any; onPress: () => void }) => {
-  const metaLine = [item.breed, item.age].filter(Boolean).join(' · ');
-
-  return (
-    <TouchableOpacity style={s.petCard} onPress={onPress} activeOpacity={0.9}>
-      {item.avatar_url ? (
-        <ExpoImage source={{ uri: item.avatar_url }} style={s.petCardImage} contentFit="cover" />
-      ) : (
-        <View style={[s.petCardImage, s.petCardImageFallback]}>
-          <Text style={s.petCardFallbackEmoji}>{getSpeciesEmoji(item.species)}</Text>
-        </View>
-      )}
-
-      {item.is_listed_for_adoption && (
-        <View style={s.adoptionBadge}>
-          <Text style={s.adoptionBadgeText}>For Adoption</Text>
-        </View>
-      )}
-
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.78)']} style={s.petCardGradient}>
-        <View style={s.petCardNameRow}>
-          <Text style={s.petCardEmoji}>{getSpeciesEmoji(item.species)}</Text>
-          <Text style={s.petCardName} numberOfLines={1}>{item.name}</Text>
-        </View>
-        {!!metaLine && (
-          <Text style={s.petCardMeta} numberOfLines={1}>{metaLine}</Text>
-        )}
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-};
+// The Pets tab now renders shared PetIdCard components (CNIC-style ID cards);
+// RepostCard below remains a specific layout, and standard posts use the
+// shared PostCard.
 
 // ─── Repost Card ──────────────────────────────────────────────────────────────
 
@@ -197,7 +113,7 @@ const RepostCard = ({ item, user }: { item: any; user: any }) => {
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} />
+        <Avatar uri={user?.profile_image_url} size={40} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.cardName}>{user?.name || 'User'}</Text>
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
@@ -526,24 +442,28 @@ export default function ProfileScreen() {
       );
     }
     if (activeTab === 'Pets') {
-      const row = item as any[];
+      const pet = item as any;
       return (
-        <View style={s.petGridRow}>
-          {row.map((pet) => (
-            <PetCard
-              key={pet.pet_profile_id ?? pet.pet_id ?? pet.id}
-              item={pet}
-              onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: pet.pet_profile_id, from: 'profile' } })}
-            />
-          ))}
-          {row.length === 1 && <View style={{ width: PET_CARD_WIDTH }} />}
+        <View style={s.petCardRow}>
+          <PetIdCard
+            pet={{
+              pet_profile_id: pet.pet_profile_id,
+              name: pet.name,
+              species: pet.species,
+              breed: pet.breed,
+              gender: pet.gender,
+              date_of_birth: pet.date_of_birth,
+              avatar_url: pet.avatar_url,
+              owner_name: profile.name,
+              created_at: pet.created_at,
+            }}
+            onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: pet.pet_profile_id, from: 'profile' } })}
+          />
         </View>
       );
     }
     return <RepostCard item={item} user={profile} />;
   };
-
-  const petRows = activeTab === 'Pets' ? chunkPairs(tabData.Pets) : [];
 
   const currentImageUri = selectedLocalAsset?.uri ||
     (imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url);
@@ -599,7 +519,7 @@ export default function ProfileScreen() {
           onPress={() => setImageModal('profile')}
           style={{ position: 'relative' }}
         >
-          <AvatarCircle
+          <Avatar
             uri={profile?.profile_image_url}
             size={AVATAR_SIZE}
           />
@@ -780,10 +700,10 @@ export default function ProfileScreen() {
     <View style={s.screen}>
       <FlatList
         key={activeTab}
-        data={activeTab === 'Pets' ? petRows : tabData[activeTab]}
+        data={tabData[activeTab]}
         keyExtractor={(item, idx) =>
           activeTab === 'Pets'
-            ? `pet-row-${idx}`
+            ? `pet-${item.pet_profile_id ?? idx}`
             : (item.post_id ?? item.id ?? idx).toString()
         }
         renderItem={renderItem}
@@ -802,26 +722,30 @@ export default function ProfileScreen() {
           <View style={s.emptyState}>
             {isTabLoading ? (
               <ActivityIndicator size="small" color={DS.primary} />
+            ) : activeTab === 'Pets' ? (
+              <View style={{ width: '100%', paddingHorizontal: 8 }}>
+                <PetIdCard isPlaceholder />
+                <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(app)/pet-profile/create')}
+                  style={{
+                    backgroundColor: DS.primary,
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    marginTop: 16,
+                    alignSelf: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
+                    Add Your Pet
+                  </Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <>
                 <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 40, height: 40 }} contentFit="contain" tintColor={DS.gray100} />
                 <Text style={s.emptyText}>Nothing here yet</Text>
-                {activeTab === 'Pets' && (
-                  <TouchableOpacity
-                    onPress={() => router.push('/(app)/pet-profile/create')}
-                    style={{
-                      backgroundColor: DS.primary,
-                      paddingHorizontal: 20,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      marginTop: 12,
-                    }}
-                  >
-                    <Text style={{ color: '#fff', fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
-                      Create Pet Profile
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </>
             )}
           </View>
@@ -845,7 +769,7 @@ export default function ProfileScreen() {
               >
                 {/* Header */}
                 <View style={[s.menuHeader, { paddingTop: insets.top + 20 }]}>
-                  <AvatarCircle
+                  <Avatar
                     uri={profile?.profile_image_url}
                     size={52}
                   />
@@ -1361,74 +1285,10 @@ const s = StyleSheet.create({
     fontSize: 13,
   },
 
-  // ─ Pet grid ─
-  petGridRow: {
-    flexDirection: 'row',
-    paddingHorizontal: GRID_PADDING,
-    gap: GRID_GAP,
-    marginBottom: GRID_GAP,
-  },
-  petCard: {
-    width: PET_CARD_WIDTH,
-    aspectRatio: 3 / 4,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: DS.gray100,
-  },
-  petCardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  petCardImageFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: DS.primaryLight,
-  },
-  petCardFallbackEmoji: {
-    fontSize: 46,
-  },
-  adoptionBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: DS.primary,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  adoptionBadgeText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 10,
-    color: '#fff',
-  },
-  petCardGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 12,
-    paddingTop: 32,
-    paddingBottom: 12,
-  },
-  petCardNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  petCardEmoji: {
-    fontSize: 13,
-  },
-  petCardName: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 15,
-    color: '#fff',
-    flexShrink: 1,
-  },
-  petCardMeta: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 11.5,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
+  // ─ Pet ID cards ─
+  petCardRow: {
+    paddingHorizontal: 16,
+    marginBottom: 14,
   },
 
   // ─ Actions ─
@@ -1489,6 +1349,13 @@ const s = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
     color: DS.gray400,
+  },
+  placeholderCardCaption: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 13,
+    color: DS.gray400,
+    textAlign: 'center',
+    marginTop: 10,
   },
 
   // ─ Menu drawer ─

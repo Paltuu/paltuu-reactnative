@@ -14,16 +14,19 @@ import {
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { petProfilesApi, PetProfile, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { useAuthStore } from '../../../src/stores/authStore';
 import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
+import { Avatar } from '../../../src/components/common/Avatar';
+import { PetIdCard } from '../../../src/components/pets/PetIdCard';
+import { formatDOB } from '../../../src/utils/petId';
 
 const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
+const AVATAR_SIZE = 88;
 
 // Species → emoji badge mapping for personality
 const speciesEmoji: Record<string, string> = {
@@ -33,12 +36,6 @@ const speciesEmoji: Record<string, string> = {
 
 const getSpeciesEmoji = (species: string) =>
   speciesEmoji[species?.toLowerCase()] ?? '🐾';
-
-const formatDOB = (dob: string | null) => {
-  if (!dob) return null;
-  const d = new Date(dob);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-};
 
 type Tab = 'posts' | 'gallery' | 'about';
 
@@ -56,6 +53,7 @@ export default function PetProfileScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('posts');
+  const [nameBlockWidth, setNameBlockWidth] = useState(0);
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
@@ -211,20 +209,15 @@ export default function PetProfileScreen() {
           <TouchableOpacity onPress={goBack} style={s.menuBtn}>
             <Ionicons name="chevron-back" size={24} color="#000000" />
           </TouchableOpacity>
-          {isOwner && (
-            <View style={s.ownerActions}>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
-                style={s.menuBtn}
-              >
-                <Ionicons name="create-outline" size={22} color="#000000" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
-                style={s.menuBtn}
-              >
-                <Ionicons name="images-outline" size={22} color="#000000" />
-              </TouchableOpacity>
+        </View>
+
+        {/* ── Avatar (square, rounded — the one intentional shape difference from a person profile) ── */}
+        <View style={s.avatarCenter}>
+          {profile.avatar_url ? (
+            <Avatar uri={profile.avatar_url} size={AVATAR_SIZE} shape="square" radius={16} />
+          ) : (
+            <View style={s.avatarFallback}>
+              <Text style={s.avatarFallbackEmoji}>{getSpeciesEmoji(profile.species)}</Text>
             </View>
           )}
         </View>
@@ -232,36 +225,61 @@ export default function PetProfileScreen() {
         {/* ── IDENTITY BLOCK ── */}
         <View style={s.identityBlock}>
           {/* Name + meta */}
-          <Text style={s.petName}>{profile.name}</Text>
-          {(profile.breed || profile.species) && (
-            <Text style={s.petBreed}>
-              {[profile.breed, profile.species].filter(Boolean).join(' · ')}
-            </Text>
+          <View
+            style={{ alignItems: 'center', position: 'relative' }}
+            onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
+          >
+            <Text style={s.petName}>{profile.name}</Text>
+            {(profile.breed || profile.species) && (
+              <Text style={s.petBreed}>
+                {[profile.breed, profile.species].filter(Boolean).join(' · ')}
+              </Text>
+            )}
+          </View>
+          {isOwner && nameBlockWidth > 0 && (
+            <TouchableOpacity
+              style={[
+                s.editSmallBtn,
+                { position: 'absolute', left: '50%', marginLeft: nameBlockWidth / 2 + 14, top: 0 },
+              ]}
+              onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+            >
+              <Text style={s.editSmallBtnText}>Edit</Text>
+            </TouchableOpacity>
           )}
 
-          {/* ── Stats Ribbon ── */}
+          {/* ── Stats Ribbon — same plain value/label/separator treatment as a person profile ── */}
           <View style={s.statsRow}>
-            {profile.age && (
-              <View style={s.statChip}>
-                <Ionicons name="calendar-outline" size={13} color="#a03048" />
-                <Text style={s.statText}>{profile.age}</Text>
-              </View>
-            )}
-            {profile.gender && (
-              <View style={s.statChip}>
-                <Ionicons
-                  name={profile.gender?.toLowerCase() === 'male' ? 'male' : 'female'}
-                  size={13}
-                  color="#a03048"
-                />
-                <Text style={s.statText}>{profile.gender}</Text>
-              </View>
-            )}
-            <View style={s.statChip}>
-              <MaterialCommunityIcons name="paw" size={13} color="#a03048" />
-              <Text style={s.statText}>{profile.species}</Text>
+            <View style={s.statItem}>
+              <Text style={s.statValue}>{profile.species}</Text>
+              <Text style={s.statLabel}>Species</Text>
+            </View>
+            <View style={s.statSep} />
+            <View style={s.statItem}>
+              <Text style={s.statValue}>{profile.gender || '—'}</Text>
+              <Text style={s.statLabel}>Gender</Text>
+            </View>
+            <View style={s.statSep} />
+            <View style={s.statItem}>
+              <Text style={s.statValue}>{profile.age || '—'}</Text>
+              <Text style={s.statLabel}>Age</Text>
             </View>
           </View>
+
+          {/* ── Bio — same placement/styling as a person profile, always visible ── */}
+          {profile.bio ? (
+            <Text style={s.bio}>{profile.bio}</Text>
+          ) : isOwner ? (
+            <TouchableOpacity
+              style={s.addBioBtn}
+              onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+            >
+              <Ionicons name="add" size={10} color="#000000" />
+              <Text style={s.addBioBtnText}>Add Bio</Text>
+              <Text style={s.addBioBtnDot}>·</Text>
+              <Text style={s.addBioBtnExample} numberOfLines={1}>Tell us about {profile.name}...</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* ── ADOPTION / STATUS BANNERS ── */}
@@ -293,7 +311,7 @@ export default function PetProfileScreen() {
           </TouchableOpacity>
         )}
 
-        {/* ── PREMIUM TAB BAR ── */}
+        {/* ── ICON-ONLY TAB BAR (matches a person profile exactly) ── */}
         <View style={s.tabBar}>
           {(['posts', 'gallery', 'about'] as Tab[]).map((tab) => {
             const active = tab === activeTab;
@@ -306,13 +324,11 @@ export default function PetProfileScreen() {
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab)}
-                style={[s.tabItem, active && s.tabItemActive]}
+                style={s.tabItem}
                 activeOpacity={0.7}
               >
-                <Ionicons name={icons[tab]} size={18} color={active ? '#a03048' : '#9CA3AF'} />
-                <Text style={[s.tabLabel, active && s.tabLabelActive]}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </Text>
+                <Ionicons name={icons[tab]} size={20} color={active ? '#a03048' : '#9CA3AF'} />
+                {active && <View style={s.tabUnderline} />}
               </TouchableOpacity>
             );
           })}
@@ -356,15 +372,8 @@ export default function PetProfileScreen() {
         {activeTab === 'gallery' && (
           <View style={s.galleryGrid}>
             {photos.length > 0 ? (
-              photos.map((photo, idx) => (
-                <View
-                  key={photo.photo_id}
-                  style={[
-                    s.galleryCell,
-                    // Every 7th image is a feature tile (double wide)
-                    idx % 7 === 0 && s.galleryCellFeatured,
-                  ]}
-                >
+              photos.map((photo) => (
+                <View key={photo.photo_id} style={s.galleryCell}>
                   <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
                   {photo.caption ? (
                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={s.captionGradient}>
@@ -387,22 +396,25 @@ export default function PetProfileScreen() {
           </View>
         )}
 
-        {/* ABOUT TAB */}
+        {/* ABOUT TAB — the digital ID card is the identity; the cards below
+             are the "full record" (bio now lives up in the identity block,
+             so it isn't repeated here). */}
         {activeTab === 'about' && (
           <View style={s.aboutContainer}>
 
-            {/* Bio card */}
-            {profile.bio && (
-              <View style={s.aboutCard}>
-                <View style={s.aboutCardHeader}>
-                  <View style={s.aboutCardIcon}>
-                    <Ionicons name="heart" size={14} color="#a03048" />
-                  </View>
-                  <Text style={s.aboutCardTitle}>About {profile.name}</Text>
-                </View>
-                <Text style={s.bioText}>{profile.bio}</Text>
-              </View>
-            )}
+            <PetIdCard
+              pet={{
+                pet_profile_id: profile.pet_profile_id,
+                name: profile.name,
+                species: profile.species,
+                breed: profile.breed,
+                gender: profile.gender,
+                date_of_birth: profile.date_of_birth,
+                avatar_url: profile.avatar_url,
+                owner_name: profile.owner_name,
+                created_at: profile.created_at,
+              }}
+            />
 
             {/* Details card */}
             <View style={s.aboutCard}>
@@ -471,6 +483,17 @@ export default function PetProfileScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Floating add-photo action — only surface while Gallery is active, so
+          it doesn't compete with Posts/About, and only for the owner. */}
+      {isOwner && activeTab === 'gallery' && (
+        <TouchableOpacity
+          style={[s.galleryFab, { bottom: insets.bottom + 20 }]}
+          onPress={() => router.push({ pathname: '/(app)/pet-profile/gallery-manager', params: { petId: profile.pet_profile_id } })}
+        >
+          <Ionicons name="add" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -489,12 +512,30 @@ const s = StyleSheet.create({
     width: 40, height: 40,
     alignItems: 'center', justifyContent: 'center',
   },
-  ownerActions: { flexDirection: 'row', marginLeft: 'auto', gap: 4 },
+
+  // ── AVATAR (square, rounded — the one shape difference from a person profile) ──
+  avatarCenter: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  avatarFallback: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(160,48,72,0.2)',
+    backgroundColor: '#FAF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarFallbackEmoji: {
+    fontSize: 36,
+  },
 
   // ── IDENTITY ──
   identityBlock: {
     alignItems: 'center',
-    marginTop: 8,
     paddingBottom: 20,
     paddingHorizontal: 24,
   },
@@ -511,29 +552,85 @@ const s = StyleSheet.create({
     fontFamily: 'Montserrat_500Medium',
     color: '#6B7280',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  editSmallBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#F3F4F6',
   },
-  statChip: {
+  editSmallBtnText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 11,
+    color: '#111827',
+  },
+  bio: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
+    marginTop: 12,
+  },
+  addBioBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FAF0F2',
-    borderWidth: 1,
-    borderColor: 'rgba(160,48,72,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#F3F4F6',
+    marginTop: 12,
+    maxWidth: width - 80,
   },
-  statText: {
-    fontSize: 12,
+  addBioBtnText: {
     fontFamily: 'Montserrat_600SemiBold',
-    color: '#a03048',
+    fontSize: 13,
+    color: '#000000',
+  },
+  addBioBtnDot: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  addBioBtnExample: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 13,
+    color: '#000000',
+    flexShrink: 1,
+  },
+
+  // ── STATS ── (same plain value/label/separator treatment as a person profile)
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 17,
+    color: '#111827',
+    letterSpacing: -0.5,
     textTransform: 'capitalize',
+  },
+  statLabel: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statSep: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 12,
   },
 
   // ── BANNERS ──
@@ -577,35 +674,27 @@ const s = StyleSheet.create({
   adoptionBannerTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#92400E' },
   adoptionBannerSub: { fontSize: 11, fontFamily: 'Montserrat_400Regular', color: '#B45309', marginTop: 2 },
 
-  // ── TABS ──
+  // ── TABS (icon-only, matches a person profile exactly) ──
   tabBar: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
+    borderTopColor: '#F3F4F6',
     backgroundColor: '#FFFFFF',
     marginTop: 4,
   },
   tabItem: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 14,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingVertical: 12,
+    position: 'relative',
   },
-  tabItemActive: {
-    borderBottomColor: '#a03048',
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: '#9CA3AF',
-  },
-  tabLabelActive: {
-    color: '#a03048',
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    width: 32,
+    height: 2.5,
+    backgroundColor: '#a03048',
+    borderRadius: 2,
   },
 
   // ── GALLERY ──
@@ -624,10 +713,20 @@ const s = StyleSheet.create({
     borderRadius: 4,
     position: 'relative',
   },
-  galleryCellFeatured: {
-    width: GALLERY_COL_SIZE * 2 + 2,
-    height: GALLERY_COL_SIZE * 1.4,
-    borderRadius: 6,
+  galleryFab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#a03048',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
   },
   captionGradient: {
     position: 'absolute',

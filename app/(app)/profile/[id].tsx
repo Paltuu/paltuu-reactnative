@@ -29,6 +29,9 @@ import { useSocialActions } from '../../../src/hooks/useSocialActions';
 import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
 import { useMutation } from '@tanstack/react-query';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
+import { Avatar } from '../../../src/components/common/Avatar';
+import { PetIdCard } from '../../../src/components/pets/PetIdCard';
+import { petProfilesApi } from '../../../src/api/petProfiles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -59,81 +62,14 @@ function formatCount(n: number = 0): string {
   return String(n);
 }
 
-const AvatarCircle = ({
-  uri,
-  size,
-  style,
-}: {
-  uri?: string | null;
-  size: number;
-  style?: any;
-}) => (
-  <View
-    style={[
-      {
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: DS.gray100,
-      },
-      style,
-    ]}
-  >
-    <Image
-      source={uri ? { uri } : NO_PROFILE_IMAGE}
-      style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
-      resizeMode="cover"
-    />
-  </View>
-);
-
-// Field names differ from the own-profile PetCard (pet_name/pet_breed/main_image
-// vs. name/breed/avatar_url) since this screen reads from a different endpoint
-// (socialApi.getPets vs. petProfilesApi.getUserPetProfiles) — styling matches exactly.
-const PetCard = ({ item, user }: { item: any; user: any }) => {
-  return (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.cardName}>{user?.name || 'User'}</Text>
-          <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
-        </View>
-      </View>
-
-      <View style={s.chipRow}>
-        <View style={s.chip}>
-          <ExpoImage source={Icons.pawSelect} style={{ width: 11, height: 11 }} contentFit="contain" />
-          <Text style={s.chipText}>{item.pet_name}</Text>
-        </View>
-        {item.pet_breed && (
-          <View style={[s.chip, { backgroundColor: DS.gray100 }]}>
-            <Text style={[s.chipText, { color: DS.gray500 }]}>{item.pet_breed}</Text>
-          </View>
-        )}
-      </View>
-
-      {item.main_image && (
-        <Image
-          source={{ uri: item.main_image }}
-          style={[s.cardMedia, { backgroundColor: '#FFFFFF' }]}
-          resizeMode="cover"
-        />
-      )}
-    </View>
-  );
-};
+// The Pets tab now renders the user's personal pet profiles as shared PetIdCard
+// components (CNIC-style ID cards), reading from petProfilesApi.getUserPetProfiles.
 
 const RepostCard = ({ item, user }: { item: any; user: any }) => {
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} />
+        <Avatar uri={user?.profile_image_url} size={40} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.cardName}>{user?.name || 'User'}</Text>
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
@@ -204,7 +140,7 @@ export default function UserProfileScreen() {
 
   const { data: petsData, isLoading: isPetsLoading } = useQuery({
     queryKey: ['social-pets', userId],
-    queryFn: () => socialApi.getPets(userId!),
+    queryFn: () => petProfilesApi.getUserPetProfiles(userId!),
     enabled: !!userId && activeTab === 'Pets',
   });
 
@@ -333,7 +269,26 @@ export default function UserProfileScreen() {
       };
       return <PostCardShared post={postWithAuthor} onPress={() => router.push(`/post/${item.post_id}`)} />;
     }
-    if (activeTab === 'Pets') return <PetCard item={item} user={profile} />;
+    if (activeTab === 'Pets') {
+      return (
+        <View style={s.petCardRow}>
+          <PetIdCard
+            pet={{
+              pet_profile_id: item.pet_profile_id,
+              name: item.name,
+              species: item.species,
+              breed: item.breed,
+              gender: item.gender,
+              date_of_birth: item.date_of_birth,
+              avatar_url: item.avatar_url,
+              owner_name: profile?.name,
+              created_at: item.created_at,
+            }}
+            onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id } })}
+          />
+        </View>
+      );
+    }
     return <RepostCard item={item} user={profile} />;
   };
 
@@ -357,7 +312,7 @@ export default function UserProfileScreen() {
 
       <View style={s.avatarCenter}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('profile')}>
-          <AvatarCircle uri={profile?.profile_image_url} size={AVATAR_SIZE} />
+          <Avatar uri={profile?.profile_image_url} size={AVATAR_SIZE} />
         </TouchableOpacity>
       </View>
 
@@ -588,7 +543,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 10,
   },
-  cardMedia: { width: '100%', aspectRatio: 4 / 3, backgroundColor: DS.gray100 },
 
   // ─ Actions ─
   thinDivider: { height: 0.5, backgroundColor: DS.gray100, marginHorizontal: 16, marginTop: 8 },
@@ -596,18 +550,8 @@ const s = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionCount: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: DS.gray400 },
 
-  // ─ Pet chips ─
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, marginBottom: 10 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: DS.primaryLight,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  chipText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 11, color: DS.primary },
+  // ─ Pet ID cards ─
+  petCardRow: { paddingHorizontal: 16, marginBottom: 14 },
 
   // ─ Repost ─
   repostLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, marginBottom: 8 },
