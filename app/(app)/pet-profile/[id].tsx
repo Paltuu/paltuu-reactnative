@@ -67,11 +67,11 @@ export default function PetProfileScreen() {
 
   const goBack = () => {
     if (from === 'profile') {
-      router.push('/(app)/profile/index');
+      router.navigate('/(app)/profile');
     } else if (router.canGoBack()) {
       router.back();
     } else {
-      router.push('/(app)/profile/index');
+      router.navigate('/(app)/profile');
     }
   };
 
