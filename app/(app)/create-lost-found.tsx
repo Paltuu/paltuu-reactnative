@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
-  FlatList,
+  FlatList, Animated, LayoutChangeEvent
 } from 'react-native';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 
@@ -75,7 +75,7 @@ function Dropdown({ label, value, options, onSelect }: DropdownProps) {
                     {item.label}
                   </Text>
                   {item.value === value && (
-                    <Ionicons name="checkmark" size={20} color="#e76f51" />
+                    <Ionicons name="checkmark" size={20} color="#A03048" />
                   )}
                 </TouchableOpacity>
               )}
@@ -129,9 +129,9 @@ const dStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F8F8F8',
   },
-  optionSelected: { backgroundColor: '#FEF5F3' },
+  optionSelected: { backgroundColor: '#FAF0F2' },
   optionText: { fontSize: 16, color: '#333' },
-  optionTextSelected: { color: '#e76f51', fontWeight: '600' },
+  optionTextSelected: { color: '#A03048', fontWeight: '600' },
 });
 
 /* ───────────────────────────────────────────────
@@ -145,6 +145,18 @@ export default function CreateLostFoundScreen() {
     usePetStore();
 
   const [activeTab, setActiveTab] = useState<'lost' | 'found'>('lost');
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [tabWidth, setTabWidth] = useState(0);
+
+  const switchTab = (tab: 'lost' | 'found') => {
+    setActiveTab(tab);
+    Animated.spring(slideAnim, {
+      toValue: tab === 'lost' ? 0 : 1,
+      useNativeDriver: true,
+      tension: 260,
+      friction: 22,
+    }).start();
+  };
 
   const [formData, setFormData] = useState({
     categoryId: '',
@@ -223,7 +235,7 @@ export default function CreateLostFoundScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 60 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[styles.scroll, { paddingBottom: 150 }]}
@@ -238,30 +250,33 @@ export default function CreateLostFoundScreen() {
         </View>
 
         {/* Tab Switcher */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'lost' && styles.activeTab]}
-            onPress={() => setActiveTab('lost')}
-          >
-            <Text
+        <View
+          style={styles.tabContainer}
+          onLayout={(e: LayoutChangeEvent) => setTabWidth(e.nativeEvent.layout.width / 2 - 4)}
+        >
+          {tabWidth > 0 && (
+            <Animated.View
               style={[
-                styles.tabText,
-                activeTab === 'lost' && styles.activeTabText,
+                styles.tabPill,
+                {
+                  width: tabWidth,
+                  transform: [{
+                    translateX: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, tabWidth],
+                    }),
+                  }],
+                },
               ]}
-            >
+            />
+          )}
+          <TouchableOpacity style={styles.tab} onPress={() => switchTab('lost')}>
+            <Text style={[styles.tabText, activeTab === 'lost' && styles.activeTabText]}>
               LOST
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'found' && styles.activeTab]}
-            onPress={() => setActiveTab('found')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'found' && styles.activeTabText,
-              ]}
-            >
+          <TouchableOpacity style={styles.tab} onPress={() => switchTab('found')}>
+            <Text style={[styles.tabText, activeTab === 'found' && styles.activeTabText]}>
               FOUND
             </Text>
           </TouchableOpacity>
@@ -286,7 +301,7 @@ export default function CreateLostFoundScreen() {
             ))}
             {images.length < 3 && (
               <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
-                <Ionicons name="camera" size={28} color="#e76f51" />
+                <Ionicons name="camera" size={28} color="#A03048" />
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -370,20 +385,34 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 24,
     padding: 4,
     marginBottom: 20,
+    position: 'relative',
+  },
+  tabPill: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    bottom: 4,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 20,
+    zIndex: 1,
   },
-  activeTab: { backgroundColor: '#fff' },
-  tabText: { fontSize: 14, fontWeight: 'bold', color: '#666' },
-  activeTabText: { color: '#e76f51' },
+  activeTabText: { color: '#A03048' },
+  tabText: { fontSize: 14, fontWeight: '700', color: '#999' },
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10 },
   label: {
     fontSize: 12,
@@ -415,15 +444,15 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: '#fef5f3',
+    backgroundColor: '#FAF0F2',
     borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: '#e76f51',
+    borderColor: '#A03048',
     alignItems: 'center',
     justifyContent: 'center',
   },
   submitBtn: {
-    backgroundColor: '#e76f51',
+    backgroundColor: '#A03048',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
