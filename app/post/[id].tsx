@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
+import { timeAgo as formatTime } from '../../src/utils/timeAgo';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
@@ -44,15 +45,6 @@ const PostIcons = {
 };
 
 /* ── Helpers ── */
-const formatTime = (dateStr: string) => {
-  try {
-    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (diff < 60) return 'now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return new Date(dateStr).toLocaleDateString();
-  } catch { return 'now'; }
-};
 
 /* ── Types ── */
 interface Comment {
@@ -293,10 +285,11 @@ export default function PostDetailScreen() {
   }, []);
 
   /* ── Queries ── */
-  const { data: postData, isLoading: postLoading } = useQuery({
+  const { data: postData, isLoading: postLoading, isError: postError } = useQuery({
     queryKey: ['post', id],
     queryFn: () => socialApi.getPostById(id as string),
     enabled: !!id,
+    retry: 1,
   });
 
   const { data: commentsData } = useQuery({
@@ -436,11 +429,32 @@ export default function PostDetailScreen() {
     }
   }, [postData, commentsData, handleReply, handleExpand, openComposer, user?.id, sortBy]);
 
-  /* ── Loading ── */
+  /* ── Loading / Error ── */
   if (postLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top }}>
         <ActivityIndicator color={PRIMARY} size="large" />
+      </View>
+    );
+  }
+
+  if (postError || (!postLoading && !postData)) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' }}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="chevron-back" size={24} color="#111" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Ionicons name="alert-circle-outline" size={48} color="#E0E0E0" />
+          <Text style={{ color: '#999', marginTop: 12, textAlign: 'center', fontSize: 15 }}>
+            This post is unavailable.
+          </Text>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: '#A03048' }}>
+            <Text style={{ color: '#FFF', fontWeight: '700' }}>Go back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -530,7 +544,7 @@ export default function PostDetailScreen() {
             borderTopWidth: 0.5, borderTopColor: '#F3F4F6',
             shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
             shadowOpacity: 0.1, shadowRadius: 10,
-            paddingBottom: Platform.OS === 'ios' ? 8 : (insets.bottom > 0 ? insets.bottom : 8),
+            paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : (insets.bottom > 0 ? insets.bottom : 8),
           }}>
             <View style={{ flex: mentionActive ? 1 : undefined }}>
               {/* Reply banner (replying to a specific comment) — hidden while

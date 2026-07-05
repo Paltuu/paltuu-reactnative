@@ -4,6 +4,7 @@ import { BottomSheetModal, BottomSheetView, BottomSheetFlatList, BottomSheetText
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { timeAgo } from '../../utils/timeAgo';
 import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -212,7 +213,7 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
             <View className="flex-row items-center gap-2">
               <Text className="text-[13px] font-headingBold text-dark">{item.author_name || 'User'}</Text>
               <Text className="text-[11px] font-body text-gray-400">
-                {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'now'}
+                {item.created_at ? timeAgo(item.created_at) : 'now'}
               </Text>
             </View>
             {String(user?.id) !== String(item.user_id) && (
