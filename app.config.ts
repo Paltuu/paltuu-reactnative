@@ -136,6 +136,10 @@ export default (): ExpoConfig => {
           },
         },
       ],
+      // Adds `use_modular_headers!` to the Podfile so the Google Sign-In
+      // Firebase pods (AppCheckCore → GoogleUtilities/RecaptchaInterop) can be
+      // integrated under static frameworks.
+      "./plugins/withModularHeaders",
       "@react-native-google-signin/google-signin",
       [
         "expo-location",
