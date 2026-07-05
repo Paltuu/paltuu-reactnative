@@ -229,6 +229,7 @@ function LayoutContent() {
         <Tabs.Screen name="apply-adopt" options={{ href: null }} />
         <Tabs.Screen name="pet-details" options={{ href: null }} />
         <Tabs.Screen name="follow-list" options={{ href: null }} />
+        <Tabs.Screen name="hashtag/[tag]" options={{ href: null }} />
       </Tabs>
     </View>
   );

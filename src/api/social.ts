@@ -393,4 +393,19 @@ export const socialApi = {
     const { data } = await client.get(url);
     return data as { blocked_users: any[]; next_cursor: string | null; has_more: boolean };
   },
+
+  async getExploreDiscovery() {
+    const { data } = await client.get('/explore/discovery');
+    return data as {
+      trending_hashtags: { tag: string; post_count: number }[];
+      media_posts: SocialPost[];
+      trending_breeds: { breed: string; pet_count: number; adoption_count: number }[];
+    };
+  },
+
+  async getHashtagFeed(tag: string, cursor: string | null = null) {
+    const url = `/explore/hashtag/${encodeURIComponent(tag)}${cursor ? `?cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { tag: string; post_count: number; posts: SocialPost[]; next_cursor: string | null };
+  },
 };
