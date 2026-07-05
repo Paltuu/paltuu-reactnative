@@ -120,8 +120,6 @@ export default (): ExpoConfig => {
         },
       ],
       "expo-web-browser",
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
       [
         "expo-notifications",
         {
@@ -138,7 +136,6 @@ export default (): ExpoConfig => {
           },
         },
       ],
-      "./plugins/with-rnfb-fix",
       "@react-native-google-signin/google-signin",
       [
         "expo-location",

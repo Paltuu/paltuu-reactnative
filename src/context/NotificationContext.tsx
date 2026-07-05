@@ -6,8 +6,11 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync } from '../utils/registerForPushNotificationsAsync';
+import { notificationsApi } from '../api/notifications';
+import { useAuthStore } from '../stores/authStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -29,25 +32,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [devicePushToken, setDevicePushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    // 1. Register for Expo push token
+    // 1. Register for Expo push token (permission + token retrieval, no auth required)
     registerForPushNotificationsAsync()
-      .then(async (token) => {
-        setExpoPushToken(token);
-        // Register token with backend database
-        try {
-          const { Platform } = require('react-native');
-          const { notificationsApi } = require('../api/notifications');
-          await notificationsApi.registerDevice({
-            fcm_token: token,
-            platform: Platform.OS as 'ios' | 'android',
-          });
-          console.log('[Paltuu Notifications] ✅ Device token registered with backend successfully');
-        } catch (apiErr: any) {
-          console.log('[Paltuu Notifications] ⚠️ Backend token registration failed:', apiErr.message);
-        }
-      })
+      .then((token) => setExpoPushToken(token))
       .catch((err: Error) => {
         console.log('[Paltuu Notifications] ⚠️ Registration error:', err.message);
         setError(err);
@@ -84,6 +74,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       responseListener.remove();
     };
   }, []);
+
+  // Register the token with the backend once we have both a token and an
+  // authenticated session. Re-runs on login (the token is usually obtained
+  // before the user is authenticated on a fresh install, so the initial
+  // registration attempt would otherwise 401 and never be retried).
+  useEffect(() => {
+    if (!expoPushToken || !isAuthenticated) return;
+
+    notificationsApi
+      .registerDevice({ fcm_token: expoPushToken, platform: Platform.OS as 'ios' | 'android' })
+      .then(() => {
+        console.log('[Paltuu Notifications] ✅ Device token registered with backend successfully');
+      })
+      .catch((apiErr: any) => {
+        console.log('[Paltuu Notifications] ⚠️ Backend token registration failed:', apiErr.message);
+      });
+  }, [expoPushToken, isAuthenticated]);
 
   return (
     <NotificationContext.Provider
