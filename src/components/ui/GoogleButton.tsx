@@ -1,15 +1,14 @@
 /**
  * GoogleButton — white pill button with the real Google G logo.
- * Matches PaltuuButton's collapse-to-circle loading animation.
+ * Loading state matches PaltuuButton/AppleButton: fixed shape, bouncing dots.
  */
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Pressable,
   View,
   Text,
   StyleSheet,
   ViewStyle,
-  LayoutChangeEvent,
   Platform,
 } from 'react-native';
 import Animated, {
@@ -17,15 +16,11 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withDelay,
-  withRepeat,
-  cancelAnimation,
-  Easing,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { LoadingDots } from './LoadingDots';
 
 const BTN_H  = 46;
-const SPEED  = 420;
-const EASING = Easing.bezier(0.65, 0, 0.35, 1);
 
 interface GoogleButtonProps {
   onPress: () => void;
@@ -67,29 +62,11 @@ export default function GoogleButton({
   style,
   radius = 999,
 }: GoogleButtonProps) {
-  const naturalWidth = useRef(300);
-  const prevLoading  = useRef(false);
+  const prevLoading = useRef(false);
 
-  // Updated during render so the onLayout callback sees current loading state
-  // instead of the stale closure value (useCallback has empty deps).
-  const isLoadingRef = useRef(false);
-  isLoadingRef.current = loading;
-
-  const btnWidth   = useSharedValue(300);
   const contentOp  = useSharedValue(1);
   const spinnerOp  = useSharedValue(0);
-  const spinDeg    = useSharedValue(0);
   const pressScale = useSharedValue(1);
-
-  // onLayout on the Pressable (stable) — not the animated pill —
-  // so it won't fire mid-animation and cancel the collapse.
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    if (w > BTN_H) {
-      naturalWidth.current = w;
-      if (!isLoadingRef.current) btnWidth.value = w;
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const was = prevLoading.current;
@@ -97,43 +74,30 @@ export default function GoogleButton({
 
     if (loading) {
       contentOp.value = withTiming(0, { duration: 180 });
-      btnWidth.value  = withTiming(BTN_H, { duration: SPEED, easing: EASING });
       spinnerOp.value = withDelay(180, withTiming(1, { duration: 180 }));
-      cancelAnimation(spinDeg);
-      spinDeg.value = withRepeat(
-        withTiming(360, { duration: 750, easing: Easing.linear }),
-        -1, false,
-      );
     } else if (was) {
       spinnerOp.value = withTiming(0, { duration: 150 });
-      cancelAnimation(spinDeg);
-      spinDeg.value   = 0;
-      btnWidth.value  = withDelay(80, withTiming(naturalWidth.current, { duration: SPEED, easing: EASING }));
-      contentOp.value = withDelay(280, withTiming(1, { duration: 200 }));
+      contentOp.value = withDelay(80, withTiming(1, { duration: 200 }));
     }
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const containerStyle = useAnimatedStyle(() => ({
-    width:     btnWidth.value,
     transform: [{ scale: pressScale.value }],
   }));
-  const contentStyle  = useAnimatedStyle(() => ({ opacity: contentOp.value }));
-  const spinnerStyle  = useAnimatedStyle(() => ({
-    opacity:   spinnerOp.value,
-    transform: [{ rotate: `${spinDeg.value}deg` }],
-  }));
+  const contentStyle = useAnimatedStyle(() => ({ opacity: contentOp.value }));
+  const spinnerStyle = useAnimatedStyle(() => ({ opacity: spinnerOp.value }));
 
   const canPress = !loading && !disabled;
 
   return (
     <Pressable
-      onLayout={handleLayout}
       onPress={canPress ? onPress : undefined}
       onPressIn={canPress ? () => { pressScale.value = withTiming(0.985, { duration: 80 }); } : undefined}
       onPressOut={() => { pressScale.value = withTiming(1, { duration: 120 }); }}
       disabled={!canPress}
       accessibilityRole="button"
       accessibilityLabel="Continue with Google"
+      accessibilityState={{ busy: loading, disabled }}
       style={s.pressable}
     >
       <View style={s.centerWrap}>
@@ -146,9 +110,9 @@ export default function GoogleButton({
             <Text style={s.label}>Google</Text>
           </Animated.View>
 
-          {/* Spinner — dark arc on white button */}
+          {/* Loading dots */}
           <Animated.View style={[s.layer, spinnerStyle]} pointerEvents="none">
-            <View style={s.spinnerRing} />
+            <LoadingDots size={8} gap={7} color="#555555" />
           </Animated.View>
         </Animated.View>
       </View>
@@ -165,6 +129,9 @@ const s = StyleSheet.create({
   },
   pill: {
     height:          BTN_H,
+    // Row/dots content below is all position:absolute (for the cross-fade),
+    // so it carries no intrinsic width — the pill needs an explicit one.
+    width:           '100%',
     backgroundColor: '#FFFFFF',
     borderRadius:    999,
     overflow:        'hidden',
@@ -202,14 +169,5 @@ const s = StyleSheet.create({
     bottom:         0,
     alignItems:     'center',
     justifyContent: 'center',
-  },
-  // Arc spinner: muted ring + one dark segment at top
-  spinnerRing: {
-    width:          38,
-    height:         38,
-    borderRadius:   19,
-    borderWidth:    3.5,
-    borderColor:    'rgba(0,0,0,0.1)',
-    borderTopColor: '#555555',
   },
 });

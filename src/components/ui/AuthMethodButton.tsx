@@ -4,9 +4,10 @@
  * (52px height, 12px radius) — distinct from PaltuuButton's pill shape.
  */
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { GoogleG } from './GoogleButton';
 import { AppleLogo } from './AppleButton';
+import { LoadingDots } from './LoadingDots';
 
 type Variant = 'google' | 'apple' | 'email';
 
@@ -53,7 +54,7 @@ export function AuthMethodButton({ variant, label, onPress, loading = false, dis
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={v.text} />
+        <LoadingDots size={8} gap={6} color={v.text} />
       ) : (
         <View style={styles.row}>
           <Icon variant={variant} color={v.text} />
