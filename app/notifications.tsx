@@ -263,34 +263,53 @@ const NotificationRow = ({
 };
 
 /* ── Pulsing Skeleton Loading State ── */
-const NotificationSkeletonRow = () => {
-  const fadeAnim = useRef(new Animated.Value(0.4)).current;
+const NotificationSkeleton = () => {
+  const fadeAnim = useRef(new Animated.Value(0.5)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0.4,
-          duration: 900,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0.5, duration: 800, useNativeDriver: true }),
       ])
     ).start();
   }, [fadeAnim]);
 
-  return (
-    <Animated.View style={{ opacity: fadeAnim }} className="flex-row items-center px-5 py-4 bg-white border-b border-gray-100 gap-4">
-      <View className="w-12 h-12 rounded-full bg-gray-200" />
-      <View className="flex-1 gap-2">
-        <View className="h-4 bg-gray-200 rounded w-1/3" />
-        <View className="h-3 bg-gray-200 rounded w-3/4" />
+  const SkeletonCard = ({ widths }: { widths: [string, string] }) => (
+    <View
+      className="flex-row items-center mx-4 my-2 px-4 py-4 rounded-2xl bg-white"
+      style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
+    >
+      {/* Avatar */}
+      <View className="w-12 h-12 rounded-full bg-gray-200 mr-3.5" />
+      {/* Lines */}
+      <View className="flex-1 gap-2 mr-2">
+        <View style={{ width: widths[0] }} className="h-3.5 bg-gray-200 rounded-full" />
+        <View style={{ width: widths[1] }} className="h-3 bg-gray-200 rounded-full" />
       </View>
-      <View className="w-10 h-10 rounded-xl bg-gray-200" />
+      {/* Right thumb */}
+      <View className="w-11 h-11 rounded-xl bg-gray-200" />
+    </View>
+  );
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim }}>
+      {/* Section label skeleton */}
+      <View className="flex-row items-center mx-6 my-4 gap-3">
+        <View className="flex-1 h-[0.5px] bg-gray-200" />
+        <View className="h-3 w-16 bg-gray-200 rounded-full" />
+        <View className="flex-1 h-[0.5px] bg-gray-200" />
+      </View>
+      <SkeletonCard widths={['40%', '70%']} />
+      <SkeletonCard widths={['55%', '80%']} />
+      <SkeletonCard widths={['35%', '60%']} />
+      <View className="flex-row items-center mx-6 my-4 gap-3">
+        <View className="flex-1 h-[0.5px] bg-gray-200" />
+        <View className="h-3 w-20 bg-gray-200 rounded-full" />
+        <View className="flex-1 h-[0.5px] bg-gray-200" />
+      </View>
+      <SkeletonCard widths={['45%', '75%']} />
+      <SkeletonCard widths={['50%', '65%']} />
     </Animated.View>
   );
 };
@@ -340,6 +359,7 @@ export default function NotificationsScreen() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isFetching,
     refetch,
     isRefetching,
   } = useInfiniteQuery({
@@ -524,12 +544,9 @@ export default function NotificationsScreen() {
       <FilterTabs active={filter} onChange={setFilter} />
 
       {/* Notification Lists and Skeletons */}
-      {isLoading ? (
+      {isLoading || (sections.length === 0 && isFetching) ? (
         <View className="flex-1 bg-white">
-          <NotificationSkeletonRow />
-          <NotificationSkeletonRow />
-          <NotificationSkeletonRow />
-          <NotificationSkeletonRow />
+          <NotificationSkeleton />
         </View>
       ) : (
         <SectionList
