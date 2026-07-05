@@ -732,8 +732,37 @@ export const PostCard = React.memo(({
     });
   }, [modals, post.is_reposted, handleQuickRepost, handleQuotePost]);
 
-  const handleLike = useCallback(() => actions?.toggleLike(post.post_id), [actions, post.post_id]);
-  const handleSave = useCallback(() => actions?.toggleSave(post.post_id, !!post.is_saved), [actions, post.post_id, post.is_saved]);
+  // ── Local optimistic like/save state ──────────────────────────────────
+  // PostCard is rendered from several different query caches (home feed,
+  // profile, search, saved collections, single-post view). Rather than
+  // teaching every cache to optimistically patch itself, the tap reaction
+  // lives here: it flips instantly on press and resyncs from the post prop
+  // whenever the underlying data changes (server refetch, cache rollback on
+  // API failure, etc). The actual API call fires in the background via
+  // SocialActionsContext and its own timing doesn't matter to the UI.
+  const [likeState, setLikeState] = useState(() => ({ liked: !!post.is_liked, count: post.like_count }));
+  useEffect(() => {
+    setLikeState({ liked: !!post.is_liked, count: post.like_count });
+  }, [post.is_liked, post.like_count]);
+
+  const [saved, setSaved] = useState(!!post.is_saved);
+  useEffect(() => {
+    setSaved(!!post.is_saved);
+  }, [post.is_saved]);
+
+  const handleLike = useCallback(() => {
+    setLikeState(prev => ({
+      liked: !prev.liked,
+      count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1,
+    }));
+    actions?.toggleLike(post.post_id);
+  }, [actions, post.post_id]);
+
+  const handleSave = useCallback(() => {
+    const wasSaved = saved;
+    setSaved(!wasSaved);
+    actions?.toggleSave(post.post_id, wasSaved);
+  }, [actions, post.post_id, saved]);
   const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(post.post_id), [modals, post.post_id]);
   const handleCommentPress = useCallback(() => {
     if (onComment) onComment();
@@ -742,15 +771,19 @@ export const PostCard = React.memo(({
   const handleMenuPress = useCallback(() => modals?.showOptionsSheet({
     isOwnPost,
     isFollowing: !!post.is_following,
-    isSaved: !!post.is_saved,
-    onSave: () => actions?.toggleSave(post.post_id, !!post.is_saved),
+    isSaved: saved,
+    onSave: () => {
+      const wasSaved = saved;
+      setSaved(!wasSaved);
+      actions?.toggleSave(post.post_id, wasSaved);
+    },
     onEdit: handleEdit,
     onDelete: handleDelete,
     onReport: () => modals?.showReportSheet(post.post_id),
     onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
     onUnfollow: () => actions?.toggleFollow(post.user_id),
     onHide: handleHide,
-  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide]);
+  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved]);
   const handleAvatarPress = useCallback(
     () => router.push(`/(app)/profile/${displayUserId}`),
     [router, displayUserId]
@@ -893,13 +926,13 @@ export const PostCard = React.memo(({
 
           {/* ── Action bar ── */}
           <ActionBar
-            liked={!!post.is_liked}
-            likeCount={post.like_count}
+            liked={likeState.liked}
+            likeCount={likeState.count}
             commented={!!post.is_commented}
             commentCount={post.comment_count}
             reposted={!!post.is_reposted}
             repostCount={post.repost_count ?? 0}
-            saved={!!post.is_saved}
+            saved={saved}
             shared={!!post.is_shared}
             onLike={handleLike}
             onComment={handleCommentPress}
