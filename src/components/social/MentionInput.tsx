@@ -17,7 +17,8 @@
 // single id per mention, not a separate type field — see lib/mentions.ts on
 // the backend, which parses this exact wire format.
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Platform
+} from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMentions } from 'react-native-controlled-mentions';
@@ -66,7 +67,16 @@ export function useMentionInput({
         triggersConfig,
     });
 
-    return { triggers, textInputProps };
+    // On Android, TextInput with `children` (used by the library for styled
+    // mention rendering) becomes non-editable. Strip children and use `value`
+    // directly so the keyboard works. Mentions still parse/insert correctly —
+    // they just won't show inline highlight colour on Android.
+    const { children: _mentionChildren, ...textInputPropsBase } = textInputProps as any;
+    const safeTextInputProps = Platform.OS === 'android'
+        ? { ...textInputPropsBase, value }
+        : textInputProps;
+
+    return { triggers, textInputProps: safeTextInputProps };
 }
 
 /** Programmatic mention insert (e.g. for the reply-to-comment prefill) — splices
