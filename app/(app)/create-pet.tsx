@@ -67,7 +67,7 @@ function PremiumDropdown({ label, value, options, onSelect, icon }: any) {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
             {icon && (
-              <Ionicons name={icon} size={18} color={selected ? '#a03048' : '#9CA3AF'} />
+              <Ionicons name={icon} size={18} color={selected ? '#a03048' : '#C98A97'} />
             )}
             <Text style={[s.dropdownText, selected && s.dropdownTextSelected]}>
               {selected ? selected.label : `Select ${label}`}
@@ -264,9 +264,9 @@ export default function CreatePetScreen() {
   };
 
   return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         {/* Header */}
@@ -296,6 +296,7 @@ export default function CreatePetScreen() {
               </View>
 
               <CustomInput
+                variant="outline"
                 label="Listing Title *"
                 placeholder="e.g. Energetic Husky Mix"
                 value={formData.title}
@@ -347,6 +348,7 @@ export default function CreatePetScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <CustomInput
+                    variant="outline"
                     label="Area *"
                     placeholder="e.g. DHA"
                     value={formData.area}
@@ -357,6 +359,7 @@ export default function CreatePetScreen() {
               </View>
 
               <CustomInput
+                variant="outline"
                 label="Contact Phone *"
                 placeholder="300 1234567"
                 keyboardType="number-pad"
@@ -379,6 +382,7 @@ export default function CreatePetScreen() {
               <View style={s.row}>
                 <View style={{ flex: 1 }}>
                   <CustomInput
+                    variant="outline"
                     label="Age (Years)"
                     placeholder="0"
                     keyboardType="number-pad"
@@ -389,6 +393,7 @@ export default function CreatePetScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <CustomInput
+                    variant="outline"
                     label="Age (Months)"
                     placeholder="0"
                     keyboardType="number-pad"
@@ -402,6 +407,7 @@ export default function CreatePetScreen() {
               <View style={s.row}>
                 <View style={{ flex: 1 }}>
                   <CustomInput
+                    variant="outline"
                     label="Breed"
                     placeholder="e.g. Persian"
                     value={formData.breed}
@@ -411,6 +417,7 @@ export default function CreatePetScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <CustomInput
+                    variant="outline"
                     label="Health Issues"
                     placeholder="None / Minor"
                     value={formData.healthIssues}
@@ -455,6 +462,7 @@ export default function CreatePetScreen() {
               </View>
 
               <CustomInput
+                variant="outline"
                 label="The Story / Description"
                 placeholder="Tell us about their habits, favorite toys..."
                 multiline
@@ -528,7 +536,7 @@ const s = StyleSheet.create({
     fontFamily: 'DMSans_700Bold',
     color: '#111827',
   },
-  scrollContent: { padding: 20, paddingTop: 20, paddingBottom: 80 },
+  scrollContent: { padding: 20, paddingTop: 20, paddingBottom: 100 },
 
   // Steps indicator
   stepContainer: {
@@ -633,7 +641,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center',
   },
   genderBtnActive: {
@@ -643,7 +651,7 @@ const s = StyleSheet.create({
   genderBtnText: {
     fontSize: 14,
     fontFamily: 'DMSans_700Bold',
-    color: '#9CA3AF',
+    color: '#C98A97',
     textTransform: 'capitalize',
   },
   genderBtnTextActive: {
@@ -657,7 +665,7 @@ const s = StyleSheet.create({
   dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
     borderRadius: 14,
@@ -756,7 +764,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -767,7 +775,7 @@ const s = StyleSheet.create({
   tagBtnText: {
     fontSize: 12,
     fontFamily: 'DMSans_700Bold',
-    color: '#6B7280',
+    color: '#C98A97',
   },
   tagBtnTextActive: {
     color: '#FFFFFF',
@@ -776,7 +784,7 @@ const s = StyleSheet.create({
   // Gallery
   galleryContainer: {
     marginTop: 8,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',

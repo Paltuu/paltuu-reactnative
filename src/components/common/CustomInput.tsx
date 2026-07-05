@@ -21,6 +21,8 @@ interface CustomInputProps extends TextInputProps {
   floating?: boolean;
   /** Background painted behind the floated label so it "cuts" the border line. Only used with `floating`. */
   floatingBg?: string;
+  /** 'outline' swaps the flat grey fill for a white field with a soft brand-tinted border. */
+  variant?: 'default' | 'outline';
 }
 
 export const CustomInput: React.FC<CustomInputProps> = ({
@@ -32,6 +34,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   secureTextEntry,
   floating = false,
   floatingBg = '#FFFFFF',
+  variant = 'default',
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -71,8 +74,19 @@ export const CustomInput: React.FC<CustomInputProps> = ({
 
   const borderColor = borderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [error ? '#EF4444' : '#E5E7EB', error ? '#EF4444' : '#a03048'],
+    outputRange: [
+      error ? '#EF4444' : '#E5E7EB',
+      error ? '#EF4444' : '#a03048',
+    ],
   });
+
+  const iconColor = error
+    ? '#EF4444'
+    : isFocused
+    ? '#a03048'
+    : variant === 'outline'
+    ? '#C98A97'
+    : '#9CA3AF';
 
   const shadowOpacity = borderAnim.interpolate({
     inputRange: [0, 1],
@@ -169,6 +183,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
       <Animated.View
         style={[
           styles.inputWrapper,
+          variant === 'outline' && styles.inputWrapperOutline,
           { borderColor, shadowOpacity, shadowColor: '#a03048' },
           isFocused && styles.inputWrapperFocused,
           error ? styles.inputWrapperError : null,
@@ -178,7 +193,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           <Ionicons
             name={leftIcon}
             size={18}
-            color={isFocused ? '#a03048' : '#9CA3AF'}
+            color={iconColor}
             style={styles.leftIcon}
           />
         )}
@@ -258,6 +273,10 @@ const styles = StyleSheet.create({
   inputWrapperFocused: {
     backgroundColor: '#FFFFFF',
     elevation: 4,
+  },
+  inputWrapperOutline: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
   },
   inputWrapperError: {
     borderColor: '#EF4444',
