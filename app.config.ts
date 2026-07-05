@@ -43,8 +43,10 @@ export default (): ExpoConfig => {
         backgroundColor: "#A03048",
       },
       edgeToEdgeEnabled: true,
+      softwareKeyboardLayoutMode: 'pan',
       predictiveBackGestureEnabled: false,
       permissions: ["android.permission.RECORD_AUDIO"],
+      ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
     },
     web: {
       favicon: "./assets/favicon.png",
