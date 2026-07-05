@@ -24,7 +24,7 @@ export const LFPCard = ({ post, onPress }: LFPCardProps) => {
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5"
+      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-200"
       style={{
         flex: 1,
         maxWidth: '46%',

@@ -76,7 +76,7 @@ export default function LostFoundScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }} className="bg-gray-50">
+    <View style={{ flex: 1 }} className="bg-white">
       {isLoading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#A03048" />
@@ -97,32 +97,66 @@ export default function LostFoundScreen() {
           onRefresh={handleRefresh}
           refreshing={refreshing}
           ListHeaderComponent={
-            /* Filter tabs */
-            <View className="flex-row bg-white rounded-2xl mx-1.5 mb-3 p-1 border border-gray-100"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.04,
-                shadowRadius: 4,
-                elevation: 1,
-              }}
-            >
-              {(['lost', 'found'] as const).map((tab) => {
-                const isActive = filter === tab;
-                return (
+            <View>
+              {/* Page heading */}
+              <View style={{ paddingHorizontal: 6, paddingTop: 8, paddingBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <TouchableOpacity
-                    key={tab}
-                    onPress={() => setFilter(tab)}
-                    className={`flex-1 py-2.5 rounded-xl items-center ${isActive ? 'bg-primary' : ''}`}
+                    onPress={() => router.replace('/(app)/pets')}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: '#FFF',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 2,
+                      elevation: 2,
+                    }}
                   >
-                    <Text
-                      className={`font-headingSemi text-xs ${isActive ? 'text-white' : 'text-gray-500'}`}
-                    >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </Text>
+                    <Ionicons name="arrow-back" size={22} color="#111" />
                   </TouchableOpacity>
-                );
-              })}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+                      Lost & Found
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+                      Help reunite pets with their families
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Filter tabs */}
+              <View className="flex-row bg-white rounded-2xl mx-1.5 mb-3 p-1 border border-gray-100"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 4,
+                  elevation: 1,
+                }}
+              >
+                {(['lost', 'found'] as const).map((tab) => {
+                  const isActive = filter === tab;
+                  return (
+                    <TouchableOpacity
+                      key={tab}
+                      onPress={() => setFilter(tab)}
+                      className={`flex-1 py-2.5 rounded-xl items-center ${isActive ? 'bg-primary' : ''}`}
+                    >
+                      <Text
+                        className={`font-headingSemi text-xs ${isActive ? 'text-white' : 'text-gray-500'}`}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           }
           ListEmptyComponent={
@@ -137,18 +171,28 @@ export default function LostFoundScreen() {
         />
       )}
 
-      {/* Floating Buttons */}
+      {/* Floating Button */}
       <View
-        className="absolute bottom-6 left-5 right-5 flex-row justify-between items-center"
+        className="absolute bottom-6 left-5 right-5 flex-row justify-end items-center"
         pointerEvents="box-none"
       >
         <TouchableOpacity
           onPress={() => router.push('/(app)/create-lost-found')}
-          className="bg-white px-4 py-3 rounded-2xl flex-row items-center border-2 border-primary shadow-lg"
-          style={{ elevation: 5 }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#a03048',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
+          }}
         >
-          <Ionicons name="add-circle-outline" size={20} color="#a03048" />
-          <Text className="ml-2 font-headingSemi text-xs text-primary">Report Pet</Text>
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
