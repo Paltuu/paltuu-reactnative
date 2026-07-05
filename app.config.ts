@@ -122,6 +122,13 @@ export default (): ExpoConfig => {
       "expo-web-browser",
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
+      [
+        "expo-notifications",
+        {
+          color: "#a03048",
+          defaultChannel: "default",
+        },
+      ],
       "expo-video",
       [
         "expo-build-properties",
