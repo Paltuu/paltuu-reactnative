@@ -82,7 +82,7 @@ export default function BlockedUsersScreen() {
         <FlatList
           data={blockedUsers}
           keyExtractor={(item) => item.user_id.toString()}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
           refreshing={isRefetching}

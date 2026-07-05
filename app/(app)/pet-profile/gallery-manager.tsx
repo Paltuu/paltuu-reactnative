@@ -155,7 +155,7 @@ export default function PetGalleryManagerScreen() {
           data={photos}
           keyExtractor={(item) => item.photo_id.toString()}
           numColumns={3}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           columnWrapperStyle={{ gap: 8 }}
           renderItem={({ item }) => (
             <TouchableOpacity

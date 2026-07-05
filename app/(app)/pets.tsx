@@ -292,7 +292,7 @@ export default function PetsHubScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );

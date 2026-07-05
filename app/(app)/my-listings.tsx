@@ -124,7 +124,7 @@ export default function MyListingsScreen() {
           data={myListings}
           keyExtractor={(item) => item.pet_id.toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-24">
               <Ionicons name="paw-outline" size={64} color="#E5E7EB" />

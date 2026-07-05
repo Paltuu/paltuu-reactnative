@@ -101,7 +101,7 @@ export default function MyApplicationsScreen() {
           data={myApplications}
           keyExtractor={(item) => item.application_id?.toString() || Math.random().toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-24 px-10">
               <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-5">

@@ -128,7 +128,7 @@ export default function AdoptionRequestsScreen() {
           data={adoptionRequests}
           keyExtractor={(item) => item.adoption_id?.toString() || Math.random().toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-24">
               <Ionicons name="mail-outline" size={64} color="#E5E7EB" />

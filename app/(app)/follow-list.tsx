@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   activeTab: { borderBottomColor: '#A03048' },
   tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   activeTabText: { color: '#111' },
-  listContent: { paddingVertical: 8 },
+  listContent: { paddingTop: 8, paddingBottom: 100 },
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
