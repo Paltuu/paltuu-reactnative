@@ -62,6 +62,17 @@ export default function UsernameScreen() {
     dismissTimer.current = setTimeout(() => setShowMascotTooltip(false), AUTO_DISMISS_MS);
   };
 
+  // Falls back to the previous step in the flow if there's no navigation
+  // history to pop (e.g. this screen was reached directly rather than by
+  // pushing through register → username), instead of a dead "GO_BACK" error.
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/register');
+    }
+  };
+
   const handleContinue = () => {
     if (!field.canContinue) return;
     sendOtp.mutate(email.trim().toLowerCase(), {
@@ -79,7 +90,7 @@ export default function UsernameScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <OnboardingHeader onBack={() => router.back()} progress={4 / 6} />
+      <OnboardingHeader onBack={handleBack} progress={4 / 6} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -100,6 +111,7 @@ export default function UsernameScreen() {
             onPress={handleContinue}
             loading={sendOtp.isPending}
             disabled={!field.canContinue || sendOtp.isPending}
+            radius={26}
           />
         </View>
       </KeyboardAvoidingView>
@@ -131,7 +143,7 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 0,
   },
   heading: {
     fontSize: 26,

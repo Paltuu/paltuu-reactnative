@@ -18,6 +18,13 @@ import Animated, {
 
 const BOUNCE = Easing.bezier(0.4, 0, 0.2, 1);
 
+// Each dot's rise starts exactly as the previous one begins to fall, so the
+// three read as a clean relay wave with no sustained overlap between dots.
+const RISE_MS  = 200;
+const FALL_MS  = 200;
+const HOLD_MS  = 400;
+const STAGGER  = RISE_MS;
+
 function Dot({ size, color, delay }: { size: number; color: string; delay: number }) {
   const ty = useSharedValue(0);
 
@@ -26,9 +33,9 @@ function Dot({ size, color, delay }: { size: number; color: string; delay: numbe
       delay,
       withRepeat(
         withSequence(
-          withTiming(-size * 0.6, { duration: 300, easing: BOUNCE }),
-          withTiming(0, { duration: 300, easing: BOUNCE }),
-          withTiming(0, { duration: 400, easing: BOUNCE }),
+          withTiming(-size * 0.6, { duration: RISE_MS, easing: BOUNCE }),
+          withTiming(0, { duration: FALL_MS, easing: BOUNCE }),
+          withTiming(0, { duration: HOLD_MS, easing: BOUNCE }),
         ),
         -1,
         false,
@@ -61,8 +68,8 @@ export function LoadingDots({
   return (
     <View style={[s.row, { gap }]}>
       <Dot size={size} color={color} delay={0} />
-      <Dot size={size} color={color} delay={130} />
-      <Dot size={size} color={color} delay={260} />
+      <Dot size={size} color={color} delay={STAGGER} />
+      <Dot size={size} color={color} delay={STAGGER * 2} />
     </View>
   );
 }

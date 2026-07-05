@@ -32,6 +32,16 @@ export default function OTPScreen() {
   const router = useRouter();
   const { register, sendOtp } = useAuthActions();
 
+  // Falls back to the username step if there's no navigation history to pop
+  // (e.g. this screen was reached directly), instead of a dead "GO_BACK" error.
+  const handleClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/username');
+    }
+  };
+
   const handleChangeText = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 6);
     setOtp(digits);
@@ -91,7 +101,7 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <OnboardingHeader onBack={() => router.back()} variant="close" progress={5 / 6} />
+      <OnboardingHeader onBack={handleClose} variant="close" progress={5 / 6} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -157,6 +167,7 @@ export default function OTPScreen() {
             successLabel="Welcome to Paltuu!"
             onPress={handleVerify}
             loading={register.isPending}
+            radius={26}
           />
         </View>
       </KeyboardAvoidingView>
@@ -172,7 +183,7 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 0,
   },
   heading: {
     fontSize: 26,

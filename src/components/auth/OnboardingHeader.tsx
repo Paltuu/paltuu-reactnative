@@ -49,6 +49,11 @@ export function OnboardingHeader({ onBack, rightSlot, variant = 'back', progress
   );
 }
 
+// Shared by both sides of the progress track so the logo→bar gap and the
+// bar→heading gap always match. Screens with a progress bar should leave
+// their own body's paddingTop at 0 — this is the only source of that gap.
+const HEADER_GAP = 46;
+
 const s = StyleSheet.create({
   topBar: {
     position: 'relative',
@@ -58,7 +63,7 @@ const s = StyleSheet.create({
     minHeight: 60,
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: HEADER_GAP,
   },
   logoWrap: {
     position: 'absolute',
@@ -76,7 +81,7 @@ const s = StyleSheet.create({
   progressTrack: {
     height: 3,
     marginHorizontal: 16,
-    marginBottom: 4,
+    marginBottom: HEADER_GAP,
     borderRadius: 999,
     backgroundColor: '#E0E0E0',
     overflow: 'hidden',

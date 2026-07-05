@@ -168,7 +168,7 @@ export default function PaltuuButton({
 
           {/* Loading dots */}
           <Animated.View style={[s.layer, spinnerAnimStyle]} pointerEvents="none">
-            <LoadingDots size={compact ? 6 : 8} gap={compact ? 5 : 7} color="#ffffff" />
+            <LoadingDots size={compact ? 5 : 6} gap={compact ? 4 : 6} color="#ffffff" />
           </Animated.View>
 
           {/* Success label */}

@@ -29,9 +29,19 @@ export default function LoginScreen() {
     login.mutate({ email: email.trim(), password });
   };
 
+  // Falls back to Welcome if there's no navigation history to pop (e.g. this
+  // screen was reached directly), instead of a dead "GO_BACK" error.
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/welcome');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <OnboardingHeader onBack={() => router.back()} />
+      <OnboardingHeader onBack={handleBack} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -106,7 +116,7 @@ export default function LoginScreen() {
             successLabel="Welcome back!"
             onPress={handleLogin}
             loading={login.isPending}
-            radius={12}
+            radius={26}
           />
 
           <View style={styles.footer}>

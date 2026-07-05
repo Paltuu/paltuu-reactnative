@@ -112,7 +112,7 @@ export default function GoogleButton({
 
           {/* Loading dots */}
           <Animated.View style={[s.layer, spinnerStyle]} pointerEvents="none">
-            <LoadingDots size={8} gap={7} color="#555555" />
+            <LoadingDots size={6} gap={6} color="#555555" />
           </Animated.View>
         </Animated.View>
       </View>

@@ -54,7 +54,7 @@ export function AuthMethodButton({ variant, label, onPress, loading = false, dis
       ]}
     >
       {loading ? (
-        <LoadingDots size={8} gap={6} color={v.text} />
+        <LoadingDots size={6} gap={5} color={v.text} />
       ) : (
         <View style={styles.row}>
           <Icon variant={variant} color={v.text} />

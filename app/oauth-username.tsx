@@ -74,6 +74,7 @@ export default function OAuthUsernameScreen() {
             onPress={handleContinue}
             loading={saving}
             disabled={!field.canContinue || saving}
+            radius={26}
           />
         </View>
       </KeyboardAvoidingView>

@@ -116,7 +116,7 @@ export default function InterestsScreen() {
       <OnboardingHeader progress={isOauthFlow ? undefined : 1} />
       <FlatList
         ListHeaderComponent={
-          <View className="px-6 pt-8 pb-4">
+          <View className="px-6 pb-4">
             {isOauthFlow && (
               <Text className="font-headingSemi text-xs text-primary mb-1 uppercase tracking-wider">
                 Step 2 of 2
@@ -182,7 +182,7 @@ export default function InterestsScreen() {
               onPress={handleContinue}
               disabled={saving}
               activeOpacity={0.85}
-              className={`rounded-2xl py-4 items-center ${saving ? 'bg-gray-300' : 'bg-primary'}`}
+              className={`rounded-[26px] py-4 items-center ${saving ? 'bg-gray-300' : 'bg-primary'}`}
             >
               {saving ? (
                 <ActivityIndicator color="#fff" />

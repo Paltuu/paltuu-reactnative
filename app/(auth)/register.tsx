@@ -112,10 +112,12 @@ export default function RegisterScreen() {
   };
 
   const handleBack = () => {
-    if (step === 0) {
+    if (step !== 0) {
+      setStep((prev) => prev - 1);
+    } else if (router.canGoBack()) {
       router.back();
     } else {
-      setStep((prev) => prev - 1);
+      router.replace('/(auth)/welcome');
     }
   };
 
@@ -227,6 +229,7 @@ export default function RegisterScreen() {
             label={step === 2 ? 'Continue' : 'Next'}
             onPress={handleNext}
             loading={checkingEmail}
+            radius={26}
           />
 
           {step === 0 && (
