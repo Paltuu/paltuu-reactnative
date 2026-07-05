@@ -25,6 +25,7 @@ import { PostOptionsBottomSheet } from '../components/social/PostOptionsBottomSh
 import { OriginalPostPreview } from '../components/social/PostCard';
 import { SocialPost } from '../api/social';
 import { useAuthStore } from '../stores/authStore';
+import { NO_PROFILE_IMAGE } from '../constants/images';
 
 export interface OptionsConfig {
   isOwnPost: boolean;
@@ -256,8 +257,9 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
 
           <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: 'white', flexDirection: 'row', alignItems: 'center' }}>
             <Image
-              source={{ uri: currentUserAvatar || undefined }}
+              source={currentUserAvatar ? { uri: currentUserAvatar } : NO_PROFILE_IMAGE}
               style={{ width: 32, height: 32, borderRadius: 16, marginRight: 12, backgroundColor: '#f3f4f6' }}
+              contentFit="cover"
             />
             <BottomSheetTextInput
               placeholder="Add a comment..."

@@ -6,6 +6,7 @@ import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContex
 import { MainHeader } from '../../src/components/common/MainHeader';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../src/stores/authStore';
+import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 
 const ACTIVE_COLOR = '#a03048';
 const INACTIVE_COLOR = '#999999';
@@ -131,71 +132,26 @@ function LayoutContent() {
           name="profile/index"
           options={{
             title: 'Profile',
-            tabBarIcon: ({ color, focused }) => {
-              if (user?.profile_image_url) {
-                return (
-                  <View
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 13,
-                      borderWidth: focused ? 2 : 1,
-                      borderColor: focused ? '#a03048' : '#CCCCCC',
-                      overflow: 'hidden',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Image
-                      source={{ uri: user.profile_image_url }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
-                  </View>
-                );
-              }
-              
-              // Google-style initials placeholder
-              const getInitials = () => {
-                if (user?.name) {
-                  const parts = user.name.trim().split(/\s+/);
-                  if (parts.length > 1) {
-                    return (parts[0][0] + parts[1][0]).toUpperCase();
-                  }
-                  return parts[0].slice(0, 2).toUpperCase();
-                }
-                if (user?.email) {
-                  return user.email.slice(0, 2).toUpperCase();
-                }
-                return 'U';
-              };
-              
-              return (
-                <View
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    borderWidth: focused ? 2 : 1,
-                    borderColor: focused ? '#a03048' : '#CCCCCC',
-                    backgroundColor: '#FAF0F2',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: '#a03048',
-                      fontSize: 10,
-                      fontWeight: 'bold',
-                      letterSpacing: -0.2,
-                    }}
-                  >
-                    {getInitials()}
-                  </Text>
-                </View>
-              );
-            },
+            tabBarIcon: ({ focused }) => (
+              <View
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  borderWidth: focused ? 2 : 1,
+                  borderColor: focused ? '#a03048' : '#CCCCCC',
+                  overflow: 'hidden',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Image
+                  source={user?.profile_image_url ? { uri: user.profile_image_url } : NO_PROFILE_IMAGE}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+              </View>
+            ),
           }}
         />
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { BottomSheetModal, BottomSheetView, BottomSheetFlatList, BottomSheetTextInput, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { socialApi } from '../../api/social';
 import { timeAgo } from '../../utils/timeAgo';
 import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
+import { NO_PROFILE_IMAGE } from '../../constants/images';
 
 interface CommentsBottomSheetProps {
   visible: boolean;
@@ -201,13 +203,13 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
   };
 
   const renderComment = ({ item }: { item: any }) => {
-    const initials = (item.author_name || 'U').split(' ').map((w: any) => w[0]).join('').slice(0, 2).toUpperCase();
-    
     return (
       <View className="flex-row mb-6 px-5">
-        <View className="w-9 h-9 rounded-full bg-primarySoft items-center justify-center mr-3">
-          <Text className="text-xs font-headingBold text-primary">{initials}</Text>
-        </View>
+        <Image
+          source={item.author_image ? { uri: item.author_image } : NO_PROFILE_IMAGE}
+          style={{ width: 36, height: 36, borderRadius: 18, marginRight: 12 }}
+          contentFit="cover"
+        />
         <View className="flex-1">
           <View className="flex-row items-center justify-between mb-1">
             <View className="flex-row items-center gap-2">
@@ -251,8 +253,6 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
     ),
     []
   );
-
-  const userInitials = (user?.name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <BottomSheetModal
@@ -305,9 +305,11 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
 
         {/* Input Section - Floating at bottom */}
         <View className="px-5 py-3 border-t border-gray-100 bg-white flex-row items-center">
-          <View className="w-8 h-8 rounded-full bg-primarySoft items-center justify-center mr-3">
-            <Text className="text-[11px] font-headingBold text-primary">{userInitials}</Text>
-          </View>
+          <Image
+            source={user?.profile_image_url ? { uri: user.profile_image_url } : NO_PROFILE_IMAGE}
+            style={{ width: 32, height: 32, borderRadius: 16, marginRight: 12 }}
+            contentFit="cover"
+          />
           <BottomSheetTextInput
             placeholder="Add a comment..."
             className="flex-1 min-h-[40px] max-h-[100px] text-sm font-body text-dark"

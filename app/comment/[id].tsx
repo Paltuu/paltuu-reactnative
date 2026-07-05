@@ -22,19 +22,16 @@ import {
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
 import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
+import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 
 const PRIMARY = '#a03048';
-const Avatar = ({ name, uri, size = 40 }: { name?: string; uri?: string | null; size?: number }) => {
-  const initials = (name || 'U').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  if (uri) {
-    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />;
-  }
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fdf0f2', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.34, fontWeight: '700', color: PRIMARY }}>{initials}</Text>
-    </View>
-  );
-};
+const Avatar = ({ name, uri, size = 40 }: { name?: string; uri?: string | null; size?: number }) => (
+  <Image
+    source={uri ? { uri } : NO_PROFILE_IMAGE}
+    style={{ width: size, height: size, borderRadius: size / 2 }}
+    contentFit="cover"
+  />
+);
 
 export default function CommentComposerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

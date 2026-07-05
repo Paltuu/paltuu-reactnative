@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { Vet } from '../../types/models';
+import { NO_PROFILE_IMAGE } from '../../constants/images';
 
 interface VetCardProps {
   vet: Vet;
@@ -38,7 +39,7 @@ export const VetCard = ({ vet, onPress }: VetCardProps) => {
         className="flex-row items-center mb-4"
       >
         <Image
-          source={vet.profile_image_url || 'https://placehold.co/200x200/A03048/FFFFFF.png?text=' + vet.name}
+          source={vet.profile_image_url ? vet.profile_image_url : NO_PROFILE_IMAGE}
           className="w-16 h-16 rounded-full mr-4"
           contentFit="cover"
           transition={300}

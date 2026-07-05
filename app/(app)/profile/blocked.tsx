@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
 import Toast from 'react-native-toast-message';
+import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 
 export default function BlockedUsersScreen() {
   const router = useRouter();
@@ -104,18 +105,10 @@ export default function BlockedUsersScreen() {
                 }`}
             >
               <View className="flex-row items-center flex-1">
-                {item.avatar_url ? (
-                  <Image
-                    source={{ uri: item.avatar_url }}
-                    className="w-12 h-12 rounded-full mr-3 bg-gray-200"
-                  />
-                ) : (
-                  <View className="w-12 h-12 rounded-full mr-3 bg-primary/10 items-center justify-center">
-                    <Text className="text-primary font-headingSemi text-lg">
-                      {(item.display_name || 'U')[0].toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+                <Image
+                  source={item.avatar_url ? { uri: item.avatar_url } : NO_PROFILE_IMAGE}
+                  className="w-12 h-12 rounded-full mr-3 bg-gray-200"
+                />
                 <View className="flex-1 pr-2">
                   <Text className="font-headingSemi text-dark text-base" numberOfLines={1}>{item.display_name}</Text>
                   <Text className="font-body text-gray-500 text-sm" numberOfLines={1}>

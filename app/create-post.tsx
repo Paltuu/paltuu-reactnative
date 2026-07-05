@@ -26,6 +26,7 @@ import { useMentionInput, MentionSuggestionDropdown } from '../src/components/so
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
 import Toast from 'react-native-toast-message';
+import { NO_PROFILE_IMAGE } from '../src/constants/images';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -473,13 +474,6 @@ export default function CreatePostScreen() {
 
   // ── Helpers for render ────────────────────────────────────────────────────────
 
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   // When typing/selecting a mention, the area below the caption input swaps
   // from the normal compose content (media grid, milestone selector, toolbar)
   // to a full-width suggestion list filling all the way down to the keyboard
@@ -539,17 +533,11 @@ export default function CreatePostScreen() {
                 caption TextInput never loses focus/cursor when the mention
                 suggestion list opens/closes below it ── */}
           <View className="flex-row items-start px-4 gap-3">
-            {user?.profile_image_url ? (
-              <Image
-                source={{ uri: user.profile_image_url }}
-                style={{ width: 40, height: 40, borderRadius: 20, marginTop: 2 }}
-                contentFit="cover"
-              />
-            ) : (
-              <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mt-0.5">
-                <Text className="text-primary font-headingSemi text-sm">{initials}</Text>
-              </View>
-            )}
+            <Image
+              source={user?.profile_image_url ? { uri: user.profile_image_url } : NO_PROFILE_IMAGE}
+              style={{ width: 40, height: 40, borderRadius: 20, marginTop: 2 }}
+              contentFit="cover"
+            />
 
             <View className="flex-1">
               <Text className="font-headingSemi text-dark mb-1" style={{ fontSize: 14 }}>

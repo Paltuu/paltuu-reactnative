@@ -26,6 +26,7 @@ import type { TriggersConfig, SuggestionsProvidedProps, Suggestion } from 'react
 import { useQuery } from '@tanstack/react-query';
 import { socialApi, type MentionSuggestionPet, type MentionSuggestionUser } from '../../api/social';
 import { useDebounce } from '../../hooks/useDebounce';
+import { NO_PROFILE_IMAGE } from '../../constants/images';
 
 const PRIMARY = '#a03048';
 const SHEET_BG = '#fff';
@@ -90,19 +91,15 @@ export function appendMention(
     return `${value}${separator}{@}[${mention.name}](${mention.type}:${mention.id}) `;
 }
 
-const initialsFor = (name?: string) =>
-    (name || '?')
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-
 const PET_EMOJI: Record<string, string> = { cat: '🐱', dog: '🐶', bird: '🐦', default: '🐾' };
 
-const Avatar = ({ uri, fallbackText, emoji, size = 36 }: { uri?: string | null; fallbackText?: string; emoji?: string; size?: number }) => {
+const Avatar = ({ uri, emoji, size = 36 }: { uri?: string | null; emoji?: string; size?: number }) => {
     if (uri) {
         return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />;
+    }
+    // Pets fall back to a species emoji; people fall back to the shared no-profile image.
+    if (!emoji) {
+        return <Image source={NO_PROFILE_IMAGE} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />;
     }
     return (
         <View
@@ -111,11 +108,7 @@ const Avatar = ({ uri, fallbackText, emoji, size = 36 }: { uri?: string | null; 
                 backgroundColor: '#fdf0f2', alignItems: 'center', justifyContent: 'center',
             }}
         >
-            {emoji ? (
-                <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
-            ) : (
-                <Text style={{ fontSize: size * 0.38, fontWeight: '700', color: PRIMARY }}>{fallbackText}</Text>
-            )}
+            <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
         </View>
     );
 };
@@ -207,7 +200,7 @@ export function MentionSuggestionDropdown({ keyword, onSelect }: SuggestionsProv
                         onPress={() => handleSelect({ id: `user:${user.user_id}`, name: user.social_username || '' })}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}
                     >
-                        <Avatar uri={user.profile_image_url} fallbackText={initialsFor(user.name)} />
+                        <Avatar uri={user.profile_image_url} />
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>{user.name}</Text>
                             <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 1 }}>@{user.social_username}</Text>

@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getVetDetails } from '../../../src/api/clinics';
 import { Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 
 export default function VetDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -67,7 +68,7 @@ export default function VetDetailsScreen() {
 
           <View className="relative">
             <Image
-              source={{ uri: vet.profile_image_url || 'https://placehold.co/300x300/A03048/FFFFFF.png?text=' + vet.vet_name }}
+              source={vet.profile_image_url ? { uri: vet.profile_image_url } : NO_PROFILE_IMAGE}
               className="w-32 h-32 rounded-full border-4 border-white shadow-sm"
               resizeMode="cover"
             />

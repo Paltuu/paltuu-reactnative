@@ -18,6 +18,7 @@ import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/
 import { notificationsApi, Notification } from '../src/api/notifications';
 import { handleDeepLink } from '../src/services/deepLinks';
 import { useAuthStore } from '../src/stores/authStore';
+import { NO_PROFILE_IMAGE } from '../src/constants/images';
 
 // Paltuu Primary Branding Color
 const PRIMARY = '#A03048';
@@ -145,41 +146,15 @@ const groupNotificationsByDate = (notifications: Notification[]): NotificationSe
     .map((key) => ({ title: key, data: groups[key] }));
 };
 
-/* ── Actor Avatar with Initials Fallback ── */
-const ActorAvatar = ({ name, uri, size = 48 }: { name: string; uri?: string | null; size?: number }) => {
-  const initials = (name || 'U')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={{ width: size, height: size, borderRadius: size / 2 }}
-        contentFit="cover"
-        className="border border-gray-100"
-      />
-    );
-  }
-
-  const colors = ['bg-primarySoft', 'bg-green-50', 'bg-purple-50', 'bg-sky-50', 'bg-amber-50'];
-  const textColors = ['text-primary', 'text-green-600', 'text-purple-600', 'text-sky-500', 'text-amber-600'];
-  const idx = name.charCodeAt(0) % colors.length;
-
-  return (
-    <View
-      style={{ width: size, height: size }}
-      className={`rounded-full ${colors[idx]} items-center justify-center`}
-    >
-      <Text style={{ fontSize: size * 0.35 }} className={`font-headingSemi ${textColors[idx]}`}>
-        {initials}
-      </Text>
-    </View>
-  );
-};
+/* ── Actor Avatar with no-profile fallback ── */
+const ActorAvatar = ({ name, uri, size = 48 }: { name: string; uri?: string | null; size?: number }) => (
+  <Image
+    source={uri ? { uri } : NO_PROFILE_IMAGE}
+    style={{ width: size, height: size, borderRadius: size / 2 }}
+    contentFit="cover"
+    className="border border-gray-100"
+  />
+);
 
 /* ── Type Badge overlay for Avatar ── */
 const TypeBadge = ({ type }: { type: string }) => {

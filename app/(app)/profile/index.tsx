@@ -31,6 +31,7 @@ import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 import { MentionText } from '../../../src/components/social/MentionText';
+import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 
 const Icons = {
   pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
@@ -99,12 +100,10 @@ function formatDate(dateStr?: string): string {
 const AvatarCircle = ({
   uri,
   size,
-  initials,
   style,
 }: {
   uri?: string | null;
   size: number;
-  initials: string;
   style?: any;
 }) => (
   <View
@@ -123,23 +122,11 @@ const AvatarCircle = ({
       style,
     ]}
   >
-    {uri ? (
-      <Image
-        source={{ uri }}
-        style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
-        resizeMode="cover"
-      />
-    ) : (
-      <Text
-        style={{
-          fontSize: size * 0.36,
-          fontFamily: 'Montserrat_600SemiBold',
-          color: DS.primary,
-        }}
-      >
-        {initials}
-      </Text>
-    )}
+    <Image
+      source={uri ? { uri } : NO_PROFILE_IMAGE}
+      style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
+      resizeMode="cover"
+    />
   </View>
 );
 
@@ -207,17 +194,10 @@ const PetCard = ({ item, onPress }: { item: any; onPress: () => void }) => {
 // ─── Repost Card ──────────────────────────────────────────────────────────────
 
 const RepostCard = ({ item, user }: { item: any; user: any }) => {
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
+        <AvatarCircle uri={user?.profile_image_url} size={40} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.cardName}>{user?.name || 'User'}</Text>
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
@@ -389,13 +369,6 @@ export default function ProfileScreen() {
   });
 
   const profile = profileData?.profile || (user as any);
-
-  const initials = (profile?.name || 'U')
-    .split(' ')
-    .map((w: any) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
   const tabData: Record<TabKey, any[]> = {
     Posts: profileData?.posts || [],
@@ -629,7 +602,6 @@ export default function ProfileScreen() {
           <AvatarCircle
             uri={profile?.profile_image_url}
             size={AVATAR_SIZE}
-            initials={initials}
           />
           {isEditing && (
             <View style={s.avatarCamBadge}>
@@ -876,7 +848,6 @@ export default function ProfileScreen() {
                   <AvatarCircle
                     uri={profile?.profile_image_url}
                     size={52}
-                    initials={initials}
                   />
                   <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={s.menuHeaderName} numberOfLines={1}>

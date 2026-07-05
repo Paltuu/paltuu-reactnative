@@ -28,6 +28,7 @@ import { MentionText } from '../../../src/components/social/MentionText';
 import { useSocialActions } from '../../../src/hooks/useSocialActions';
 import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
 import { useMutation } from '@tanstack/react-query';
+import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -61,12 +62,10 @@ function formatCount(n: number = 0): string {
 const AvatarCircle = ({
   uri,
   size,
-  initials,
   style,
 }: {
   uri?: string | null;
   size: number;
-  initials: string;
   style?: any;
 }) => (
   <View
@@ -85,23 +84,11 @@ const AvatarCircle = ({
       style,
     ]}
   >
-    {uri ? (
-      <Image
-        source={{ uri }}
-        style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
-        resizeMode="cover"
-      />
-    ) : (
-      <Text
-        style={{
-          fontSize: size * 0.36,
-          fontFamily: 'Montserrat_600SemiBold',
-          color: DS.primary,
-        }}
-      >
-        {initials}
-      </Text>
-    )}
+    <Image
+      source={uri ? { uri } : NO_PROFILE_IMAGE}
+      style={{ width: size, height: size, backgroundColor: '#FFFFFF' }}
+      resizeMode="cover"
+    />
   </View>
 );
 
@@ -109,17 +96,10 @@ const AvatarCircle = ({
 // vs. name/breed/avatar_url) since this screen reads from a different endpoint
 // (socialApi.getPets vs. petProfilesApi.getUserPetProfiles) — styling matches exactly.
 const PetCard = ({ item, user }: { item: any; user: any }) => {
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
+        <AvatarCircle uri={user?.profile_image_url} size={40} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.cardName}>{user?.name || 'User'}</Text>
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
@@ -150,17 +130,10 @@ const PetCard = ({ item, user }: { item: any; user: any }) => {
 };
 
 const RepostCard = ({ item, user }: { item: any; user: any }) => {
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <View style={s.card}>
       <View style={s.cardHeader}>
-        <AvatarCircle uri={user?.profile_image_url} size={40} initials={initials} />
+        <AvatarCircle uri={user?.profile_image_url} size={40} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.cardName}>{user?.name || 'User'}</Text>
           <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
@@ -236,7 +209,6 @@ export default function UserProfileScreen() {
   });
 
   const profile = profileData?.profile;
-  const initials = (profile?.name || 'U').split(' ').map((w: any) => w[0]).join('').slice(0, 2).toUpperCase();
 
   const tabData: any = {
     Posts: profileData?.posts || [],
@@ -385,7 +357,7 @@ export default function UserProfileScreen() {
 
       <View style={s.avatarCenter}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModal('profile')}>
-          <AvatarCircle uri={profile?.profile_image_url} size={AVATAR_SIZE} initials={initials} />
+          <AvatarCircle uri={profile?.profile_image_url} size={AVATAR_SIZE} />
         </TouchableOpacity>
       </View>
 
@@ -500,7 +472,7 @@ export default function UserProfileScreen() {
       <Modal visible={imageModal !== null} transparent animationType="fade" onRequestClose={() => setImageModal(null)}>
         <View style={s.imgModalBg}>
           <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}><TouchableOpacity onPress={() => setImageModal(null)} style={s.imgModalClose}><Ionicons name="close" size={26} color="#FFFFFF" /></TouchableOpacity><Text style={s.imgModalTitle}>{imageModal === 'profile' ? 'Profile Photo' : 'Cover Photo'}</Text><View style={{ width: 40 }} /></View>
-          <View style={s.imgModalContent}>{imageModal === 'profile' ? (profile?.profile_image_url ? <Image source={{ uri: profile.profile_image_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="person-outline" size={80} color="white" /></View>) : (profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="image-outline" size={80} color="white" /></View>)}</View>
+          <View style={s.imgModalContent}>{imageModal === 'profile' ? (<Image source={profile?.profile_image_url ? { uri: profile.profile_image_url } : NO_PROFILE_IMAGE} style={s.imgModalImage} resizeMode="contain" />) : (profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="image-outline" size={80} color="white" /></View>)}</View>
         </View>
       </Modal>
 

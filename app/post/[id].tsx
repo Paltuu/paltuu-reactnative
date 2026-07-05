@@ -27,6 +27,7 @@ import {
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
 import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
+import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 
 type SortBy = 'top' | 'newest' | 'oldest';
 const SORT_OPTIONS: { key: SortBy; label: string }[] = [
@@ -109,30 +110,13 @@ const flatten = (comments: Comment[], expanded: Set<string>, parentId?: string):
 };
 
 /* ── Avatar ── */
-const Avatar = ({ name, uri, size = 36 }: { name: string; uri?: string | null; size?: number }) => {
-  const initials = (name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const palettes = [
-    { bg: '#fdf0f2', text: PRIMARY },
-    { bg: '#f0fdf4', text: '#059669' },
-    { bg: '#f5f3ff', text: '#7c3aed' },
-    { bg: '#f0f9ff', text: '#0ea5e9' },
-  ];
-  const p = palettes[(name || 'U').charCodeAt(0) % 4];
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={{ width: size, height: size, borderRadius: size / 2 }}
-        contentFit="cover"
-      />
-    );
-  }
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: p.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.34, fontWeight: '700', color: p.text }}>{initials}</Text>
-    </View>
-  );
-};
+const Avatar = ({ name, uri, size = 36 }: { name: string; uri?: string | null; size?: number }) => (
+  <Image
+    source={uri ? { uri } : NO_PROFILE_IMAGE}
+    style={{ width: size, height: size, borderRadius: size / 2 }}
+    contentFit="cover"
+  />
+);
 
 /* ── Sort selector (sits between the post and the comments) ── */
 const SortSelector = ({ value, onChange }: { value: SortBy; onChange: (v: SortBy) => void }) => (

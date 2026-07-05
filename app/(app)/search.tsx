@@ -20,6 +20,7 @@ import { useDebounce } from '../../src/hooks/useDebounce';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import ImageModal from '../../src/components/common/ImageModal';
 import { mentionsToPlainText } from '../../src/components/social/MentionText';
+import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -239,7 +240,7 @@ export default function SearchScreen() {
           }}
         >
           <Image
-            source={{ uri: item.profile_image_url || undefined }}
+            source={item.profile_image_url ? { uri: item.profile_image_url } : NO_PROFILE_IMAGE}
             style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', marginRight: 12 }}
             contentFit="cover"
           />

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { useSocialActions } from '../../hooks/useSocialActions';
+import { NO_PROFILE_IMAGE } from '../../constants/images';
 
 /* ── Quick Profile Modal ── */
 export const QuickProfileModal = ({
@@ -27,7 +28,6 @@ export const QuickProfileModal = ({
   const { toggleFollow, isFollowing } = useSocialActions();
 
   const profile = data?.profile;
-  const initials = (profile?.name || 'U').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   if (!visible) return null;
 
@@ -40,16 +40,11 @@ export const QuickProfileModal = ({
           ) : profile ? (
             <View>
               <View className="flex-row items-center mb-4">
-                {profile.profile_image_url ? (
-                  <Image
-                    source={{ uri: profile.profile_image_url }}
-                    style={{ width: 64, height: 64, borderRadius: 32 }}
-                  />
-                ) : (
-                  <View style={{ width: 64, height: 64, borderRadius: 32 }} className="bg-primarySoft items-center justify-center">
-                    <Text className="text-primary text-xl font-bold">{initials}</Text>
-                  </View>
-                )}
+                <Image
+                  source={profile.profile_image_url ? { uri: profile.profile_image_url } : NO_PROFILE_IMAGE}
+                  style={{ width: 64, height: 64, borderRadius: 32 }}
+                  contentFit="cover"
+                />
                 <View className="ml-4 flex-1">
                   <Text className="text-xl font-bold text-[#111]">{profile.name}</Text>
                   <Text className="text-gray-500">@{profile.social_username || profile.username}</Text>

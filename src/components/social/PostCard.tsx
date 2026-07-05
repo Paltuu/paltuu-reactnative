@@ -35,6 +35,7 @@ import VideoPlayer from './VideoPlayer';
 import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
+import { NO_PROFILE_IMAGE } from '../../constants/images';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -98,17 +99,6 @@ const s = StyleSheet.create({
     paddingHorizontal: CARD_INNER_PAD,
     gap: COL_GAP,
     marginBottom: 0,
-  },
-  avatarFallback: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: AVATAR_SIZE * 0.33,
-    fontWeight: '700',
   },
   plusBadge: {
     position: 'absolute',
@@ -260,31 +250,16 @@ const AuthorBlock = React.memo(({
   onMenuPress?: () => void;
   onAvatarPress?: () => void;
 }) => {
-  const initials = (name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const palettes = [
-    { bg: '#fdf0f2', fg: '#A03048' },
-    { bg: '#f0fdf4', fg: '#059669' },
-    { bg: '#f5f3ff', fg: '#7c3aed' },
-    { bg: '#f0f9ff', fg: '#0ea5e9' },
-  ];
-  const p = palettes[(name || 'U').charCodeAt(0) % 4];
-
   return (
     <View style={s.authorRow}>
       {/* Avatar */}
       <View style={{ position: 'relative' }}>
         <TouchableOpacity activeOpacity={0.8} onPress={onAvatarPress}>
-          {uri ? (
-            <Image
-              source={{ uri }}
-              style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={[s.avatarFallback, { backgroundColor: p.bg }]}>
-              <Text style={[s.avatarInitials, { color: p.fg }]}>{initials}</Text>
-            </View>
-          )}
+          <Image
+            source={uri ? { uri } : NO_PROFILE_IMAGE}
+            style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
+            contentFit="cover"
+          />
         </TouchableOpacity>
         {/* Follow button — temporarily disabled
         {onPlusPress && (
@@ -351,12 +326,10 @@ export const OriginalPostPreview = ({
   return (
     <Pressable style={s.originalPostContainer} onPress={onPress}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-        {authorImage && (
-          <Image
-            source={{ uri: authorImage }}
-            style={{ width: 16, height: 16, borderRadius: 8, marginRight: 6 }}
-          />
-        )}
+        <Image
+          source={authorImage ? { uri: authorImage } : NO_PROFILE_IMAGE}
+          style={{ width: 16, height: 16, borderRadius: 8, marginRight: 6 }}
+        />
         <Text style={{ fontWeight: '700', fontSize: 13, color: '#111' }}>{authorName}</Text>
         {createdAt && (
           <Text style={{ fontSize: 12, color: '#666', marginLeft: 4 }}>

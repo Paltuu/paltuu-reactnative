@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi } from '../../src/api/social';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
+import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 
 type ListType = 'followers' | 'following';
 
@@ -64,8 +65,9 @@ export default function FollowListScreen() {
           onPress={() => router.push(`/(app)/profile/${item.user_id}`)}
         >
           <Image
-            source={{ uri: item.profile_image_url || 'https://via.placeholder.com/150' }}
+            source={item.profile_image_url ? { uri: item.profile_image_url } : NO_PROFILE_IMAGE}
             style={styles.avatar}
+            contentFit="cover"
           />
           <View style={styles.userText}>
             <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
