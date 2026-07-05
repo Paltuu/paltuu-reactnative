@@ -8,11 +8,12 @@ import {
   FlatList,
   StyleSheet,
   Alert,
-  Share,
+  Share, ScrollView
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { subscribeToPlayingPost } from '../../utils/videoPlaySubscription';
+import { timeAgo as formatTime } from '../../utils/timeAgo';
 
 const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
@@ -67,19 +68,6 @@ const CAROUSEL_CARD_W = MEDIA_FULL_W - CAROUSEL_PEEK - CAROUSEL_GAP;
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const stripHtml = (s: string) =>
   (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-
-const formatTime = (dateStr: string) => {
-  try {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '';
-    const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (diff < 60) return 'now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    return new Date(dateStr).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
-  } catch { return ''; }
-};
 
 const formatCount = (n: number) => {
   if (!n) return '0';
@@ -504,19 +492,21 @@ const MediaBlock = React.memo(({
   // Carousel: square-ish cards, peek on the right
   return (
     <View style={[s.mediaWrapper, { overflow: 'visible' }]}>
-      <FlatList
-        data={media}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={CAROUSEL_CARD_W + CAROUSEL_GAP}
         decelerationRate="fast"
-        pagingEnabled={false}
         bounces={false}
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: carouselImgH, overflow: 'visible' }}
-        keyExtractor={(_, i) => i.toString()}
-        renderItem={renderCarouselItem}
-      />
+      >
+        {media.map((item, index) => (
+          <React.Fragment key={index}>
+            {renderCarouselItem({ item, index })}
+          </React.Fragment>
+        ))}
+      </ScrollView>
     </View>
   );
 });
@@ -633,7 +623,7 @@ export const PostCard = React.memo(({
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuthStore();
+  const currentUserId = useAuthStore(state => state.user?.id);
   const modals = usePostCardModals();
   const actions = useSocialActionsContext();
 
@@ -684,16 +674,16 @@ export const PostCard = React.memo(({
 
   const handleImagePress = useCallback((index: number) => {
     const items = bodyMedia?.map((m: any) => ({
-      url: m.url,
+      url: m.media_type === 'video' ? (m.hls_url || m.url) : m.url,
       type: m.media_type as 'image' | 'video',
       thumbnail_url: m.thumbnail_url,
     })) ?? [];
     modals?.showImageViewer(items, index);
   }, [modals, bodyMedia]);
 
-  const showPlus = String(currentUser?.id) !== String(post.user_id) && !post.is_following;
+  const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
-  const isOwnPost = String(currentUser?.id) === String(post.user_id);
+  const isOwnPost = String(currentUserId) === String(post.user_id);
 
   const handleDelete = () => {
     Alert.alert(
@@ -830,7 +820,7 @@ export const PostCard = React.memo(({
                 contentFit="contain"
               />
               <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', marginLeft: 4 }}>
-                {currentUser?.id === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
+                {String(currentUserId) === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
               </Text>
             </View>
           )}
@@ -894,13 +884,11 @@ export const PostCard = React.memo(({
           {/* ── Media: post media for normal posts, original media for plain reposts.
                (Quote reposts show media inside the embedded original above.) ── */}
           {!isQuoteRepost && bodyMedia?.length > 0 && (
-            <View onStartShouldSetResponder={() => true}>
-              <MediaBlock
-                media={bodyMedia}
-                onImagePress={handleImagePress}
-                isPlaying={isVideoPlaying}
-              />
-            </View>
+            <MediaBlock
+              media={bodyMedia}
+              onImagePress={handleImagePress}
+              isPlaying={isVideoPlaying}
+            />
           )}
 
           {/* ── Action bar ── */}

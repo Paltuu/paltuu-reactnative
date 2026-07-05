@@ -71,7 +71,7 @@ const PostCardModalsContext = createContext<PostCardModalsContextValue | null>(n
 type ActiveModal = 'none' | 'image' | 'save' | 'options' | 'repost' | 'report' | 'quote';
 
 export function PostCardModalsProvider({ children }: { children: ReactNode }) {
-  const { user: currentUser } = useAuthStore();
+  const currentUserAvatar = useAuthStore(state => state.user?.profile_image_url);
 
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [imageItems, setImageItems] = useState<MediaItem[]>([]);
@@ -256,7 +256,7 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
 
           <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6', backgroundColor: 'white', flexDirection: 'row', alignItems: 'center' }}>
             <Image
-              source={{ uri: currentUser?.profile_image_url || undefined }}
+              source={{ uri: currentUserAvatar || undefined }}
               style={{ width: 32, height: 32, borderRadius: 16, marginRight: 12, backgroundColor: '#f3f4f6' }}
             />
             <BottomSheetTextInput

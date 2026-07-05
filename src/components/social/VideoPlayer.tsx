@@ -51,8 +51,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
-    p.muted = isMuted;
+    p.muted = true;
   });
+
+  // Sync mute state changes to the player after init
+  useEffect(() => {
+    player.muted = isMuted;
+  }, [isMuted, player]);
 
   // Handle status and autoplay logic
   useEffect(() => {
@@ -64,6 +69,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         player.play();
       }
       if (status === 'error') {
+        const detail = (payload as any)?.error?.message ?? (payload as any)?.error ?? 'unknown';
+        console.warn('[VideoPlayer] error', { uri, detail, payload });
         setError('Failed to load video');
       }
     });
@@ -118,14 +125,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <View style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}>
-      <TouchableOpacity activeOpacity={1} onPress={onPress ?? togglePlay} style={StyleSheet.absoluteFill}>
-        <VideoView
-          player={player}
-          style={{ width, height }}
-          contentFit="cover"
-          nativeControls={false}
-        />
-      </TouchableOpacity>
+      <VideoView
+        player={player}
+        style={{ width, height }}
+        contentFit="cover"
+        nativeControls={false}
+      />
+      {/* Overlay above the native VideoView to reliably catch touches on Android */}
+      <TouchableOpacity activeOpacity={1} onPress={onPress ?? togglePlay} style={StyleSheet.absoluteFill} />
 
       <TouchableOpacity style={s.muteBtn} onPress={() => setIsMuted((prev) => !prev)} hitSlop={12}>
         <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={15} color="#fff" />

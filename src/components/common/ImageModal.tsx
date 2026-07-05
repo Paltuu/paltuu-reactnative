@@ -58,6 +58,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
     }
   }, [visible, initialIndex]);
 
+  if (!visible) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
