@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SplashScreen } from 'expo-router';
@@ -81,6 +81,7 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
+  const initialNotifHandled = useRef(false);
 
   // 1. Initial Hydration
   useEffect(() => {
@@ -116,6 +117,24 @@ export default function RootLayout() {
   // Here we only hook into foreground/response events for app-specific side effects.
   useEffect(() => {
     if (!isAuthenticated || isLoading || !user) return;
+    if (!navigationState?.key) return;
+
+    // Cold-start / killed-state: app was opened by tapping a notification.
+    // The response fires before the listener below is registered, so we read it
+    // once via getLastNotificationResponseAsync and guard with a ref so it only
+    // runs on the first time auth is ready (not on every re-render).
+    if (!initialNotifHandled.current) {
+      initialNotifHandled.current = true;
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (response) {
+          if (__DEV__) console.log('[Paltuu] Cold-start notification tap detected');
+          const data = response.notification.request.content.data;
+          if (data?.deep_link) {
+            handleDeepLink(data.deep_link as string);
+          }
+        }
+      });
+    }
 
     const foregroundSub = Notifications.addNotificationReceivedListener(() => {
       if (__DEV__) console.log('[Paltuu] Foreground notification → invalidating queries');
@@ -135,7 +154,7 @@ export default function RootLayout() {
       foregroundSub.remove();
       responseSub.remove();
     };
-  }, [isAuthenticated, isLoading, user]);
+  }, [isAuthenticated, isLoading, user, navigationState?.key]);
 
   // 4. Hide Splash Screen
   useEffect(() => {
