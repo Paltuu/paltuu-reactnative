@@ -757,10 +757,13 @@ export const PostCard = React.memo(({
     onUnfollow: () => actions?.toggleFollow(post.user_id),
     onHide: handleHide,
   }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved]);
-  const handleAvatarPress = useCallback(
-    () => router.push(`/(app)/profile/${displayUserId}`),
-    [router, displayUserId]
-  );
+  const handleAvatarPress = useCallback(() => {
+    if (String(currentUserId) === String(displayUserId)) {
+      router.push('/(app)/profile');
+    } else {
+      router.push(`/(app)/profile/${displayUserId}`);
+    }
+  }, [router, displayUserId, currentUserId]);
   const handleShare = useCallback(async () => {
     try {
       const plainText = mentionsToPlainText(post.content);
