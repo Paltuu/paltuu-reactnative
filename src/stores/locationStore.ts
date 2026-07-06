@@ -9,6 +9,8 @@ interface LocationState {
   status: LocationStatus;
   cityId: number | null;
   cityName: string | null;
+  latitude: number | null;
+  longitude: number | null;
   resolveCity: () => Promise<void>;
 }
 
@@ -16,6 +18,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   status: 'idle',
   cityId: null,
   cityName: null,
+  latitude: null,
+  longitude: null,
 
   resolveCity: async () => {
     if (get().status === 'resolving') return;
@@ -45,15 +49,15 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         accuracy: Location.Accuracy.Balanced,
       });
 
+      const { latitude, longitude } = position.coords;
+
       const cities = await petApi.getCities();
-      const nearest = findNearestCity(
-        cities,
-        position.coords.latitude,
-        position.coords.longitude,
-      );
+      const nearest = findNearestCity(cities, latitude, longitude);
 
       if (!nearest) {
-        set({ status: 'error' });
+        // Keep raw coordinates even when no city matches — distance-based
+        // features (e.g. nearby vets) don't need a resolved city
+        set({ status: 'error', latitude, longitude });
         return;
       }
 
@@ -61,6 +65,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         status: 'resolved',
         cityId: nearest.city_id,
         cityName: nearest.city_name,
+        latitude,
+        longitude,
       });
     } catch (err) {
       if (__DEV__) console.log('[Paltuu] Failed to resolve nearest city:', err);
