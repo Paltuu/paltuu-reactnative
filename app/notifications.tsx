@@ -259,8 +259,8 @@ const NotificationSkeleton = () => {
       <View className="w-12 h-12 rounded-full bg-gray-200 mr-3.5" />
       {/* Lines */}
       <View className="flex-1 gap-2 mr-2">
-        <View style={{ width: widths[0] }} className="h-3.5 bg-gray-200 rounded-full" />
-        <View style={{ width: widths[1] }} className="h-3 bg-gray-200 rounded-full" />
+        <View style={{ width: widths[0] as any }} className="h-3.5 bg-gray-200 rounded-full" />
+        <View style={{ width: widths[1] as any }} className="h-3 bg-gray-200 rounded-full" />
       </View>
       {/* Right thumb */}
       <View className="w-11 h-11 rounded-xl bg-gray-200" />

@@ -133,6 +133,7 @@ export const useSocialActions = () => {
       queryClient.invalidateQueries({ queryKey: ['social-followers'] });
       queryClient.invalidateQueries({ queryKey: ['social-following'] });
       queryClient.invalidateQueries({ queryKey: ['social-search'] });
+      queryClient.invalidateQueries({ queryKey: ['explore', 'suggested-accounts'] });
     },
   });
 

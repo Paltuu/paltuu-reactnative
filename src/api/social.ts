@@ -408,4 +408,64 @@ export const socialApi = {
     const { data } = await client.get(url);
     return data as { tag: string; post_count: number; posts: SocialPost[]; next_cursor: string | null };
   },
+
+  async getTopicFeed(slug: string, cursor: string | null = null, limit: number = 20) {
+    const url = `/explore/topic/${encodeURIComponent(slug)}?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { slug: string; label: string; posts: SocialPost[]; next_cursor: string | null };
+  },
+
+  async getSuggestedAccounts(limit: number = 10) {
+    const { data } = await client.get(`/explore/suggested-accounts?limit=${limit}`);
+    return data as {
+      accounts: {
+        user_id: number;
+        name: string;
+        social_username: string | null;
+        profile_image_url: string | null;
+        bio: string | null;
+        follower_count: number;
+        mutual_follows: number;
+        is_following: boolean;
+      }[];
+    };
+  },
+
+  async getLostFoundNearby(limit: number = 10) {
+    const { data } = await client.get(`/explore/lost-found-nearby?limit=${limit}`);
+    return data as {
+      city: string | null;
+      posts: {
+        post_id: number;
+        post_type: 'lost' | 'found';
+        pet_description: string;
+        location: string | null;
+        city: string | null;
+        date: string | null;
+        main_image: string | null;
+      }[];
+    };
+  },
+
+  async getVetsNearby(coords: { lat: number; lng: number } | null, limit: number = 10) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (coords) {
+      params.set('lat', String(coords.lat));
+      params.set('lng', String(coords.lng));
+    }
+    const { data } = await client.get(`/explore/vets-nearby?${params.toString()}`);
+    return data as {
+      clinics: {
+        clinic_id: number;
+        name: string;
+        address: string | null;
+        city: string | null;
+        logo_url: string | null;
+        rating: number | null;
+        total_reviews: number | null;
+        is_paltuu_partner: boolean;
+        distance_km: number | null;
+      }[];
+    };
+  },
 };
