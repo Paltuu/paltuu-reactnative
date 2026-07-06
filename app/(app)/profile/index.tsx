@@ -31,6 +31,7 @@ import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
+import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 
 const Icons = {
   pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
@@ -628,11 +629,7 @@ export default function ProfileScreen() {
   // ── Loading state ────────────────────────────────────────────────────────────
 
   if (isProfileLoading) {
-    return (
-      <View style={[s.screen, s.loadingCenter]}>
-        <ActivityIndicator size="large" color={DS.primary} />
-      </View>
-    );
+    return <ProfileScreenSkeleton insetsTop={insets.top} />;
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -905,11 +902,6 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: DS.bg,
   },
-  loadingCenter: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   // ─ Header wrapper ─
   headerWrapper: {
     backgroundColor: DS.surface,

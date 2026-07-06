@@ -17,6 +17,8 @@ import { socialApi } from '../../src/api/social';
 import { timeAgo as formatTime } from '../../src/utils/timeAgo';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
+import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
+import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import {
@@ -276,7 +278,7 @@ export default function PostDetailScreen() {
     retry: 1,
   });
 
-  const { data: commentsData } = useQuery({
+  const { data: commentsData, isLoading: commentsLoading } = useQuery({
     queryKey: ['comments', id],
     queryFn: () => socialApi.getComments(id as string),
     enabled: !!id,
@@ -362,14 +364,20 @@ export default function PostDetailScreen() {
 
   const listData = useMemo(() => {
     if (!postData) return [];
+    let commentItems: any[];
+    if (commentsLoading) {
+      commentItems = [0, 1, 2].map((i) => ({ type: 'comment-skeleton', key: `skeleton-${i}` }));
+    } else if (flatComments.length === 0) {
+      commentItems = [{ type: 'empty', key: 'empty' }];
+    } else {
+      commentItems = flatComments.map(c => ({ type: 'comment', key: c.comment_id, data: c }));
+    }
     return [
       { type: 'post', key: 'post' },
       { type: 'sort', key: 'sort' },
-      ...(flatComments.length === 0
-        ? [{ type: 'empty', key: 'empty' }]
-        : flatComments.map(c => ({ type: 'comment', key: c.comment_id, data: c }))),
+      ...commentItems,
     ];
-  }, [postData, flatComments]);
+  }, [postData, flatComments, commentsLoading]);
 
   /* ── Render item ── */
   const renderItem = useCallback(({ item }: { item: any }) => {
@@ -399,6 +407,8 @@ export default function PostDetailScreen() {
         return <SortSelector value={sortBy} onChange={setSortBy} />;
       case 'empty':
         return <EmptyComments />;
+      case 'comment-skeleton':
+        return <CommentRowSkeleton />;
       case 'comment':
         return (
           <CommentRow
@@ -416,8 +426,20 @@ export default function PostDetailScreen() {
   /* ── Loading / Error ── */
   if (postLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top }}>
-        <ActivityIndicator color={PRIMARY} size="large" />
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <View style={{
+          backgroundColor: BG, paddingTop: insets.top, paddingHorizontal: 16, paddingBottom: 12,
+          flexDirection: 'row', alignItems: 'center', gap: 12,
+          borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
+        }}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="chevron-back" size={24} color="#111" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111', flex: 1 }}>Post</Text>
+        </View>
+        <PostCardSkeleton />
+        <CommentRowSkeleton />
+        <CommentRowSkeleton />
       </View>
     );
   }

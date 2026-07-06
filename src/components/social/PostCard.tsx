@@ -827,8 +827,9 @@ export const PostCard = React.memo(({
                 source={PostIcons.repostUnselect}
                 style={{ width: 14, height: 14 }}
                 contentFit="contain"
+                tintColor="#666666"
               />
-              <Text style={{ fontSize: 12, color: '#666', fontWeight: '600', marginLeft: 4 }}>
+              <Text style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginLeft: 4 }}>
                 {String(currentUserId) === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
               </Text>
             </View>

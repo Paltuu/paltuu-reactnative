@@ -22,6 +22,7 @@ import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
+import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
 
 const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
@@ -196,11 +197,7 @@ export default function PetProfileScreen() {
 
   // ── Loading & Error States ────────────────────────────────────────────────
   if (isLoadingProfile) {
-    return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color="#a03048" />
-      </View>
-    );
+    return <PetProfileScreenSkeleton insetsTop={insets.top} />;
   }
   if (!profile) {
     return (

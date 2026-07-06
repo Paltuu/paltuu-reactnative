@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { socialApi, SocialPost } from '../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../src/components/social/PostCard';
+import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
 import { storage } from '../../src/utils/storage';
@@ -240,8 +241,10 @@ export default function HomeScreen() {
 
   if (isLoading && !posts.length) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#a03048" size="large" />
+      <View className="flex-1 bg-white" style={{ paddingTop: topOffset }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <PostCardSkeleton key={i} />
+        ))}
       </View>
     );
   }

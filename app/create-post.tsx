@@ -207,6 +207,7 @@ export default function CreatePostScreen() {
     onChange: setCaption,
   });
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
+  const [isLoadingPetProfiles, setIsLoadingPetProfiles] = useState(true);
 
   /**
    * Single unified array replacing the old `media: string[]` + `mediaTypes: Record<number, ...>`
@@ -240,7 +241,8 @@ export default function CreatePostScreen() {
     if (user?.id) {
       petProfilesApi.getUserPetProfiles(user.id)
         .then((res) => setPetProfiles(res.pet_profiles))
-        .catch((err) => console.error('Error fetching pet profiles:', err));
+        .catch((err) => console.error('Error fetching pet profiles:', err))
+        .finally(() => setIsLoadingPetProfiles(false));
     }
   }, [user]);
 
@@ -679,6 +681,7 @@ export default function CreatePostScreen() {
         selectedPets={selectedPets}
         onToggle={togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+        isLoading={isLoadingPetProfiles}
       />
     </View>
   );

@@ -9,6 +9,7 @@ import { timeAgo } from '../../utils/timeAgo';
 import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
+import { CommentRowSkeleton } from './CommentRowSkeleton';
 
 interface CommentsBottomSheetProps {
   visible: boolean;
@@ -281,8 +282,10 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
         {/* Comments List */}
         <View className="flex-1">
           {isLoading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color="#A03048" />
+            <View style={{ paddingTop: 12 }}>
+              <CommentRowSkeleton />
+              <CommentRowSkeleton />
+              <CommentRowSkeleton />
             </View>
           ) : (
             <BottomSheetFlatList

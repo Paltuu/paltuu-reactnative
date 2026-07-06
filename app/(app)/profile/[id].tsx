@@ -31,6 +31,7 @@ import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
+import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -342,7 +343,7 @@ export default function UserProfileScreen() {
     </View>
   );
 
-  if (isProfileLoading) return <View style={[s.screen, s.center]}><ActivityIndicator size="large" color={DS.primary} /></View>;
+  if (isProfileLoading) return <ProfileScreenSkeleton insetsTop={insets.top} />;
 
   return (
     <View style={s.screen}>

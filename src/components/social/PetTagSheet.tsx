@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '../ui/bottom-sheet';
 import type { BottomSheetMethods } from '../ui/bottom-sheet/types';
+import { Skeleton, SkeletonCircle } from '../common/Skeleton';
 
 const PRIMARY = '#a03048';
 
@@ -93,6 +94,16 @@ export const SelectedPetsRow = ({
 };
 
 /* ── The bottom-sheet picker ── */
+const PetRowSkeleton = () => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 8 }}>
+    <SkeletonCircle size={44} />
+    <View style={{ flex: 1, gap: 6 }}>
+      <Skeleton width={100} height={14} />
+      <Skeleton width={70} height={11} />
+    </View>
+  </View>
+);
+
 export const PetTagSheet = ({
   visible,
   onClose,
@@ -100,6 +111,7 @@ export const PetTagSheet = ({
   selectedPets,
   onToggle,
   onAddPet,
+  isLoading,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -107,6 +119,7 @@ export const PetTagSheet = ({
   selectedPets: number[];
   onToggle: (id: number) => void;
   onAddPet?: () => void;
+  isLoading?: boolean;
 }) => {
   const [query, setQuery] = useState('');
   const sheetRef = useRef<BottomSheetMethods>(null);
@@ -159,6 +172,13 @@ export const PetTagSheet = ({
             </View>
           )}
 
+          {isLoading ? (
+            <View style={{ paddingHorizontal: 12, paddingTop: 4 }}>
+              <PetRowSkeleton />
+              <PetRowSkeleton />
+              <PetRowSkeleton />
+            </View>
+          ) : (
           <FlatList
             data={filtered}
             keyExtractor={(item) => String(item.pet_profile_id)}
@@ -213,6 +233,7 @@ export const PetTagSheet = ({
               ) : null
             }
           />
+          )}
         </BottomSheet>
       </GestureHandlerRootView>
     </Modal>

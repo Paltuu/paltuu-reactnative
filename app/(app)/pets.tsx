@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Animated as RNAnimated,
 } from 'react-native';
 import Animated, { SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -19,6 +18,7 @@ import { useLocationStore } from '../../src/stores/locationStore';
 import { petApi } from '../../src/api/pets';
 import { StaggeredPlaceholder } from '../../src/components/common/CyclingText';
 import { FONTS } from '../../src/constants/typography';
+import { SkeletonCircle } from '../../src/components/common/Skeleton';
 
 const H_PAD = 20;
 const ROSE = '#A03048';
@@ -57,27 +57,6 @@ export default function PetsHubScreen() {
     }, GREETING_INTERVAL);
     return () => clearInterval(timer);
   }, [isFocused]);
-
-  const fadeAnim = useRef(new RNAnimated.Value(0.4)).current;
-  useEffect(() => {
-    if (!isFocused) return;
-    const animation = RNAnimated.loop(
-      RNAnimated.sequence([
-        RNAnimated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(fadeAnim, {
-          toValue: 0.4,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [isFocused, fadeAnim]);
 
   const { cityId, cityName } = useLocationStore();
   const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
@@ -195,14 +174,11 @@ export default function PetsHubScreen() {
 
           <View style={styles.nearbyCirclesViewport}>
             {isNearbyLoading ? (
-              <RNAnimated.View
-                style={{ opacity: fadeAnim }}
-                className="flex-row gap-3"
-              >
+              <View className="flex-row gap-3">
                 {Array.from({ length: NEARBY_VISIBLE_COUNT }).map((_, i) => (
-                  <View key={`skeleton-${i}`} style={styles.nearbyCircle} />
+                  <SkeletonCircle key={`skeleton-${i}`} size={56} />
                 ))}
-              </RNAnimated.View>
+              </View>
             ) : (
               <Animated.View
                 key={nearbyPage}
