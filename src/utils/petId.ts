@@ -2,12 +2,12 @@
 // separate so both can format the same fields identically without drifting.
 
 /**
- * CNIC-style identity number: the pet_profile_id left-padded to 13 digits,
- * formatted XXXXX-XXXXXXX-X. e.g. 77 -> "00000-0000007-7"
+ * CNIC-style identity number: the pet_profile_id left-padded to 7 digits,
+ * formatted XXX-XXX-X. e.g. 77 -> "000-007-7"
  */
 export const formatPetIdentityNumber = (petProfileId: number): string => {
-  const padded = String(petProfileId).padStart(13, '0');
-  return `${padded.slice(0, 5)}-${padded.slice(5, 12)}-${padded.slice(12)}`;
+  const padded = String(petProfileId).padStart(7, '0');
+  return `${padded.slice(0, 3)}-${padded.slice(3, 6)}-${padded.slice(6)}`;
 };
 
 /** CNIC dot format: DD.MM.YYYY */

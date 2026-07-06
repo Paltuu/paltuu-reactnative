@@ -164,7 +164,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: PRIMARY,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 15,
   },
   wordmark: {
     width: 58,
@@ -188,11 +188,14 @@ const s = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingTop: 14,
+    paddingBottom: 14,
   },
   fieldsCol: {
     flex: 1,
     paddingRight: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
     justifyContent: 'center',
   },
   photoCol: {
@@ -221,6 +224,7 @@ const s = StyleSheet.create({
   signatureBlock: {
     width: PHOTO_SIZE,
     marginTop: 'auto',
+    marginBottom: -4,
     alignItems: 'center',
   },
   signatureLine: {
@@ -240,7 +244,7 @@ const s = StyleSheet.create({
   // flex/space-between (which distributes leftover space unevenly depending
   // on nesting and produced inconsistent gaps between rows).
   fieldGap: {
-    marginBottom: 10,
+    marginBottom: 5,
   },
   pairedGrid: {
     flexDirection: 'row',
