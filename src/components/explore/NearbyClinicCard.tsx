@@ -18,15 +18,23 @@ export const NearbyClinicCard = ({ clinic, onPress }: { clinic: NearbyClinic; on
         width: 200,
         borderRadius: 16,
         backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#F0F0F0',
-        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 1,
       }}
     >
       {clinic.logo_url ? (
         <Image
           source={{ uri: clinic.logo_url }}
-          style={{ width: '100%', height: 100, backgroundColor: '#F3F4F6' }}
+          style={{
+            width: '100%',
+            height: 100,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            backgroundColor: '#F3F4F6',
+          }}
           contentFit="cover"
         />
       ) : (
@@ -34,6 +42,8 @@ export const NearbyClinicCard = ({ clinic, onPress }: { clinic: NearbyClinic; on
           style={{
             width: '100%',
             height: 100,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
             backgroundColor: '#FEF2F4',
             justifyContent: 'center',
             alignItems: 'center',

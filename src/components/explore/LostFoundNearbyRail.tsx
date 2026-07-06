@@ -20,16 +20,24 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
         width: 190,
         borderRadius: 16,
         backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#F0F0F0',
-        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 1,
       }}
     >
       <View>
         {post.main_image ? (
           <Image
             source={{ uri: post.main_image }}
-            style={{ width: '100%', height: 110, backgroundColor: '#F3F4F6' }}
+            style={{
+              width: '100%',
+              height: 110,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              backgroundColor: '#F3F4F6',
+            }}
             contentFit="cover"
           />
         ) : (
@@ -37,12 +45,14 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
             style={{
               width: '100%',
               height: 110,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
               backgroundColor: '#FEF2F4',
               justifyContent: 'center',
               alignItems: 'center',
             }}
           >
-            <Text style={{ fontSize: 28 }}>🐾</Text>
+            <Ionicons name="paw" size={28} color="#A03048" />
           </View>
         )}
         <View

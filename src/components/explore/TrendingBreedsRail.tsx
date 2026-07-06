@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Rail } from './Rail';
 
@@ -26,8 +27,11 @@ const BreedCard = ({ breed, onPress }: { breed: TrendingBreed; onPress: () => vo
         padding: 14,
         borderRadius: 16,
         backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#F0E0E4',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 1,
       }}
     >
       <View
@@ -41,7 +45,7 @@ const BreedCard = ({ breed, onPress }: { breed: TrendingBreed; onPress: () => vo
           marginBottom: 10,
         }}
       >
-        <Text style={{ fontSize: 16 }}>🐾</Text>
+        <Ionicons name="paw" size={16} color="#A03048" />
       </View>
       <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>
         {breed.breed}

@@ -33,9 +33,12 @@ const AccountCard = ({
         padding: 14,
         borderRadius: 16,
         backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#F0F0F0',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 1,
       }}
     >
       <Image

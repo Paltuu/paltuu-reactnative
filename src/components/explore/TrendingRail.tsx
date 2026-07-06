@@ -9,10 +9,12 @@ import { RailPostCard } from './RailPostCard';
 export const HashtagRow = ({
   tag,
   postCount,
+  rank,
   onPress,
 }: {
   tag: string;
   postCount: number;
+  rank: number;
   onPress: () => void;
 }) => (
   <TouchableOpacity
@@ -20,26 +22,32 @@ export const HashtagRow = ({
     style={{
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 16,
       backgroundColor: '#FFF',
-      borderBottomWidth: 0.5,
-      borderBottomColor: '#F0F0F0',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 6,
+      elevation: 1,
     }}
     activeOpacity={0.7}
   >
     <View
       style={{
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         backgroundColor: '#FEF2F4',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
       }}
     >
-      <Text style={{ fontSize: 18 }}>🔥</Text>
+      <Text style={{ fontSize: 15, fontWeight: '800', color: '#A03048' }}>{rank}</Text>
     </View>
     <View style={{ flex: 1 }}>
       <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>#{tag}</Text>
@@ -64,7 +72,7 @@ export const TrendingRail = ({ hashtags, posts, isLoading }: TrendingRailProps) 
 
   return (
     <View style={{ paddingTop: 20 }}>
-      <SectionHeader title="Trending" icon="flame" />
+      <SectionHeader title="Trending" />
 
       {isLoading ? (
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
@@ -74,11 +82,12 @@ export const TrendingRail = ({ hashtags, posts, isLoading }: TrendingRailProps) 
         </View>
       ) : (
         <>
-          {hashtags.slice(0, 5).map((h) => (
+          {hashtags.slice(0, 5).map((h, i) => (
             <HashtagRow
               key={h.tag}
               tag={h.tag}
               postCount={h.post_count}
+              rank={i + 1}
               onPress={() => router.push(`/(app)/hashtag/${h.tag}`)}
             />
           ))}

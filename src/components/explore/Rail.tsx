@@ -8,7 +8,7 @@ interface SectionHeaderProps {
   onSeeAll?: () => void;
 }
 
-export const SectionHeader = ({ title, icon, onSeeAll }: SectionHeaderProps) => (
+export const SectionHeader = ({ title, onSeeAll }: SectionHeaderProps) => (
   <View
     style={{
       flexDirection: 'row',
@@ -18,10 +18,7 @@ export const SectionHeader = ({ title, icon, onSeeAll }: SectionHeaderProps) => 
       marginBottom: 12,
     }}
   >
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      {icon && <Ionicons name={icon} size={18} color="#A03048" />}
-      <Text style={{ fontSize: 17, fontWeight: '800', color: '#111' }}>{title}</Text>
-    </View>
+    <Text style={{ fontSize: 17, fontWeight: '800', color: '#111' }}>{title}</Text>
     {onSeeAll && (
       <TouchableOpacity onPress={onSeeAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: '#A03048' }}>See All</Text>
