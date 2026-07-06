@@ -69,7 +69,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         }
       }}
     >
-      <View className="px-4 pt-1.5 pb-0.5">
+      <View className="px-4 pt-1.5 pb-2">
         <SearchBar
           placeholder="Search Paltuu"
           placeholders={placeholders}

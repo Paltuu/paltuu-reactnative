@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Rail } from './Rail';
 
@@ -13,45 +12,34 @@ interface TrendingBreed {
 const BreedCard = ({ breed, onPress }: { breed: TrendingBreed; onPress: () => void }) => {
   const adoptionCount = Number(breed.adoption_count) || 0;
   const petCount = Number(breed.pet_count) || 0;
-  const subtitle =
-    adoptionCount > 0
-      ? `${adoptionCount} up for adoption`
-      : `${petCount} listing${petCount === 1 ? '' : 's'}`;
+  const count = adoptionCount > 0 ? adoptionCount : petCount;
+  const caption =
+    adoptionCount > 0 ? 'up for adoption' : `listing${petCount === 1 ? '' : 's'}`;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
       style={{
-        width: 160,
-        padding: 14,
-        borderRadius: 16,
+        width: 140,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
         backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
         elevation: 1,
       }}
     >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: '#FEF2F4',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: 10,
-        }}
-      >
-        <Ionicons name="paw" size={16} color="#A03048" />
-      </View>
       <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>
         {breed.breed}
       </Text>
-      <Text numberOfLines={1} style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-        {subtitle}
+      <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#999', marginTop: 4 }}>
+        {count} {caption}
       </Text>
     </TouchableOpacity>
   );
