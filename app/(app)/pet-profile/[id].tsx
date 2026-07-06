@@ -27,6 +27,8 @@ import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProf
 const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
 const AVATAR_SIZE = 88;
+// Gap between the (screen-centered) pet name and the Edit pill to its right.
+const NAME_EDIT_GAP = 15;
 
 // Species → emoji badge mapping for personality
 const speciesEmoji: Record<string, string> = {
@@ -248,21 +250,24 @@ export default function PetProfileScreen() {
 
         {/* ── IDENTITY BLOCK ── */}
         <View style={s.identityBlock}>
-          {/* Name + Edit — same technique as a person profile: the name is
-              measured on its own (not the breed line under it, which is what
-              threw the offset off before) so it stays truly centered, and
-              Edit floats beside it via the identical absolute-position
-              formula (nameWidth/2 + 14, top: 5). */}
-          <View style={{ position: 'relative' }}>
-            <View onLayout={(e) => setNameWidth(e.nativeEvent.layout.width)}>
-              <Text style={s.petName}>{profile.name}</Text>
-            </View>
+          {/* Name + Edit — the name is auto-sized and centered on the full-width
+              row (so it sits at true screen-center regardless of length), and
+              Edit is absolutely positioned from screen-center + half the name's
+              measured width + a fixed gap. Because Edit is out of flow, it never
+              shifts the name off-center. The full-width container is what makes
+              `left: '50%'` resolve to the screen's center rather than the name
+              box's — the bug in the earlier measured version. */}
+          <View style={s.nameEditRow}>
+            <Text
+              style={s.petName}
+              numberOfLines={1}
+              onLayout={(e) => setNameWidth(e.nativeEvent.layout.width)}
+            >
+              {profile.name}
+            </Text>
             {isOwner && nameWidth > 0 && (
               <TouchableOpacity
-                style={[
-                  s.editSmallBtn,
-                  { position: 'absolute', left: '50%', marginLeft: nameWidth / 2 + 14, top: 5 },
-                ]}
+                style={[s.editSmallBtn, { left: '50%', marginLeft: nameWidth / 2 + NAME_EDIT_GAP }]}
                 onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
               >
                 <Text style={s.editSmallBtnText}>Edit</Text>
@@ -498,12 +503,21 @@ const s = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 24,
   },
+  nameEditRow: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
   petName: {
     fontSize: 24,
     fontFamily: 'Montserrat_700Bold',
     color: '#111827',
     letterSpacing: -0.3,
     textAlign: 'center',
+    // Leave room on both sides so a long name truncates instead of pushing
+    // the absolutely-positioned Edit pill off the right edge.
+    maxWidth: width - 140,
   },
   petBreed: {
     marginTop: 4,
@@ -513,6 +527,10 @@ const s = StyleSheet.create({
     textAlign: 'center',
   },
   editSmallBtn: {
+    position: 'absolute',
+    // Vertically center against the taller name text (pill ≈ 20px tall).
+    top: '50%',
+    transform: [{ translateY: -10 }],
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 999,
