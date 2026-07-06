@@ -20,6 +20,8 @@ interface SearchHeaderProps {
   activeTab: SearchTab;
   onTabChange: (tab: SearchTab) => void;
   onHeightChange?: (height: number) => void;
+  /** Show the All/Posts/People filter row — only relevant while a query is active */
+  showTabs?: boolean;
 }
 
 const TabItem = React.memo(
@@ -42,6 +44,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   activeTab,
   onTabChange,
   onHeightChange,
+  showTabs = true,
 }) => {
   const insets = useSafeAreaInsets();
   const { headerTranslateY } = useHeaderContext();
@@ -77,16 +80,18 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         />
       </View>
 
-      <View className="flex-row border-b-[0.5px] border-[#EEE] px-2">
-        {TABS.map((tab) => (
-          <TabItem
-            key={tab.key}
-            title={tab.title}
-            active={activeTab === tab.key}
-            onPress={() => onTabChange(tab.key)}
-          />
-        ))}
-      </View>
+      {showTabs && (
+        <View className="flex-row border-b-[0.5px] border-[#EEE] px-2">
+          {TABS.map((tab) => (
+            <TabItem
+              key={tab.key}
+              title={tab.title}
+              active={activeTab === tab.key}
+              onPress={() => onTabChange(tab.key)}
+            />
+          ))}
+        </View>
+      )}
     </Animated.View>
   );
 };

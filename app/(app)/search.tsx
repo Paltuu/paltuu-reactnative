@@ -1,60 +1,32 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
-  Dimensions,
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl
 } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { SearchHeader, SearchTab } from '../../src/components/common/SearchHeader';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../src/api/social';
 import { useDebounce } from '../../src/hooks/useDebounce';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import ImageModal from '../../src/components/common/ImageModal';
 import { mentionsToPlainText } from '../../src/components/social/MentionText';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
+import PostCard from '../../src/components/social/PostCard';
+import { ExploreSections } from '../../src/components/explore/ExploreSections';
+import { chunkArray, PostGridItem, GRID_MARGIN, GRID_GAP } from '../../src/components/explore/MediaGrid';
+import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
 
-const { width: screenWidth } = Dimensions.get('window');
-
-const GRID_MARGIN = 16;
-const GRID_GAP = 8;
-const GRID_ITEM_SIZE = Math.floor((screenWidth - GRID_MARGIN * 2 - GRID_GAP * 2) / 3);
-
-const chunkArray = (array: any[], size: number) => {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) chunks.push(array.slice(i, i + size));
-  return chunks;
-};
-
-const PostGridItem = ({ post, onPress }: { post: SocialPost; onPress: () => void }) => {
-  const imageUri = post.media?.[0]?.url || post.original_media?.[0]?.url || '';
-  const isMulti = (post.media?.length || 0) > 1 || (post.original_media?.length || 0) > 1;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{ width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE, borderRadius: 16, overflow: 'hidden' }}
-    >
-      <Image
-        source={{ uri: imageUri }}
-        style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6' }}
-        contentFit="cover"
-      />
-      {isMulti && (
-        <View style={{ position: 'absolute', top: 8, right: 8 }}>
-          <Ionicons name="copy" size={16} color="white" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
+const CustomFlashList = FlashList as any;
 
 const PostCompactItem = ({ post, onPress }: { post: SocialPost; onPress: () => void }) => (
   <TouchableOpacity
@@ -79,41 +51,17 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost; onPress: () => v
   </TouchableOpacity>
 );
 
-const HashtagRow = ({ tag, postCount, onPress }: { tag: string; postCount: number; onPress: () => void }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={{
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 20, paddingVertical: 14,
-      backgroundColor: '#FFF', borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0',
-    }}
-    activeOpacity={0.7}
-  >
-    <View style={{
-      width: 40, height: 40, borderRadius: 20,
-      backgroundColor: '#FEF2F4', justifyContent: 'center', alignItems: 'center', marginRight: 14,
-    }}>
-      <Text style={{ fontSize: 18 }}>🔥</Text>
-    </View>
-    <View style={{ flex: 1 }}>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>#{tag}</Text>
-      <Text style={{ fontSize: 13, color: '#999', marginTop: 1 }}>
-        {postCount > 1000 ? `${(postCount / 1000).toFixed(1)}K` : postCount} posts
-      </Text>
-    </View>
-    <Ionicons name="chevron-forward" size={16} color="#CCC" />
-  </TouchableOpacity>
-);
-
 export default function SearchScreen() {
   const { toggleFollow } = useSocialActions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { scrollHandler } = useHeaderContext();
+  const queryClient = useQueryClient();
+  const { scrollHandler, handleScrollY, handleScrollEnd } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
   const [stickyHeaderHeight, setStickyHeaderHeight] = useState(112);
+  const [isExploreRefreshing, setIsExploreRefreshing] = useState(false);
 
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -128,24 +76,30 @@ export default function SearchScreen() {
     }
   }, []);
 
-  // ─── Discovery API (idle state) ───────────────────────────────────────────
+  // ─── For You feed — the explore page's infinite tail ─────────────────────
+  // Shares Home's ['social-feed', ...] key prefix so useSocialActions'
+  // optimistic like/follow/save updates apply to this list too
   const {
-    data: discovery,
-    isLoading: isLoadingDiscovery,
-    refetch: refetchDiscovery,
-    isRefetching: isRefetchingDiscovery,
-  } = useQuery({
-    queryKey: ['explore-discovery'],
-    queryFn: () => socialApi.getExploreDiscovery(),
-    enabled: !debouncedQuery,
-    staleTime: 5 * 60 * 1000,
+    data: feedData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingFeed,
+  } = useInfiniteQuery({
+    queryKey: ['social-feed', 'personalized'],
+    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, 'personalized'),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
   });
 
-  // ─── Search results ───────────────────────────────────────────────────────
+  const forYouPosts = useMemo(() => feedData?.pages.flatMap((p) => p.posts) ?? [], [feedData]);
+
+  // ─── Search results (typed state) ─────────────────────────────────────────
   const {
     data: searchData,
     isLoading: isLoadingSearch,
     refetch: refetchSearch,
+    isRefetching: isRefetchingSearch,
   } = useQuery({
     queryKey: ['social-search', debouncedQuery, activeTab],
     queryFn: () => socialApi.search(debouncedQuery, activeTab),
@@ -160,27 +114,9 @@ export default function SearchScreen() {
     return { users: results || [], posts: [] };
   }, [searchData, activeTab]);
 
-  // ─── Build flat list data ─────────────────────────────────────────────────
-  const listData = useMemo(() => {
-    if (!debouncedQuery) {
-      const items: any[] = [];
-      const hashtags = discovery?.trending_hashtags ?? [];
-      const mediaPosts = discovery?.media_posts ?? [];
-
-      if (hashtags.length > 0) {
-        items.push({ type: 'section_header', title: 'Trending', _key: 'hdr-trending' });
-        hashtags.slice(0, 10).forEach((h) =>
-          items.push({ type: 'hashtag_row', ...h, _key: `hashtag-${h.tag}` })
-        );
-      }
-      if (mediaPosts.length > 0) {
-        items.push({ type: 'section_header', title: 'Explore', _key: 'hdr-explore' });
-        chunkArray(mediaPosts, 3).forEach((chunk, i) =>
-          items.push({ type: 'post_grid_row', posts: chunk, _key: `discovery-grid-${i}` })
-        );
-      }
-      return items;
-    }
+  // ─── Search results list (typed state only — idle state is the explore list)
+  const searchListData = useMemo(() => {
+    if (!debouncedQuery) return [];
 
     const items: any[] = [];
 
@@ -208,9 +144,9 @@ export default function SearchScreen() {
     }
 
     return items;
-  }, [debouncedQuery, discovery, searchResults, activeTab, isLoadingSearch]);
+  }, [debouncedQuery, searchResults, activeTab, isLoadingSearch]);
 
-  const renderItem = useCallback(({ item }: { item: any }) => {
+  const renderSearchItem = useCallback(({ item }: { item: any }) => {
     if (item.type === 'section_header') {
       return (
         <View style={{
@@ -219,15 +155,6 @@ export default function SearchScreen() {
         }}>
           <Text style={{ fontSize: 17, fontWeight: '800', color: '#111' }}>{item.title}</Text>
         </View>
-      );
-    }
-    if (item.type === 'hashtag_row') {
-      return (
-        <HashtagRow
-          tag={item.tag}
-          postCount={item.post_count}
-          onPress={() => router.push(`/(app)/hashtag/${item.tag}`)}
-        />
       );
     }
     if (item.type === 'user_item') {
@@ -294,33 +221,102 @@ export default function SearchScreen() {
     return null;
   }, [router, handleGridImagePress, debouncedQuery, toggleFollow]);
 
+  // ─── Explore (idle state) ──────────────────────────────────────────────────
+  const renderFeedItem = useCallback(({ item }: { item: SocialPost }) => (
+    <PostCard post={item} onPress={() => router.push(`/post/${item.post_id}`)} />
+  ), [router]);
+
+  // Only autoplay the video that's ≥60% visible (same mechanism as Home)
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: any[] }) => {
+      setPlayingPostId(viewableItems[0]?.item?.post_id ?? null);
+    },
+    []
+  );
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const handleExploreRefresh = useCallback(async () => {
+    setIsExploreRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['explore'] }),
+        queryClient.refetchQueries({ queryKey: ['social-feed', 'personalized'] }),
+      ]);
+    } finally {
+      setIsExploreRefreshing(false);
+    }
+  }, [queryClient]);
+
+  const exploreHeader = useMemo(() => <ExploreSections />, []);
+
+  const exploreFooter = useMemo(() => (
+    (isLoadingFeed || isFetchingNextPage)
+      ? <View style={{ paddingVertical: 20 }}><ActivityIndicator color="#A03048" /></View>
+      : <View style={{ height: 20 }} />
+  ), [isLoadingFeed, isFetchingNextPage]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
-      <Animated.FlatList
-        data={listData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item._key || item.post_id || String(item.user_id) || Math.random().toString()}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        contentContainerStyle={{
-          paddingTop: insets.top + stickyHeaderHeight,
-          paddingBottom: 100,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetchingDiscovery}
-            onRefresh={() => (debouncedQuery ? refetchSearch() : refetchDiscovery())}
-            tintColor="#A03048"
-          />
-        }
-        ListFooterComponent={() =>
-          isLoadingDiscovery || isLoadingSearch ? (
-            <View style={{ paddingVertical: 20 }}>
-              <ActivityIndicator color="#A03048" />
-            </View>
-          ) : null
-        }
-      />
+      {debouncedQuery ? (
+        <Animated.FlatList
+          data={searchListData}
+          renderItem={renderSearchItem}
+          keyExtractor={(item) => item._key || item.post_id || String(item.user_id) || Math.random().toString()}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          contentContainerStyle={{
+            paddingTop: insets.top + stickyHeaderHeight,
+            paddingBottom: 100,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetchingSearch}
+              onRefresh={() => refetchSearch()}
+              tintColor="#A03048"
+            />
+          }
+          ListFooterComponent={() =>
+            isLoadingSearch ? (
+              <View style={{ paddingVertical: 20 }}>
+                <ActivityIndicator color="#A03048" />
+              </View>
+            ) : null
+          }
+        />
+      ) : (
+        <CustomFlashList
+          data={forYouPosts}
+          renderItem={renderFeedItem}
+          keyExtractor={(item: SocialPost) => item.post_id}
+          estimatedItemSize={350}
+          onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
+          scrollEventThrottle={16}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          contentContainerStyle={{
+            paddingTop: insets.top + stickyHeaderHeight,
+            paddingBottom: 100,
+          }}
+          ListHeaderComponent={exploreHeader}
+          ListFooterComponent={exploreFooter}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isExploreRefreshing}
+              onRefresh={handleExploreRefresh}
+              tintColor="#A03048"
+            />
+          }
+        />
+      )}
 
       <SearchHeader
         placeholders={['Search users', 'Search vets', 'Search rescue shelters', 'Search posts']}
@@ -329,6 +325,7 @@ export default function SearchScreen() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onHeightChange={setStickyHeaderHeight}
+        showTabs={!!debouncedQuery}
       />
 
       <ImageModal
