@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatPetIdentityNumber, formatCardDate, formatCardExpiry } from '../../utils/petId';
 
 const PRIMARY = '#A03048';
-const PRIMARY_BORDER = 'rgba(160,48,72,0.25)';
+const PRIMARY_BORDER = 'rgba(160,48,72,0.55)';
 const BLACK = '#111111';
 const DASH = '—';
 
@@ -138,14 +138,15 @@ export const PetIdCard = ({
 // Forced 1:1 — the CNIC photo is portrait, but the pet photo is always
 // whatever aspect the owner uploaded, so we crop it to a square instead.
 const PHOTO_SIZE = 92;
+const CARD_RADIUS = 18;
 
 const s = StyleSheet.create({
   card: {
     width: '100%',
     aspectRatio: 1.586,
-    borderRadius: 18,
+    borderRadius: CARD_RADIUS,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: PRIMARY_BORDER,
     overflow: 'hidden',
   },
@@ -158,13 +159,18 @@ const s = StyleSheet.create({
     opacity: 0.06,
   },
 
-  // Header band
+  // Header band — top corners rounded to exactly match the card's own
+  // borderRadius (not just relying on the card's overflow:hidden clip),
+  // so the pink fill nests cleanly into the corner instead of leaving a
+  // sliver of the white card background showing through at the curve.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: PRIMARY,
     paddingHorizontal: 14,
     paddingVertical: 15,
+    borderTopLeftRadius: CARD_RADIUS,
+    borderTopRightRadius: CARD_RADIUS,
   },
   wordmark: {
     width: 58,

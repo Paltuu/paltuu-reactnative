@@ -613,7 +613,12 @@ export default function ProfileScreen() {
           onPress={() => router.push('/(app)/pet-profile/create')}
           style={s.addPetBtn}
         >
-          <Ionicons name="add-circle-outline" size={18} color={DS.primary} />
+          <ExpoImage
+            source={require('../../../assets/icons/plus-solid.svg')}
+            style={{ width: 14, height: 14 }}
+            contentFit="contain"
+            tintColor={DS.primary}
+          />
           <Text style={s.addPetBtnText}>Add Another Pet</Text>
         </TouchableOpacity>
       )}
@@ -1172,16 +1177,20 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
 
+  // Matches PetIdCard's own card styling (white bg, same border weight/color,
+  // same radius, same horizontal inset as the cards in petCardRow) so the
+  // "Add Another Pet" action reads as one more slot in the same card stack.
   addPetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
     gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: DS.primaryLight,
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(160,48,72,0.55)',
+    backgroundColor: '#FFFFFF',
     marginTop: 14,
     marginBottom: 6,
   },

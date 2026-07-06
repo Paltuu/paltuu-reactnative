@@ -22,7 +22,6 @@ import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
-import { formatDOB } from '../../../src/utils/petId';
 
 const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
@@ -36,6 +35,34 @@ const speciesEmoji: Record<string, string> = {
 
 const getSpeciesEmoji = (species: string) =>
   speciesEmoji[species?.toLowerCase()] ?? '🐾';
+
+// The backend's calculateAge returns full text ("5 years 6 months") sized for
+// prose contexts (listings, etc). In the stats row it needs to sit shoulder
+// to shoulder with one-word values like "Cat"/"Male" without wrapping onto a
+// second line and throwing the row's vertical rhythm off, so abbreviate it
+// here rather than changing the shared backend format.
+const abbreviateAge = (age: string | null | undefined): string => {
+  if (!age) return '—';
+  return age
+    .replace(/\byears?\b/g, 'y')
+    .replace(/\bmonths?\b/g, 'm')
+    .replace(/less than a m/, '<1m')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Splits "5y 6m" into digit runs (rendered at the normal stat size) and unit
+// letter runs (rendered smaller) — `statValue`'s own textTransform:'capitalize'
+// would otherwise uppercase the units ("5Y 6M"), so unit spans explicitly
+// force lowercase to override that inherited transform.
+const renderAgeValue = (age: string) => {
+  const parts = age.split(/(\d+)/).filter((p) => p.length > 0);
+  return parts.map((part, i) => (
+    <Text key={i} style={/^\d+$/.test(part) ? undefined : s.statValueUnit}>
+      {part}
+    </Text>
+  ));
+};
 
 type Tab = 'posts' | 'gallery' | 'about';
 
@@ -53,7 +80,7 @@ export default function PetProfileScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('posts');
-  const [nameBlockWidth, setNameBlockWidth] = useState(0);
+  const [nameWidth, setNameWidth] = useState(0);
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
@@ -224,28 +251,31 @@ export default function PetProfileScreen() {
 
         {/* ── IDENTITY BLOCK ── */}
         <View style={s.identityBlock}>
-          {/* Name + meta */}
-          <View
-            style={{ alignItems: 'center', position: 'relative' }}
-            onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
-          >
-            <Text style={s.petName}>{profile.name}</Text>
-            {(profile.breed || profile.species) && (
-              <Text style={s.petBreed}>
-                {[profile.breed, profile.species].filter(Boolean).join(' · ')}
-              </Text>
+          {/* Name + Edit — same technique as a person profile: the name is
+              measured on its own (not the breed line under it, which is what
+              threw the offset off before) so it stays truly centered, and
+              Edit floats beside it via the identical absolute-position
+              formula (nameWidth/2 + 14, top: 5). */}
+          <View style={{ position: 'relative' }}>
+            <View onLayout={(e) => setNameWidth(e.nativeEvent.layout.width)}>
+              <Text style={s.petName}>{profile.name}</Text>
+            </View>
+            {isOwner && nameWidth > 0 && (
+              <TouchableOpacity
+                style={[
+                  s.editSmallBtn,
+                  { position: 'absolute', left: '50%', marginLeft: nameWidth / 2 + 14, top: 5 },
+                ]}
+                onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+              >
+                <Text style={s.editSmallBtnText}>Edit</Text>
+              </TouchableOpacity>
             )}
           </View>
-          {isOwner && nameBlockWidth > 0 && (
-            <TouchableOpacity
-              style={[
-                s.editSmallBtn,
-                { position: 'absolute', left: '50%', marginLeft: nameBlockWidth / 2 + 14, top: 0 },
-              ]}
-              onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
-            >
-              <Text style={s.editSmallBtnText}>Edit</Text>
-            </TouchableOpacity>
+          {(profile.breed || profile.species) && (
+            <Text style={s.petBreed}>
+              {[profile.breed, profile.species].filter(Boolean).join(' · ')}
+            </Text>
           )}
 
           {/* ── Stats Ribbon — same plain value/label/separator treatment as a person profile ── */}
@@ -261,7 +291,7 @@ export default function PetProfileScreen() {
             </View>
             <View style={s.statSep} />
             <View style={s.statItem}>
-              <Text style={s.statValue}>{profile.age || '—'}</Text>
+              <Text style={s.statValue}>{renderAgeValue(abbreviateAge(profile.age))}</Text>
               <Text style={s.statLabel}>Age</Text>
             </View>
           </View>
@@ -396,12 +426,9 @@ export default function PetProfileScreen() {
           </View>
         )}
 
-        {/* ABOUT TAB — the digital ID card is the identity; the cards below
-             are the "full record" (bio now lives up in the identity block,
-             so it isn't repeated here). */}
+        {/* ABOUT TAB — nothing but the ID card itself. */}
         {activeTab === 'about' && (
           <View style={s.aboutContainer}>
-
             <PetIdCard
               pet={{
                 pet_profile_id: profile.pet_profile_id,
@@ -415,71 +442,6 @@ export default function PetProfileScreen() {
                 created_at: profile.created_at,
               }}
             />
-
-            {/* Details card */}
-            <View style={s.aboutCard}>
-              <View style={s.aboutCardHeader}>
-                <View style={s.aboutCardIcon}>
-                  <Ionicons name="paw" size={14} color="#a03048" />
-                </View>
-                <Text style={s.aboutCardTitle}>Details</Text>
-              </View>
-
-              <View style={s.detailRow}>
-                <Text style={s.detailLabel}>Species</Text>
-                <View style={s.detailValueRow}>
-                  <Text style={s.detailValueEmoji}>{getSpeciesEmoji(profile.species)}</Text>
-                  <Text style={s.detailValue}>{profile.species}</Text>
-                </View>
-              </View>
-
-              {profile.breed && (
-                <View style={s.detailRow}>
-                  <Text style={s.detailLabel}>Breed</Text>
-                  <Text style={s.detailValue}>{profile.breed}</Text>
-                </View>
-              )}
-
-              <View style={s.detailRow}>
-                <Text style={s.detailLabel}>Gender</Text>
-                <View style={s.detailValueRow}>
-                  <Ionicons
-                    name={profile.gender?.toLowerCase() === 'male' ? 'male' : 'female'}
-                    size={13}
-                    color="#a03048"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={s.detailValue}>{profile.gender}</Text>
-                </View>
-              </View>
-
-              {profile.age && (
-                <View style={s.detailRow}>
-                  <Text style={s.detailLabel}>Age</Text>
-                  <Text style={s.detailValue}>{profile.age}</Text>
-                </View>
-              )}
-
-              {profile.date_of_birth && (
-                <View style={[s.detailRow, { borderBottomWidth: 0 }]}>
-                  <Text style={s.detailLabel}>Date of Birth</Text>
-                  <Text style={s.detailValue}>{formatDOB(profile.date_of_birth)}</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Joined card */}
-            <View style={s.aboutCard}>
-              <View style={s.aboutCardHeader}>
-                <View style={s.aboutCardIcon}>
-                  <Ionicons name="sparkles" size={14} color="#a03048" />
-                </View>
-                <Text style={s.aboutCardTitle}>On Paltuu since</Text>
-              </View>
-              <Text style={s.bioText}>
-                {new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-              </Text>
-            </View>
           </View>
         )}
       </ScrollView>
@@ -551,6 +513,7 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat_500Medium',
     color: '#6B7280',
+    textAlign: 'center',
   },
   editSmallBtn: {
     paddingHorizontal: 9,
@@ -617,6 +580,12 @@ const s = StyleSheet.create({
     color: '#111827',
     letterSpacing: -0.5,
     textTransform: 'capitalize',
+  },
+  statValueUnit: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    color: '#111827',
+    textTransform: 'lowercase',
   },
   statLabel: {
     fontFamily: 'DMSans_400Regular',
@@ -742,58 +711,6 @@ const s = StyleSheet.create({
   // ── ABOUT ──
   aboutContainer: {
     padding: 20,
-    gap: 16,
-  },
-  aboutCard: {
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    borderRadius: 20,
-    padding: 18,
-  },
-  aboutCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  aboutCardIcon: {
-    width: 26, height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FAF0F2',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  aboutCardTitle: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
-    color: '#111827',
-  },
-  bioText: {
-    fontSize: 14,
-    fontFamily: 'Montserrat_400Regular',
-    color: '#4B5563',
-    lineHeight: 22,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  detailLabel: {
-    fontSize: 13,
-    fontFamily: 'Montserrat_500Medium',
-    color: '#9CA3AF',
-  },
-  detailValueRow: { flexDirection: 'row', alignItems: 'center' },
-  detailValueEmoji: { fontSize: 13, marginRight: 6 },
-  detailValue: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
-    color: '#111827',
-    textTransform: 'capitalize',
   },
 
   // ── EMPTY + ERRORS ──
