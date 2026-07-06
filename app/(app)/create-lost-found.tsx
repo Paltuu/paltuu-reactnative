@@ -4,180 +4,70 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
   Alert,
-  ActivityIndicator,
-  Image,
-  Modal,
-  FlatList, Animated, LayoutChangeEvent
+  StyleSheet,
+  ScrollView,
 } from 'react-native';
-import PaltuuButton from '../../src/components/ui/PaltuuButton';
-
+import { Image } from 'expo-image';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
+import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
+import { PickerField } from '../../src/components/pets/PickerField';
+import { DateField } from '../../src/components/pets/DateField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 
 /* ───────────────────────────────────────────────
-   Custom Dropdown — avoids @react-native-picker
+   Step configuration — one question per step, mirroring
+   the signup flow's heading + subtext + single field layout.
    ─────────────────────────────────────────────── */
-interface DropdownProps {
-  label: string;
-  value: string;
-  options: { label: string; value: string }[];
-  onSelect: (value: string) => void;
-}
+const STEPS = [
+  { key: 'type', heading: 'Lost or found?', subtext: 'Tell us what you\'re reporting so we can point people the right way.' },
+  { key: 'category', heading: 'What kind of pet?', subtext: 'Pick the category that fits best.' },
+  { key: 'city', heading: 'Which city?', subtext: 'Where was the pet lost or found?' },
+  { key: 'location', heading: 'Any specific spot?', subtext: 'A landmark or area helps people recognise it. Optional.' },
+  { key: 'contact', heading: 'How can finders reach you?', subtext: 'We\'ll show this so people can contact you.' },
+  { key: 'date', heading: 'When did it happen?', subtext: 'The date the pet went missing or was found.' },
+  { key: 'description', heading: 'Describe the pet', subtext: 'Colour, breed, collar, distinguishing marks…' },
+  { key: 'photos', heading: 'Add photos', subtext: 'A clear photo makes all the difference.' },
+] as const;
 
-function Dropdown({ label, value, options, onSelect }: DropdownProps) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
+const TOTAL_STEPS = STEPS.length;
 
-  return (
-    <>
-      <TouchableOpacity style={dStyles.trigger} onPress={() => setOpen(true)}>
-        <Text style={selected ? dStyles.triggerText : dStyles.placeholder}>
-          {selected ? selected.label : label}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color="#999" />
-      </TouchableOpacity>
-
-      <Modal visible={open} transparent animationType="slide">
-        <TouchableOpacity
-          style={dStyles.backdrop}
-          activeOpacity={1}
-          onPress={() => setOpen(false)}
-        >
-          <View style={dStyles.sheet}>
-            <Text style={dStyles.sheetTitle}>{label}</Text>
-            <FlatList
-              data={options}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    dStyles.option,
-                    item.value === value && dStyles.optionSelected,
-                  ]}
-                  onPress={() => {
-                    onSelect(item.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      dStyles.optionText,
-                      item.value === value && dStyles.optionTextSelected,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  {item.value === value && (
-                    <Ionicons name="checkmark" size={20} color="#A03048" />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </>
-  );
-}
-
-const dStyles = StyleSheet.create({
-  trigger: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  triggerText: { fontSize: 16, color: '#000' },
-  placeholder: { fontSize: 16, color: '#AAA' },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '60%',
-    paddingBottom: 30,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  option: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8F8F8',
-  },
-  optionSelected: { backgroundColor: '#FAF0F2' },
-  optionText: { fontSize: 16, color: '#333' },
-  optionTextSelected: { color: '#A03048', fontWeight: '600' },
-});
-
-/* ───────────────────────────────────────────────
-   Main Screen
-   ─────────────────────────────────────────────── */
 export default function CreateLostFoundScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } =
-    usePetStore();
+  const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } = usePetStore();
 
-  const [activeTab, setActiveTab] = useState<'lost' | 'found'>('lost');
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const [tabWidth, setTabWidth] = useState(0);
-
-  const switchTab = (tab: 'lost' | 'found') => {
-    setActiveTab(tab);
-    Animated.spring(slideAnim, {
-      toValue: tab === 'lost' ? 0 : 1,
-      useNativeDriver: true,
-      tension: 260,
-      friction: 22,
-    }).start();
-  };
-
+  const [step, setStep] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
+    postType: '' as '' | 'lost' | 'found',
     categoryId: '',
     cityId: '',
     location: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
     contactInfo: '',
+    date: new Date().toISOString().split('T')[0],
+    description: '',
   });
-
   const [images, setImages] = useState<any[]>([]);
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    fetchMetadata().catch(() => { });
+    fetchMetadata().catch(() => {});
   }, []);
+
+  const set = (patch: Partial<typeof formData>) => setFormData((prev) => ({ ...prev, ...patch }));
 
   const categoryOptions = (categories ?? []).map((c: any) => ({
     label: c.category_name || c.name || 'Unknown',
     value: (c.category_id || c.id)?.toString(),
   }));
-
   const cityOptions = (cities ?? []).map((c: any) => ({
     label: c.city_name || c.name || 'Unknown',
     value: (c.city_id || c.id)?.toString(),
@@ -197,7 +87,7 @@ export default function CreateLostFoundScreen() {
           type: 'image/jpeg',
           name: a.fileName || `lf_${Date.now()}.jpg`,
         }));
-        setImages([...images, ...selected]);
+        setImages((prev) => [...prev, ...selected].slice(0, 3));
       }
     } catch (error) {
       console.error('Pick Image Error:', error);
@@ -205,15 +95,62 @@ export default function CreateLostFoundScreen() {
     }
   };
 
+  const validateStep = (): boolean => {
+    const key = STEPS[step].key;
+    switch (key) {
+      case 'type':
+        if (!formData.postType) {
+          Alert.alert('Required', 'Please choose whether the pet was lost or found.');
+          return false;
+        }
+        return true;
+      case 'category':
+        if (!formData.categoryId) {
+          Alert.alert('Required', 'Please select a pet category.');
+          return false;
+        }
+        return true;
+      case 'city':
+        if (!formData.cityId) {
+          Alert.alert('Required', 'Please select a city.');
+          return false;
+        }
+        return true;
+      case 'contact':
+        if (!formData.contactInfo.trim()) {
+          Alert.alert('Required', 'Please add a contact number.');
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (!validateStep()) return;
+    if (step < TOTAL_STEPS - 1) {
+      setStep((prev) => prev + 1);
+    } else {
+      handleSubmit();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      setStep((prev) => prev - 1);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(app)/pets');
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!formData.categoryId || !formData.cityId || !formData.contactInfo) {
-      return Alert.alert('Required', 'Please fill required fields');
-    }
-
     if (images.length === 0) {
-      return Alert.alert('Required', 'Please add at least one picture.');
+      Alert.alert('Required', 'Please add at least one photo.');
+      return;
     }
-
     try {
       const payload = {
         category_id: Number(formData.categoryId),
@@ -222,241 +159,366 @@ export default function CreateLostFoundScreen() {
         pet_description: formData.description,
         date: formData.date,
         contact_info: `+92${formData.contactInfo.replace(/^0/, '')}`,
-        post_type: activeTab,
+        post_type: formData.postType,
         user_id: user?.id || 47,
       };
       await createLostFoundPost(payload, images);
-      Alert.alert('Success', 'Report submitted!', [
-        { text: 'OK', onPress: () => router.replace('/(app)/') },
-      ]);
+      setSubmitted(true);
     } catch {
       Alert.alert('Error', 'Submission failed.');
     }
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.scroll, { paddingBottom: 150 }]}
-        keyboardShouldPersistTaps="always"
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Lost & Found</Text>
-        </View>
+  const { heading, subtext, key } = STEPS[step];
+  const isLast = step === TOTAL_STEPS - 1;
 
-        {/* Tab Switcher */}
-        <View
-          style={styles.tabContainer}
-          onLayout={(e: LayoutChangeEvent) => setTabWidth(e.nativeEvent.layout.width / 2 - 4)}
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.successBody}>
+          <View style={styles.successIcon}>
+            <Ionicons name="heart" size={38} color="#a03048" />
+          </View>
+          <Text style={styles.successTitle}>Report sent for review</Text>
+          <Text style={styles.successText}>
+            Thanks for helping a pet find its way home. Our team is reviewing your report now — once it's
+            approved, it'll appear in the Lost & Found feed for the community to see.
+          </Text>
+        </View>
+        <View style={styles.bottom}>
+          <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <OnboardingHeader onBack={handleBack} progress={(step + 1) / TOTAL_STEPS} />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {tabWidth > 0 && (
-            <Animated.View
-              style={[
-                styles.tabPill,
-                {
-                  width: tabWidth,
-                  transform: [{
-                    translateX: slideAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, tabWidth],
-                    }),
-                  }],
-                },
-              ]}
+          <Text style={styles.heading}>{heading}</Text>
+          <Text style={styles.subtext}>{subtext}</Text>
+
+          {/* ── Type ── */}
+          {key === 'type' && (
+            <View style={{ gap: 12 }}>
+              {([
+                { value: 'lost', title: 'I lost a pet', sub: 'Report a missing pet', icon: 'sad-outline' },
+                { value: 'found', title: 'I found a pet', sub: 'Report a pet you found', icon: 'heart-outline' },
+              ] as const).map((opt) => {
+                const active = formData.postType === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    activeOpacity={0.8}
+                    onPress={() => set({ postType: opt.value })}
+                    style={[styles.optionCard, active && styles.optionCardActive]}
+                  >
+                    <View style={styles.optionIcon}>
+                      <Ionicons name={opt.icon} size={22} color="#a03048" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.optionTitle, active && styles.optionTitleActive]}>{opt.title}</Text>
+                      <Text style={styles.optionSub}>{opt.sub}</Text>
+                    </View>
+                    <Ionicons
+                      name={active ? 'radio-button-on' : 'radio-button-off'}
+                      size={22}
+                      color={active ? '#a03048' : '#D1D5DB'}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* ── Category ── */}
+          {key === 'category' && (
+            <PickerField
+              placeholder="Select a category"
+              value={formData.categoryId}
+              options={categoryOptions}
+              onSelect={(v) => set({ categoryId: v })}
+              icon="paw-outline"
             />
           )}
-          <TouchableOpacity style={styles.tab} onPress={() => switchTab('lost')}>
-            <Text style={[styles.tabText, activeTab === 'lost' && styles.activeTabText]}>
-              LOST
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tab} onPress={() => switchTab('found')}>
-            <Text style={[styles.tabText, activeTab === 'found' && styles.activeTabText]}>
-              FOUND
-            </Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Photos */}
-        <View style={{ marginBottom: 20 }}>
-          <Text style={styles.sectionTitle}>Photos</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {images.map((img, i) => (
-              <View key={i} style={styles.imgWrap}>
-                <Image source={{ uri: img.uri }} style={styles.img} />
-                <TouchableOpacity
-                  style={styles.imgRemove}
-                  onPress={() =>
-                    setImages(images.filter((_, idx) => idx !== i))
-                  }
-                >
-                  <Ionicons name="close-circle" size={22} color="#FF4B4B" />
+          {/* ── City ── */}
+          {key === 'city' && (
+            <PickerField
+              placeholder="Select a city"
+              value={formData.cityId}
+              options={cityOptions}
+              onSelect={(v) => set({ cityId: v })}
+              icon="location-outline"
+            />
+          )}
+
+          {/* ── Location ── */}
+          {key === 'location' && (
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={formData.location}
+              onChangeText={(t) => set({ location: t })}
+              placeholder="e.g. Near Hill Park, DHA"
+              placeholderTextColor="#B0B7C3"
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
+            />
+          )}
+
+          {/* ── Contact ── */}
+          {key === 'contact' && (
+            <View style={styles.prefixRow}>
+              <Text style={styles.prefix}>+92</Text>
+              <TextInput
+                ref={inputRef}
+                style={styles.prefixInput}
+                value={formData.contactInfo}
+                onChangeText={(t) => set({ contactInfo: t })}
+                placeholder="300 1234567"
+                placeholderTextColor="#B0B7C3"
+                keyboardType="number-pad"
+                maxLength={11}
+                autoFocus
+                returnKeyType="next"
+                onSubmitEditing={handleNext}
+              />
+            </View>
+          )}
+
+          {/* ── Date ── */}
+          {key === 'date' && (
+            <DateField value={formData.date} onChange={(ymd) => set({ date: ymd })} />
+          )}
+
+          {/* ── Description ── */}
+          {key === 'description' && (
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, styles.textArea]}
+              value={formData.description}
+              onChangeText={(t) => set({ description: t })}
+              placeholder="Distinguishing marks, colour, collar…"
+              placeholderTextColor="#B0B7C3"
+              multiline
+              textAlignVertical="top"
+              autoFocus
+            />
+          )}
+
+          {/* ── Photos ── */}
+          {key === 'photos' && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {images.map((img, i) => (
+                <View key={i} style={styles.imgWrap}>
+                  <Image source={{ uri: img.uri }} style={styles.img} contentFit="cover" />
+                  <TouchableOpacity
+                    style={styles.imgRemove}
+                    onPress={() => setImages(images.filter((_, idx) => idx !== i))}
+                  >
+                    <Ionicons name="close-circle" size={22} color="#FF4B4B" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {images.length < 3 && (
+                <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
+                  <Ionicons name="camera" size={26} color="#a03048" />
+                  <Text style={styles.imgAddText}>Add</Text>
                 </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < 3 && (
-              <TouchableOpacity style={styles.imgAdd} onPress={pickImage}>
-                <Ionicons name="camera" size={28} color="#A03048" />
-              </TouchableOpacity>
-            )}
-          </ScrollView>
+              )}
+            </ScrollView>
+          )}
+        </ScrollView>
+
+        {/* Bottom CTA */}
+        <View style={styles.bottom}>
+          <PaltuuButton
+            label={isLast ? 'Submit Report' : 'Next'}
+            successLabel={isLast ? 'Report submitted!' : undefined}
+            onPress={handleNext}
+            loading={isLoading}
+            radius={26}
+          />
         </View>
-
-        {/* Form */}
-        <Text style={styles.label}>Pet Category *</Text>
-        <Dropdown
-          label="Select Category"
-          value={formData.categoryId}
-          options={categoryOptions}
-          onSelect={(v) => setFormData({ ...formData, categoryId: v })}
-        />
-
-        <Text style={styles.label}>City *</Text>
-        <Dropdown
-          label="Select City"
-          value={formData.cityId}
-          options={cityOptions}
-          onSelect={(v) => setFormData({ ...formData, cityId: v })}
-        />
-
-        <Text style={styles.label}>Specific Location</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Near Hill Park"
-          value={formData.location}
-          onChangeText={(t) => setFormData({ ...formData, location: t })}
-        />
-
-        <Text style={styles.label}>Contact Info *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Phone or WhatsApp"
-          keyboardType="number-pad"
-          value={formData.contactInfo}
-          onChangeText={(t) => setFormData({ ...formData, contactInfo: t })}
-        />
-
-        <Text style={styles.label}>
-          Date {activeTab === 'lost' ? 'Lost' : 'Found'}
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="YYYY-MM-DD"
-          value={formData.date}
-          onChangeText={(t) => setFormData({ ...formData, date: t })}
-        />
-
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-          placeholder="Distinguishing marks..."
-          multiline
-          value={formData.description}
-          onChangeText={(t) => setFormData({ ...formData, description: t })}
-        />
-
-        {/* Submit */}
-        <PaltuuButton
-          label="Submit Report"
-          successLabel="Report submitted!"
-          onPress={handleSubmit}
-          loading={isLoading}
-          style={{ marginHorizontal: 16, marginBottom: 16 }}
-        />
-      </ScrollView>
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { padding: 20 },
-  header: {
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  body: {
+    paddingHorizontal: 24,
+    paddingTop: 0,
+    paddingBottom: 24,
+  },
+  heading: {
+    fontSize: 26,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#111827',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    marginBottom: 28,
+    lineHeight: 20,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#111827',
+    backgroundColor: '#FAFAFA',
+  },
+  textArea: {
+    height: 130,
+    paddingTop: 14,
+  },
+
+  // Prefixed contact input
+  prefixRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  prefix: {
+    fontSize: 16,
+    fontFamily: 'DMSans_700Bold',
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  prefixInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#111827',
+  },
+
+  // Option cards (lost / found)
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: '#FAFAFA',
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 24,
-    padding: 4,
-    marginBottom: 20,
-    position: 'relative',
+  optionCardActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FFFFFF',
   },
-  tabPill: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    bottom: 4,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderRadius: 20,
-    zIndex: 1,
-  },
-  activeTabText: { color: '#A03048' },
-  tabText: { fontSize: 14, fontWeight: '700', color: '#999' },
-  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10 },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888',
-    marginTop: 16,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  input: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    color: '#000',
-  },
-  imgWrap: { marginRight: 10, position: 'relative' },
-  img: { width: 80, height: 80, borderRadius: 12 },
-  imgRemove: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-  },
-  imgAdd: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+  optionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FAF0F2',
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: '#A03048',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitBtn: {
-    backgroundColor: '#A03048',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 30,
+  optionTitle: {
+    fontSize: 16,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
   },
-  submitBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  optionTitleActive: {
+    color: '#a03048',
+  },
+  optionSub: {
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+
+  // Photos
+  imgWrap: { position: 'relative' },
+  img: { width: 96, height: 96, borderRadius: 16 },
+  imgRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#fff',
+    borderRadius: 11,
+  },
+  imgAdd: {
+    width: 96,
+    height: 96,
+    borderRadius: 16,
+    backgroundColor: '#FAF0F2',
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    borderColor: '#a03048',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  imgAddText: {
+    fontSize: 11,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#a03048',
+  },
+
+  bottom: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    paddingTop: 8,
+  },
+
+  // Success screen
+  successBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FAF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  successText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });

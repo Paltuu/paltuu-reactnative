@@ -176,8 +176,8 @@ function LayoutContent() {
         <Tabs.Screen name="clinic/[id]" options={{ href: null }} />
         <Tabs.Screen name="vet/[id]" options={{ href: null }} />
         <Tabs.Screen name="create" options={{ href: null }} />
-        <Tabs.Screen name="create-pet" options={{ href: null }} />
-        <Tabs.Screen name="create-lost-found" options={{ href: null }} />
+        <Tabs.Screen name="create-pet" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+        <Tabs.Screen name="create-lost-found" options={{ href: null, tabBarStyle: { display: 'none' } }} />
         <Tabs.Screen name="my-listings" options={{ href: null }} />
         <Tabs.Screen name="my-applications" options={{ href: null }} />
         <Tabs.Screen name="adoption-requests" options={{ href: null }} />

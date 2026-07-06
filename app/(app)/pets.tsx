@@ -254,7 +254,7 @@ export default function PetsHubScreen() {
         {/* Tile 3 — Lost & Found Strip */}
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => router.push('/(app)/lost-found' as any)}
+          onPress={() => router.push('/(app)/create-lost-found' as any)}
           style={styles.lostFoundStrip}
         >
           <Image
