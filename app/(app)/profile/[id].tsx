@@ -24,7 +24,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
-import { MentionText } from '../../../src/components/social/MentionText';
 import { useSocialActions } from '../../../src/hooks/useSocialActions';
 import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
 import { useMutation } from '@tanstack/react-query';
@@ -48,12 +47,8 @@ const DS = {
 };
 
 const Icons = {
-  pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
-  pawUnselect: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
   pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
   pawLikeUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
-  repostSelect: require('../../../assets/icons/repost-select.svg'),
-  repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
 };
 
 function formatCount(n: number = 0): string {
@@ -62,53 +57,14 @@ function formatCount(n: number = 0): string {
   return String(n);
 }
 
-// The Pets tab now renders the user's personal pet profiles as shared PetIdCard
+// The Pets tab renders the user's personal pet profiles as shared PetIdCard
 // components (CNIC-style ID cards), reading from petProfilesApi.getUserPetProfiles.
-
-const RepostCard = ({ item, user }: { item: any; user: any }) => {
-  return (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <Avatar uri={user?.profile_image_url} size={40} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.cardName}>{user?.name || 'User'}</Text>
-          <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
-        </View>
-      </View>
-
-      <View style={s.repostLabel}>
-        <ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" />
-        <Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text>
-      </View>
-
-      <View style={s.repostInset}>
-        <MentionText
-          content={item.content}
-          textStyle={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}
-        />
-      </View>
-
-      <View style={s.thinDivider} />
-      <View style={s.actionRow}>
-        <TouchableOpacity style={s.actionBtn}>
-          <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" />
-          <Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn}>
-          <Ionicons name="chatbubble-outline" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]}>
-          <Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
+// Reposts render inline in the Posts tab (via PostCardShared's own repost
+// handling) — there is no separate Reposts tab.
 
 const TAB_CONFIG = [
   { key: 'Posts', renderIcon: (active: boolean) => <Ionicons name={active ? 'grid' : 'grid-outline'} size={22} color={active ? DS.primary : DS.gray400} /> },
   { key: 'Pets', renderIcon: (active: boolean) => <ExpoImage source={active ? Icons.pawLikeSelect : Icons.pawLikeUnselect} style={{ width: 24, height: 24 }} contentFit="contain" /> },
-  { key: 'Reposts', renderIcon: (active: boolean) => <ExpoImage source={active ? Icons.repostSelect : Icons.repostUnselect} style={{ width: 24, height: 24 }} contentFit="contain" /> },
 ] as const;
 
 export default function UserProfileScreen() {
@@ -132,12 +88,6 @@ export default function UserProfileScreen() {
     enabled: !!userId,
   });
 
-  const { data: repostsData, isLoading: isRepostsLoading } = useQuery({
-    queryKey: ['social-reposts', userId],
-    queryFn: () => socialApi.getReposts(userId!),
-    enabled: !!userId && activeTab === 'Reposts',
-  });
-
   const { data: petsData, isLoading: isPetsLoading } = useQuery({
     queryKey: ['social-pets', userId],
     queryFn: () => petProfilesApi.getUserPetProfiles(userId!),
@@ -149,14 +99,13 @@ export default function UserProfileScreen() {
   const tabData: any = {
     Posts: profileData?.posts || [],
     Pets: petsData?.pets || [],
-    Reposts: repostsData?.reposts || [],
   };
 
   const isBlockedByMe = profile?.is_blocked_by_me;
   const isBlockingMe = profile?.is_blocking_me;
   const isPrivateLocked = profile?.is_private_locked;
   const isLocked = isPrivateLocked || isBlockedByMe || isBlockingMe;
-  const isTabLoading = (activeTab === 'Posts' && isProfileLoading) || (activeTab === 'Pets' && isPetsLoading) || (activeTab === 'Reposts' && isRepostsLoading);
+  const isTabLoading = (activeTab === 'Posts' && isProfileLoading) || (activeTab === 'Pets' && isPetsLoading);
 
   const blockMutation = useMutation({
     mutationFn: () => socialApi.blockUser(userId),
@@ -269,27 +218,25 @@ export default function UserProfileScreen() {
       };
       return <PostCardShared post={postWithAuthor} onPress={() => router.push(`/post/${item.post_id}`)} />;
     }
-    if (activeTab === 'Pets') {
-      return (
-        <View style={s.petCardRow}>
-          <PetIdCard
-            pet={{
-              pet_profile_id: item.pet_profile_id,
-              name: item.name,
-              species: item.species,
-              breed: item.breed,
-              gender: item.gender,
-              date_of_birth: item.date_of_birth,
-              avatar_url: item.avatar_url,
-              owner_name: profile?.name,
-              created_at: item.created_at,
-            }}
-            onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id } })}
-          />
-        </View>
-      );
-    }
-    return <RepostCard item={item} user={profile} />;
+    // Only remaining tab is Pets.
+    return (
+      <View style={s.petCardRow}>
+        <PetIdCard
+          pet={{
+            pet_profile_id: item.pet_profile_id,
+            name: item.name,
+            species: item.species,
+            breed: item.breed,
+            gender: item.gender,
+            date_of_birth: item.date_of_birth,
+            avatar_url: item.avatar_url,
+            owner_name: profile?.name,
+            created_at: item.created_at,
+          }}
+          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: item.pet_profile_id } })}
+        />
+      </View>
+    );
   };
 
   const ListHeader = () => (
@@ -405,7 +352,7 @@ export default function UserProfileScreen() {
         renderItem={renderItem}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
         ListEmptyComponent={
           isLocked ? null : (
@@ -444,7 +391,7 @@ export default function UserProfileScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DS.bg },
   center: { justifyContent: 'center', alignItems: 'center' },
-  headerWrapper: { backgroundColor: DS.surface, marginBottom: 4 },
+  headerWrapper: { backgroundColor: DS.surface, marginBottom: 8 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
   menuBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   avatarCenter: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
@@ -505,10 +452,10 @@ const s = StyleSheet.create({
   // ─ Follow / Go-to-my-profile row — own-profile screen has no equivalent
   // (Edit/Share live in the top bar there instead), so these are [id]-only.
   btnRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 4, marginBottom: 12, gap: 10 },
-  btnPrimary: { flex: 1, height: 44, backgroundColor: DS.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  btnSecondary: { flex: 1, height: 44, backgroundColor: DS.gray100, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
-  btnSecondaryText: { color: DS.dark, fontSize: 15, fontWeight: '600' },
+  btnPrimary: { flex: 1, height: 36, backgroundColor: DS.primary, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  btnPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  btnSecondary: { flex: 1, height: 36, backgroundColor: DS.gray100, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+  btnSecondaryText: { color: DS.dark, fontSize: 14, fontWeight: '600' },
 
   // ─ Tab bar ─ (synced with profile/index.tsx)
   tabBar: {

@@ -29,17 +29,12 @@ import { socialApi, SocialPost } from '../../../src/api/social';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
-import { MentionText } from '../../../src/components/social/MentionText';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 
 const Icons = {
-  pawSelect: require('../../../assets/icons/MAIN_PAW_select.svg'),
-  pawUnselect: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
   pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
   pawLikeUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
-  repostSelect: require('../../../assets/icons/repost-select.svg'),
-  repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -103,51 +98,9 @@ const MenuItem = ({
   </TouchableOpacity>
 );
 
-// The Pets tab now renders shared PetIdCard components (CNIC-style ID cards);
-// RepostCard below remains a specific layout, and standard posts use the
-// shared PostCard.
-
-// ─── Repost Card ──────────────────────────────────────────────────────────────
-
-const RepostCard = ({ item, user }: { item: any; user: any }) => {
-  return (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <Avatar uri={user?.profile_image_url} size={40} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.cardName}>{user?.name || 'User'}</Text>
-          <Text style={s.cardMeta}>@{user?.social_username || user?.username || 'user'}</Text>
-        </View>
-      </View>
-
-      <View style={s.repostLabel}>
-        <ExpoImage source={Icons.repostSelect} style={{ width: 13, height: 13 }} contentFit="contain" />
-        <Text style={s.repostLabelText}>{user?.name || 'User'} reposted</Text>
-      </View>
-
-      <View style={s.repostInset}>
-        <MentionText
-          content={item.content}
-          textStyle={[s.cardContent, { color: DS.dark, paddingHorizontal: 0, marginBottom: 0 }]}
-        />
-      </View>
-
-      <View style={s.thinDivider} />
-      <View style={s.actionRow}>
-        <TouchableOpacity style={s.actionBtn}>
-          <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 22, height: 22 }} contentFit="contain" />
-          <Text style={s.actionCount}>{formatCount(item.like_count || 0)}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtn}>
-          <Ionicons name="chatbubble-outline" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.actionBtn, { marginLeft: 'auto' }]}>
-          <Ionicons name="arrow-redo-outline" size={20} color={DS.gray400} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
+// The Pets tab renders shared PetIdCard components (CNIC-style ID cards);
+// standard posts (including reposts, rendered inline via PostCardShared's own
+// repost handling) use the shared PostCard — there is no separate Reposts tab.
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
@@ -162,12 +115,6 @@ const TAB_CONFIG = [
     key: 'Pets',
     renderIcon: (active: boolean) => (
       <ExpoImage source={active ? Icons.pawLikeSelect : Icons.pawLikeUnselect} style={{ width: 24, height: 24 }} contentFit="contain" />
-    ),
-  },
-  {
-    key: 'Reposts',
-    renderIcon: (active: boolean) => (
-      <ExpoImage source={active ? Icons.repostSelect : Icons.repostUnselect} style={{ width: 24, height: 24 }} contentFit="contain" />
     ),
   },
 ] as const;
@@ -208,12 +155,6 @@ export default function ProfileScreen() {
     queryKey: ['social-profile', userId],
     queryFn: () => socialApi.getProfile(userId!),
     enabled: !!userId,
-  });
-
-  const { data: repostsData, isLoading: isRepostsLoading } = useQuery({
-    queryKey: ['social-reposts', userId],
-    queryFn: () => socialApi.getReposts(userId!),
-    enabled: !!userId && activeTab === 'Reposts',
   });
 
   const { data: petsData, isLoading: isPetsLoading } = useQuery({
@@ -289,13 +230,11 @@ export default function ProfileScreen() {
   const tabData: Record<TabKey, any[]> = {
     Posts: profileData?.posts || [],
     Pets: petsData?.pets || petsData?.pet_profiles || [],
-    Reposts: repostsData?.reposts || [],
   };
 
   const isTabLoading =
     (activeTab === 'Posts' && isProfileLoading) ||
-    (activeTab === 'Pets' && isPetsLoading) ||
-    (activeTab === 'Reposts' && isRepostsLoading);
+    (activeTab === 'Pets' && isPetsLoading);
 
   // ── Pull-to-refresh ──────────────────────────────────────────────────────────
 
@@ -303,7 +242,6 @@ export default function ProfileScreen() {
     setIsRefreshing(true);
     try {
       await queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
-      await queryClient.invalidateQueries({ queryKey: ['social-reposts', userId] });
       await queryClient.invalidateQueries({ queryKey: ['social-pets', userId] });
     } finally {
       setIsRefreshing(false);
@@ -441,28 +379,26 @@ export default function ProfileScreen() {
         />
       );
     }
-    if (activeTab === 'Pets') {
-      const pet = item as any;
-      return (
-        <View style={s.petCardRow}>
-          <PetIdCard
-            pet={{
-              pet_profile_id: pet.pet_profile_id,
-              name: pet.name,
-              species: pet.species,
-              breed: pet.breed,
-              gender: pet.gender,
-              date_of_birth: pet.date_of_birth,
-              avatar_url: pet.avatar_url,
-              owner_name: profile.name,
-              created_at: pet.created_at,
-            }}
-            onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: pet.pet_profile_id, from: 'profile' } })}
-          />
-        </View>
-      );
-    }
-    return <RepostCard item={item} user={profile} />;
+    // Only remaining tab is Pets.
+    const pet = item as any;
+    return (
+      <View style={s.petCardRow}>
+        <PetIdCard
+          pet={{
+            pet_profile_id: pet.pet_profile_id,
+            name: pet.name,
+            species: pet.species,
+            breed: pet.breed,
+            gender: pet.gender,
+            date_of_birth: pet.date_of_birth,
+            avatar_url: pet.avatar_url,
+            owner_name: profile.name,
+            created_at: pet.created_at,
+          }}
+          onPress={() => router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: pet.pet_profile_id, from: 'profile' } })}
+        />
+      </View>
+    );
   };
 
   const currentImageUri = selectedLocalAsset?.uri ||
@@ -972,7 +908,7 @@ const s = StyleSheet.create({
   // ─ Header wrapper ─
   headerWrapper: {
     backgroundColor: DS.surface,
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   // ─ Top bar ─
@@ -1236,36 +1172,6 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // ─ Card ─
-  card: {
-    backgroundColor: DS.surface,
-    paddingTop: 14,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  cardName: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 15,
-    color: DS.dark,
-  },
-  cardMeta: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 12,
-    color: DS.gray500,
-    marginTop: 1,
-  },
-  cardContent: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 14,
-    color: DS.dark,
-    lineHeight: 21,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
   addPetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1289,54 +1195,6 @@ const s = StyleSheet.create({
   petCardRow: {
     paddingHorizontal: 16,
     marginBottom: 14,
-  },
-
-  // ─ Actions ─
-  thinDivider: {
-    height: 0.5,
-    backgroundColor: DS.gray100,
-    marginHorizontal: 16,
-    marginTop: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 16,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  actionCount: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 13,
-    color: DS.gray400,
-  },
-
-  // ─ Repost ─
-  repostLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  repostLabelText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 12,
-    color: DS.primary,
-  },
-  repostInset: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 12,
-    backgroundColor: DS.bg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: DS.gray100,
   },
 
   // ─ Empty state ─
