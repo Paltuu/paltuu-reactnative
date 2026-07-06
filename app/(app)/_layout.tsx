@@ -186,6 +186,8 @@ function LayoutContent() {
         <Tabs.Screen name="pet-details" options={{ href: null }} />
         <Tabs.Screen name="follow-list" options={{ href: null }} />
         <Tabs.Screen name="hashtag/[tag]" options={{ href: null }} />
+        <Tabs.Screen name="topic/[slug]" options={{ href: null }} />
+        <Tabs.Screen name="media-grid" options={{ href: null }} />
       </Tabs>
     </View>
   );

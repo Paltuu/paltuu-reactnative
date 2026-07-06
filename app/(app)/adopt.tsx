@@ -9,7 +9,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,15 +30,24 @@ const formatAge = (ageMonths: number | null | undefined): string => {
 
 export default function AdoptScreen() {
   const router = useRouter();
+  const { breed: breedParam } = useLocalSearchParams<{ breed?: string }>();
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [isCityModalVisible, setIsCityModalVisible] = useState(false);
   const [citySearch, setCitySearch] = useState('');
-  
+
   const [filters, setFilters] = useState<PetFilters>({
     species: undefined,
     city: undefined,
-    breed: '',
+    breed: breedParam || '',
   });
+
+  // The screen stays mounted as a hidden tab, so re-navigation with a new
+  // breed param (e.g. from Explore's Trending Breeds) must re-seed the filter
+  useEffect(() => {
+    if (breedParam) {
+      setFilters((prev) => ({ ...prev, breed: breedParam }));
+    }
+  }, [breedParam]);
 
   const insets = useSafeAreaInsets();
   const { scrollHandler } = useHeaderContext();
