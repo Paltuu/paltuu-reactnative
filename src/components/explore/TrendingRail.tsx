@@ -6,12 +6,17 @@ import { FONTS } from '../../constants/typography';
 
 const PRIMARY = '#A03048';
 const SURFACE_SUBTLE = '#F5F5F7';
+const MUTED = '#9AA0A6';
 
-export const HashtagChip = ({
-  tag,
+const formatCount = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`);
+
+export const KeywordChip = ({
+  keyword,
+  count,
   onPress,
 }: {
-  tag: string;
+  keyword: string;
+  count?: number;
   onPress: () => void;
 }) => (
   <TouchableOpacity
@@ -25,21 +30,27 @@ export const HashtagChip = ({
       borderWidth: 1,
       borderColor: '#EFEFF1',
       justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     }}
   >
-    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: PRIMARY }}>#{tag}</Text>
+    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: PRIMARY }}>{keyword}</Text>
+    {!!count && count > 0 && (
+      <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: MUTED }}>{formatCount(count)}</Text>
+    )}
   </TouchableOpacity>
 );
 
 interface TrendingRailProps {
-  hashtags: { tag: string; post_count: number }[];
+  keywords: { keyword: string; post_count: number; engagement_score?: number }[];
   isLoading: boolean;
 }
 
-export const TrendingRail = ({ hashtags, isLoading }: TrendingRailProps) => {
+export const TrendingRail = ({ keywords, isLoading }: TrendingRailProps) => {
   const router = useRouter();
 
-  if (!isLoading && hashtags.length === 0) return null;
+  if (!isLoading && keywords.length === 0) return null;
 
   return (
     <View style={{ paddingTop: 24 }}>
@@ -58,11 +69,12 @@ export const TrendingRail = ({ hashtags, isLoading }: TrendingRailProps) => {
           contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
           decelerationRate="fast"
         >
-          {hashtags.slice(0, 8).map((h) => (
-            <HashtagChip
-              key={h.tag}
-              tag={h.tag}
-              onPress={() => router.push(`/(app)/hashtag/${h.tag}`)}
+          {keywords.slice(0, 8).map((k) => (
+            <KeywordChip
+              key={k.keyword}
+              keyword={k.keyword}
+              count={k.post_count}
+              onPress={() => router.push(`/(app)/keyword/${encodeURIComponent(k.keyword)}`)}
             />
           ))}
         </ScrollView>

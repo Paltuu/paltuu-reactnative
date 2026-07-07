@@ -436,7 +436,7 @@ export const socialApi = {
   async getExploreDiscovery() {
     const { data } = await client.get('/explore/discovery');
     return data as {
-      trending_hashtags: { tag: string; post_count: number }[];
+      trending_keywords: { keyword: string; post_count: number; engagement_score: number }[];
       media_posts: SocialPost[];
       trending_breeds: { breed: string; pet_count: number; adoption_count: number }[];
     };
@@ -446,6 +446,12 @@ export const socialApi = {
     const url = `/explore/hashtag/${encodeURIComponent(tag)}${cursor ? `?cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { tag: string; post_count: number; posts: SocialPost[]; next_cursor: string | null };
+  },
+
+  async getKeywordFeed(keyword: string, cursor: string | null = null) {
+    const url = `/explore/keyword/${encodeURIComponent(keyword)}${cursor ? `?cursor=${cursor}` : ''}`;
+    const { data } = await client.get(url);
+    return data as { keyword: string; post_count: number | null; posts: SocialPost[]; next_cursor: string | null };
   },
 
   async getTopicFeed(slug: string, cursor: string | null = null, limit: number = 20) {
@@ -465,6 +471,8 @@ export const socialApi = {
         bio: string | null;
         follower_count: number;
         mutual_follows: number;
+        interactions_with_me: number;
+        recent_engagement: number;
         is_following: boolean;
       }[];
     };

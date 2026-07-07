@@ -15,6 +15,26 @@ const MUTED = '#9AA0A6';
 
 type SuggestedAccount = Awaited<ReturnType<typeof socialApi.getSuggestedAccounts>>['accounts'][number];
 
+const formatCount = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`);
+
+// Prefer the strongest relationship signal: someone who engages with the
+// viewer > mutual follows > how much the account itself gets engaged with.
+const getAccountSubtitle = (account: SuggestedAccount): { text: string; highlight: boolean } => {
+  if (account.interactions_with_me > 0) {
+    return { text: 'Interacts with you', highlight: true };
+  }
+  if (account.mutual_follows > 0) {
+    return {
+      text: `${account.mutual_follows} mutual follow${account.mutual_follows === 1 ? '' : 's'}`,
+      highlight: false,
+    };
+  }
+  if (account.recent_engagement > 0) {
+    return { text: `${formatCount(account.recent_engagement)} interactions`, highlight: false };
+  }
+  return { text: `${formatCount(account.follower_count)} followers`, highlight: false };
+};
+
 const AccountCard = ({
   account,
   onPress,
@@ -24,10 +44,7 @@ const AccountCard = ({
   onPress: () => void;
   onFollow: () => void;
 }) => {
-  const subtitle =
-    account.mutual_follows > 0
-      ? `${account.mutual_follows} mutual follow${account.mutual_follows === 1 ? '' : 's'}`
-      : `${account.follower_count > 1000 ? `${(account.follower_count / 1000).toFixed(1)}K` : account.follower_count} followers`;
+  const subtitle = getAccountSubtitle(account);
 
   return (
     <TouchableOpacity
@@ -61,20 +78,30 @@ const AccountCard = ({
           @{account.social_username}
         </Text>
       )}
-      <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 11, color: MUTED, marginTop: 3 }}>
-        {subtitle}
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: subtitle.highlight ? FONTS.bodyBold : FONTS.body,
+          fontSize: 11,
+          color: subtitle.highlight ? PRIMARY : MUTED,
+          marginTop: 3,
+        }}
+      >
+        {subtitle.text}
       </Text>
       <TouchableOpacity
         onPress={onFollow}
         style={{
-          marginTop: 10,
-          paddingHorizontal: 20,
-          paddingVertical: 7,
-          borderRadius: 20,
+          marginTop: 12,
+          alignSelf: 'stretch',
+          height: 36,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
           backgroundColor: account.is_following ? '#F5F5F7' : PRIMARY,
         }}
       >
-        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: account.is_following ? DARK : '#FFF' }}>
+        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: account.is_following ? DARK : '#FFF' }}>
           {account.is_following ? 'Following' : 'Follow'}
         </Text>
       </TouchableOpacity>

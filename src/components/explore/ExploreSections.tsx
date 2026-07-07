@@ -57,7 +57,7 @@ export const ExploreSections = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const hashtags = discovery?.trending_hashtags ?? [];
+  const keywords = discovery?.trending_keywords ?? [];
   const mediaPosts = discovery?.media_posts ?? [];
 
   const gridPosts = mediaPosts.slice(0, MEDIA_PREVIEW_COUNT);
@@ -66,7 +66,7 @@ export const ExploreSections = () => {
   return (
     <View>
       {visibleSections > SECTION_TRENDING && (
-        <TrendingRail hashtags={hashtags} isLoading={isLoadingDiscovery} />
+        <TrendingRail keywords={keywords} isLoading={isLoadingDiscovery} />
       )}
 
       {visibleSections > SECTION_MEDIA && (isLoadingDiscovery || gridPosts.length > 0) && (
