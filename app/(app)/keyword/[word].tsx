@@ -59,7 +59,12 @@ function KeywordFeedScreen() {
         alignItems: 'center',
         gap: 12,
       }}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity
+          // Trending keywords are only reached from the Search/Explore tab, and
+          // the flat tab navigator's back() lands on Home — so go to Search explicitly.
+          onPress={() => router.navigate('/(app)/search')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Ionicons name="arrow-back" size={24} color="#111" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
