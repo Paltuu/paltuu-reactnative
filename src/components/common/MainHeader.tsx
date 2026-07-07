@@ -13,7 +13,7 @@ export { HEADER_HEIGHT };
 export const MainHeader: React.FC = () => {
     const insets = useSafeAreaInsets();
     const { headerTranslateY, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
-    const { isAuthenticated } = useAuthStore();
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     const { data: unreadData } = useQuery({
         queryKey: ['unread-count'],

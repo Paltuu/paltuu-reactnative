@@ -21,6 +21,8 @@ import { PickerField } from '../../src/components/pets/PickerField';
 import { DateField } from '../../src/components/pets/DateField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
+import { useShallow } from 'zustand/react/shallow';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 /* ───────────────────────────────────────────────
    Step configuration — one question per step, mirroring
@@ -39,10 +41,18 @@ const STEPS = [
 
 const TOTAL_STEPS = STEPS.length;
 
-export default function CreateLostFoundScreen() {
+function CreateLostFoundScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } = usePetStore();
+  const user = useAuthStore((state) => state.user);
+  const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } = usePetStore(
+    useShallow((state) => ({
+      cities: state.cities,
+      categories: state.categories,
+      fetchMetadata: state.fetchMetadata,
+      createLostFoundPost: state.createLostFoundPost,
+      isLoading: state.isLoading,
+    }))
+  );
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -520,3 +530,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+export default withFocusUnmount(CreateLostFoundScreen);

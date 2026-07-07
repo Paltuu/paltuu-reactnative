@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 // We'll stick to React Native Views for animations
 
 const { width } = Dimensions.get('window');
@@ -108,7 +109,7 @@ const ProductSection = ({ title, icon, filters, onSeeAll }: { title: string, ico
   );
 };
 
-export default function BazaarScreen() {
+function BazaarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { scrollHandler } = useHeaderContext();
@@ -253,3 +254,5 @@ export default function BazaarScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(BazaarScreen);

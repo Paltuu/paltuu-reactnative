@@ -6,8 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getVetDetails } from '../../../src/api/clinics';
 import { Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function VetDetailsScreen() {
+function VetDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
@@ -158,3 +159,5 @@ export default function VetDetailsScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(VetDetailsScreen);

@@ -9,12 +9,21 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { usePetStore } from '../../src/stores/petStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
-export default function AdoptionRequestsScreen() {
-  const { adoptionRequests, fetchAdoptionRequests, updateApplicationStatus, isLoading } = usePetStore();
+function AdoptionRequestsScreen() {
+  const { adoptionRequests, fetchAdoptionRequests, updateApplicationStatus, isLoading } = usePetStore(
+    useShallow((state) => ({
+      adoptionRequests: state.adoptionRequests,
+      fetchAdoptionRequests: state.fetchAdoptionRequests,
+      updateApplicationStatus: state.updateApplicationStatus,
+      isLoading: state.isLoading,
+    }))
+  );
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -140,3 +149,5 @@ export default function AdoptionRequestsScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(AdoptionRequestsScreen);

@@ -19,6 +19,7 @@ import { getClinicDetails } from '../../../src/api/clinics';
 import { VetCard } from '../../../src/components/pet-care/VetCard';
 import { ClinicResources } from '../../../src/components/pet-care/ClinicResources';
 import { FONTS } from '../../../src/constants/typography';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
@@ -52,7 +53,7 @@ async function copyText(value: string) {
   }
 }
 
-export default function ClinicDetailsScreen() {
+function ClinicDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -518,3 +519,5 @@ const styles = StyleSheet.create({
   updatingTitle: { fontFamily: FONTS.headingSemi, fontSize: 14, color: DARK, marginBottom: 6 },
   updatingBody: { fontFamily: FONTS.body, fontSize: 12.5, color: MUTED, lineHeight: 19 },
 });
+
+export default withFocusUnmount(ClinicDetailsScreen);

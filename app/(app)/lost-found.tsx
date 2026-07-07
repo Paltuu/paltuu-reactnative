@@ -12,15 +12,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { usePetStore } from '../../src/stores/petStore';
+import { useShallow } from 'zustand/react/shallow';
 import { LFPCard } from '../../src/components/lost-found/LFPCard';
 import { useHeaderContext } from '../../src/context/HeaderContext';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
-export default function LostFoundScreen() {
+function LostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { scrollHandler } = useHeaderContext();
 
-  const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore();
+  const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore(
+    useShallow((state) => ({
+      lostFoundPosts: state.lostFoundPosts,
+      isLoading: state.isLoading,
+      fetchLostFoundPosts: state.fetchLostFoundPosts,
+    }))
+  );
   const [filter, setFilter] = useState<'lost' | 'found'>('lost');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -198,3 +206,5 @@ export default function LostFoundScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(LostFoundScreen);

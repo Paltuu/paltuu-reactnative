@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function AboutScreen() {
+function AboutScreen() {
   const router = useRouter();
   const appVersion = Constants.expoConfig?.version || '1.0.0';
 
@@ -66,3 +67,5 @@ export default function AboutScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(AboutScreen);

@@ -19,6 +19,7 @@ import { petApi } from '../../src/api/pets';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { PetDetailsScreenSkeleton } from '../../src/components/common/PetDetailsScreenSkeleton';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const { width } = Dimensions.get('window');
 // Wider and less tall layout (5:4 aspect ratio)
@@ -39,7 +40,7 @@ const formatAge = (ageMonths: number | null | undefined): string => {
   return yearStr || monthStr;
 };
 
-export default function PetDetailsScreen() {
+function PetDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -445,3 +446,5 @@ const s = StyleSheet.create({
     bottom: 0,
   },
 });
+
+export default withFocusUnmount(PetDetailsScreen);

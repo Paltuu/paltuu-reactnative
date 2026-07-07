@@ -42,7 +42,7 @@ export default function PostDetailScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const inputRef = useRef<TextInput>(null);
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<FlatComment | null>(null);

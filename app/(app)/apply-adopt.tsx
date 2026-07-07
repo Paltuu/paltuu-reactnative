@@ -19,6 +19,7 @@ import { PickerField } from '../../src/components/pets/PickerField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { petApi } from '../../src/api/pets';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 /* One question per step, mirroring the create-pet / create-lost-found flows. */
 const STEPS = [
@@ -34,11 +35,12 @@ const STEPS = [
 
 const TOTAL_STEPS = STEPS.length;
 
-export default function ApplyAdoptScreen() {
+function ApplyAdoptScreen() {
   const router = useRouter();
   const { pet_id, pet_name } = useLocalSearchParams<{ pet_id?: string; pet_name?: string }>();
-  const { cities, fetchMetadata } = usePetStore();
-  const { user } = useAuthStore();
+  const cities = usePetStore((state) => state.cities);
+  const fetchMetadata = usePetStore((state) => state.fetchMetadata);
+  const user = useAuthStore((state) => state.user);
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -555,3 +557,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+export default withFocusUnmount(ApplyAdoptScreen);

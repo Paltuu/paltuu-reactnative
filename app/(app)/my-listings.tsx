@@ -9,12 +9,22 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { usePetStore } from '../../src/stores/petStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
-export default function MyListingsScreen() {
-  const { myListings, fetchMyListings, updatePetStatus, deletePet, isLoading } = usePetStore();
+function MyListingsScreen() {
+  const { myListings, fetchMyListings, updatePetStatus, deletePet, isLoading } = usePetStore(
+    useShallow((state) => ({
+      myListings: state.myListings,
+      fetchMyListings: state.fetchMyListings,
+      updatePetStatus: state.updatePetStatus,
+      deletePet: state.deletePet,
+      isLoading: state.isLoading,
+    }))
+  );
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -142,3 +152,5 @@ export default function MyListingsScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(MyListingsScreen);

@@ -125,7 +125,8 @@ type TabKey = typeof TAB_CONFIG[number]['key'];
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();

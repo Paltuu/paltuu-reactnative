@@ -7,8 +7,9 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { socialApi } from '../../../src/api/social';
 import Toast from 'react-native-toast-message';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function BlockedUsersScreen() {
+function BlockedUsersScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -149,3 +150,5 @@ export default function BlockedUsersScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(BlockedUsersScreen);

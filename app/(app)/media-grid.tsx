@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { MediaGrid } from '../../src/components/explore/MediaGrid';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
-export default function MediaGridScreen() {
+function MediaGridScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -58,3 +59,5 @@ export default function MediaGridScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(MediaGridScreen);

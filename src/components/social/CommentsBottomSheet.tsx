@@ -23,7 +23,7 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
   const [commentText, setCommentText] = useState('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
   const [reportTargetId, setReportTargetId] = useState<number | null>(null);
   const [reportTargetType, setReportTargetType] = useState<'user' | 'comment'>('user');

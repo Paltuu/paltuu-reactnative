@@ -19,6 +19,8 @@ import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
 import { usePetStore } from '../../src/stores/petStore';
+import { useShallow } from 'zustand/react/shallow';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const PET_TAGS = [
   { tag_id: 1, tag_name: 'Playful', tag_category: 'personality' },
@@ -64,9 +66,17 @@ const STEPS = [
 
 const TOTAL_STEPS = STEPS.length;
 
-export default function CreatePetScreen() {
+function CreatePetScreen() {
   const router = useRouter();
-  const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore();
+  const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore(
+    useShallow((state) => ({
+      cities: state.cities,
+      categories: state.categories,
+      fetchMetadata: state.fetchMetadata,
+      createPet: state.createPet,
+      isLoading: state.isLoading,
+    }))
+  );
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -676,3 +686,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+export default withFocusUnmount(CreatePetScreen);

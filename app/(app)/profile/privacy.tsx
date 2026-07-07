@@ -3,8 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, Linking } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function PrivacyScreen() {
+function PrivacyScreen() {
   const router = useRouter();
 
   const [shareData, setShareData] = React.useState(true);
@@ -92,3 +93,5 @@ export default function PrivacyScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(PrivacyScreen);

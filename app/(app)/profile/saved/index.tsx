@@ -17,6 +17,7 @@ import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, Collection } from '../../../../src/api/social';
+import { withFocusUnmount } from '../../../../src/components/common/withFocusUnmount';
 
 const PRIMARY = '#A03048';
 
@@ -29,7 +30,7 @@ const PALETTE = [
   { bg: '#ECFDF5', icon: '#059669' },
 ];
 
-export default function SavedCollectionsScreen() {
+function SavedCollectionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -328,3 +329,5 @@ const styles = StyleSheet.create({
   modalCreate: { backgroundColor: PRIMARY, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, minWidth: 80, alignItems: 'center' },
   modalCreateText: { fontSize: 14, color: '#fff', fontWeight: '600', fontFamily: 'Montserrat_600SemiBold' },
 });
+
+export default withFocusUnmount(SavedCollectionsScreen);

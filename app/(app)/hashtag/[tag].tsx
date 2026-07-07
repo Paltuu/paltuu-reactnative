@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import { PostCard } from '../../../src/components/social/PostCard';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function HashtagFeedScreen() {
+function HashtagFeedScreen() {
   const { tag } = useLocalSearchParams<{ tag: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -106,3 +107,5 @@ export default function HashtagFeedScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(HashtagFeedScreen);

@@ -23,6 +23,7 @@ import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const { width } = Dimensions.get('window');
 const GALLERY_COL_SIZE = (width - 4) / 3;
@@ -69,14 +70,14 @@ const renderAgeValue = (age: string) => {
 
 type Tab = 'posts' | 'gallery' | 'about';
 
-export default function PetProfileScreen() {
+function PetProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const petId = params.id as string;
   const from = params.from as string;
 
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<PetProfile | null>(null);
   const [photos, setPhotos] = useState<PetProfilePhoto[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -760,3 +761,5 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+export default withFocusUnmount(PetProfileScreen);

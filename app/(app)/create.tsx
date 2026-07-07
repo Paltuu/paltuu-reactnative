@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
-export default function CreateListingScreen() {
+function CreateListingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -147,3 +148,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   }
 });
+
+export default withFocusUnmount(CreateListingScreen);

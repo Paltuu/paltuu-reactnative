@@ -17,6 +17,7 @@ import { ClinicCard } from '../../src/components/pet-care/ClinicCard';
 import { useLocationStore } from '../../src/stores/locationStore';
 import { haversineDistanceKm } from '../../src/utils/geo';
 import { FONTS } from '../../src/constants/typography';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
@@ -24,7 +25,7 @@ const H_PAD = 20;
 
 type SortMode = 'default' | 'nearby';
 
-export default function PetCareScreen() {
+function PetCareScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -359,3 +360,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 });
+
+export default withFocusUnmount(PetCareScreen);

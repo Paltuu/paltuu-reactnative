@@ -7,8 +7,9 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../../../src/api/social';
 import PostCard from '../../../../../src/components/social/PostCard';
 import { QuickProfileModal } from '../../../index';
+import { withFocusUnmount } from '../../../../../src/components/common/withFocusUnmount';
 
-export default function CollectionPostsScreen() {
+function CollectionPostsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { collection_id } = useLocalSearchParams();
@@ -135,3 +136,5 @@ export default function CollectionPostsScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(CollectionPostsScreen);

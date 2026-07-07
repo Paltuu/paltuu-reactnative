@@ -22,6 +22,7 @@ import { petProfilesApi } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
 import CustomInput from '../../../src/components/common/CustomInput';
 import PaltuuButton from '../../../src/components/ui/PaltuuButton';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const ALLOWED_SPECIES = [
   { label: 'Dog 🐶', value: 'Dog' },
@@ -111,7 +112,7 @@ function PremiumDropdown({ label, value, options, onSelect, icon }: any) {
   );
 }
 
-export default function CreatePetProfileScreen() {
+function CreatePetProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const petProfileId = params.editId as string;
@@ -538,3 +539,5 @@ const s = StyleSheet.create({
     color: '#a03048',
   },
 });
+
+export default withFocusUnmount(CreatePetProfileScreen);

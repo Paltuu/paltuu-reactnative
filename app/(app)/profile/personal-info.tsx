@@ -8,10 +8,12 @@ import { useMutation } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
 import CustomInput from '../../../src/components/common/CustomInput';
 import PaltuuButton from '../../../src/components/ui/PaltuuButton';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function PersonalInfoScreen() {
+function PersonalInfoScreen() {
   const router = useRouter();
-  const { user, fetchProfile } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const fetchProfile = useAuthStore((state) => state.fetchProfile);
 
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone_number || '');
@@ -155,3 +157,5 @@ const s = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+export default withFocusUnmount(PersonalInfoScreen);

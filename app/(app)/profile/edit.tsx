@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 // ── Reusable enhanced field ──────────────────────────────────────────────────
 function FormField({
@@ -89,10 +90,10 @@ function FormField({
 
 // ────────────────────────────────────────────────────────────────────────────
 
-export default function EditProfileScreen() {
+function EditProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const userId = user?.id;
 
   const { data: profileData } = useQuery({
@@ -369,3 +370,5 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
 });
+
+export default withFocusUnmount(EditProfileScreen);

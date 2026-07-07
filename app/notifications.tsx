@@ -262,7 +262,7 @@ export default function NotificationsScreen() {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // Infinite query for cursor paginated notifications
   const {

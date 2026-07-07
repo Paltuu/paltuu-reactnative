@@ -5,8 +5,9 @@ import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../../src/api/auth';
 import { useAuthStore } from '../../../src/stores/authStore';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function SettingsScreen() {
+function SettingsScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
 
@@ -147,3 +148,5 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(SettingsScreen);

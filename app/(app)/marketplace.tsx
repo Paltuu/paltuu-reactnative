@@ -12,6 +12,7 @@ import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const PET_TYPES = [
   { label: 'All Pets', value: '' },
@@ -29,7 +30,7 @@ const SORT_OPTIONS = [
   { label: 'Best Deals', value: 'discount' },
 ];
 
-export default function MarketplaceScreen() {
+function MarketplaceScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -283,3 +284,5 @@ export default function MarketplaceScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(MarketplaceScreen);

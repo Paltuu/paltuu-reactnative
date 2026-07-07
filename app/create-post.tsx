@@ -189,7 +189,7 @@ export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   const params = useLocalSearchParams();
   const editId = params.editId as string;

@@ -28,7 +28,7 @@ export const useCommentDraft = ({
   parentId?: string;
   onPosted?: () => void;
 }) => {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
 
   const [text, setText] = useState('');

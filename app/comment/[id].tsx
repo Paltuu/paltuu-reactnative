@@ -38,7 +38,7 @@ export default function CommentComposerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   const { data: post, isLoading } = useQuery({
     queryKey: ['post', id],

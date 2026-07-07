@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import { PostCard } from '../../../src/components/social/PostCard';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function TopicFeedScreen() {
+function TopicFeedScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -99,3 +100,5 @@ export default function TopicFeedScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(TopicFeedScreen);

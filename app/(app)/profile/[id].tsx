@@ -32,6 +32,7 @@ import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -68,9 +69,9 @@ const TAB_CONFIG = [
   { key: 'Pets', renderIcon: (active: boolean) => <ExpoImage source={active ? Icons.pawLikeSelect : Icons.pawLikeUnselect} style={{ width: 24, height: 24 }} contentFit="contain" /> },
 ] as const;
 
-export default function UserProfileScreen() {
+function UserProfileScreen() {
   const { id } = useLocalSearchParams();
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((state) => state.user);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -526,3 +527,5 @@ const s = StyleSheet.create({
   imgModalContent: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   imgModalImage: { width: SCREEN_WIDTH, height: SCREEN_WIDTH, backgroundColor: '#000000' },
 });
+
+export default withFocusUnmount(UserProfileScreen);

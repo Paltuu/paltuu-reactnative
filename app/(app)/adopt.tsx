@@ -13,10 +13,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PetCard } from '../../src/components/adoption/PetCard';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const H_PAD = 16;
 
-export default function AdoptScreen() {
+function AdoptScreen() {
   const router = useRouter();
   const { breed: breedParam } = useLocalSearchParams<{ breed?: string }>();
   const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -401,3 +402,5 @@ export default function AdoptScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(AdoptScreen);

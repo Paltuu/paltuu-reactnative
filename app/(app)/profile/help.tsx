@@ -3,8 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-export default function HelpScreen() {
+function HelpScreen() {
   const router = useRouter();
 
   const faqs = [
@@ -80,3 +81,5 @@ export default function HelpScreen() {
     </SafeAreaView>
   );
 }
+
+export default withFocusUnmount(HelpScreen);

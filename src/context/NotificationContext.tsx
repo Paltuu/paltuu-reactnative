@@ -3,6 +3,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   ReactNode,
 } from 'react';
@@ -92,10 +93,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
   }, [expoPushToken, isAuthenticated]);
 
+  const value = useMemo(
+    () => ({ expoPushToken, devicePushToken, notification, error }),
+    [expoPushToken, devicePushToken, notification, error]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{ expoPushToken, devicePushToken, notification, error }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

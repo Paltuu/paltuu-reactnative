@@ -17,15 +17,16 @@ import { socialApi } from '../../src/api/social';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
+import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 type ListType = 'followers' | 'following';
 
-export default function FollowListScreen() {
+function FollowListScreen() {
   const { userId, type: initialType, name } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState<ListType>(initialType as ListType || 'followers');
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((state) => state.user);
   const isOwner = String(currentUser?.id) === String(userId);
   const queryClient = useQueryClient();
   const { toggleFollow } = useSocialActions();
@@ -226,3 +227,5 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 100 },
   emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 15 },
 });
+
+export default withFocusUnmount(FollowListScreen);

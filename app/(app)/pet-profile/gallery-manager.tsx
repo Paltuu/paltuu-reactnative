@@ -17,11 +17,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petProfilesApi, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
+import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 3; // 3 columns with padding
 
-export default function PetGalleryManagerScreen() {
+function PetGalleryManagerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
@@ -231,3 +232,5 @@ export default function PetGalleryManagerScreen() {
     </View>
   );
 }
+
+export default withFocusUnmount(PetGalleryManagerScreen);
