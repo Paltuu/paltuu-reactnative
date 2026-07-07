@@ -1,344 +1,557 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  TextInput, 
-  ActivityIndicator,
-  Alert,
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert,
+  StyleSheet,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
+import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
+import { PickerField } from '../../src/components/pets/PickerField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
+import { petApi } from '../../src/api/pets';
+
+/* One question per step, mirroring the create-pet / create-lost-found flows. */
+const STEPS = [
+  { key: 'name', heading: 'What\'s your name?', subtext: 'So the guardian knows who\'s applying.' },
+  { key: 'location', heading: 'Where do you live?', subtext: 'Your city and address help the guardian evaluate your application.' },
+  { key: 'contact', heading: 'How can they reach you?', subtext: 'We\'ll share this with the pet\'s guardian.' },
+  { key: 'household', heading: 'Tell us about your home', subtext: 'Kids and other pets help us understand your household. Optional.' },
+  { key: 'checks', heading: 'A couple of quick checks', subtext: 'Help us understand your home environment.' },
+  { key: 'routine', heading: 'What\'s the daily routine like?', subtext: 'Where they\'ll sleep and how long they might be alone. Optional.' },
+  { key: 'notes', heading: 'Anything else?', subtext: 'Additional details for the guardian. Optional.' },
+  { key: 'agreement', heading: 'Before you apply', subtext: 'A quick commitment to your new companion.' },
+] as const;
+
+const TOTAL_STEPS = STEPS.length;
 
 export default function ApplyAdoptScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { pet_id, pet_name } = useLocalSearchParams();
+  const { pet_id, pet_name } = useLocalSearchParams<{ pet_id?: string; pet_name?: string }>();
   const { cities, fetchMetadata } = usePetStore();
   const { user } = useAuthStore();
-  
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  
+
+  const [step, setStep] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
-    adopter_name: user?.name || "",
-    city_id: "",
-    contact_number: user?.phone_number || "",
-    adopter_address: "",
-    age_of_youngest_child: "",
-    other_pets_details: "",
+    adopter_name: user?.name || '',
+    city_id: '',
+    contact_number: (user?.phone_number || '').replace(/^\+?92/, ''),
+    adopter_address: '',
+    age_of_youngest_child: '',
+    other_pets_details: '',
     other_pets_neutered: false,
     has_secure_outdoor_area: false,
-    pet_sleep_location: "",
-    pet_left_alone: "",
-    additional_details: "",
+    pet_sleep_location: '',
+    pet_left_alone: '',
+    additional_details: '',
     agree_to_terms: false,
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   useEffect(() => {
-    fetchMetadata();
+    fetchMetadata().catch(() => {});
   }, []);
 
-  const validateStep = (step: number) => {
-    const newErrors: Record<string, string> = {};
-    if (step === 1) {
-      if (!formData.adopter_name) newErrors.adopter_name = "Name is required";
-      if (!formData.city_id) newErrors.city_id = "City is required";
-      if (!formData.contact_number) newErrors.contact_number = "Phone is required";
-      if (!formData.adopter_address) newErrors.adopter_address = "Address is required";
-    } else if (step === 3) {
-      if (!formData.agree_to_terms) newErrors.agree_to_terms = "You must agree to the terms";
+  const set = (patch: Partial<typeof formData>) => setFormData((prev) => ({ ...prev, ...patch }));
+
+  const cityOptions = (cities || []).map((c: any) => ({
+    label: c.city_name || c.name,
+    value: (c.city_id || c.id).toString(),
+  }));
+
+  const validateStep = (): boolean => {
+    const key = STEPS[step].key;
+    switch (key) {
+      case 'name':
+        if (!formData.adopter_name.trim()) {
+          Alert.alert('Required', 'Please add your name.');
+          return false;
+        }
+        return true;
+      case 'location':
+        if (!formData.city_id) {
+          Alert.alert('Required', 'Please select a city.');
+          return false;
+        }
+        if (!formData.adopter_address.trim()) {
+          Alert.alert('Required', 'Please add your address or area.');
+          return false;
+        }
+        return true;
+      case 'contact':
+        if (!formData.contact_number.trim()) {
+          Alert.alert('Required', 'Please add a contact number.');
+          return false;
+        }
+        return true;
+      case 'agreement':
+        if (!formData.agree_to_terms) {
+          Alert.alert('Required', 'Please agree to the commitment before applying.');
+          return false;
+        }
+        return true;
+      default:
+        return true;
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => prev + 1);
+    if (!validateStep()) return;
+    if (step < TOTAL_STEPS - 1) {
+      setStep((prev) => prev + 1);
+    } else {
+      handleSubmit();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      setStep((prev) => prev - 1);
+    } else {
+      router.back();
     }
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) return;
-
-    setLoading(true);
+    setIsLoading(true);
     try {
       const payload = {
         pet_id: parseInt(pet_id as string),
         ...formData,
         city_id: parseInt(formData.city_id),
-        contact_number: formData.contact_number.startsWith('+92') ? formData.contact_number : `+92${formData.contact_number}`
+        contact_number: formData.contact_number.startsWith('+92')
+          ? formData.contact_number
+          : `+92${formData.contact_number.replace(/^0/, '')}`,
       };
-
-      const { petApi } = require('../../src/api/pets');
       await petApi.applyForAdoption(payload);
-      
-      Alert.alert(
-        "Success!",
-        "Your adoption application has been submitted successfully.",
-        [{ text: "OK", onPress: () => router.replace('/(app)/my-applications') }]
-      );
+      setSubmitted(true);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to submit application");
+      Alert.alert('Error', error.message || 'Failed to submit application');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const StepIndicator = () => (
-    <View className="flex-row items-center justify-between px-10 mb-8">
-      {[1, 2, 3].map((step) => (
-        <React.Fragment key={step}>
-          <View className={`w-10 h-10 rounded-2xl items-center justify-center ${currentStep >= step ? 'bg-primary shadow-lg shadow-primary/30' : 'bg-gray-100'}`}>
-            {currentStep > step ? (
-              <Ionicons name="checkmark" size={20} color="white" />
-            ) : (
-              <Text className={`font-black ${currentStep >= step ? 'text-white' : 'text-gray-400'}`}>{step}</Text>
-            )}
+  const { heading, subtext, key } = STEPS[step];
+  const isLast = step === TOTAL_STEPS - 1;
+
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.successBody}>
+          <View style={styles.successIcon}>
+            <Ionicons name="heart" size={38} color="#a03048" />
           </View>
-          {step < 3 && <View className={`flex-1 h-[2px] mx-2 ${currentStep > step ? 'bg-primary' : 'bg-gray-100'}`} />}
-        </React.Fragment>
-      ))}
-    </View>
-  );
+          <Text style={styles.successTitle}>Application sent</Text>
+          <Text style={styles.successText}>
+            Thanks for opening your heart to {pet_name || 'this pet'}! The guardian will review your
+            application and reach out if it's a match.
+          </Text>
+        </View>
+        <View style={styles.bottom}>
+          <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/adopt')} radius={26} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-      style={{ paddingTop: insets.top }}
-    >
-      <View className="flex-row items-center px-5 py-4">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="close" size={28} color="#1a1a1a" />
-        </TouchableOpacity>
-        <View>
-          <Text className="text-2xl font-black text-gray-900">Apply to Adopt</Text>
-          <Text className="text-xs text-primary font-bold uppercase tracking-widest">{pet_name || 'Pet'}</Text>
-        </View>
-      </View>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <OnboardingHeader onBack={handleBack} progress={(step + 1) / TOTAL_STEPS} />
 
-      <StepIndicator />
-
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
-        {currentStep === 1 && (
-          <View className="space-y-6">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-primary/10 rounded-3xl items-center justify-center mb-2">
-                <Ionicons name="person" size={32} color="#a03048" />
-              </View>
-              <Text className="text-xl font-black text-gray-900">Personal Info</Text>
-              <Text className="text-gray-400 font-bold">Let us know who you are</Text>
-            </View>
-
-            <View>
-              <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Full Name *</Text>
-              <TextInput
-                value={formData.adopter_name}
-                onChangeText={(text) => setFormData({...formData, adopter_name: text})}
-                placeholder="Enter your name"
-                className={`bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border ${errors.adopter_name ? 'border-red-500' : 'border-gray-100'}`}
-              />
-            </View>
-
-            <View className="flex-row space-x-4">
-              <View className="flex-1 mr-2">
-                <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">City *</Text>
-                <TouchableOpacity 
-                  onPress={() => {
-                    // Simple city selector alert for now
-                    Alert.alert(
-                      "Select City",
-                      "",
-                      cities.map(c => ({ text: c.city_name, onPress: () => setFormData({...formData, city_id: c.city_id.toString()}) }))
-                    );
-                  }}
-                  className={`bg-gray-50 p-4 rounded-2xl border ${errors.city_id ? 'border-red-500' : 'border-gray-100'} flex-row justify-between items-center`}
-                >
-                  <Text className={`font-bold ${formData.city_id ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {formData.city_id ? cities.find(c => c.city_id.toString() === formData.city_id)?.city_name : 'Select City'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-              </View>
-              <View className="flex-1 ml-2">
-                <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Phone *</Text>
-                <TextInput
-                  value={formData.contact_number}
-                  onChangeText={(text) => setFormData({...formData, contact_number: text})}
-                  placeholder="3331234567"
-                  keyboardType="phone-pad"
-                  className={`bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border ${errors.contact_number ? 'border-red-500' : 'border-gray-100'}`}
-                />
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Area / Address *</Text>
-              <TextInput
-                value={formData.adopter_address}
-                onChangeText={(text) => setFormData({...formData, adopter_address: text})}
-                placeholder="Enter neighborhood or area"
-                multiline
-                className={`bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border min-h-[80px] ${errors.adopter_address ? 'border-red-500' : 'border-gray-100'}`}
-              />
-            </View>
-          </View>
-        )}
-
-        {currentStep === 2 && (
-          <View className="space-y-6">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-blue-50 rounded-3xl items-center justify-center mb-2">
-                <Ionicons name="home" size={32} color="#4B9CD3" />
-              </View>
-              <Text className="text-xl font-black text-gray-900">Home & Family</Text>
-              <Text className="text-gray-400 font-bold">About your household environment</Text>
-            </View>
-
-            <View className="flex-row space-x-4">
-              <View className="flex-1 mr-2">
-                <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Youngest Child Age</Text>
-                <TextInput
-                  value={formData.age_of_youngest_child}
-                  onChangeText={(text) => setFormData({...formData, age_of_youngest_child: text})}
-                  placeholder="Age"
-                  keyboardType="number-pad"
-                  className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border border-gray-100"
-                />
-              </View>
-              <View className="flex-1 ml-2">
-                <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Sleep Location</Text>
-                <TextInput
-                  value={formData.pet_sleep_location}
-                  onChangeText={(text) => setFormData({...formData, pet_sleep_location: text})}
-                  placeholder="e.g. Indoors"
-                  className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border border-gray-100"
-                />
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Other Pets Details</Text>
-              <TextInput
-                value={formData.other_pets_details}
-                onChangeText={(text) => setFormData({...formData, other_pets_details: text})}
-                placeholder="Details about existing pets"
-                multiline
-                className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border border-gray-100 min-h-[80px]"
-              />
-            </View>
-
-            <View className="flex-row justify-between gap-4">
-              <TouchableOpacity 
-                onPress={() => setFormData({...formData, other_pets_neutered: !formData.other_pets_neutered})}
-                className={`flex-1 p-4 rounded-2xl border-2 flex-row items-center justify-center space-x-2 ${formData.other_pets_neutered ? 'bg-primary border-primary' : 'bg-white border-gray-100'}`}
-              >
-                <Ionicons name={formData.other_pets_neutered ? "checkmark-circle" : "ellipse-outline"} size={20} color={formData.other_pets_neutered ? "white" : "#CCC"} />
-                <Text className={`font-black text-xs ${formData.other_pets_neutered ? 'text-white' : 'text-gray-400'}`}>Pets Neutered</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={() => setFormData({...formData, has_secure_outdoor_area: !formData.has_secure_outdoor_area})}
-                className={`flex-1 p-4 rounded-2xl border-2 flex-row items-center justify-center space-x-2 ${formData.has_secure_outdoor_area ? 'bg-primary border-primary' : 'bg-white border-gray-100'}`}
-              >
-                <Ionicons name={formData.has_secure_outdoor_area ? "checkmark-circle" : "ellipse-outline"} size={20} color={formData.has_secure_outdoor_area ? "white" : "#CCC"} />
-                <Text className={`font-black text-xs ${formData.has_secure_outdoor_area ? 'text-white' : 'text-gray-400'}`}>Secure Yard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {currentStep === 3 && (
-          <View className="space-y-6">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-green-50 rounded-3xl items-center justify-center mb-2">
-                <Ionicons name="heart" size={32} color="#10b981" />
-              </View>
-              <Text className="text-xl font-black text-gray-900">Commitment</Text>
-              <Text className="text-gray-400 font-bold">Final details & agreement</Text>
-            </View>
-
-            <View>
-              <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Time Left Alone</Text>
-              <TextInput
-                value={formData.pet_left_alone}
-                onChangeText={(text) => setFormData({...formData, pet_left_alone: text})}
-                placeholder="e.g. 2-4 hours"
-                className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border border-gray-100"
-              />
-            </View>
-
-            <View>
-              <Text className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-2 ml-1">Additional Details</Text>
-              <TextInput
-                value={formData.additional_details}
-                onChangeText={(text) => setFormData({...formData, additional_details: text})}
-                placeholder="Anything else?"
-                multiline
-                className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 border border-gray-100 min-h-[80px]"
-              />
-            </View>
-
-            <TouchableOpacity 
-              onPress={() => setFormData({...formData, agree_to_terms: !formData.agree_to_terms})}
-              className={`p-6 rounded-[2rem] border-2 flex-row ${formData.agree_to_terms ? 'bg-primary/5 border-primary' : 'bg-gray-50 border-gray-100'}`}
-            >
-              <View className={`w-6 h-6 rounded-lg border-2 items-center justify-center mr-3 mt-1 ${formData.agree_to_terms ? 'bg-primary border-primary' : 'bg-white border-gray-200'}`}>
-                {formData.agree_to_terms && <Ionicons name="checkmark" size={16} color="white" />}
-              </View>
-              <View className="flex-1">
-                <Text className="font-black text-gray-800 leading-tight mb-2">
-                  I agree to provide a safe environment and never abandon the pet.
-                </Text>
-                <Text className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  Legal commitment to care
-                </Text>
-              </View>
-            </TouchableOpacity>
-            {errors.agree_to_terms && <Text className="text-red-500 text-xs font-bold text-center">{errors.agree_to_terms}</Text>}
-          </View>
-        )}
-        
-        <View className="h-10" />
-      </ScrollView>
-
-      <View className="p-5 flex-row gap-4 bg-white border-t border-gray-50">
-        {currentStep > 1 && (
-          <TouchableOpacity 
-            onPress={() => setCurrentStep(prev => prev - 1)}
-            className="w-20 h-[72px] bg-gray-50 rounded-[2rem] items-center justify-center border border-gray-100"
-          >
-            <Ionicons name="arrow-back" size={24} color="#999" />
-          </TouchableOpacity>
-        )}
-        
-        <TouchableOpacity 
-          onPress={currentStep === 3 ? handleSubmit : handleNext}
-          disabled={loading}
-          className={`flex-1 h-[72px] rounded-[2rem] items-center justify-center flex-row shadow-2xl shadow-primary/30 ${currentStep === 3 ? 'bg-gray-900' : 'bg-primary'}`}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <Text className="text-white font-black uppercase tracking-widest mr-2">
-                {currentStep === 3 ? 'Submit Application' : 'Continue'}
-              </Text>
-              <Ionicons name={currentStep === 3 ? "checkmark-circle" : "arrow-forward"} size={20} color="white" />
-            </>
+          {!!pet_name && <Text style={styles.petNameTag}>Applying for {pet_name}</Text>}
+          <Text style={styles.heading}>{heading}</Text>
+          <Text style={styles.subtext}>{subtext}</Text>
+
+          {/* ── Name ── */}
+          {key === 'name' && (
+            <TextInput
+              style={styles.input}
+              value={formData.adopter_name}
+              onChangeText={(t) => set({ adopter_name: t })}
+              placeholder="Your full name"
+              placeholderTextColor="#B0B7C3"
+              autoFocus
+              returnKeyType="next"
+              onSubmitEditing={handleNext}
+            />
           )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+          {/* ── Location (city + address) ── */}
+          {key === 'location' && (
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text style={styles.label}>City *</Text>
+                <PickerField
+                  placeholder="Select a city"
+                  value={formData.city_id}
+                  options={cityOptions}
+                  onSelect={(v) => set({ city_id: v })}
+                  icon="location-outline"
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>Address / Area *</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.adopter_address}
+                  onChangeText={(t) => set({ adopter_address: t })}
+                  placeholder="e.g. DHA Phase 5, near Hill Park"
+                  placeholderTextColor="#B0B7C3"
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* ── Contact ── */}
+          {key === 'contact' && (
+            <View style={styles.prefixRow}>
+              <Text style={styles.prefix}>+92</Text>
+              <TextInput
+                style={styles.prefixInput}
+                value={formData.contact_number}
+                onChangeText={(t) => set({ contact_number: t })}
+                placeholder="300 1234567"
+                placeholderTextColor="#B0B7C3"
+                keyboardType="number-pad"
+                maxLength={11}
+                autoFocus
+                returnKeyType="next"
+                onSubmitEditing={handleNext}
+              />
+            </View>
+          )}
+
+          {/* ── Household ── */}
+          {key === 'household' && (
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text style={styles.label}>Youngest child's age</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.age_of_youngest_child}
+                  onChangeText={(t) => set({ age_of_youngest_child: t })}
+                  placeholder="e.g. 6"
+                  placeholderTextColor="#B0B7C3"
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>Other pets at home</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.other_pets_details}
+                  onChangeText={(t) => set({ other_pets_details: t })}
+                  placeholder="e.g. 1 dog, 2 years old"
+                  placeholderTextColor="#B0B7C3"
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* ── Checks ── */}
+          {key === 'checks' && (
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => set({ other_pets_neutered: !formData.other_pets_neutered })}
+                style={[styles.checkCard, formData.other_pets_neutered && styles.checkCardActive]}
+              >
+                <Ionicons
+                  name={formData.other_pets_neutered ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={22}
+                  color={formData.other_pets_neutered ? '#a03048' : '#D1D5DB'}
+                />
+                <Text style={[styles.checkText, formData.other_pets_neutered && styles.checkTextActive]}>
+                  My other pets are neutered/spayed
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => set({ has_secure_outdoor_area: !formData.has_secure_outdoor_area })}
+                style={[styles.checkCard, formData.has_secure_outdoor_area && styles.checkCardActive]}
+              >
+                <Ionicons
+                  name={formData.has_secure_outdoor_area ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={22}
+                  color={formData.has_secure_outdoor_area ? '#a03048' : '#D1D5DB'}
+                />
+                <Text style={[styles.checkText, formData.has_secure_outdoor_area && styles.checkTextActive]}>
+                  I have a secure outdoor area
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── Routine ── */}
+          {key === 'routine' && (
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text style={styles.label}>Where will they sleep?</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.pet_sleep_location}
+                  onChangeText={(t) => set({ pet_sleep_location: t })}
+                  placeholder="e.g. Indoors, in the bedroom"
+                  placeholderTextColor="#B0B7C3"
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>Time left alone</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.pet_left_alone}
+                  onChangeText={(t) => set({ pet_left_alone: t })}
+                  placeholder="e.g. 2-4 hours"
+                  placeholderTextColor="#B0B7C3"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* ── Notes ── */}
+          {key === 'notes' && (
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.additional_details}
+              onChangeText={(t) => set({ additional_details: t })}
+              placeholder="Anything else the guardian should know?"
+              placeholderTextColor="#B0B7C3"
+              multiline
+              textAlignVertical="top"
+              autoFocus
+            />
+          )}
+
+          {/* ── Agreement ── */}
+          {key === 'agreement' && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => set({ agree_to_terms: !formData.agree_to_terms })}
+              style={[styles.agreementCard, formData.agree_to_terms && styles.agreementCardActive]}
+            >
+              <View style={[styles.checkbox, formData.agree_to_terms && styles.checkboxActive]}>
+                {formData.agree_to_terms && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.agreementText}>
+                I agree to provide a safe environment and never abandon the pet.
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+
+        {/* Bottom CTA */}
+        <View style={styles.bottom}>
+          <PaltuuButton
+            label={isLast ? 'Submit Application' : 'Next'}
+            successLabel={isLast ? 'Application sent!' : undefined}
+            onPress={handleNext}
+            loading={isLoading}
+            radius={26}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  body: {
+    paddingHorizontal: 24,
+    paddingTop: 0,
+    paddingBottom: 24,
+  },
+  petNameTag: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#a03048',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 10,
+  },
+  heading: {
+    fontSize: 26,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#111827',
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    marginBottom: 28,
+    lineHeight: 20,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: 'Montserrat_600SemiBold',
+    color: '#6B7280',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#111827',
+    backgroundColor: '#FAFAFA',
+  },
+  textArea: {
+    height: 100,
+    paddingTop: 14,
+  },
+
+  // Prefixed contact input
+  prefixRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  prefix: {
+    fontSize: 16,
+    fontFamily: 'DMSans_700Bold',
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  prefixInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: 'DMSans_400Regular',
+    color: '#111827',
+  },
+
+  // Checks
+  checkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  checkCardActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FFFFFF',
+  },
+  checkText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'DMSans_500Medium',
+    color: '#6B7280',
+  },
+  checkTextActive: {
+    color: '#111827',
+    fontFamily: 'DMSans_700Bold',
+  },
+
+  // Agreement
+  agreementCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 18,
+    backgroundColor: '#FAFAFA',
+  },
+  agreementCardActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#FAF0F2',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxActive: {
+    borderColor: '#a03048',
+    backgroundColor: '#a03048',
+  },
+  agreementText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+    lineHeight: 20,
+  },
+
+  bottom: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    paddingTop: 8,
+  },
+
+  // Success screen
+  successBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FAF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  successText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+});

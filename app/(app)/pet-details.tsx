@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { petApi } from '../../src/api/pets';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
-import { LinearGradient } from 'expo-linear-gradient';
+import PaltuuButton from '../../src/components/ui/PaltuuButton';
 
 const { width } = Dimensions.get('window');
 // Wider and less tall layout (5:4 aspect ratio)
@@ -102,9 +102,9 @@ export default function PetDetailsScreen() {
   return (
     <View style={s.container}>
       {/* --- MINIMALIST FIXED NAVIGATION ROW --- */}
-      <View style={[s.fixedNavRow, { height: insets.top + 56, paddingTop: insets.top }]}>
+      <View style={[s.fixedNavRow, { height: insets.top + 44, paddingTop: insets.top }]}>
         <View style={s.fixedNavContent}>
-          <TouchableOpacity onPress={() => router.back()} style={s.navBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.replace('/(app)/adopt')} style={s.navBtn} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color="#374151" />
           </TouchableOpacity>
           <TouchableOpacity onPress={onShare} style={s.navBtn} activeOpacity={0.7}>
@@ -178,14 +178,13 @@ export default function PetDetailsScreen() {
           <View style={s.sectionBlock}>
             <Text style={s.sectionHeader}>Guardian</Text>
             <View style={s.sellerRow}>
-              <View style={s.sellerAvatarBox}>
-                <Text style={s.sellerInitials}>
-                  {(pet.owner_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
+              <Image
+                source={pet.owner_image ? { uri: pet.owner_image } : require('../../assets/no-profile/no-profile.jpg')}
+                style={s.sellerAvatarBox}
+                contentFit="cover"
+              />
               <View style={s.sellerInfo}>
                 <Text style={s.sellerName}>{pet.owner_name || 'Legendary Kiwi'}</Text>
-                <Text style={s.sellerSubtitle}>Response rate: Fast · active today</Text>
               </View>
               <View style={s.sellerActions}>
                 <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7}>
@@ -226,29 +225,14 @@ export default function PetDetailsScreen() {
 
       {/* --- STICKY FOOTER ACTION BAR --- */}
       <View style={[s.footerBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity
+        <PaltuuButton
+          label="Adopt Now"
           onPress={() => router.push({
             pathname: '/(app)/apply-adopt',
             params: { pet_id: pet.pet_id, pet_name: pet.pet_name }
           })}
-          style={{ flex: 1 }}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={['#a03048', '#bf3f5b']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.applyBtn}
-          >
-            <Image
-              source={require('../../assets/primary_icon.svg')}
-              style={{ width: 18, height: 18, marginRight: 8 }}
-              tintColor="#FFFFFF"
-              contentFit="contain"
-            />
-            <Text style={s.applyBtnText}>Apply to Adopt</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          radius={26}
+        />
       </View>
 
       {/* --- FULL-SCREEN IMAGE PREVIEW MODAL --- */}
@@ -330,7 +314,7 @@ const s = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scrollView: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { paddingTop: 100 }, // Creates space for the sticky top navigation layout
+  scrollContent: { paddingTop: 88 }, // Creates space for the sticky top navigation layout
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 40 },
   errorText: { fontSize: 18, fontFamily: 'DMSans_700Bold', color: '#111827', marginTop: 16, textAlign: 'center' },
@@ -350,11 +334,11 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    height: 56,
+    height: 44,
   },
   navBtn: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -422,11 +406,9 @@ const s = StyleSheet.create({
   storyText: { fontSize: 14, fontFamily: 'Montserrat_400Regular', color: '#4B5563', lineHeight: 22 },
 
   sellerRow: { flexDirection: 'row', alignItems: 'center' },
-  sellerAvatarBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FAF0F2', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(160, 48, 72, 0.08)' },
-  sellerInitials: { color: '#a03048', fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  sellerAvatarBox: { width: 40, height: 40, borderRadius: 20, marginRight: 12, borderWidth: 1, borderColor: 'rgba(160, 48, 72, 0.08)', backgroundColor: '#F5F5F7' },
   sellerInfo: { flex: 1 },
   sellerName: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#111827' },
-  sellerSubtitle: { fontSize: 12, fontFamily: 'Montserrat_500Medium', color: '#9CA3AF' },
   sellerActions: { flexDirection: 'row', gap: 10 },
   sellerActionCircle: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
 
@@ -452,26 +434,5 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     gap: 12,
-  },
-  saveBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FAF0F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyBtn: {
-    height: 50,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'DMSans_700Bold',
-    letterSpacing: 0.2,
   },
 });

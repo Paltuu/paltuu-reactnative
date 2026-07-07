@@ -42,7 +42,7 @@ function LayoutContent() {
 
   const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
   const isGreyScreen =
-    pathname === '/pet-care' || pathname?.includes('/clinic') || pathname?.includes('/vet');
+    pathname === '/pet-care' || pathname === '/adopt' || pathname?.includes('/clinic') || pathname?.includes('/vet');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
@@ -184,7 +184,7 @@ function LayoutContent() {
         <Tabs.Screen name="my-applications" options={{ href: null }} />
         <Tabs.Screen name="adoption-requests" options={{ href: null }} />
         <Tabs.Screen name="marketplace" options={{ href: null }} />
-        <Tabs.Screen name="apply-adopt" options={{ href: null }} />
+        <Tabs.Screen name="apply-adopt" options={{ href: null, tabBarStyle: { display: 'none' } }} />
         <Tabs.Screen name="pet-details" options={{ href: null }} />
         <Tabs.Screen name="follow-list" options={{ href: null }} />
         <Tabs.Screen name="hashtag/[tag]" options={{ href: null }} />

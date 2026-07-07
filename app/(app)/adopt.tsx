@@ -10,23 +10,11 @@ import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Image } from 'expo-image';
 import { useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PetCard } from '../../src/components/adoption/PetCard';
 
-// Local helper to format age
-const formatAge = (ageMonths: number | null | undefined): string => {
-  if (ageMonths === null || ageMonths === undefined || ageMonths < 0) {
-    return "Unknown age";
-  }
-  if (ageMonths === 0) return "Newborn";
-  const years = Math.floor(ageMonths / 12);
-  const months = ageMonths % 12;
-  const yearStr = years > 0 ? `${years} ${years === 1 ? "Year" : "Years"}` : "";
-  const monthStr = months > 0 ? `${months} ${months === 1 ? "Month" : "Months"}` : "";
-  if (yearStr && monthStr) return `${yearStr}, ${monthStr}`;
-  return yearStr || monthStr;
-};
+const H_PAD = 16;
 
 export default function AdoptScreen() {
   const router = useRouter();
@@ -130,18 +118,17 @@ export default function AdoptScreen() {
   }, [showSkeleton, fadeAnim]);
 
   const renderSkeletonGrid = () => (
-    <RNAnimated.View style={{ opacity: fadeAnim, flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 6 }}>
-      {Array.from({ length: 6 }).map((_, i) => (
+    <RNAnimated.View style={{ opacity: fadeAnim }}>
+      {Array.from({ length: 4 }).map((_, i) => (
         <View
           key={i}
-          className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-200"
-          style={{ flex: 1, minWidth: '46%', maxWidth: '46%' }}
+          className="bg-white rounded-2xl mb-4 border border-gray-200 overflow-hidden"
         >
-          <View className="bg-gray-200" style={{ width: '100%', aspectRatio: 1, borderRadius: 16 }} />
-          <View className="py-4">
-            <View className="bg-gray-200 rounded-full mb-2" style={{ height: 14, width: '75%' }} />
-            <View className="bg-gray-200 rounded-full mb-2" style={{ height: 10, width: '50%' }} />
-            <View className="bg-gray-200 rounded-full" style={{ height: 10, width: '35%' }} />
+          <View className="bg-gray-200" style={{ width: '100%', aspectRatio: 1.15 }} />
+          <View className="p-3.5">
+            <View className="bg-gray-200 rounded-full mb-2" style={{ height: 16, width: '70%' }} />
+            <View className="bg-gray-200 rounded-full mb-3" style={{ height: 12, width: '45%' }} />
+            <View className="bg-gray-200 rounded-full" style={{ height: 10, width: '55%' }} />
           </View>
         </View>
       ))}
@@ -150,70 +137,20 @@ export default function AdoptScreen() {
 
   // --- Render Components ---
   const renderPetCard = useCallback(({ item }: { item: any }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
+    <PetCard
+      pet={item}
       onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
-      className="bg-white pt-4 px-4 rounded-2xl mb-3 mx-1.5 border border-gray-200"
-      style={{
-        flex: 1,
-        maxWidth: '46%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2
-      }}
-    >
-      <View className="relative">
-        <Image
-          source={item.main_image || item.image_url || require('../../assets/dog-placeholder.png')}
-          style={{ width: '100%', aspectRatio: 1, borderRadius: 16 }}
-          contentFit="cover"
-          transition={300}
-        />
-        {item.listing_type === "rescue" && (
-          <View className="absolute top-2 right-2 bg-primary px-2 py-1 rounded-full flex-row items-center">
-            <Text className="text-white text-[10px] font-bold">+ Rescue</Text>
-          </View>
-        )}
-      </View>
-      <View className="py-4">
-        <Text className="font-heading text-base text-dark mb-1" numberOfLines={1}>
-          {item.pet_name}
-        </Text>
-        <Text className="font-body text-gray-500 text-xs mb-1" numberOfLines={1}>
-          {formatAge(item.age_months)}
-        </Text>
-        <View className="flex-row items-center">
-          <Ionicons name="location-sharp" size={14} color="#a03048" />
-          <Text className="font-body text-gray-500 text-xs ml-1" numberOfLines={1}>
-            {item.city}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    />
   ), []);
 
   const renderHeader = useCallback(() => (
-    <View style={{ paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 }}>
+    <View style={{ paddingBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TouchableOpacity
           onPress={() => router.replace('/(app)/pets')}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: '#FFF',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2,
-          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={22} color="#111" />
+          <Ionicons name="chevron-back" size={26} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
@@ -228,11 +165,11 @@ export default function AdoptScreen() {
   ), []);
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={{ flex: 1, backgroundColor: '#FAFAFB' }}>
       {showSkeleton ? (
         <ScrollView
           contentContainerStyle={{
-            paddingHorizontal: 12,
+            paddingHorizontal: H_PAD,
             paddingBottom: 120,
             paddingTop: insets.top + 8,
           }}
@@ -245,11 +182,10 @@ export default function AdoptScreen() {
           data={pets}
           renderItem={renderPetCard}
           keyExtractor={(item) => item.pet_id.toString()}
-          numColumns={2}
           onScroll={scrollHandler}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={{
-            paddingHorizontal: 12,
+            paddingHorizontal: H_PAD,
             paddingBottom: 120,
             paddingTop: insets.top + 8
           }}
