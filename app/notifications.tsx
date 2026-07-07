@@ -20,38 +20,41 @@ import { handleDeepLink } from '../src/services/deepLinks';
 import { useAuthStore } from '../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../src/constants/images';
 import { COLORS } from '../src/constants/colors';
+import {
+  isToday,
+  isYesterday,
+  differenceInSeconds,
+  formatDistanceToNowStrict,
+  format,
+} from 'date-fns';
 
 // Paltuu brand colors
 const PRIMARY = COLORS.primary;
 
-/* ── Relative Time Formatter ── */
+/* ── Smart Relative Time Formatter (date-fns) ── */
 const formatTime = (dateString: string) => {
-  try {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now.getTime() - date.getTime();
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
 
-    if (isNaN(date.getTime())) return '';
-
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch (e) {
-    return '';
-  }
+  if (differenceInSeconds(new Date(), date) < 60) return 'Just now';
+  if (isToday(date)) return formatDistanceToNowStrict(date, { addSuffix: true });
+  if (isYesterday(date)) return `Yesterday, ${format(date, 'h:mm a')}`;
+  return format(date, 'MMM d');
 };
+
+/* ── Category split: pets/adoptions vs social (no visible labels) ── */
+const isSocialNotification = (type?: string) => (type ?? '').startsWith('social');
+
+/* ── Strip emoji/pictographs from body copy for a clean, uniform look ── */
+const stripEmoji = (text: string) =>
+  (text ?? '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 
 /* ── Bold quotes and pet/post titles in body text ── */
 const formatBodyText = (text: string) => {
+  text = stripEmoji(text);
   if (!text) return null;
   // Bolds texts between double quotes (e.g. comment snippets or post titles)
   const parts = text.split(/("[^"]*")/g);
@@ -67,10 +70,74 @@ const formatBodyText = (text: string) => {
   });
 };
 
+/* ── Aggregate action phrases used when several notifications collapse ── */
+const AGGREGATE_ACTION: Record<string, string> = {
+  social_post_like: 'liked your post',
+  social_comment_like: 'liked your comment',
+  social_post_comment: 'commented on your post',
+  social_comment_reply: 'replied to your comment',
+  social_mention_post: 'mentioned you in a post',
+  social_mention_comment: 'mentioned you in a comment',
+  social_new_follower: 'started following you',
+  social_repost: 'reposted your post',
+};
+
+/* ── A collapsed set of notifications about the same action on the same entity ── */
+export interface NotificationGroup {
+  key: string;
+  items: Notification[]; // newest first
+  latest: Notification; // representative
+}
+
+// Same action on the same post/entity collapses into one row (e.g. many likes
+// on one post). Followers collapse together too. Anything else stays on its own.
+const groupKeyOf = (n: Notification): string => {
+  if (n.type === 'social_new_follower') return 'social_new_follower';
+  if (n.type in AGGREGATE_ACTION && n.entity_id != null) {
+    return `${n.type}:${n.entity_type}:${n.entity_id}`;
+  }
+  return `single:${n.notification_id}`;
+};
+
+const collapseGroups = (notifications: Notification[]): NotificationGroup[] => {
+  const map = new Map<string, Notification[]>();
+  notifications.forEach((n) => {
+    const k = groupKeyOf(n);
+    const bucket = map.get(k);
+    if (bucket) bucket.push(n);
+    else map.set(k, [n]);
+  });
+
+  const groups: NotificationGroup[] = [];
+  map.forEach((items, key) => {
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    groups.push({ key, items, latest: items[0] });
+  });
+  groups.sort(
+    (a, b) => new Date(b.latest.created_at).getTime() - new Date(a.latest.created_at).getTime()
+  );
+  return groups;
+};
+
+/** Distinct senders across a group, most-recent first, deduped by user. */
+const uniqueSenders = (items: Notification[]) => {
+  const seen = new Set<number>();
+  const out: NonNullable<Notification['sender']>[] = [];
+  items.forEach((it) => {
+    const s = it.sender;
+    const id = s?.user_id ?? -1;
+    if (s && !seen.has(id)) {
+      seen.add(id);
+      out.push(s);
+    }
+  });
+  return out;
+};
+
 /* ── Group Notifications by Date Helper ── */
 interface NotificationSection {
   title: string;
-  data: Notification[];
+  data: NotificationGroup[];
 }
 
 const groupNotificationsByDate = (notifications: Notification[]): NotificationSection[] => {
@@ -88,82 +155,156 @@ const groupNotificationsByDate = (notifications: Notification[]): NotificationSe
   };
 
   const order = ['Today', 'Yesterday', 'This week', 'Last 30 days', 'Earlier'];
-  const groups: Record<string, Notification[]> = {};
+  const buckets: Record<string, NotificationGroup[]> = {};
 
-  notifications.forEach((item) => {
-    const createdAt = new Date(item.created_at);
+  collapseGroups(notifications).forEach((group) => {
+    const createdAt = new Date(group.latest.created_at);
     const key = isNaN(createdAt.getTime()) ? 'Earlier' : bucketFor(createdAt);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(group);
   });
 
   return order
-    .filter((key) => groups[key]?.length > 0)
-    .map((key) => ({ title: key, data: groups[key] }));
+    .filter((key) => buckets[key]?.length > 0)
+    .map((key) => ({ title: key, data: buckets[key] }));
 };
 
-/* ── Actor Avatar with no-profile fallback ── */
-const ActorAvatar = ({ name, uri, size = 48 }: { name: string; uri?: string | null; size?: number }) => (
+/* ── Actor Avatar with no-profile fallback ──
+   Circular for social; square with rounded corners for pets/adoptions —
+   the shape is the (label-free) category differentiator. */
+const ActorAvatar = ({
+  name,
+  uri,
+  size = 48,
+  square = false,
+}: {
+  name: string;
+  uri?: string | null;
+  size?: number;
+  square?: boolean;
+}) => (
   <Image
     source={uri ? { uri } : NO_PROFILE_IMAGE}
-    style={{ width: size, height: size, borderRadius: size / 2 }}
+    style={{ width: size, height: size, borderRadius: square ? size * 0.28 : size / 2 }}
     contentFit="cover"
     className="border border-gray-100"
   />
 );
 
-/* ── Single Notification Row Item ── */
+/* ── Stacked, overlapping avatars for a collapsed group ── */
+const StackedAvatars = ({ items, square }: { items: Notification[]; square: boolean }) => {
+  const senders = uniqueSenders(items).slice(0, 2);
+  const size = 38;
+  const radius = square ? size * 0.28 : size / 2;
+  return (
+    <View style={{ width: 48, height: 48 }}>
+      {senders.map((s, i) => (
+        <Image
+          key={s.user_id ?? i}
+          source={s.profile_image_url ? { uri: s.profile_image_url } : NO_PROFILE_IMAGE}
+          style={{
+            position: 'absolute',
+            width: size,
+            height: size,
+            borderRadius: radius,
+            top: i === 0 ? 0 : 10,
+            left: i === 0 ? 0 : 10,
+            zIndex: senders.length - i,
+            borderWidth: 2,
+            borderColor: '#fff',
+            backgroundColor: '#eee',
+          }}
+          contentFit="cover"
+        />
+      ))}
+    </View>
+  );
+};
+
+/* ── Build the "A, B and N others <action>" line for a collapsed group ── */
+const GroupTitleLine = ({ items }: { items: Notification[] }) => {
+  const senders = uniqueSenders(items);
+  const action = AGGREGATE_ACTION[items[0].type] || stripEmoji(items[0].body);
+  const first = senders[0]?.name || 'Someone';
+  const second = senders[1]?.name;
+  const extra = senders.length - 2;
+
+  return (
+    <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
+      <Text className="font-headingSemi text-dark">{first}</Text>
+      {second && (
+        <>
+          <Text>, </Text>
+          <Text className="font-headingSemi text-dark">{second}</Text>
+        </>
+      )}
+      {extra > 0 && <Text className="font-body text-dark"> and {extra} others</Text>}
+      <Text> {action}</Text>
+    </Text>
+  );
+};
+
+/* ── Notification Row (renders a single item or a collapsed group) ── */
 const NotificationRow = ({
-  item,
+  group,
   onPress,
   onOptionsPress,
 }: {
-  item: Notification;
-  onPress: (item: Notification) => void;
+  group: NotificationGroup;
+  onPress: (group: NotificationGroup) => void;
   onOptionsPress: (item: Notification) => void;
 }) => {
-  const actorName = item.sender?.name || item.title || 'System';
-  const avatarUri = item.sender?.profile_image_url || item.image_url;
+  const { items, latest } = group;
+  const isSocial = isSocialNotification(latest.type);
+  const isGrouped = items.length > 1;
+  const anyUnread = items.some((n) => !n.is_read);
+
+  const actorName = latest.sender?.name || latest.title || 'System';
+  // Pets/adoptions show the pet's picture (image_url); social shows the sender pfp.
+  const avatarUri = isSocial
+    ? latest.sender?.profile_image_url || latest.image_url
+    : latest.image_url || latest.sender?.profile_image_url;
 
   return (
     <Pressable
-      onPress={() => onPress(item)}
-      className="flex-row items-center mx-4 my-2 px-4 py-4 rounded-2xl bg-white"
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
-        elevation: 3,
-      }}
+      onPress={() => onPress(group)}
+      className="flex-row items-center px-3 py-4 active:bg-gray-50"
     >
-      {/* Avatar column */}
+      {/* Avatar — stacked for groups; square/rounded for pets & adoptions */}
       <View className="mr-3.5">
-        <ActorAvatar name={actorName} uri={avatarUri} />
+        {isGrouped ? (
+          <StackedAvatars items={items} square={!isSocial} />
+        ) : (
+          <ActorAvatar name={actorName} uri={avatarUri} square={!isSocial} />
+        )}
       </View>
 
       {/* Message Text column */}
       <View className="flex-1 mr-2 gap-1">
-        <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
-          <Text className="font-headingSemi text-dark">{actorName} </Text>
-          {formatBodyText(item.body)}
-        </Text>
-        <Text className="font-body text-xs text-gray-light">{formatTime(item.created_at)}</Text>
+        {isGrouped ? (
+          <GroupTitleLine items={items} />
+        ) : (
+          <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
+            <Text className="font-headingSemi text-dark">{actorName} </Text>
+            {formatBodyText(latest.body)}
+          </Text>
+        )}
+        <Text className="font-body text-xs text-gray-light">{formatTime(latest.created_at)}</Text>
       </View>
 
       {/* Right Column: Photo preview OR unread dot + ellipsis */}
       <View className="flex-col items-end gap-2">
-        {item.image_url && item.type !== 'system_broadcast' ? (
+        {latest.image_url && latest.type !== 'system_broadcast' ? (
           <Image
-            source={{ uri: item.image_url }}
+            source={{ uri: latest.image_url }}
             className="w-11 h-11 rounded-xl border border-gray-100"
             contentFit="cover"
           />
         ) : (
-          !item.is_read && <View className="w-2 h-2 rounded-full bg-primary" />
+          anyUnread && <View className="w-2 h-2 rounded-full bg-primary" />
         )}
         <TouchableOpacity
-          onPress={() => onOptionsPress(item)}
+          onPress={() => onOptionsPress(latest)}
           className="w-8 h-8 items-center justify-center rounded-full active:bg-gray-100"
           hitSlop={8}
         >
@@ -188,10 +329,7 @@ const NotificationSkeleton = () => {
   }, [fadeAnim]);
 
   const SkeletonCard = ({ widths }: { widths: [string, string] }) => (
-    <View
-      className="flex-row items-center mx-4 my-2 px-4 py-4 rounded-2xl bg-white"
-      style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
-    >
+    <View className="flex-row items-center px-3 py-4">
       {/* Avatar */}
       <View className="w-12 h-12 rounded-full bg-gray-200 mr-3.5" />
       {/* Lines */}
@@ -226,37 +364,11 @@ const NotificationSkeleton = () => {
   );
 };
 
-/* ── Filter Tabs Component ── */
-const FILTERS = ['All', 'Unread', 'Social', 'Adoptions', 'Orders'];
-
-const FilterTabs = ({
-  active,
-  onChange,
-}: {
-  active: string;
-  onChange: (f: string) => void;
-}) => (
-  <View className="flex-row py-3 px-4 gap-2 border-b border-gray-100 bg-white">
-    {FILTERS.map((f) => (
-      <TouchableOpacity
-        key={f}
-        onPress={() => onChange(f)}
-        className={`px-4 py-2 rounded-full ${active === f ? 'bg-primary' : 'bg-gray-100 active:bg-gray-200'}`}
-      >
-        <Text className={`font-headingSemi text-xs ${active === f ? 'text-white' : 'text-gray'}`}>
-          {f}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-);
-
 /* ── Main Notifications Screen ── */
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [filter, setFilter] = useState('All');
 
   // Ref for bottom sheet
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -275,13 +387,11 @@ export default function NotificationsScreen() {
     refetch,
     isRefetching,
   } = useInfiniteQuery({
-    queryKey: ['notifications', filter],
+    queryKey: ['notifications'],
     queryFn: ({ pageParam }) =>
       notificationsApi.getNotifications({
         limit: 20,
         cursor: pageParam,
-        filter: filter === 'All' || filter === 'Unread' ? undefined : filter.toLowerCase(),
-        unread_only: filter === 'Unread' ? true : undefined,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
@@ -377,19 +487,19 @@ export default function NotificationsScreen() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => notificationsApi.deleteNotification(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', filter] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['unread-count'] });
     },
   });
 
   const handlePress = useCallback(
-    (item: Notification) => {
-      if (!item.is_read) {
-        markReadMutation.mutate(item.notification_id);
-      }
-      if (item.deep_link) {
-        handleDeepLink(item.deep_link);
-      }
+    (group: NotificationGroup) => {
+      // Mark every unread item in the collapsed group as read
+      group.items.forEach((n) => {
+        if (!n.is_read) markReadMutation.mutate(n.notification_id);
+      });
+      const link = group.latest.deep_link;
+      if (link) handleDeepLink(link);
     },
     [markReadMutation]
   );
@@ -415,7 +525,11 @@ export default function NotificationsScreen() {
 
   const handleNavigateFromSheet = useCallback(() => {
     if (selectedNotification) {
-      handlePress(selectedNotification);
+      handlePress({
+        key: `single:${selectedNotification.notification_id}`,
+        items: [selectedNotification],
+        latest: selectedNotification,
+      });
     }
     bottomSheetModalRef.current?.dismiss();
   }, [selectedNotification, handlePress]);
@@ -441,35 +555,29 @@ export default function NotificationsScreen() {
   const bottomSheetSnapPoints = useMemo(() => ['36%'], []);
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>
       {/* Pinned Top Navigation Header */}
-      <View className="bg-white px-5 py-3 flex-row items-center justify-between border-b border-gray-100">
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full bg-gray-50 active:bg-gray-100"
-            hitSlop={8}
-          >
-            <Ionicons name="chevron-back" size={22} color="#111" />
-          </TouchableOpacity>
-            <Text className="font-heading text-2xl text-dark">Notifications</Text>
-        </View>
+      <View className="bg-surface px-5 py-3 flex-row items-center gap-3">
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)'))}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
+        <Text className="font-heading text-2xl text-dark">Notifications</Text>
       </View>
-
-      {/* Filter Tabs Row */}
-      <FilterTabs active={filter} onChange={setFilter} />
 
       {/* Notification Lists and Skeletons */}
       {isLoading || (sections.length === 0 && isFetching) ? (
-        <View className="flex-1 bg-white">
+        <View className="flex-1 bg-surface">
           <NotificationSkeleton />
         </View>
       ) : (
         <SectionList
           sections={sections}
-          keyExtractor={(item) => String(item.notification_id)}
-          renderItem={({ item }) => (
-            <NotificationRow item={item} onPress={handlePress} onOptionsPress={openOptionsSheet} />
+          keyExtractor={(group) => group.key}
+          renderItem={({ item: group }) => (
+            <NotificationRow group={group} onPress={handlePress} onOptionsPress={openOptionsSheet} />
           )}
           renderSectionHeader={({ section: { title } }) => (
             <View className="flex-row items-center mx-6 my-4 gap-3">
@@ -480,7 +588,7 @@ export default function NotificationsScreen() {
               <View className="flex-1 h-[0.5px] bg-gray-200" />
             </View>
           )}
-          ItemSeparatorComponent={null}
+          ItemSeparatorComponent={() => <View className="h-[0.5px] bg-gray-100 ml-[72px]" />}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -504,9 +612,7 @@ export default function NotificationsScreen() {
                 All caught up!
               </Text>
               <Text className="font-body text-sm text-gray text-center max-w-[260px] leading-5">
-                {filter !== 'All'
-                  ? `No ${filter.toLowerCase()} notifications found here.`
-                  : 'You have no new notifications right now. Enjoy your day!'}
+                You have no new notifications right now. Enjoy your day!
               </Text>
             </View>
           }
