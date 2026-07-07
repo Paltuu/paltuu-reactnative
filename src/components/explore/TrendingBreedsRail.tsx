@@ -28,11 +28,6 @@ const BreedCard = ({ breed, onPress }: { breed: TrendingBreed; onPress: () => vo
         backgroundColor: '#FFF',
         borderWidth: 1,
         borderColor: '#F3F4F6',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 1,
       }}
     >
       <Text numberOfLines={1} style={{ fontSize: 14.5, fontWeight: '700', color: '#111' }}>

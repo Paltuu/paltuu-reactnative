@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -27,8 +27,40 @@ const TOPIC_RAILS: TopicRailConfig[] = [
 const TRENDING_POSTS_COUNT = 8;
 const MEDIA_PREVIEW_COUNT = 12;
 
+// ─── Progressive section reveal ─────────────────────────────────────────────
+// This whole tree is FlashList's ListHeaderComponent, so none of it is
+// virtualized — every rail mounts and paints in one go the instant the tab
+// opens, right as the user is likely to start scrolling. Each rail also
+// fires its own independent query (discovery, 5x topic, suggested accounts,
+// vets nearby, lost&found), so without staggering, ~9 network responses land
+// in a tight cluster and each triggers a re-render/reflow of this whole
+// unvirtualized block. Revealing sections a beat apart spreads both the
+// initial mount/paint cost and the query-driven re-renders over ~1s instead
+// of dumping it all into the first frame.
+const SECTION_TRENDING = 0;
+const SECTION_MEDIA = 1;
+const SECTION_TOPICS_START = 2; // occupies SECTION_TOPICS_START..+TOPIC_RAILS.length-1
+const SECTION_BREEDS = SECTION_TOPICS_START + TOPIC_RAILS.length;
+const SECTION_SUGGESTED = SECTION_BREEDS + 1;
+const SECTION_LOSTFOUND = SECTION_SUGGESTED + 1;
+const SECTION_VETS = SECTION_LOSTFOUND + 1;
+const TOTAL_SECTIONS = SECTION_VETS + 1;
+const INITIAL_VISIBLE_SECTIONS = 2; // Trending + Media share the discovery query — free to show together
+const REVEAL_STEP_MS = 120;
+
+const useProgressiveSections = (total: number) => {
+  const [visible, setVisible] = useState(Math.min(INITIAL_VISIBLE_SECTIONS, total));
+  useEffect(() => {
+    if (visible >= total) return;
+    const timeout = setTimeout(() => setVisible((v) => v + 1), REVEAL_STEP_MS);
+    return () => clearTimeout(timeout);
+  }, [visible, total]);
+  return visible;
+};
+
 export const ExploreSections = () => {
   const router = useRouter();
+  const visibleSections = useProgressiveSections(TOTAL_SECTIONS);
 
   const { data: discovery, isLoading: isLoadingDiscovery } = useQuery({
     queryKey: ['explore', 'discovery'],
@@ -46,9 +78,11 @@ export const ExploreSections = () => {
 
   return (
     <View>
-      <TrendingRail hashtags={hashtags} posts={trendingPosts} isLoading={isLoadingDiscovery} />
+      {visibleSections > SECTION_TRENDING && (
+        <TrendingRail hashtags={hashtags} posts={trendingPosts} isLoading={isLoadingDiscovery} />
+      )}
 
-      {(isLoadingDiscovery || gridPosts.length > 0) && (
+      {visibleSections > SECTION_MEDIA && (isLoadingDiscovery || gridPosts.length > 0) && (
         <View style={{ paddingTop: 24 }}>
           <SectionHeader
             title="Media"
@@ -75,17 +109,19 @@ export const ExploreSections = () => {
         </View>
       )}
 
-      {TOPIC_RAILS.map((t) => (
-        <TopicRail key={t.slug} {...t} />
-      ))}
+      {TOPIC_RAILS.map((t, i) =>
+        visibleSections > SECTION_TOPICS_START + i ? <TopicRail key={t.slug} {...t} /> : null
+      )}
 
-      <TrendingBreedsRail breeds={breeds} isLoading={isLoadingDiscovery} />
+      {visibleSections > SECTION_BREEDS && (
+        <TrendingBreedsRail breeds={breeds} isLoading={isLoadingDiscovery} />
+      )}
 
-      <SuggestedAccountsRail />
+      {visibleSections > SECTION_SUGGESTED && <SuggestedAccountsRail />}
 
-      <LostFoundNearbyRail />
+      {visibleSections > SECTION_LOSTFOUND && <LostFoundNearbyRail />}
 
-      <VetsNearbyRail />
+      {visibleSections > SECTION_VETS && <VetsNearbyRail />}
 
       {/* The FlashList's own data (the personalized feed) renders directly below */}
       <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 6 }}>

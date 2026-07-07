@@ -30,6 +30,7 @@ import { NotificationProvider } from '../src/context/NotificationContext';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
+import { toastConfig } from '../src/components/common/toastConfig';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
@@ -221,7 +222,7 @@ export default function RootLayout() {
         </NotificationProvider>
         {/* Toast and OfflineBanner must be inside QueryClientProvider
             in case they (or their children) call useQuery internally */}
-        <Toast />
+        <Toast config={toastConfig} />
         <OfflineBanner />
       </QueryClientProvider>
     </GestureHandlerRootView>

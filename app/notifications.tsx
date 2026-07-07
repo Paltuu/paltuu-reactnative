@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -19,54 +19,10 @@ import { notificationsApi, Notification } from '../src/api/notifications';
 import { handleDeepLink } from '../src/services/deepLinks';
 import { useAuthStore } from '../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../src/constants/images';
+import { COLORS } from '../src/constants/colors';
 
-// Paltuu Primary Branding Color
-const PRIMARY = '#A03048';
-
-/* ── Notification Type UI Styling Config ── */
-const TYPE_CONFIG: Record<
-  string,
-  {
-    icon: string;
-    iconLib: 'ion' | 'mci';
-    color: string;
-    bgClass: string;
-  }
-> = {
-  // Social
-  social_post_like: { icon: 'paw', iconLib: 'ion', color: PRIMARY, bgClass: 'bg-primarySoft' },
-  social_post_comment: { icon: 'chatbubble', iconLib: 'ion', color: '#7C3AED', bgClass: 'bg-purple-50' },
-  social_comment_reply: { icon: 'return-down-forward', iconLib: 'ion', color: '#7C3AED', bgClass: 'bg-purple-50' },
-  social_comment_like: { icon: 'paw-outline', iconLib: 'ion', color: PRIMARY, bgClass: 'bg-primarySoft' },
-  social_new_follower: { icon: 'person-add', iconLib: 'ion', color: '#16A34A', bgClass: 'bg-green-50' },
-  social_mention_post: { icon: 'at', iconLib: 'ion', color: '#0EA5E9', bgClass: 'bg-sky-50' },
-  social_mention_comment: { icon: 'at', iconLib: 'ion', color: '#0EA5E9', bgClass: 'bg-sky-50' },
-  social_repost: { icon: 'repeat', iconLib: 'ion', color: '#16A34A', bgClass: 'bg-green-50' },
-
-  // Adoptions
-  adoption_new_application: { icon: 'paw', iconLib: 'mci', color: '#D97706', bgClass: 'bg-amber-50' },
-  adoption_application_approved: { icon: 'check-circle', iconLib: 'mci', color: '#16A34A', bgClass: 'bg-green-50' },
-  adoption_application_rejected: { icon: 'close-circle', iconLib: 'mci', color: '#EF4444', bgClass: 'bg-red-50' },
-  adoption_new_listing_match: { icon: 'star', iconLib: 'ion', color: '#D97706', bgClass: 'bg-amber-50' },
-  adoption_listing_approved: { icon: 'check-circle', iconLib: 'mci', color: '#16A34A', bgClass: 'bg-green-50' },
-
-  // Bazaar (E-Commerce)
-  bazaar_order_confirmed: { icon: 'package-variant', iconLib: 'mci', color: '#4F46E5', bgClass: 'bg-indigo-50' },
-  bazaar_order_shipped: { icon: 'truck', iconLib: 'mci', color: '#4F46E5', bgClass: 'bg-indigo-50' },
-  bazaar_order_delivered: { icon: 'check-circle', iconLib: 'mci', color: '#16A34A', bgClass: 'bg-green-50' },
-  bazaar_payment_verified: { icon: 'cash', iconLib: 'mci', color: '#16A34A', bgClass: 'bg-green-50' },
-  bazaar_new_vendor_order: { icon: 'storefront', iconLib: 'ion', color: '#4F46E5', bgClass: 'bg-indigo-50' },
-  bazaar_abandoned_cart: { icon: 'cart-outline', iconLib: 'ion', color: '#EF4444', bgClass: 'bg-red-50' },
-
-  // Pet Care
-  petcare_review_approved: { icon: 'star', iconLib: 'ion', color: '#16A34A', bgClass: 'bg-green-50' },
-  petcare_vet_verified: { icon: 'shield-checkmark', iconLib: 'ion', color: '#0EA5E9', bgClass: 'bg-sky-50' },
-
-  // System
-  system_broadcast: { icon: 'megaphone', iconLib: 'ion', color: PRIMARY, bgClass: 'bg-primarySoft' },
-  system_platform_update: { icon: 'phone-portrait-outline', iconLib: 'ion', color: PRIMARY, bgClass: 'bg-primarySoft' },
-  system_lost_found_match: { icon: 'map-marker', iconLib: 'mci', color: '#D97706', bgClass: 'bg-amber-50' },
-};
+// Paltuu brand colors
+const PRIMARY = COLORS.primary;
 
 /* ── Relative Time Formatter ── */
 const formatTime = (dateString: string) => {
@@ -156,24 +112,6 @@ const ActorAvatar = ({ name, uri, size = 48 }: { name: string; uri?: string | nu
   />
 );
 
-/* ── Type Badge overlay for Avatar ── */
-const TypeBadge = ({ type }: { type: string }) => {
-  const config = TYPE_CONFIG[type];
-  if (!config) return null;
-
-  return (
-    <View
-      className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ${config.bgClass} border-2 border-white items-center justify-center shadow-sm`}
-    >
-      {config.iconLib === 'ion' ? (
-        <Ionicons name={config.icon as any} size={10} color={config.color} />
-      ) : (
-        <MaterialCommunityIcons name={config.icon as any} size={10} color={config.color} />
-      )}
-    </View>
-  );
-};
-
 /* ── Single Notification Row Item ── */
 const NotificationRow = ({
   item,
@@ -200,9 +138,8 @@ const NotificationRow = ({
       }}
     >
       {/* Avatar column */}
-      <View className="relative mr-3.5">
+      <View className="mr-3.5">
         <ActorAvatar name={actorName} uri={avatarUri} />
-        <TypeBadge type={item.type} />
       </View>
 
       {/* Message Text column */}

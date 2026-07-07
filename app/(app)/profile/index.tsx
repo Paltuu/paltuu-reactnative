@@ -164,6 +164,16 @@ export default function ProfileScreen() {
     enabled: !!userId && activeTab === 'Pets',
   });
 
+  // Warm the Pets sub-tab's cache while the user is still on Posts, so
+  // tapping "Pets" reads from cache instead of showing a fresh spinner.
+  useEffect(() => {
+    if (!userId) return;
+    queryClient.prefetchQuery({
+      queryKey: ['social-pets', userId],
+      queryFn: () => petProfilesApi.getUserPetProfiles(userId),
+    });
+  }, [userId, queryClient]);
+
   // ── Sync edit fields when profile loads or editing starts ─────────────────
   useEffect(() => {
     if (isEditing && profile) {

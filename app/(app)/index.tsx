@@ -137,7 +137,7 @@ export default function HomeScreen() {
   }, []);
 
   // Check if user has interest picks (for cold-start banner)
-  const { data: interestsData } = useQuery({
+  const { data: interestsData, isLoading: isLoadingInterests } = useQuery({
     queryKey: ['user-interests-check'],
     queryFn: () => socialApi.getInterests(),
     staleTime: 5 * 60 * 1000,
@@ -159,7 +159,7 @@ export default function HomeScreen() {
     },
     []
   );
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
   const openComposeGesture = useMemo(
     () =>
@@ -176,12 +176,17 @@ export default function HomeScreen() {
 
   const {
     data, fetchNextPage, hasNextPage,
-    isFetchingNextPage, isLoading,
+    isFetchingNextPage, isLoading: isLoadingFeed,
   } = useInfiniteQuery({
     queryKey: ['social-feed', forYouMode],
     queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
+    // Wait for the interests check so forYouMode is resolved before the first
+    // fetch — otherwise this fires once for 'global', then again a beat later
+    // for 'personalized' once interests load, causing a double fetch + a
+    // loading-skeleton flash right after the feed first paints.
+    enabled: !isLoadingInterests,
   });
 
   const posts = useMemo(() => {
@@ -239,7 +244,7 @@ export default function HomeScreen() {
     />
   ), [router]);
 
-  if (isLoading && !posts.length) {
+  if ((isLoadingInterests || isLoadingFeed) && !posts.length) {
     return (
       <View className="flex-1 bg-white" style={{ paddingTop: topOffset }}>
         {Array.from({ length: 4 }).map((_, i) => (

@@ -57,7 +57,7 @@ export default function CollectionPostsScreen() {
     },
     []
   );
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAFA', paddingTop: insets.top }}>

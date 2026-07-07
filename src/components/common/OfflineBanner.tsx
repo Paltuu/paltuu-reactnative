@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, StyleSheet, Animated, Platform } from 'react-native';
+import { Text, View, Animated, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
+import { COLORS } from '../../constants/colors';
 
-/**
- * Premium, Animated Offline Banner Component
- * Floating design with smooth slide-down and slide-up animations.
- * Turns green briefly to celebrate reconnection before sliding away!
- */
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.16,
+  shadowRadius: 10,
+  elevation: 10,
+};
+
 export function OfflineBanner() {
   const netInfo = useNetInfo();
   const [showBanner, setShowBanner] = useState(false);
@@ -27,8 +32,8 @@ export function OfflineBanner() {
     } else if (netInfo.isConnected === true && showBanner) {
       // Transition from offline to online
       setIsBackOnline(true);
-      
-      // Wait 2.5 seconds showing "Connected back online!" in green, then slide up to hide
+
+      // Wait 2.5 seconds showing "Back online" in success green, then slide up to hide
       const timer = setTimeout(() => {
         Animated.timing(slideAnim, {
           toValue: -100,
@@ -48,43 +53,20 @@ export function OfflineBanner() {
 
   return (
     <Animated.View
+      className="absolute left-4 right-4 top-0 flex-row items-center justify-center gap-2 rounded-2xl py-3 px-4"
       style={[
-        styles.container,
+        cardShadow,
         {
+          zIndex: 99999,
           transform: [{ translateY: slideAnim }],
-          backgroundColor: isBackOnline ? '#10B981' : '#EF4444', // Emerald Green for online, Vibrant Red for offline
+          backgroundColor: isBackOnline ? COLORS.success : COLORS.error,
         },
       ]}
     >
-      <Text style={styles.text}>
-        {isBackOnline ? '⚡ Back Online!' : '📡 Connection lost. You are offline'}
+      <Ionicons name={isBackOnline ? 'wifi' : 'cloud-offline-outline'} size={16} color="#fff" />
+      <Text className="font-headingSemi text-white text-xs tracking-wide">
+        {isBackOnline ? 'Back online' : "You're offline"}
       </Text>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    right: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    zIndex: 99999, // Ensure it floats on top of everything
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  text: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-});

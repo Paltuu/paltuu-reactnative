@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Text,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -163,6 +164,56 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <Ionicons name="videocam" size={10} color="#fff" />
       </View>
     </View>
+  );
+};
+
+// ─── VideoThumbnail ──────────────────────────────────────────────────────────
+// Static stand-in for feed videos that aren't the active (playing) post.
+// Mounting `useVideoPlayer` spins up a real native decoder, so during a fast
+// scroll — where FlashList mounts/unmounts many cells per second — every
+// video card doing that at once is what tanks FPS. Only the one post that's
+// actually autoplaying needs a real <VideoPlayer/>; everything else can show
+// this cheap Image-based placeholder until it becomes active.
+export const VideoThumbnail: React.FC<{
+  thumbnailUri?: string;
+  width: number;
+  height: number;
+  borderRadius?: number;
+  isProcessing?: boolean;
+  onPress?: () => void;
+}> = ({ thumbnailUri, width, height, borderRadius = 14, isProcessing, onPress }) => {
+  if (isProcessing) {
+    return (
+      <View style={[s.processingContainer, { width, height, borderRadius }]}>
+        <ActivityIndicator size="large" color="#A03048" />
+        <Text style={s.processingText}>Video processing…</Text>
+        <Text style={s.processingSubText}>Usually ready in 1–2 minutes</Text>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}
+    >
+      {!!thumbnailUri && (
+        <Image
+          source={{ uri: thumbnailUri }}
+          style={{ width, height }}
+          contentFit="cover"
+        />
+      )}
+      <View style={[StyleSheet.absoluteFill, s.pausedOverlay]}>
+        <View style={s.playIconCircle}>
+          <Ionicons name="play" size={22} color="#fff" />
+        </View>
+      </View>
+      <View style={s.videoBadge}>
+        <Ionicons name="videocam" size={10} color="#fff" />
+      </View>
+    </TouchableOpacity>
   );
 };
 

@@ -28,11 +28,8 @@ export const HashtagRow = ({
       paddingVertical: 12,
       borderRadius: 16,
       backgroundColor: '#FFF',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
-      elevation: 1,
+      borderWidth: 1,
+      borderColor: '#F0F0F0',
     }}
     activeOpacity={0.7}
   >

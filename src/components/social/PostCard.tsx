@@ -31,7 +31,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
-import VideoPlayer from './VideoPlayer';
+import VideoPlayer, { VideoThumbnail } from './VideoPlayer';
 import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
@@ -383,6 +383,17 @@ const MediaBlock = React.memo(({
 
     if (isItemVideo) {
       const videoUri = item.hls_url || item.url;
+      if (!isPlaying) {
+        return (
+          <VideoThumbnail
+            thumbnailUri={item.thumbnail_url}
+            width={CAROUSEL_CARD_W}
+            height={carouselImgH}
+            borderRadius={14}
+            onPress={() => onImagePress?.(index)}
+          />
+        );
+      }
       return (
         <VideoPlayer
           key={videoUri}
@@ -391,7 +402,6 @@ const MediaBlock = React.memo(({
           width={CAROUSEL_CARD_W}
           height={carouselImgH}
           borderRadius={14}
-          paused={!isPlaying}
           onPress={() => onImagePress?.(index)}
         />
       );
@@ -427,6 +437,19 @@ const MediaBlock = React.memo(({
         firstItem.video_status === 'processing' ||
         firstItem.video_status === 'pending';
       const videoUri = firstItem.hls_url || firstItem.url;
+      if (!isPlaying && !isProcessing) {
+        return (
+          <View style={s.mediaWrapper}>
+            <VideoThumbnail
+              thumbnailUri={firstItem.thumbnail_url}
+              width={SINGLE_VIDEO_W}
+              height={videoH}
+              borderRadius={14}
+              onPress={() => onImagePress?.(0)}
+            />
+          </View>
+        );
+      }
       return (
         <View style={s.mediaWrapper}>
           <VideoPlayer

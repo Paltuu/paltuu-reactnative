@@ -16,6 +16,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useLocationStore } from '../../src/stores/locationStore';
 import { petApi } from '../../src/api/pets';
+import { StaggeredPlaceholder } from '../../src/components/common/CyclingText';
 import { FONTS } from '../../src/constants/typography';
 import { SkeletonCircle } from '../../src/components/common/Skeleton';
 
@@ -32,6 +33,7 @@ const GREETING_LINES = [
   "Ready to find your perfect match?",
   'Your pet deserves the best care.',
 ];
+const GREETING_INTERVAL = 6500;
 
 const NEARBY_FETCH_LIMIT = 10;
 const NEARBY_VISIBLE_COUNT = 5;
@@ -40,16 +42,112 @@ const NEARBY_ROTATE_INTERVAL = 4000;
 const getPetImage = (pet: any): string =>
   pet.main_image || pet.image_url || pet.profile_image_url || pet.image || null;
 
+// Owns its own interval/state so the greeting tick only re-renders this small
+// subtree instead of the entire Pets tab (hero tile, images, nearby list, ...).
+const GreetingText = React.memo(function GreetingText({
+  firstName,
+  isFocused,
+}: {
+  firstName: string;
+  isFocused: boolean;
+}) {
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  useEffect(() => {
+    if (!isFocused) return;
+    const timer = setInterval(() => {
+      setGreetingIndex((prev) => (prev + 1) % GREETING_LINES.length);
+    }, GREETING_INTERVAL);
+    return () => clearInterval(timer);
+  }, [isFocused]);
+
+  return (
+    <View style={styles.topBar}>
+      <Text style={styles.greetingTitle}>Hey {firstName}</Text>
+      <StaggeredPlaceholder text={GREETING_LINES[greetingIndex]} style={styles.greetingSubtitle} wrap />
+    </View>
+  );
+});
+
+// Same isolation as GreetingText — the 4s rotation shouldn't re-render the
+// rest of the screen, just this carousel.
+const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
+  nearbyPages,
+  isNearbyLoading,
+  isFocused,
+  cityName,
+  usingFallback,
+  onPress,
+}: {
+  nearbyPages: any[][];
+  isNearbyLoading: boolean;
+  isFocused: boolean;
+  cityName?: string | null;
+  usingFallback: boolean;
+  onPress: () => void;
+}) {
+  const [nearbyPage, setNearbyPage] = useState(0);
+  useEffect(() => {
+    setNearbyPage(0);
+  }, [nearbyPages.length]);
+  useEffect(() => {
+    if (!isFocused || nearbyPages.length <= 1) return;
+    const timer = setInterval(() => {
+      setNearbyPage((prev) => (prev + 1) % nearbyPages.length);
+    }, NEARBY_ROTATE_INTERVAL);
+    return () => clearInterval(timer);
+  }, [isFocused, nearbyPages.length]);
+
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.nearbyTile}>
+      <View style={styles.nearbyHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.nearbyTitle}>Pets Near You</Text>
+          <Text style={styles.nearbySub}>
+            Recently listed
+            {cityName && !usingFallback ? ` in ${cityName}` : ' near you'}
+          </Text>
+        </View>
+        <Ionicons name="arrow-forward" size={16} color={ROSE} />
+      </View>
+
+      <View style={styles.nearbyCirclesViewport}>
+        {isNearbyLoading ? (
+          <View className="flex-row gap-3">
+            {Array.from({ length: NEARBY_VISIBLE_COUNT }).map((_, i) => (
+              <SkeletonCircle key={`skeleton-${i}`} size={56} />
+            ))}
+          </View>
+        ) : (
+          <Animated.View
+            key={nearbyPage}
+            entering={SlideInRight.duration(350)}
+            exiting={SlideOutLeft.duration(350)}
+            style={styles.nearbyCirclesRow}
+          >
+            {nearbyPages[nearbyPage].map((pet) => (
+              <View key={pet.pet_id} style={styles.nearbyCircle}>
+                <Image
+                  source={
+                    getPetImage(pet) ? { uri: getPetImage(pet) } : require('../../assets/dog-placeholder.png')
+                  }
+                  style={styles.nearbyCircleImg}
+                  contentFit="cover"
+                />
+              </View>
+            ))}
+          </Animated.View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export default function PetsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
-
-  const [greeting] = useState(
-    () => GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)]
-  );
 
   const { cityId, cityName } = useLocationStore();
   const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
@@ -66,13 +164,15 @@ export default function PetsHubScreen() {
   // the most recent pets nationwide rather than an empty tile. Revisit once
   // we know what a better "no pets nearby" experience should look like
   // (e.g. nearest neighbouring cities instead of a blanket nationwide list).
-  const noCityResults = isCityPetsFetched && cityPets.length === 0 && !!cityId;
+  // Fired in parallel with the city query (not gated on its result) so an
+  // empty-city response doesn't have to wait on a second sequential
+  // round-trip before the fallback can show.
   const { data: fallbackPetsData, isPending: isFallbackPending } = useQuery({
     queryKey: ['nearby-pets-fallback'],
     queryFn: () => petApi.getAdoptionPets({ limit: NEARBY_FETCH_LIMIT }),
-    enabled: noCityResults,
   });
 
+  const noCityResults = isCityPetsFetched && cityPets.length === 0 && !!cityId;
   const isNearbyLoading = isCityPetsPending || (noCityResults && isFallbackPending);
 
   const usingFallback = noCityResults && !!fallbackPetsData;
@@ -85,18 +185,6 @@ export default function PetsHubScreen() {
     }
     return pages.length ? pages : [[]];
   }, [nearbyPets]);
-
-  const [nearbyPage, setNearbyPage] = useState(0);
-  useEffect(() => {
-    setNearbyPage(0);
-  }, [nearbyPages.length]);
-  useEffect(() => {
-    if (!isFocused || nearbyPages.length <= 1) return;
-    const timer = setInterval(() => {
-      setNearbyPage((prev) => (prev + 1) % nearbyPages.length);
-    }, NEARBY_ROTATE_INTERVAL);
-    return () => clearInterval(timer);
-  }, [isFocused, nearbyPages.length]);
 
   return (
     <View style={styles.root}>
@@ -113,10 +201,7 @@ export default function PetsHubScreen() {
         overScrollMode="never"
       >
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
-        <View style={styles.topBar}>
-          <Text style={styles.greetingTitle}>Hey {firstName}</Text>
-          <Text style={styles.greetingSubtitle}>{greeting}</Text>
-        </View>
+        <GreetingText firstName={firstName} isFocused={isFocused} />
 
         {/* Tile 1 — Adopt a Pet (Hero) */}
         <TouchableOpacity
@@ -145,53 +230,14 @@ export default function PetsHubScreen() {
         <View style={{ height: 12 }} />
 
         {/* Pets Near You — taller, rotating circular avatars */}
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <NearbyPetsCarousel
+          nearbyPages={nearbyPages}
+          isNearbyLoading={isNearbyLoading}
+          isFocused={isFocused}
+          cityName={cityName}
+          usingFallback={usingFallback}
           onPress={() => router.push('/(app)/adopt' as any)}
-          style={styles.nearbyTile}
-        >
-          <View style={styles.nearbyHeaderRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nearbyTitle}>Pets Near You</Text>
-              <Text style={styles.nearbySub}>
-                Recently listed
-                {cityName && !usingFallback ? ` in ${cityName}` : ' near you'}
-              </Text>
-            </View>
-            <Ionicons name="arrow-forward" size={16} color={ROSE} />
-          </View>
-
-          <View style={styles.nearbyCirclesViewport}>
-            {isNearbyLoading ? (
-              <View className="flex-row gap-3">
-                {Array.from({ length: NEARBY_VISIBLE_COUNT }).map((_, i) => (
-                  <SkeletonCircle key={`skeleton-${i}`} size={56} />
-                ))}
-              </View>
-            ) : (
-              <Animated.View
-                key={nearbyPage}
-                entering={SlideInRight.duration(350)}
-                exiting={SlideOutLeft.duration(350)}
-                style={styles.nearbyCirclesRow}
-              >
-                {nearbyPages[nearbyPage].map((pet) => (
-                  <View key={pet.pet_id} style={styles.nearbyCircle}>
-                    <Image
-                      source={
-                        getPetImage(pet)
-                          ? { uri: getPetImage(pet) }
-                          : require('../../assets/dog-placeholder.png')
-                      }
-                      style={styles.nearbyCircleImg}
-                      contentFit="cover"
-                    />
-                  </View>
-                ))}
-              </Animated.View>
-            )}
-          </View>
-        </TouchableOpacity>
+        />
 
         <View style={{ height: 12 }} />
 

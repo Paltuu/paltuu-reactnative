@@ -22,7 +22,9 @@ module.exports = {
         surfaceElevated: "#FAFAFA",
         surfaceSubtle: "#F0F0F2",
         success: "#1A7A3C",
+        successSoft: "#e6f2ea",
         error: "#C0392B",
+        errorSoft: "#fbeae8",
       },
       fontFamily: {
         heading: ["Montserrat_700Bold"],
