@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { FONTS } from '../../constants/typography';
 import { SectionHeader } from './Rail';
 import { TrendingRail } from './TrendingRail';
 import { MediaGrid, GRID_ITEM_SIZE, GRID_MARGIN, GRID_GAP } from './MediaGrid';
@@ -12,14 +13,17 @@ import { SuggestedAccountsRail } from './SuggestedAccountsRail';
 import { LostFoundNearbyRail } from './LostFoundNearbyRail';
 import { VetsNearbyRail } from './VetsNearbyRail';
 
+const DARK = '#1A1A2E';
+const SURFACE_SUBTLE = '#F5F5F7';
+
 // Curated topic rails keyed to seeded content_tags slugs (prisma/seed-content-tags.ts).
 // A rail hides itself when its topic has no tagged posts yet.
 const TOPIC_RAILS: TopicRailConfig[] = [
-  { slug: 'cute', title: 'Cute & Viral', icon: 'sparkles' },
-  { slug: 'training', title: 'Training Tips', icon: 'school' },
-  { slug: 'health', title: 'Health & Care', icon: 'fitness' },
-  { slug: 'funny', title: 'Funny Moments', icon: 'happy' },
-  { slug: 'adoption', title: 'Adoption Stories', icon: 'heart' },
+  { slug: 'cute', title: 'Cute & Viral' },
+  { slug: 'training', title: 'Training Tips' },
+  { slug: 'health', title: 'Health & Care' },
+  { slug: 'funny', title: 'Funny Moments' },
+  { slug: 'adoption', title: 'Adoption Stories' },
 ];
 
 // How many media posts the Trending rail consumes off the head of media_posts;
@@ -86,7 +90,6 @@ export const ExploreSections = () => {
         <View style={{ paddingTop: 24 }}>
           <SectionHeader
             title="Media"
-            icon="images"
             onSeeAll={hasMoreMedia ? () => router.push('/(app)/media-grid') : undefined}
           />
           {isLoadingDiscovery ? (
@@ -98,7 +101,7 @@ export const ExploreSections = () => {
                     width: GRID_ITEM_SIZE,
                     height: GRID_ITEM_SIZE,
                     borderRadius: 16,
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: SURFACE_SUBTLE,
                   }}
                 />
               ))}
@@ -124,8 +127,8 @@ export const ExploreSections = () => {
       {visibleSections > SECTION_VETS && <VetsNearbyRail />}
 
       {/* The FlashList's own data (the personalized feed) renders directly below */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 6 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: '#111' }}>For You</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: 6 }}>
+        <Text style={{ fontFamily: FONTS.heading, fontSize: 18, color: DARK }}>For You</Text>
       </View>
     </View>
   );

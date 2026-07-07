@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { FONTS } from '../../constants/typography';
 import { Rail } from './Rail';
+
+const DARK = '#1A1A2E';
+const MUTED = '#9AA0A6';
+const SURFACE_SUBTLE = '#F5F5F7';
 
 type LostFoundPost = Awaited<ReturnType<typeof socialApi.getLostFoundNearby>>['posts'][number];
 
@@ -15,13 +19,18 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.85}
+      activeOpacity={0.9}
       style={{
         width: 190,
-        borderRadius: 16,
+        borderRadius: 20,
         backgroundColor: '#FFF',
         borderWidth: 1,
-        borderColor: '#F0F0F0',
+        borderColor: '#F0F0F2',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
       }}
     >
       <View>
@@ -31,9 +40,9 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
             style={{
               width: '100%',
               height: 110,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              backgroundColor: '#F3F4F6',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              backgroundColor: SURFACE_SUBTLE,
             }}
             contentFit="cover"
           />
@@ -42,15 +51,11 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
             style={{
               width: '100%',
               height: 110,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              backgroundColor: '#FEF2F4',
-              justifyContent: 'center',
-              alignItems: 'center',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              backgroundColor: '#FCE8ED',
             }}
-          >
-            <Ionicons name="paw" size={28} color="#A03048" />
-          </View>
+          />
         )}
         <View
           style={{
@@ -63,23 +68,20 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
             backgroundColor: isLost ? '#DC2626' : '#16A34A',
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 }}>
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10, color: '#FFF', letterSpacing: 0.5 }}>
             {isLost ? 'LOST' : 'FOUND'}
           </Text>
         </View>
       </View>
 
-      <View style={{ padding: 10 }}>
-        <Text numberOfLines={2} style={{ fontSize: 13, fontWeight: '600', color: '#222', lineHeight: 17 }}>
+      <View style={{ padding: 12 }}>
+        <Text numberOfLines={2} style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: DARK, lineHeight: 17 }}>
           {post.pet_description || (isLost ? 'Lost pet' : 'Found pet')}
         </Text>
         {(post.location || post.city) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 5 }}>
-            <Ionicons name="location" size={11} color="#A03048" />
-            <Text numberOfLines={1} style={{ fontSize: 11.5, color: '#888', flex: 1 }}>
-              {post.location || post.city}
-            </Text>
-          </View>
+          <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 11.5, color: MUTED, marginTop: 5 }}>
+            {post.location || post.city}
+          </Text>
         )}
       </View>
     </TouchableOpacity>
@@ -102,7 +104,6 @@ export const LostFoundNearbyRail = () => {
   return (
     <Rail
       title={title}
-      icon="alert-circle"
       isLoading={isLoading}
       isEmpty={posts.length === 0}
       onSeeAll={() => router.push('/(app)/lost-found')}

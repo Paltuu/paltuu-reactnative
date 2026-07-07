@@ -1,7 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
 import { socialApi } from '../../api/social';
 import { Rail } from './Rail';
 import { RailPostCard } from './RailPostCard';
@@ -9,10 +8,9 @@ import { RailPostCard } from './RailPostCard';
 export interface TopicRailConfig {
   slug: string;
   title: string;
-  icon: keyof typeof Ionicons.glyphMap;
 }
 
-export const TopicRail = ({ slug, title, icon }: TopicRailConfig) => {
+export const TopicRail = ({ slug, title }: TopicRailConfig) => {
   const router = useRouter();
 
   const { data, isLoading } = useQuery({
@@ -27,7 +25,6 @@ export const TopicRail = ({ slug, title, icon }: TopicRailConfig) => {
   return (
     <Rail
       title={title}
-      icon={icon}
       isLoading={isLoading}
       isEmpty={posts.length === 0}
       onSeeAll={() => router.push(`/(app)/topic/${slug}`)}

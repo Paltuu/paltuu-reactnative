@@ -6,7 +6,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { useSocialActions } from '../../hooks/useSocialActions';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
+import { FONTS } from '../../constants/typography';
 import { Rail } from './Rail';
+
+const PRIMARY = '#A03048';
+const DARK = '#1A1A2E';
+const MUTED = '#9AA0A6';
 
 type SuggestedAccount = Awaited<ReturnType<typeof socialApi.getSuggestedAccounts>>['accounts'][number];
 
@@ -27,31 +32,36 @@ const AccountCard = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.85}
+      activeOpacity={0.9}
       style={{
         width: 150,
-        padding: 14,
-        borderRadius: 16,
+        padding: 16,
+        borderRadius: 20,
         backgroundColor: '#FFF',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#F0F0F0',
+        borderColor: '#F0F0F2',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
       }}
     >
       <Image
         source={account.profile_image_url ? { uri: account.profile_image_url } : NO_PROFILE_IMAGE}
-        style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#F3F4F6' }}
+        style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#F5F5F7' }}
         contentFit="cover"
       />
-      <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '700', color: '#111', marginTop: 8 }}>
+      <Text numberOfLines={1} style={{ fontFamily: FONTS.headingSemi, fontSize: 14, color: DARK, marginTop: 10 }}>
         {account.name}
       </Text>
       {!!account.social_username && (
-        <Text numberOfLines={1} style={{ fontSize: 12, color: '#999', marginTop: 1 }}>
+        <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12, color: MUTED, marginTop: 1 }}>
           @{account.social_username}
         </Text>
       )}
-      <Text numberOfLines={1} style={{ fontSize: 11, color: '#AAA', marginTop: 3 }}>
+      <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 11, color: MUTED, marginTop: 3 }}>
         {subtitle}
       </Text>
       <TouchableOpacity
@@ -61,10 +71,10 @@ const AccountCard = ({
           paddingHorizontal: 20,
           paddingVertical: 7,
           borderRadius: 20,
-          backgroundColor: account.is_following ? '#F3F4F6' : '#A03048',
+          backgroundColor: account.is_following ? '#F5F5F7' : PRIMARY,
         }}
       >
-        <Text style={{ fontSize: 12.5, fontWeight: '700', color: account.is_following ? '#333' : '#FFF' }}>
+        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: account.is_following ? DARK : '#FFF' }}>
           {account.is_following ? 'Following' : 'Follow'}
         </Text>
       </TouchableOpacity>
@@ -104,11 +114,10 @@ export const SuggestedAccountsRail = () => {
   return (
     <Rail
       title="Who to Follow"
-      icon="person-add"
       isLoading={isLoading}
       isEmpty={accounts.length === 0}
       skeletonWidth={150}
-      skeletonHeight={170}
+      skeletonHeight={176}
     >
       {accounts.map((a) => (
         <AccountCard

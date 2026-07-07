@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Dimensions, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { SocialPost } from '../../api/social';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -19,8 +18,6 @@ export const chunkArray = <T,>(array: T[], size: number): T[][] => {
 export const PostGridItem = ({ post, onPress }: { post: SocialPost; onPress: () => void }) => {
   const media = post.media?.length ? post.media : post.original_media;
   const imageUri = media?.[0]?.thumbnail_url || media?.[0]?.url || '';
-  const isMulti = (media?.length || 0) > 1;
-  const isVideo = media?.[0]?.media_type === 'video';
 
   return (
     <TouchableOpacity
@@ -29,14 +26,9 @@ export const PostGridItem = ({ post, onPress }: { post: SocialPost; onPress: () 
     >
       <Image
         source={{ uri: imageUri }}
-        style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6' }}
+        style={{ width: '100%', height: '100%', backgroundColor: '#F5F5F7' }}
         contentFit="cover"
       />
-      {(isMulti || isVideo) && (
-        <View style={{ position: 'absolute', top: 8, right: 8 }}>
-          <Ionicons name={isVideo ? 'play' : 'copy'} size={16} color="white" />
-        </View>
-      )}
     </TouchableOpacity>
   );
 };

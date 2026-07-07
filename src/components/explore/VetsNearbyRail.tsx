@@ -30,7 +30,6 @@ export const VetsNearbyRail = () => {
   return (
     <Rail
       title={coords ? 'Vets & Clinics Near You' : 'Top Vets & Clinics'}
-      icon="medkit"
       isLoading={isLoading || !locationSettled}
       isEmpty={clinics.length === 0}
       onSeeAll={() => router.push('/(app)/pet-care')}

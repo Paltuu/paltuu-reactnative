@@ -1,58 +1,43 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SocialPost } from '../../api/social';
 import { SectionHeader } from './Rail';
 import { RailPostCard } from './RailPostCard';
+import { FONTS } from '../../constants/typography';
 
-export const HashtagRow = ({
+const DARK = '#1A1A2E';
+const MUTED = '#9AA0A6';
+const SURFACE_SUBTLE = '#F5F5F7';
+
+const formatCount = (n: number) => (n > 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
+
+export const HashtagChip = ({
   tag,
   postCount,
-  rank,
   onPress,
 }: {
   tag: string;
   postCount: number;
-  rank: number;
   onPress: () => void;
 }) => (
   <TouchableOpacity
     onPress={onPress}
+    activeOpacity={0.8}
     style={{
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: 16,
-      marginBottom: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderRadius: 16,
+      gap: 6,
+      paddingHorizontal: 16,
+      height: 38,
+      borderRadius: 999,
       backgroundColor: '#FFF',
       borderWidth: 1,
-      borderColor: '#F0F0F0',
+      borderColor: '#EFEFF1',
     }}
-    activeOpacity={0.7}
   >
-    <View
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: '#FEF2F4',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 14,
-      }}
-    >
-      <Text style={{ fontSize: 15, fontWeight: '800', color: '#A03048' }}>{rank}</Text>
-    </View>
-    <View style={{ flex: 1 }}>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>#{tag}</Text>
-      <Text style={{ fontSize: 13, color: '#999', marginTop: 1 }}>
-        {postCount > 1000 ? `${(postCount / 1000).toFixed(1)}K` : postCount} posts
-      </Text>
-    </View>
-    <Ionicons name="chevron-forward" size={16} color="#CCC" />
+    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: DARK }}>#{tag}</Text>
+    <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: MUTED }}>{formatCount(postCount)}</Text>
   </TouchableOpacity>
 );
 
@@ -68,32 +53,40 @@ export const TrendingRail = ({ hashtags, posts, isLoading }: TrendingRailProps) 
   if (!isLoading && hashtags.length === 0 && posts.length === 0) return null;
 
   return (
-    <View style={{ paddingTop: 20 }}>
+    <View style={{ paddingTop: 24 }}>
       <SectionHeader title="Trending" />
 
       {isLoading ? (
-        <View style={{ paddingHorizontal: 16, gap: 10 }}>
-          {[...Array(3)].map((_, i) => (
-            <View key={i} style={{ height: 56, backgroundColor: '#F3F4F6', borderRadius: 16 }} />
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10 }}>
+          {[...Array(4)].map((_, i) => (
+            <View key={i} style={{ width: 90, height: 38, backgroundColor: SURFACE_SUBTLE, borderRadius: 999 }} />
           ))}
         </View>
       ) : (
         <>
-          {hashtags.slice(0, 5).map((h, i) => (
-            <HashtagRow
-              key={h.tag}
-              tag={h.tag}
-              postCount={h.post_count}
-              rank={i + 1}
-              onPress={() => router.push(`/(app)/hashtag/${h.tag}`)}
-            />
-          ))}
+          {hashtags.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              decelerationRate="fast"
+            >
+              {hashtags.slice(0, 8).map((h) => (
+                <HashtagChip
+                  key={h.tag}
+                  tag={h.tag}
+                  postCount={h.post_count}
+                  onPress={() => router.push(`/(app)/hashtag/${h.tag}`)}
+                />
+              ))}
+            </ScrollView>
+          )}
 
           {posts.length > 0 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingTop: 16 }}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingTop: hashtags.length ? 14 : 0 }}
               decelerationRate="fast"
             >
               {posts.map((p) => (
