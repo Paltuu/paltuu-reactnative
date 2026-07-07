@@ -9,6 +9,15 @@ export interface Clinic {
   is_paltuu_partner: boolean;
   google_maps_link?: string;
   discount_details?: string;
+  category?: string | null;
+  city?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  website?: string | null;
+  /** Google rating (sourced from Google, not Paltuu reviews) */
+  rating?: string | number | null;
+  total_reviews?: number | null;
+  vet_count?: number | null;
 }
 
 export interface Qualification {

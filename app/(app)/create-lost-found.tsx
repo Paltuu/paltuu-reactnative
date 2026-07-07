@@ -139,8 +139,6 @@ export default function CreateLostFoundScreen() {
   const handleBack = () => {
     if (step > 0) {
       setStep((prev) => prev - 1);
-    } else if (router.canGoBack()) {
-      router.back();
     } else {
       router.replace('/(app)/pets');
     }

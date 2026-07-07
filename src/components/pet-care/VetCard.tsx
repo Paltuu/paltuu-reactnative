@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Vet } from '../../types/models';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
+import { FONTS } from '../../constants/typography';
+
+const PRIMARY = '#A03048';
 
 interface VetCardProps {
   vet: Vet;
@@ -11,88 +14,77 @@ interface VetCardProps {
 }
 
 export const VetCard = ({ vet, onPress }: VetCardProps) => {
-  const formattedName = (vet.name || "").match(/^dr\.?\s*/i)
+  const formattedName = /^dr\.?\s*/i.test(vet.name || '')
     ? vet.name
     : `Dr. ${vet.name}`;
 
   const handleCall = () => {
-    if (vet.contact_details) {
-      Linking.openURL(`tel:${vet.contact_details}`);
-    }
-  };
-
-  const handleWhatsApp = () => {
-    if (vet.contact_details) {
-      let phone = vet.contact_details.trim();
-      if (phone.startsWith("0")) {
-        phone = "92" + phone.slice(1);
-      }
-      Linking.openURL(`whatsapp://send?phone=${phone}`);
-    }
+    if (vet.contact_details) Linking.openURL(`tel:${vet.contact_details}`);
   };
 
   return (
-    <View className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4">
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={onPress}
-        className="flex-row items-center mb-4"
-      >
-        <Image
-          source={vet.profile_image_url ? vet.profile_image_url : NO_PROFILE_IMAGE}
-          className="w-16 h-16 rounded-full mr-4"
-          contentFit="cover"
-          transition={300}
-        />
-        <View className="flex-1">
-          <Text className="font-heading text-lg text-primary">{formattedName}</Text>
-          <Text className="font-body text-gray-500 text-sm">{vet.clinic_name}</Text>
-        </View>
-        <TouchableOpacity 
-          onPress={handleCall}
-          className="bg-primary/10 p-3 rounded-full"
-        >
-          <Feather name="phone" size={18} color="#A03048" />
-        </TouchableOpacity>
-      </TouchableOpacity>
-
-      <View className="space-y-2 mb-4">
-        {vet.location && (
-          <View className="flex-row items-center">
-            <Feather name="map-pin" size={12} color="#6B7280" />
-            <Text className="text-gray-500 font-body text-xs ml-2">{vet.location}</Text>
-          </View>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={styles.card}
+    >
+      <Image
+        source={vet.profile_image_url ? vet.profile_image_url : NO_PROFILE_IMAGE}
+        style={styles.avatar}
+        contentFit="cover"
+        transition={250}
+      />
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
+          {formattedName}
+        </Text>
+        {!!vet.clinic_name && (
+          <Text style={styles.clinic} numberOfLines={1}>
+            {vet.clinic_name}
+          </Text>
         )}
-        
-        {vet.qualifications && (
-          <View className="flex-row items-center">
-            <Feather name="award" size={12} color="#6B7280" />
-            <Text className="text-gray-500 font-body text-xs ml-2" numberOfLines={1}>
-              {Array.isArray(vet.qualifications) 
-                ? vet.qualifications.map(q => typeof q === 'object' ? q.qualification_name : q).join(', ')
-                : vet.qualifications}
-            </Text>
-          </View>
+        {!!vet.location && (
+          <Text style={styles.location} numberOfLines={2}>
+            {vet.location}
+          </Text>
         )}
       </View>
-
-      <View className="flex-row gap-3 mt-2">
-        <TouchableOpacity 
-          onPress={handleWhatsApp}
-          className="flex-1 flex-row items-center justify-center bg-green-500 py-3.5 rounded-2xl space-x-2 shadow-sm"
-        >
-          <FontAwesome5 name="whatsapp" size={14} color="white" />
-          <Text className="text-white font-heading text-xs">WhatsApp</Text>
+      {!!vet.contact_details && (
+        <TouchableOpacity onPress={handleCall} style={styles.callBtn}>
+          <Ionicons name="call" size={16} color="#FFF" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={handleCall}
-          className="flex-1 flex-row items-center justify-center bg-gray-100 py-3.5 rounded-2xl space-x-2"
-        >
-          <Feather name="phone-call" size={14} color="#374151" />
-          <Text className="text-gray-700 font-heading text-xs">Call</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      )}
+    </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F2',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EDEDED',
+  },
+  info: { flex: 1, marginHorizontal: 12 },
+  name: { fontFamily: FONTS.heading, fontSize: 15, color: PRIMARY },
+  clinic: { fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: '#3A3A44', marginTop: 2 },
+  location: { fontFamily: FONTS.body, fontSize: 11.5, color: '#8A8A94', marginTop: 3, lineHeight: 16 },
+  callBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

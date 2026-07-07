@@ -41,6 +41,8 @@ function LayoutContent() {
   } catch (e) { }
 
   const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
+  const isGreyScreen =
+    pathname === '/pet-care' || pathname?.includes('/clinic') || pathname?.includes('/vet');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
@@ -52,7 +54,7 @@ function LayoutContent() {
           left: 0,
           right: 0,
           height: insets.top,
-          backgroundColor: '#FFF',
+          backgroundColor: isGreyScreen ? '#FAFAFB' : '#FFF',
           zIndex: 9999,
         }}
       />
