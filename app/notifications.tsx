@@ -72,8 +72,8 @@ const formatBodyText = (text: string) => {
 
 /* ── Aggregate action phrases used when several notifications collapse ── */
 const AGGREGATE_ACTION: Record<string, string> = {
-  social_post_like: 'liked your post',
-  social_comment_like: 'liked your comment',
+  social_post_like: 'pawed your post',
+  social_comment_like: 'pawed your comment',
   social_post_comment: 'commented on your post',
   social_comment_reply: 'replied to your comment',
   social_mention_post: 'mentioned you in a post',
