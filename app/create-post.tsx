@@ -10,6 +10,8 @@ import {
   Platform,
   Dimensions,
   Alert,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -30,7 +32,7 @@ import { NO_PROFILE_IMAGE } from '../src/constants/images';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type UploadStage = 'idle' | 'compressing' | 'uploading' | 'finalizing';
+type UploadStage = 'idle' | 'uploading' | 'finalizing';
 
 /**
  * Unified media item — replaces the old parallel-array approach
@@ -42,6 +44,8 @@ type MediaItem = {
   type: 'image' | 'video';
   /** MIME type, only relevant for videos (e.g. 'video/mp4', 'video/quicktime') */
   mime?: string;
+  /** Extracted local video thumbnail URI for preview */
+  thumbnailUri?: string;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -63,9 +67,6 @@ const PET_EMOJI: Record<string, string> = {
   bird: '🐦',
   default: '🐾',
 };
-
-/** Videos smaller than this are not worth compressing (saves time). */
-const COMPRESSION_SKIP_MB = 10;
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
@@ -223,7 +224,6 @@ export default function CreatePostScreen() {
   const [petSheetVisible, setPetSheetVisible] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
-  const [compressionProgress, setCompressionProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
@@ -264,7 +264,8 @@ export default function CreatePostScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        mediaTypes: ['images', 'videos'],
+
         allowsMultipleSelection: true,
         quality: 0.8,
         selectionLimit: 10 - mediaItems.length,
@@ -273,16 +274,30 @@ export default function CreatePostScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const newItems: MediaItem[] = result.assets.map((a) => {
-          if (a.type === 'video') {
-            const ext = (a.uri.split('.').pop() || 'mp4').toLowerCase();
-            const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
-            return { uri: a.uri, type: 'video' as const, mime };
-          }
-          return { uri: a.uri, type: 'image' as const };
-        });
+        const newItems: MediaItem[] = await Promise.all(
+          result.assets.map(async (a) => {
+            if (a.type === 'video') {
+              const ext = (a.uri.split('.').pop() || 'mp4').toLowerCase();
+              const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+
+              // Pre-generate a thumbnail preview for the grid
+              let thumbnailUri: string | undefined = undefined;
+              try {
+                const VideoThumbnails = require('expo-video-thumbnails');
+                const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
+                thumbnailUri = uri;
+              } catch (e) {
+                console.warn('[CreatePost] Failed to pre-generate preview thumbnail:', e);
+              }
+
+              return { uri: a.uri, type: 'video' as const, mime, thumbnailUri };
+            }
+            return { uri: a.uri, type: 'image' as const };
+          })
+        );
         setMediaItems((prev) => [...prev, ...newItems].slice(0, 10));
       }
+
     } catch (error: any) {
       console.error('Pick Media Error:', error);
       Alert.alert('Error', 'An error occurred while picking media. Please try again.');
@@ -331,7 +346,6 @@ export default function CreatePostScreen() {
   const resetUploadState = () => {
     setIsPosting(false);
     setUploadStage('idle');
-    setCompressionProgress(0);
     setUploadProgress(0);
   };
 
@@ -343,8 +357,8 @@ export default function CreatePostScreen() {
     if (!canPost) return;
     setIsPosting(true);
     setUploadStage('idle');
-    setCompressionProgress(0);
     setUploadProgress(0);
+
 
     try {
       // ── Edit mode — only text/meta fields can change ──────────────────────
@@ -359,74 +373,76 @@ export default function CreatePostScreen() {
         return;
       }
 
-      let uploadedMedia: any[] = [];
+      setUploadStage('uploading');
+      setUploadProgress(0);
 
-      for (let i = 0; i < mediaItems.length; i++) {
-        const item = mediaItems[i];
+      const progresses = new Array(mediaItems.length).fill(0);
+      const updateOverallProgress = (idx: number, p: number) => {
+        progresses[idx] = p;
+        const avg = progresses.reduce((sum, val) => sum + val, 0) / mediaItems.length;
+        setUploadProgress(avg);
+      };
 
+      const uploadPromises = mediaItems.map(async (item, index) => {
         if (item.type === 'video') {
-          // ── Stage 1: Compress video on-device ──────────────────────────────
-          setUploadStage('compressing');
-          setCompressionProgress(0);
-
-          let compressedUri = item.uri;
-
-          try {
-            const { Video: VideoCompressor } = require('react-native-compressor');
-            compressedUri = await VideoCompressor.compress(
-              item.uri,
-              {
-                maxSize: 1280,           // cap longest side at 1280px (720p)
-                bitrate: 2_000_000,      // 2 Mbps — solid quality, half the storage of 4 Mbps
-                minimumFileSizeForCompress: COMPRESSION_SKIP_MB, // skip if already < 10 MB
-              },
-              (progress: number) => {
-                setCompressionProgress(progress); // 0.0 → 1.0
-              }
-            );
-            console.log(`[CreatePost] Video ${i} compressed: ${item.uri} → ${compressedUri}`);
-          } catch (compressErr) {
-            // Non-fatal: fall back to original if compression fails
-            // (e.g., unsupported codec, insufficient permissions, Expo Go environment)
-            console.warn('[CreatePost] Video compression failed, uploading original:', compressErr);
-            compressedUri = item.uri;
-          }
-
-          // ── Stage 2: Upload compressed video to S3 ─────────────────────────
-          setUploadStage('uploading');
-          setUploadProgress(0);
-
           const mime = item.mime || 'video/mp4';
           const ext  = mime === 'video/quicktime' ? 'mov' : 'mp4';
 
-          // Get presigned PUT URL from the backend
-          const { upload_url, video_key } = await socialApi.getVideoUploadUrl(ext);
+          // Step 1: Get presigned PUT URL
+          const { upload_url, video_key, raw_url } = await socialApi.getVideoUploadUrl(ext);
 
-          // Upload directly to S3 with live progress reporting
-          await socialApi.uploadVideoToS3(upload_url, compressedUri, mime, (p) => {
-            setUploadProgress(p);
+          // Step 1.5: Upload pre-generated video thumbnail if available
+          let thumbnailRemoteUrl: string | null = null;
+          try {
+            const localThumbUri = item.thumbnailUri;
+            if (localThumbUri) {
+              console.log(`[CreatePost] Uploading pre-generated video thumbnail: ${localThumbUri}`);
+              const thumbUploadRes = await socialApi.uploadMedia([localThumbUri]);
+              thumbnailRemoteUrl = thumbUploadRes.media[0]?.url || null;
+            }
+          } catch (thumbErr) {
+            console.warn('[CreatePost] Failed to upload local video thumbnail:', thumbErr);
+          }
+
+
+          // Step 2: Upload raw video directly to S3 with progress tracking
+          await socialApi.uploadVideoToS3(upload_url, item.uri, mime, (p) => {
+            updateOverallProgress(index, p);
           });
 
-          uploadedMedia.push({
+          console.log(`[CreatePost] Parallel video upload complete: key=${video_key}`);
+
+          return {
             media_type:    'video',
-            url:           item.uri,   // local URI placeholder — passes server validation
-            thumbnail_url: null,
+            url:           raw_url || item.uri,
+            thumbnail_url: thumbnailRemoteUrl, // Instant thumbnail preview
             video_status:  'pending',
-            _video_key:    video_key,  // internal — used for MediaConvert confirmation below
-          });
+            _video_key:    video_key,
+            ordering:      index,
+          };
 
         } else {
-          // ── Image upload path ───────────────────────────────────────────────
-          setUploadStage('uploading');
+          // Process image
           const processed = await manipulateAsync(
             item.uri,
             [{ resize: { width: 1200 } }],
             { compress: 0.8, format: SaveFormat.JPEG }
           );
+          updateOverallProgress(index, 0.2); // Start image upload progress indicator
           const uploadRes = await socialApi.uploadMedia([processed.uri]);
-          uploadedMedia.push(...uploadRes.media);
+          updateOverallProgress(index, 1);   // Image upload done
+          return {
+            ...uploadRes.media[0],
+            ordering: index,
+          };
         }
-      }
+      });
+
+      const uploadedMediaResults = await Promise.all(uploadPromises);
+      // Sort results by original ordering to maintain user choice sequence
+      uploadedMediaResults.sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
+      const uploadedMedia = uploadedMediaResults.map(({ ordering, ...m }) => m);
+
 
       // ── Stage 3: Create post + trigger MediaConvert ───────────────────────
       setUploadStage('finalizing');
@@ -449,14 +465,25 @@ export default function CreatePostScreen() {
 
       const post = await socialApi.createPost(payload);
 
-      // Kick off MediaConvert transcoding for each uploaded video
+      // Kick off MediaConvert transcoding for each uploaded video.
+      // We index-match the client-side video_key list with the server-created
+      // media rows — preserving the same insertion order.
       const videoItems = post.media?.filter((m: any) => m.media_type === 'video') ?? [];
+      const videoUploadItems = uploadedMedia.filter((m) => m._video_key); // same order as videoItems
       for (let i = 0; i < videoItems.length; i++) {
-        const vKey = uploadedMedia.find((m) => m._video_key)?._video_key;
-        if (vKey && videoItems[i]?.media_id) {
-          await socialApi.confirmVideoUpload(vKey, videoItems[i].media_id);
+        const vKey   = videoUploadItems[i]?._video_key;   // index-matched — NOT .find()
+        const mId    = videoItems[i]?.media_id;
+        if (vKey && mId) {
+          try {
+            await socialApi.confirmVideoUpload(vKey, String(mId));
+          } catch (confirmErr) {
+            // Non-fatal: the post is already created. MediaConvert can be manually
+            // re-triggered later. Log but do not block the success flow.
+            console.error(`[CreatePost] confirmVideoUpload failed for video ${i}:`, confirmErr);
+          }
         }
       }
+
 
       router.back();
       Toast.show({
@@ -596,7 +623,8 @@ export default function CreatePostScreen() {
                 <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
                   {mediaItems.map((item, i) => (
                     <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
-                      <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                      <Image source={{ uri: item.type === 'video' ? (item.thumbnailUri || item.uri) : item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+
 
                       {/* Video badge */}
                       {item.type === 'video' && (
@@ -683,6 +711,34 @@ export default function CreatePostScreen() {
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
         isLoading={isLoadingPetProfiles}
       />
+
+      {/* ── Premium Posting Loader Overlay ── */}
+      {isPosting && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
+          <View style={{ backgroundColor: '#fff', padding: 24, borderRadius: 16, width: '80%', alignItems: 'center', gap: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 }}>
+            <ActivityIndicator size="large" color="#a03048" />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>
+                {uploadStage === 'uploading' ? 'Uploading Media…' : 'Finalizing Post…'}
+              </Text>
+              {uploadStage === 'uploading' && (
+                <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+                  {Math.round(uploadProgress * 100)}% complete
+                </Text>
+              )}
+            </View>
+            {/* Progress bar */}
+            {uploadStage === 'uploading' && (
+              <View style={{ width: '100%', height: 6, backgroundColor: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
+                <View 
+                  style={{ height: '100%', backgroundColor: '#a03048', width: `${Math.round(uploadProgress * 100)}%` }} 
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
+

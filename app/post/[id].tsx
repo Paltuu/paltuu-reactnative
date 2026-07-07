@@ -21,6 +21,8 @@ import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
 import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
+import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
+
 import {
   useCommentDraft,
   ComposerToolbar,
@@ -52,7 +54,18 @@ export default function PostDetailScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('top');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
+  // Auto-play the video in the detail screen when opened, and pause on close
+  useEffect(() => {
+    if (id) {
+      setPlayingPostId(id as string);
+    }
+    return () => {
+      setPlayingPostId(null);
+    };
+  }, [id]);
+
   // Track keyboard height so the floating composer can stick directly above it.
+
   // (Android defaults to adjustResize, so the window already excludes the keyboard
   // and we anchor to bottom: 0 there; iOS needs the explicit offset.)
   useEffect(() => {
@@ -63,13 +76,21 @@ export default function PostDetailScreen() {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
+  const hasProcessingVideo = useMemo(() => {
+    return postData?.media?.some(
+      (m: any) => m.media_type === 'video' && (m.video_status === 'pending' || m.video_status === 'processing')
+    );
+  }, [postData]);
+
   /* ── Queries ── */
   const { data: postData, isLoading: postLoading, isError: postError } = useQuery({
     queryKey: ['post', id],
     queryFn: () => socialApi.getPostById(id as string),
     enabled: !!id,
     retry: 1,
+    refetchInterval: hasProcessingVideo ? 5000 : false, // Poll every 5 seconds if transcoding
   });
+
 
   const { data: commentsData, isLoading: commentsLoading } = useQuery({
     queryKey: ['comments', id],

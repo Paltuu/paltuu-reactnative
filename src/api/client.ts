@@ -12,10 +12,7 @@ const client = axios.create({
 // Request interceptor: Logger
 client.interceptors.request.use((config) => {
   if (__DEV__) {
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-      data: config.data || '',
-      hasAuth: !!config.headers.Authorization
-    });
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url} (auth: ${!!config.headers.Authorization})`);
   }
   return config;
 });
@@ -36,17 +33,18 @@ client.interceptors.request.use(
 client.interceptors.response.use(
   (response) => {
     if (__DEV__) {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+      console.log(`[API Response] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
     }
     return response;
   },
   (error) => {
     if (__DEV__) {
-      console.log(`[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error.response?.data || error.message);
+      console.log(`[API Error] ${error.response?.status || 'Network'} ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.response?.data?.error || error.message);
     }
     return Promise.reject(error);
   }
 );
+
 
 // Response interceptor: Handle token refresh on 401
 client.interceptors.response.use(

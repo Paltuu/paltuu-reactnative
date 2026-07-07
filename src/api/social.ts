@@ -209,8 +209,9 @@ export const socialApi = {
 
   async getVideoUploadUrl(ext: string = 'mp4') {
     const { data } = await client.get(`/social/video-upload-url?ext=${ext}`);
-    return data as { upload_url: string; video_key: string; expires_in: number };
+    return data as { upload_url: string; video_key: string; raw_url: string; expires_in: number };
   },
+
 
   async uploadVideoToS3(
     presignedUrl: string,
@@ -218,37 +219,70 @@ export const socialApi = {
     mimeType: string,
     onProgress?: (progress: number) => void
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    try {
+      // Use expo-file-system native upload task if available.
+      // This runs uploads in a native background thread (iOS NSURLSession / Android WorkManager)
+      // which keeps uploads alive even if the app goes to the background or screen locks.
+      const FileSystem = require('expo-file-system');
+      console.log('[socialApi] Launching native background S3 upload task...');
 
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
-          onProgress(e.loaded / e.total);
+      const uploadTask = FileSystem.createUploadTask(
+        presignedUrl,
+        fileUri,
+        {
+          headers: {
+            'Content-Type': mimeType,
+          },
+          httpMethod: 'PUT',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        },
+        (data) => {
+          if (onProgress && data.totalBytesExpectedToSend > 0) {
+            onProgress(data.totalBytesSent / data.totalBytesExpectedToSend);
+          }
         }
+      );
+
+      const result = await uploadTask.uploadAsync();
+      if (result && result.status >= 200 && result.status < 300) {
+        console.log('[socialApi] Native background S3 upload task completed successfully');
+        return;
+      } else {
+        throw new Error(`S3 native upload failed: HTTP ${result?.status}`);
+      }
+    } catch (fsErr) {
+      console.warn('[socialApi] Native background upload task unavailable/failed, using XHR fallback:', fsErr);
+
+      // Fallback: XMLHttpRequest PUT (JS-thread based)
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress(e.loaded / e.total);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`S3 upload failed: HTTP ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('S3 upload network error')));
+        xhr.addEventListener('abort', () => reject(new Error('S3 upload aborted')));
+
+        xhr.open('PUT', presignedUrl);
+        xhr.setRequestHeader('Content-Type', mimeType);
+
+        // React Native streams the binary file content when passed { uri }
+        xhr.send({ uri: fileUri } as any);
       });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`S3 upload failed: HTTP ${xhr.status}`));
-        }
-      });
-
-      xhr.addEventListener('error', () => reject(new Error('S3 upload network error')));
-      xhr.addEventListener('abort', () => reject(new Error('S3 upload aborted')));
-
-      xhr.open('PUT', presignedUrl);
-      xhr.setRequestHeader('Content-Type', mimeType);
-
-      // NOTE: React Native's native XHR implementation recognises { uri, type, name }
-      // as a file reference and streams the binary content directly from the device's
-      // filesystem — this is NOT a plain JS object being serialised to JSON.
-      // For a presigned S3 PUT the body must be raw binary (not multipart/form-data),
-      // so this is the correct approach. Do NOT wrap in FormData here.
-      xhr.send({ uri: fileUri } as any);
-    });
+    }
   },
+
 
   async confirmVideoUpload(videoKey: string, mediaId: string) {
     const { data } = await client.post('/social/video-upload-url', {

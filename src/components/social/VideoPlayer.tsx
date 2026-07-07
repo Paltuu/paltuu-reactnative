@@ -9,6 +9,8 @@ import {
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
+import { getCachedVideoUri } from '../../utils/videoCache';
+
 
 interface VideoPlayerProps {
   /** HLS .m3u8 URL (CloudFront) or fallback raw S3 URL */
@@ -30,11 +32,16 @@ interface VideoPlayerProps {
   onPress?: () => void;
 }
 
+interface InnerVideoPlayerProps extends VideoPlayerProps {
+  resolvedUri: string;
+}
+
 /**
- * VideoPlayer
+ * InnerVideoPlayer core component
  */
-const VideoPlayer: React.FC<VideoPlayerProps> = ({
+const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
   uri,
+  resolvedUri,
   thumbnailUri,
   width,
   height,
@@ -46,14 +53,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playCount, setPlayCount] = useState(0);
 
-  const player = useVideoPlayer(uri, (p) => {
+  const player = useVideoPlayer(resolvedUri, (p) => {
     p.loop = true;
     p.muted = true;
   });
+
+  // Reset states when source URI changes
+  useEffect(() => {
+    setIsReady(false);
+    setError(null);
+  }, [resolvedUri]);
+
+  // Sync source when URI changes dynamically (including cache hits/updates)
+  useEffect(() => {
+    if (resolvedUri && player) {
+      if (typeof (player as any).replaceAsync === 'function') {
+        (player as any).replaceAsync(resolvedUri);
+      } else {
+        player.replace(resolvedUri);
+      }
+    }
+  }, [resolvedUri, player]);
+
 
   // Sync mute state changes to the player after init
   useEffect(() => {
@@ -66,8 +92,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const status = payload.status;
       setIsBuffering(status === 'loading'); // Track buffering via status
 
-      if (status === 'readyToPlay' && !paused && !userPaused && playCount < 2) {
-        player.play();
+      if (status === 'readyToPlay') {
+        setIsReady(true);
+        if (!paused && !userPaused && playCount < 2) {
+          player.play();
+        }
       }
       if (status === 'error') {
         const detail = (payload as any)?.error?.message ?? (payload as any)?.error ?? 'unknown';
@@ -132,6 +161,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         contentFit="cover"
         nativeControls={false}
       />
+      {/* Thumbnail placeholder overlay until the video buffer is ready to avoid black flashes */}
+      {!!thumbnailUri && !isReady && (
+        <Image
+          source={{ uri: thumbnailUri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={150}
+        />
+      )}
+
       {/* Overlay above the native VideoView to reliably catch touches on Android */}
       <TouchableOpacity activeOpacity={1} onPress={onPress ?? togglePlay} style={StyleSheet.absoluteFill} />
 
@@ -196,14 +235,17 @@ export const VideoThumbnail: React.FC<{
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#000' }}
+      style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#1A1D20', alignItems: 'center', justifyContent: 'center' }}
     >
-      {!!thumbnailUri && (
+      {!!thumbnailUri ? (
         <Image
           source={{ uri: thumbnailUri }}
-          style={{ width, height }}
+          style={{ width, height, position: 'absolute' }}
           contentFit="cover"
         />
+      ) : (
+        // Premium textured dark background for missing thumbnails
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#131517', opacity: 0.85 }]} />
       )}
       <View style={[StyleSheet.absoluteFill, s.pausedOverlay]}>
         <View style={s.playIconCircle}>
@@ -215,6 +257,43 @@ export const VideoThumbnail: React.FC<{
       </View>
     </TouchableOpacity>
   );
+};
+
+/**
+ * VideoPlayer Wrapper with Cache Pre-Resolution
+ */
+const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
+  const [resolvedUri, setResolvedUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getCachedVideoUri(props.uri)
+      .then((res) => {
+        if (active) setResolvedUri(res);
+      })
+      .catch(() => {
+        if (active) setResolvedUri(props.uri);
+      });
+    return () => {
+      active = false;
+    };
+  }, [props.uri]);
+
+  if (!resolvedUri) {
+    // Render static thumbnail placeholder while verifying cache (5-10ms)
+    return (
+      <VideoThumbnail
+        thumbnailUri={props.thumbnailUri}
+        width={props.width}
+        height={props.height}
+        borderRadius={props.borderRadius}
+        isProcessing={props.isProcessing}
+        onPress={props.onPress}
+      />
+    );
+  }
+
+  return <InnerVideoPlayer {...props} resolvedUri={resolvedUri} />;
 };
 
 const s = StyleSheet.create({

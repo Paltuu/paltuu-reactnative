@@ -8,11 +8,12 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  ActivityIndicator,
   Share, ScrollView
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { subscribeToPlayingPost } from '../../utils/videoPlaySubscription';
+import { subscribeToPlayingPost, setPlayingPostId } from '../../utils/videoPlaySubscription';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
 
 const PostIcons = {
@@ -32,6 +33,7 @@ import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
 import VideoPlayer, { VideoThumbnail } from './VideoPlayer';
+import { subscribeToVideoStatus } from '../../utils/videoStatusPoller';
 import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
@@ -107,6 +109,22 @@ const s = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     marginTop: 8,
     marginBottom: 8,
+  },
+  processingBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  processingBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   cardPressed: {
     backgroundColor: '#F9F9F9',
@@ -401,10 +419,12 @@ const MediaBlock = React.memo(({
 
     if (isItemVideo) {
       const videoUri = item.hls_url || item.url;
+      const thumbUri = item.thumbnail_url;
+
       if (!isPlaying) {
         return (
           <VideoThumbnail
-            thumbnailUri={item.thumbnail_url}
+            thumbnailUri={thumbUri}
             width={CAROUSEL_CARD_W}
             height={carouselImgH}
             borderRadius={14}
@@ -416,7 +436,7 @@ const MediaBlock = React.memo(({
         <VideoPlayer
           key={videoUri}
           uri={videoUri}
-          thumbnailUri={item.thumbnail_url}
+          thumbnailUri={thumbUri}
           width={CAROUSEL_CARD_W}
           height={carouselImgH}
           borderRadius={14}
@@ -451,18 +471,18 @@ const MediaBlock = React.memo(({
     if (isVideo) {
       const SINGLE_VIDEO_W = MEDIA_FULL_W - 24;
       const videoH = Math.round(SINGLE_VIDEO_W * 0.5625); // 16:9
-      const isProcessing =
-        firstItem.video_status === 'processing' ||
-        firstItem.video_status === 'pending';
       const videoUri = firstItem.hls_url || firstItem.url;
-      if (!isPlaying && !isProcessing) {
+      const thumbUri = firstItem.thumbnail_url;
+
+      if (!isPlaying) {
         return (
           <View style={s.mediaWrapper}>
             <VideoThumbnail
-              thumbnailUri={firstItem.thumbnail_url}
+              thumbnailUri={thumbUri}
               width={SINGLE_VIDEO_W}
               height={videoH}
               borderRadius={14}
+              isProcessing={false}
               onPress={() => onImagePress?.(0)}
             />
           </View>
@@ -473,12 +493,12 @@ const MediaBlock = React.memo(({
           <VideoPlayer
             key={videoUri}
             uri={videoUri}
-            thumbnailUri={firstItem.thumbnail_url}
+            thumbnailUri={thumbUri}
             width={SINGLE_VIDEO_W}
             height={videoH}
             borderRadius={14}
             paused={!isPlaying}
-            isProcessing={isProcessing}
+            isProcessing={false}
             onPress={() => onImagePress?.(0)}
           />
         </View>
@@ -524,6 +544,7 @@ const MediaBlock = React.memo(({
     </View>
   );
 });
+
 
 const ActionBar = React.memo(({
   liked,
@@ -686,7 +707,57 @@ export const PostCard = React.memo(({
     });
   }, [post.post_id]);
 
+  // Local video state to handle dynamic HLS/Thumbnail updates during backend transcoding polling
+  const firstItem = bodyMedia[0];
+  const isVideo = firstItem?.media_type === 'video';
+
+  const [localVideoStatus, setLocalVideoStatus] = useState(firstItem?.video_status);
+  const [localHlsUrl, setLocalHlsUrl] = useState(firstItem?.hls_url);
+  const [localThumbnailUrl, setLocalThumbnailUrl] = useState(firstItem?.thumbnail_url);
+
+  // Keep in sync with incoming prop changes (like query invalidations/re-fetches)
+  useEffect(() => {
+    if (firstItem) {
+      setLocalVideoStatus(firstItem.video_status);
+      setLocalHlsUrl(firstItem.hls_url);
+      setLocalThumbnailUrl(firstItem.thumbnail_url);
+    }
+  }, [firstItem]);
+
+  // Poll video status globally and deduplicate same-media-id requests
+  useEffect(() => {
+    if (isVideo && firstItem?.media_id && (localVideoStatus === 'pending' || localVideoStatus === 'processing')) {
+      const unsubscribe = subscribeToVideoStatus(firstItem.media_id, (data) => {
+        setLocalVideoStatus(data.video_status);
+        if (data.hls_url) setLocalHlsUrl(data.hls_url);
+        if (data.thumbnail_url) setLocalThumbnailUrl(data.thumbnail_url);
+      });
+      return unsubscribe;
+    }
+  }, [isVideo, firstItem?.media_id, localVideoStatus]);
+
+
+  // Compute local media overrides to feed downstream components
+  const computedMedia = useMemo(() => {
+    if (!bodyMedia || bodyMedia.length === 0) return [];
+    return bodyMedia.map((m, idx) => {
+      if (idx === 0 && m.media_type === 'video') {
+        return {
+          ...m,
+          video_status: localVideoStatus,
+          hls_url: localHlsUrl || undefined,
+          thumbnail_url: localThumbnailUrl || undefined,
+        } as SocialPostMedia;
+      }
+      return m;
+    });
+  }, [bodyMedia, localVideoStatus, localHlsUrl, localThumbnailUrl]);
+
+
   const handleImagePress = useCallback((index: number) => {
+    // Pause background video player before opening full screen viewer
+    setPlayingPostId(null);
+
     const items = bodyMedia?.map((m: any) => ({
       url: m.media_type === 'video' ? (m.hls_url || m.url) : m.url,
       type: m.media_type as 'image' | 'video',
@@ -694,6 +765,7 @@ export const PostCard = React.memo(({
     })) ?? [];
     modals?.showImageViewer(items, index);
   }, [modals, bodyMedia]);
+
 
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
@@ -943,7 +1015,7 @@ export const PostCard = React.memo(({
                (Quote reposts show media inside the embedded original above.) ── */}
           {!isQuoteRepost && bodyMedia?.length > 0 && (
             <MediaBlock
-              media={bodyMedia}
+              media={computedMedia}
               onImagePress={handleImagePress}
               isPlaying={isVideoPlaying}
             />
