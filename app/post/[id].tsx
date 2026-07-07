@@ -73,6 +73,12 @@ interface Comment {
   replies: Comment[];
 }
 
+interface ReplyAvatar {
+  id: number;
+  uri: string | null;
+  name: string;
+}
+
 interface FlatComment extends Comment {
   parentId?: string;
   isCollapsed?: boolean;
@@ -80,6 +86,8 @@ interface FlatComment extends Comment {
   isLastSibling?: boolean;
   ancestorContinues?: boolean[];
   hasChildrenBelow?: boolean;
+  replyAvatars?: ReplyAvatar[];
+  hiddenCount?: number;
 }
 
 /* ── Build comment tree ── */
@@ -95,6 +103,33 @@ const buildTree = (flat: any[]): Comment[] => {
     }
   });
   return roots;
+};
+
+/* ── Gather every descendant of a comment (whole subtree, depth-first) ── */
+const collectDescendants = (replies: Comment[]): Comment[] => {
+  const out: Comment[] = [];
+  for (const r of replies) {
+    out.push(r);
+    if (r.replies?.length) out.push(...collectDescendants(r.replies));
+  }
+  return out;
+};
+
+/* Unique participants in a subtree (self-repliers dedup'd), most-recent first
+ * so the freshest faces surface on the collapsed stub. */
+const subtreeAvatars = (descendants: Comment[], max = 3): ReplyAvatar[] => {
+  const seen = new Set<number>();
+  const avatars: ReplyAvatar[] = [];
+  const ordered = [...descendants].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  for (const d of ordered) {
+    if (seen.has(d.user_id)) continue;
+    seen.add(d.user_id);
+    avatars.push({ id: d.user_id, uri: d.author_image, name: d.author_name });
+    if (avatars.length >= max) break;
+  }
+  return avatars;
 };
 
 /* ── Flatten with collapse state ──
@@ -117,12 +152,17 @@ const flatten = (
       if (expanded.has(c.comment_id)) {
         result.push(...flatten(c.replies, expanded, c.comment_id, [...ancestorContinues, !isLastSibling]));
       } else {
+        // Everyone hidden under this comment — count the whole subtree and
+        // surface a few faces so the stub reads as "lots going on in here".
+        const descendants = collectDescendants(c.replies);
         result.push({
           ...c,
           comment_id: `${c.comment_id}-stub`,
           content: '',
           isCollapsed: true,
           collapsedCount: c.replies.length,
+          hiddenCount: descendants.length,
+          replyAvatars: subtreeAvatars(descendants),
           depth: c.depth + 1,
           replies: [],
           parentId: c.comment_id,
@@ -294,24 +334,67 @@ const CommentRow = ({
     hasChildrenBelow: item.hasChildrenBelow ?? false,
   };
 
-  /* Collapsed stub */
+  /* Collapsed stub — sits directly on the parent's own spine (not indented a
+     level deeper), so it's unmistakably that comment's hidden thread. The
+     parent's grey line drops straight down into a little cluster of the faces
+     hidden underneath, followed by the count. */
   if (item.isCollapsed) {
+    const avatars = item.replyAvatars ?? [];
+    const AV = 22;
+    const parentDepth = Math.max(depth - 1, 0);
+    const spineX = avatarCenterX(parentDepth);
+
+    // Ancestor spines that must keep running past this row, plus the short
+    // connector segment that drops from the parent avatar into the cluster.
+    const lines: React.ReactNode[] = [];
+    for (let level = 0; level <= depth - 2; level++) {
+      if (ancestorContinues[level + 1]) lines.push(vLine(`pass-${level}`, avatarCenterX(level), 0, 0));
+    }
+
     return (
-      <View style={{ position: 'relative' }}>
-        <ThreadLines {...threadProps} />
+      // Background lives on the outer container (not the touchable) so the spine
+      // lines paint on top of it and stay visible through the transparent row —
+      // otherwise an opaque row background would cover the continuing left line.
+      <View style={{ position: 'relative', backgroundColor: BG }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}>
+          {lines}
+          {/* connector from parent spine into the avatar cluster (terminates behind it) */}
+          <View style={{ position: 'absolute', left: spineX - LINE_W / 2, top: 0, height: AVATAR_CENTER_Y, width: LINE_W, backgroundColor: LINE_COLOR }} />
+        </View>
         <TouchableOpacity
           onPress={() => onExpand(item.parentId!)}
+          activeOpacity={0.7}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 8,
-            paddingLeft: indent + 42,
-            backgroundColor: BG,
+            gap: 8,
+            paddingTop: 13,
+            paddingBottom: 12,
+            paddingLeft: spineX - 1.5 - AV / 2, // first avatar centers on the parent spine
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: '700', color: '#8E8E8E' }}>
+          {avatars.length > 0 && (
+            <View style={{ flexDirection: 'row' }}>
+              {avatars.map((a, i) => (
+                <View
+                  key={a.id}
+                  style={{
+                    marginLeft: i === 0 ? 0 : -9,
+                    borderRadius: 999,
+                    borderWidth: 1.5,
+                    borderColor: BG,
+                    zIndex: avatars.length - i,
+                  }}
+                >
+                  <Avatar name={a.name} uri={a.uri} size={AV} />
+                </View>
+              ))}
+            </View>
+          )}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B5563' }}>
             View {item.collapsedCount} {item.collapsedCount === 1 ? 'reply' : 'replies'}
           </Text>
+          <Ionicons name="chevron-down" size={13} color="#9CA3AF" style={{ marginLeft: -2 }} />
         </TouchableOpacity>
       </View>
     );
