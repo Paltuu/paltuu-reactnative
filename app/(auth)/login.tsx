@@ -14,14 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { useAuthActions } from '../../src/hooks/useAuth';
-import { PawrvezTooltip } from '../../src/components/common/mascot';
 
 export default function LoginScreen() {
   const { email: prefillEmail } = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(() => (typeof prefillEmail === 'string' ? prefillEmail : ''));
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
   const router = useRouter();
   const { login } = useAuthActions();
 
@@ -94,20 +92,13 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <PawrvezTooltip
-            visible={showMascotTooltip}
-            text="Psst... enter your email and we'll send you a reset link!"
-            onDismiss={() => setShowMascotTooltip(false)}
-            placement="top"
-          >
-            <TouchableOpacity
-              onPress={() => setShowMascotTooltip(true)}
+          <TouchableOpacity
+              onPress={() => router.push('/(auth)/forgot-password')}
               style={styles.forgotWrap}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
-          </PawrvezTooltip>
         </View>
 
         <View style={styles.bottom}>

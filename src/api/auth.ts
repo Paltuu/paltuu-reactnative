@@ -37,5 +37,20 @@ export const authApi = {
   async deleteAccount() {
     const { data } = await client.delete('/users/me');
     return data;
-  }
+  },
+
+  async forgotPasswordOtp(email: string) {
+    const { data } = await client.post('/auth/forgot-password-otp', { email });
+    return data;
+  },
+
+  async verifyOtp(email: string, otp: string) {
+    const { data } = await client.post('/auth/verify-otp', { email, otp });
+    return data;
+  },
+
+  async resetPasswordOtp(email: string, otp: string, newPassword: string) {
+    const { data } = await client.post('/auth/reset-password-otp', { email, otp, newPassword });
+    return data;
+  },
 };
