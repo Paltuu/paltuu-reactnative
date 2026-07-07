@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Pressable,
-  TextInput, Platform, Keyboard, StyleSheet,
+  TextInput, Platform, Keyboard,
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -50,6 +50,13 @@ const PostIcons = {
 /* ── Helpers ── */
 
 /* ── Types ── */
+interface CommentMedia {
+  media_type: 'image' | 'video';
+  url: string;
+  thumbnail_url: string | null;
+  ordering: number;
+}
+
 interface Comment {
   comment_id: string;
   user_id: number;
@@ -62,6 +69,7 @@ interface Comment {
   liked?: boolean;
   depth: number;
   parent_comment_id: string | null;
+  media?: CommentMedia[];
   replies: Comment[];
 }
 
@@ -69,6 +77,9 @@ interface FlatComment extends Comment {
   parentId?: string;
   isCollapsed?: boolean;
   collapsedCount?: number;
+  isLastSibling?: boolean;
+  ancestorContinues?: boolean[];
+  hasChildrenBelow?: boolean;
 }
 
 /* ── Build comment tree ── */
@@ -86,14 +97,25 @@ const buildTree = (flat: any[]): Comment[] => {
   return roots;
 };
 
-/* ── Flatten with collapse state ── */
-const flatten = (comments: Comment[], expanded: Set<string>, parentId?: string): FlatComment[] => {
+/* ── Flatten with collapse state ──
+ * Tracks, per row, which ancestor levels still have a sibling coming up
+ * after this row's subtree (so their trunk line must keep running through
+ * it) and whether this row is the last child of its own parent (so its
+ * own connector ends in a curve instead of continuing further down). */
+const flatten = (
+  comments: Comment[],
+  expanded: Set<string>,
+  parentId?: string,
+  ancestorContinues: boolean[] = [],
+): FlatComment[] => {
   const result: FlatComment[] = [];
-  for (const c of comments) {
-    result.push({ ...c, parentId });
+  comments.forEach((c, i) => {
+    const isLastSibling = i === comments.length - 1;
+    const hasChildrenBelow = c.replies.length > 0; // expanded children OR a collapsed stub follows
+    result.push({ ...c, parentId, ancestorContinues, isLastSibling, hasChildrenBelow });
     if (c.replies.length > 0) {
       if (expanded.has(c.comment_id)) {
-        result.push(...flatten(c.replies, expanded, c.comment_id));
+        result.push(...flatten(c.replies, expanded, c.comment_id, [...ancestorContinues, !isLastSibling]));
       } else {
         result.push({
           ...c,
@@ -104,10 +126,15 @@ const flatten = (comments: Comment[], expanded: Set<string>, parentId?: string):
           depth: c.depth + 1,
           replies: [],
           parentId: c.comment_id,
+          // The stub sits where an expanded child would, so it needs the same
+          // extended spine context to draw its own elbow off the parent.
+          ancestorContinues: [...ancestorContinues, !isLastSibling],
+          isLastSibling: true,
+          hasChildrenBelow: false,
         });
       }
     }
-  }
+  });
   return result;
 };
 
@@ -144,6 +171,110 @@ const SortSelector = ({ value, onChange }: { value: SortBy; onChange: (v: SortBy
   </View>
 );
 
+/* ── Thread lines ──
+ * Each nesting level L owns a vertical "spine" at x = avatarCenterX(L).
+ * A parent at depth L connects to its children (depth L+1) by running that
+ * spine down from its own avatar and curving an elbow into each child.
+ * A given row therefore draws three kinds of segment:
+ *   1. pass-through spines — ancestor columns that still have a sibling
+ *      queued after this whole subtree, so their line keeps running down;
+ *   2. its own elbow — curves in from the parent's spine to this avatar,
+ *      and (unless this is the last sibling) continues the parent spine
+ *      straight down past it to reach the next sibling;
+ *   3. a downward spine from its own avatar when it has visible children.
+ */
+const LINE_COLOR = '#D9DADC';
+const LINE_W = 2;
+const AVATAR = 32;
+const ROW_PAD_V = 10;
+const AVATAR_CENTER_Y = ROW_PAD_V + AVATAR / 2; // 26
+const COL_STEP = 24;
+const CURVE_R = 12;
+// Matches the row's paddingLeft (16 + depth*COL_STEP) + avatar half-width.
+const avatarCenterX = (level: number) => 16 + level * COL_STEP + AVATAR / 2;
+
+const vLine = (key: string, x: number, top: number, bottom: number) => (
+  <View
+    key={key}
+    style={{ position: 'absolute', left: x - LINE_W / 2, top, bottom, width: LINE_W, backgroundColor: LINE_COLOR }}
+  />
+);
+
+const ThreadLines = ({
+  depth, ancestorContinues, isLastSibling, hasChildrenBelow,
+}: {
+  depth: number;
+  ancestorContinues: boolean[];
+  isLastSibling: boolean;
+  hasChildrenBelow: boolean;
+}) => {
+  const parts: React.ReactNode[] = [];
+
+  // 1. Pass-through ancestor spines. Column L keeps running through this row
+  //    when the ancestor-subtree we're inside (at level L+1) has a later sibling.
+  for (let level = 0; level <= depth - 2; level++) {
+    if (ancestorContinues[level + 1]) {
+      parts.push(vLine(`pass-${level}`, avatarCenterX(level), 0, 0));
+    }
+  }
+
+  // 2. This row's elbow curving off the parent spine, + parent-spine continuation.
+  if (depth >= 1) {
+    const fromX = avatarCenterX(depth - 1);
+    const toX = avatarCenterX(depth);
+    parts.push(
+      <View
+        key="elbow"
+        style={{
+          position: 'absolute',
+          left: fromX - LINE_W / 2,
+          top: 0,
+          width: toX - fromX + LINE_W / 2,
+          height: AVATAR_CENTER_Y,
+          borderLeftWidth: LINE_W,
+          borderBottomWidth: LINE_W,
+          borderColor: LINE_COLOR,
+          borderBottomLeftRadius: CURVE_R,
+        }}
+      />
+    );
+    // Not the last sibling → the parent spine flows straight past, down to the next one.
+    if (!isLastSibling) {
+      parts.push(vLine('parent-continue', fromX, 0, 0));
+    }
+  }
+
+  // 3. Downward spine from this row's own avatar to its first child.
+  if (hasChildrenBelow) {
+    parts.push(vLine('down', avatarCenterX(depth), AVATAR_CENTER_Y, 0));
+  }
+
+  if (parts.length === 0) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}>
+      {parts}
+    </View>
+  );
+};
+
+/* ── Read-only media grid for a posted comment/reply ── */
+const CommentMediaGrid = ({ media }: { media?: CommentMedia[] }) => {
+  if (!media || media.length === 0) return null;
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+      {media.map((m, i) => (
+        <View key={`${m.url}-${i}`} style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F4F6' }}>
+          <Image
+            source={{ uri: m.thumbnail_url || m.url }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+          />
+        </View>
+      ))}
+    </View>
+  );
+};
+
 /* ── Single comment ── */
 const CommentRow = ({
   item, onReply, onToggleLike, onExpand,
@@ -153,32 +284,42 @@ const CommentRow = ({
   onToggleLike: (id: string) => void;
   onExpand: (id: string) => void;
 }) => {
-  // Replies are distinguished by a small indent per depth — no thread lines.
   const depth = Math.min(item.depth, 4);
   const indent = 16 + depth * 24;
+  const ancestorContinues = item.ancestorContinues ?? [];
+  const threadProps = {
+    depth,
+    ancestorContinues,
+    isLastSibling: item.isLastSibling ?? true,
+    hasChildrenBelow: item.hasChildrenBelow ?? false,
+  };
 
   /* Collapsed stub */
   if (item.isCollapsed) {
     return (
-      <TouchableOpacity
-        onPress={() => onExpand(item.parentId!)}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 8,
-          paddingLeft: indent + 42,
-          backgroundColor: BG,
-        }}
-      >
-        <Text style={{ fontSize: 12, fontWeight: '700', color: '#8E8E8E' }}>
-          View {item.collapsedCount} {item.collapsedCount === 1 ? 'reply' : 'replies'}
-        </Text>
-      </TouchableOpacity>
+      <View style={{ position: 'relative' }}>
+        <ThreadLines {...threadProps} />
+        <TouchableOpacity
+          onPress={() => onExpand(item.parentId!)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingLeft: indent + 42,
+            backgroundColor: BG,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#8E8E8E' }}>
+            View {item.collapsedCount} {item.collapsedCount === 1 ? 'reply' : 'replies'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
-    <View style={{ backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}>
+    <View style={{ position: 'relative', backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}>
+      <ThreadLines {...threadProps} />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
 
         {/* Left Side: Avatar */}
@@ -196,6 +337,8 @@ const CommentRow = ({
           </View>
 
           <MentionText content={item.content} textStyle={{ fontSize: 14, color: '#262626', lineHeight: 18 }} />
+
+          <CommentMediaGrid media={item.media} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
             <TouchableOpacity onPress={() => onReply(item)} hitSlop={8}>
@@ -391,16 +534,14 @@ export default function PostDetailScreen() {
           : null;
 
         return (
-          <>
+          <View style={{ paddingTop: 8 }}>
             <PostCard
               post={postWithCommentState!}
               onPress={() => {}}
               onComment={openComposer}
               onPlusPress={(uid) => setSelectedUserId(uid)}
             />
-            {/* Very thin grey line separating the post from the comments */}
-            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB' }} />
-          </>
+          </View>
         );
       }
       case 'sort':

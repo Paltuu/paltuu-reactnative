@@ -779,9 +779,16 @@ export const PostCard = React.memo(({
   }, [actions, post.post_id, saved]);
   const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(post.post_id), [modals, post.post_id]);
   const handleCommentPress = useCallback(() => {
-    if (onComment) onComment();
-    else router.push(`/comment/${post.post_id}`);
-  }, [onComment, router, post.post_id]);
+    if (onComment) {
+      onComment();
+      return;
+    }
+    // Seed the comment screen's query cache with the post we already have in
+    // memory so it can render immediately instead of waiting on a redundant
+    // network fetch for data the feed just loaded.
+    queryClient.setQueryData(['post', post.post_id], post);
+    router.push(`/comment/${post.post_id}`);
+  }, [onComment, router, queryClient, post]);
   const handleMenuPress = useCallback(() => modals?.showOptionsSheet({
     isOwnPost,
     isFollowing: !!post.is_following,
