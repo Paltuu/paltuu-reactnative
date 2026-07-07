@@ -58,7 +58,6 @@ export const useSocialActions = () => {
       }
     },
     onSettled: (data, err, postId) => {
-      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
       queryClient.invalidateQueries({ queryKey: ['post', String(postId)] });
     },
   });

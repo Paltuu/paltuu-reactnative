@@ -110,7 +110,7 @@ function LostFoundScreen() {
               <View style={{ paddingHorizontal: 6, paddingTop: 8, paddingBottom: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <TouchableOpacity
-                    onPress={() => router.replace('/(app)/pets')}
+                    onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
                     style={{
                       width: 40,
                       height: 40,

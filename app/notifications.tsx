@@ -340,7 +340,11 @@ export default function NotificationsScreen() {
   const markAllReadMutation = useMutation({
     mutationFn: () => notificationsApi.markRead({ mark_all_read: true }),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['notifications'] });
+      // Don't cancel the ['notifications'] list query here: this mutation fires
+      // on screen mount (see the "mark all as read when screen opens" effect),
+      // racing the initial list fetch. Cancelling it mid-flight reverts
+      // isFetching/isLoading to false with no data, which briefly renders the
+      // "no notifications" empty state before the real list loads in.
       await queryClient.cancelQueries({ queryKey: ['unread-count'] });
 
       queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {

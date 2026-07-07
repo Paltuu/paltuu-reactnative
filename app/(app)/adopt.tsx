@@ -148,7 +148,7 @@ function AdoptScreen() {
     <View style={{ paddingBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TouchableOpacity
-          onPress={() => router.replace('/(app)/pets')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={26} color="#111827" />

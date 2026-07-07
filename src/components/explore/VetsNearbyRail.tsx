@@ -33,8 +33,8 @@ export const VetsNearbyRail = () => {
       isLoading={isLoading || !locationSettled}
       isEmpty={clinics.length === 0}
       onSeeAll={() => router.push('/(app)/pet-care')}
-      skeletonWidth={200}
-      skeletonHeight={168}
+      skeletonWidth={180}
+      skeletonHeight={230}
     >
       {clinics.map((c) => (
         <NearbyClinicCard

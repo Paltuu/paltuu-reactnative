@@ -8,8 +8,10 @@ import { FONTS } from '../../constants/typography';
 import { Rail } from './Rail';
 
 const DARK = '#1A1A2E';
-const MUTED = '#9AA0A6';
 const SURFACE_SUBTLE = '#F5F5F7';
+
+const CARD_WIDTH = 168;
+const IMAGE_HEIGHT = 190;
 
 type LostFoundPost = Awaited<ReturnType<typeof socialApi.getLostFoundNearby>>['posts'][number];
 
@@ -17,53 +19,24 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
   const isLost = post.post_type === 'lost';
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={{
-        width: 190,
-        borderRadius: 20,
-        backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#F0F0F2',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-      }}
-    >
-      <View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={{ width: CARD_WIDTH }}>
+      <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: SURFACE_SUBTLE }}>
         {post.main_image ? (
           <Image
             source={{ uri: post.main_image }}
-            style={{
-              width: '100%',
-              height: 110,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              backgroundColor: SURFACE_SUBTLE,
-            }}
+            style={{ width: '100%', height: IMAGE_HEIGHT }}
             contentFit="cover"
           />
         ) : (
-          <View
-            style={{
-              width: '100%',
-              height: 110,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              backgroundColor: '#FCE8ED',
-            }}
-          />
+          <View style={{ width: '100%', height: IMAGE_HEIGHT, backgroundColor: '#FCE8ED' }} />
         )}
         <View
           style={{
             position: 'absolute',
-            top: 8,
-            left: 8,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
+            top: 10,
+            left: 10,
+            paddingHorizontal: 9,
+            paddingVertical: 4,
             borderRadius: 999,
             backgroundColor: isLost ? '#DC2626' : '#16A34A',
           }}
@@ -74,16 +47,12 @@ const LostFoundCard = ({ post, onPress }: { post: LostFoundPost; onPress: () => 
         </View>
       </View>
 
-      <View style={{ padding: 12 }}>
-        <Text numberOfLines={2} style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: DARK, lineHeight: 17 }}>
-          {post.pet_description || (isLost ? 'Lost pet' : 'Found pet')}
-        </Text>
-        {(post.location || post.city) && (
-          <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 11.5, color: MUTED, marginTop: 5 }}>
-            {post.location || post.city}
-          </Text>
-        )}
-      </View>
+      <Text
+        numberOfLines={1}
+        style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: DARK, marginTop: 8 }}
+      >
+        {post.location || post.city || (isLost ? 'Lost pet' : 'Found pet')}
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -107,8 +76,8 @@ export const LostFoundNearbyRail = () => {
       isLoading={isLoading}
       isEmpty={posts.length === 0}
       onSeeAll={() => router.push('/(app)/lost-found')}
-      skeletonWidth={190}
-      skeletonHeight={176}
+      skeletonWidth={CARD_WIDTH}
+      skeletonHeight={IMAGE_HEIGHT + 26}
     >
       {posts.map((p) => (
         <LostFoundCard key={p.post_id} post={p} onPress={() => router.push('/(app)/lost-found')} />

@@ -109,7 +109,7 @@ function PetDetailsScreen() {
       {/* --- SOLID IN-FLOW NAVIGATION ROW --- */}
       <View style={[s.fixedNavRow, { paddingTop: insets.top }]}>
         <View style={s.fixedNavContent}>
-          <TouchableOpacity onPress={() => router.replace('/(app)/adopt')} style={s.navBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/adopt'))} style={s.navBtn} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color="#374151" />
           </TouchableOpacity>
           <TouchableOpacity onPress={onShare} style={s.navBtn} activeOpacity={0.7}>
