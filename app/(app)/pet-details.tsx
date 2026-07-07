@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Dimensions,
   Share,
   StyleSheet,
@@ -12,12 +11,14 @@ import {
   Modal
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { petApi } from '../../src/api/pets';
 import { useSocialActions } from '../../src/hooks/useSocialActions';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
+import { PetDetailsScreenSkeleton } from '../../src/components/common/PetDetailsScreenSkeleton';
 
 const { width } = Dimensions.get('window');
 // Wider and less tall layout (5:4 aspect ratio)
@@ -51,6 +52,9 @@ export default function PetDetailsScreen() {
   const { toggleSave } = useSocialActions();
 
   useEffect(() => {
+    setLoading(true);
+    setPet(null);
+    setActiveImageIndex(0);
     const fetchDetails = async () => {
       try {
         const data = await petApi.getPetDetails(parseInt(id as string));
@@ -85,7 +89,7 @@ export default function PetDetailsScreen() {
     }
   };
 
-  if (loading) return <View style={s.loadingContainer}><ActivityIndicator size="large" color="#a03048" /></View>;
+  if (loading) return <PetDetailsScreenSkeleton insetsTop={insets.top} />;
   if (!pet) return <View style={s.errorContainer}><Text style={s.errorText}>Pet Not Found</Text></View>;
 
   const images = pet.images?.length > 0
@@ -101,8 +105,8 @@ export default function PetDetailsScreen() {
 
   return (
     <View style={s.container}>
-      {/* --- MINIMALIST FIXED NAVIGATION ROW --- */}
-      <View style={[s.fixedNavRow, { height: insets.top + 44, paddingTop: insets.top }]}>
+      {/* --- SOLID IN-FLOW NAVIGATION ROW --- */}
+      <View style={[s.fixedNavRow, { paddingTop: insets.top }]}>
         <View style={s.fixedNavContent}>
           <TouchableOpacity onPress={() => router.replace('/(app)/adopt')} style={s.navBtn} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color="#374151" />
@@ -225,6 +229,12 @@ export default function PetDetailsScreen() {
 
       {/* --- STICKY FOOTER ACTION BAR --- */}
       <View style={[s.footerBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
+          locations={[0, 0.4, 1]}
+          style={s.footerGradient}
+          pointerEvents="none"
+        />
         <PaltuuButton
           label="Adopt Now"
           onPress={() => router.push({
@@ -314,22 +324,17 @@ const s = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scrollView: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { paddingTop: 88 }, // Creates space for the sticky top navigation layout
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
+  scrollContent: {},
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 40 },
   errorText: { fontSize: 18, fontFamily: 'DMSans_700Bold', color: '#111827', marginTop: 16, textAlign: 'center' },
 
   // Minimal Top Navigation Bar Setup
   fixedNavRow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Premium soft translucency
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F3F4F6',
   },
   fixedNavContent: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -426,13 +431,17 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 32,
     gap: 12,
+  },
+  footerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });
