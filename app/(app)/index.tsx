@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { socialApi, SocialPost } from '../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import PostCard from '../../src/components/social/PostCard';
+import PostCard, { getPostItemType } from '../../src/components/social/PostCard';
 import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
@@ -261,6 +261,7 @@ export default function HomeScreen() {
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={(item: SocialPost) => item.post_id}
+        getItemType={getPostItemType}
         estimatedItemSize={350}
         onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
         onScrollEndDrag={handleScrollEnd}

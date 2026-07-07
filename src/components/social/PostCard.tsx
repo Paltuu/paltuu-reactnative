@@ -70,6 +70,24 @@ const CAROUSEL_CARD_W = MEDIA_FULL_W - CAROUSEL_PEEK - CAROUSEL_GAP;
 const stripHtml = (s: string) =>
   (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
+// FlashList recycles cells by "item type" — feeding it a real bucket per post
+// shape (instead of the default single bucket) keeps a video cell from being
+// recycled into a text-only one mid-fling, which is what forces the extra
+// layout/remeasure work that tanks the JS thread during fast scrolling.
+// Keep this in sync with the isRepost/isQuoteRepost/bodyMedia logic in PostCard below.
+export const getPostItemType = (post: SocialPost): string => {
+  const isRepost = post.post_type === 'repost' && !!post.original_post_id;
+  const hasCaption = !!stripHtml(post.content);
+  const isQuoteRepost = isRepost && hasCaption;
+  const isPlainRepost = isRepost && !hasCaption;
+  const bodyMedia = isPlainRepost ? (post.original_media ?? []) : (post.media ?? []);
+
+  if (isQuoteRepost) return 'quote';
+  if (!bodyMedia.length) return 'text';
+  if (bodyMedia.length > 1) return 'carousel';
+  return bodyMedia[0]?.media_type === 'video' ? 'video' : 'image';
+};
+
 const formatCount = (n: number) => {
   if (!n) return '0';
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;

@@ -21,7 +21,7 @@ import { useSocialActions } from '../../src/hooks/useSocialActions';
 import ImageModal from '../../src/components/common/ImageModal';
 import { mentionsToPlainText } from '../../src/components/social/MentionText';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
-import PostCard from '../../src/components/social/PostCard';
+import PostCard, { getPostItemType } from '../../src/components/social/PostCard';
 import { ExploreSections } from '../../src/components/explore/ExploreSections';
 import { chunkArray, PostGridItem, GRID_MARGIN, GRID_GAP } from '../../src/components/explore/MediaGrid';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
@@ -292,6 +292,7 @@ export default function SearchScreen() {
           data={forYouPosts}
           renderItem={renderFeedItem}
           keyExtractor={(item: SocialPost) => item.post_id}
+          getItemType={getPostItemType}
           estimatedItemSize={350}
           onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
           onScrollEndDrag={handleScrollEnd}
