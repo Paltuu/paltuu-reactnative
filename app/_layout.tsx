@@ -194,6 +194,11 @@ export default function RootLayout() {
                   name="post/[id]"
                   options={{ animation: 'slide_from_right', gestureEnabled: true }}
                 />
+                {/* Re-rooted comment thread: same slide-in as the post detail */}
+                <Stack.Screen
+                  name="thread/[id]"
+                  options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                />
                 {/* Notifications: slides in from the right, covers the tab bar */}
                 <Stack.Screen
                   name="notifications"

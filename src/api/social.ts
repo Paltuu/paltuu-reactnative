@@ -182,6 +182,11 @@ export const socialApi = {
     return data as { liked: boolean };
   },
 
+  async toggleCommentLike(commentId: string | number) {
+    const { data } = await client.post(`/social/comments/${commentId}/like`);
+    return data as { liked: boolean; like_count: number };
+  },
+
   async uploadMedia(files: string[]) {
     const formData = new FormData();
     files.forEach((uri) => {

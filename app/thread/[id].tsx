@@ -1,9 +1,10 @@
-// app/post/[id].tsx
-// Root-stack post detail. Lives outside the (app) tab group so it slides in
-// from the right and covers the bottom tab bar. Shows the post + ALL replies,
-// with a phase-1 (collapsed) → phase-2 (expanded, full composer) reply box.
-// Thread rendering (rows, lines, tree helpers) is shared with the re-rooted
-// comment page via src/components/social/commentTree.
+// app/thread/[id].tsx
+// Re-rooted comment detail page. When a thread nests past MAX_INLINE_DEPTH on
+// the post page, "Continue this thread" opens this screen with that comment as
+// the focused root at the top (like the post on the post page) and its whole
+// subtree below — giving the thread a fresh indentation budget. Reuses the
+// shared thread rendering + the same ['comments', postId] query (so navigation
+// is instant off the cache).
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Pressable,
@@ -16,8 +17,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { useAuthStore } from '../../src/stores/authStore';
-import PostCard from '../../src/components/social/PostCard';
-import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
 import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
@@ -31,13 +30,13 @@ import { MentionSuggestionDropdown } from '../../src/components/social/MentionIn
 import {
   BG, PRIMARY,
   type SortBy, type FlatComment,
-  buildTree, buildOrderRank, sortTreeByRank, flatten,
-  Avatar, CommentRow, SortSelector, EmptyComments,
+  buildTree, buildOrderRank, sortTreeByRank, flatten, findComment, rebaseTree,
+  Avatar, CommentRow, SortSelector, EmptyComments, FocusedCommentHeader,
 } from '../../src/components/social/commentTree';
 
-/* ─────────────────── Main screen ─────────────────── */
-export default function PostDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+/* ─────────────────── Comment thread screen ─────────────────── */
+export default function CommentThreadScreen() {
+  const { id, postId } = useLocalSearchParams<{ id: string; postId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -52,9 +51,6 @@ export default function PostDetailScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('top');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
-  // Track keyboard height so the floating composer can stick directly above it.
-  // (Android defaults to adjustResize, so the window already excludes the keyboard
-  // and we anchor to bottom: 0 there; iOS needs the explicit offset.)
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -63,22 +59,37 @@ export default function PostDetailScreen() {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  /* ── Queries ── */
-  const { data: postData, isLoading: postLoading, isError: postError } = useQuery({
-    queryKey: ['post', id],
-    queryFn: () => socialApi.getPostById(id as string),
-    enabled: !!id,
-    retry: 1,
-  });
-
+  /* ── Query (shared with the post page's comment list) ── */
+  const commentsQueryKey = ['comments', postId] as const;
   const { data: commentsData, isLoading: commentsLoading } = useQuery({
-    queryKey: ['comments', id],
-    queryFn: () => socialApi.getComments(id as string),
-    enabled: !!id,
+    queryKey: commentsQueryKey,
+    queryFn: () => socialApi.getComments(postId as string),
+    enabled: !!postId,
   });
 
-  /* ── Comment/reply like — optimistic, with rollback on failure ── */
-  const commentsQueryKey = ['comments', id] as const;
+  // Frozen sort order (see commentTree.buildOrderRank): only re-snapshots when
+  // the comment set or sort tab changes — likes never reorder the list.
+  const commentIdsKey = useMemo(
+    () => (commentsData?.comments ?? []).map((c: any) => c.comment_id).join(','),
+    [commentsData]
+  );
+  const orderRank = useMemo(
+    () => buildOrderRank(commentsData?.comments ?? [], sortBy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id set, not live like counts
+    [commentIdsKey, sortBy]
+  );
+
+  /* ── Locate the focused comment + its (re-based) subtree ── */
+  const { focused, flatComments } = useMemo(() => {
+    const fullTree = buildTree(commentsData?.comments ?? []);
+    const node = findComment(fullTree, id as string);
+    if (!node) return { focused: null, flatComments: [] as FlatComment[] };
+    // Re-base so the focused comment's direct replies start at display depth 0.
+    const rebased = rebaseTree(node.replies, node.depth + 1);
+    return { focused: node, flatComments: flatten(sortTreeByRank(rebased, orderRank), expanded) };
+  }, [commentsData, id, expanded, orderRank]);
+
+  /* ── Comment/reply like — optimistic (same cache the post page uses) ── */
   const toggleCommentLike = useMutation({
     mutationFn: (commentId: string) => socialApi.toggleCommentLike(commentId),
     onMutate: async (commentId: string) => {
@@ -110,15 +121,13 @@ export default function PostDetailScreen() {
     toggleCommentLike.mutate(commentId);
   }, [toggleCommentLike]);
 
-  // Past the inline-depth cap, tapping "Continue this thread" opens a focused
-  // page rooted at that comment (fresh indentation budget).
   const handleContinueThread = useCallback((commentId: string) => {
-    router.push({ pathname: '/thread/[id]', params: { id: commentId, postId: String(id) } });
-  }, [router, id]);
+    router.push({ pathname: '/thread/[id]', params: { id: commentId, postId: String(postId) } });
+  }, [router, postId]);
 
-  /* ── Reply draft (shared composer logic) ── */
+  /* ── Reply draft — defaults to replying to the focused comment ── */
   const draft = useCommentDraft({
-    postId: id as string,
+    postId: postId as string,
     onPosted: () => {
       setReplyingTo(null);
       setComposerExpanded(false);
@@ -126,14 +135,8 @@ export default function PostDetailScreen() {
     },
   });
 
-  // While typing/selecting a mention, the floating composer expands upward
-  // to cover the post+comments behind it, so its full-width suggestion list
-  // can fill all the way down to the keyboard — the reply banner and toolbar
-  // hide to make room. The TextInput stays mounted at a stable position
-  // throughout, so this never costs focus.
   const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
 
-  /* ── Handlers ── */
   const openComposer = useCallback(() => {
     setReplyingTo(null);
     setComposerExpanded(true);
@@ -147,10 +150,6 @@ export default function PostDetailScreen() {
 
   const handleReply = useCallback((comment: FlatComment) => {
     setReplyingTo(comment);
-    // Prefill with a real, encoded mention so it renders as a tappable link
-    // and actually notifies the person being replied to — not just cosmetic
-    // text. Falls back to plain (unlinked) text if they have no username set
-    // (a real mention requires one — see lib/mentions.ts validateMentions).
     if (comment.social_username) {
       draft.insertMention({ type: 'user', id: comment.user_id, name: comment.social_username });
     } else {
@@ -168,72 +167,45 @@ export default function PostDetailScreen() {
     });
   }, []);
 
+  // Replies always attach to at least the focused comment (the thread root).
   const handleSend = useCallback(() => {
     if (!draft.canSubmit) return;
-    draft.submit(replyingTo?.comment_id);
-  }, [draft, replyingTo]);
+    draft.submit(replyingTo?.comment_id ?? (id as string));
+  }, [draft, replyingTo, id]);
 
-  /* ── Data ── */
-  // A signature of just the comment *set* (ids) — changes on add/remove but not
-  // when a like mutates a count, so the frozen sort order survives likes.
-  const commentIdsKey = useMemo(
-    () => (commentsData?.comments ?? []).map((c: any) => c.comment_id).join(','),
-    [commentsData]
-  );
-  const orderRank = useMemo(
-    () => buildOrderRank(commentsData?.comments ?? [], sortBy),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id set, not live like counts
-    [commentIdsKey, sortBy]
-  );
-
-  const flatComments = useMemo(() => {
-    const tree = sortTreeByRank(buildTree(commentsData?.comments ?? []), orderRank);
-    return flatten(tree, expanded);
-  }, [commentsData, expanded, orderRank]);
-
+  /* ── List assembly ── */
   const listData = useMemo(() => {
-    if (!postData) return [];
+    if (!focused) return [];
     let commentItems: any[];
     if (commentsLoading) {
-      commentItems = [0, 1, 2].map((i) => ({ type: 'comment-skeleton', key: `skeleton-${i}` }));
+      commentItems = [0, 1].map((i) => ({ type: 'comment-skeleton', key: `skeleton-${i}` }));
     } else if (flatComments.length === 0) {
       commentItems = [{ type: 'empty', key: 'empty' }];
     } else {
       commentItems = flatComments.map(c => ({ type: 'comment', key: c.comment_id, data: c }));
     }
     return [
-      { type: 'post', key: 'post' },
+      { type: 'focused', key: 'focused' },
       { type: 'sort', key: 'sort' },
       ...commentItems,
     ];
-  }, [postData, flatComments, commentsLoading]);
+  }, [focused, flatComments, commentsLoading]);
 
-  /* ── Render item ── */
   const renderItem = useCallback(({ item }: { item: any }) => {
     switch (item.type) {
-      case 'post': {
-        const hasUserCommented = !!commentsData?.comments?.some(
-          (c: any) => String(c.user_id) === String(user?.id)
-        );
-        const postWithCommentState = postData
-          ? { ...postData, is_commented: postData.is_commented || hasUserCommented }
-          : null;
-
+      case 'focused':
         return (
-          <View style={{ paddingTop: 8 }}>
-            <PostCard
-              post={postWithCommentState!}
-              onPress={() => {}}
-              onComment={openComposer}
-              onPlusPress={(uid) => setSelectedUserId(uid)}
-            />
-          </View>
+          <FocusedCommentHeader
+            comment={focused!}
+            onReply={openComposer}
+            onToggleLike={() => handleToggleCommentLike(focused!.comment_id)}
+            onOpenProfile={setSelectedUserId}
+          />
         );
-      }
       case 'sort':
         return <SortSelector value={sortBy} onChange={setSortBy} />;
       case 'empty':
-        return <EmptyComments />;
+        return <EmptyComments label="No replies yet" hint="Be the first to reply" />;
       case 'comment-skeleton':
         return <CommentRowSkeleton />;
       case 'comment':
@@ -251,43 +223,43 @@ export default function PostDetailScreen() {
       default:
         return null;
     }
-  }, [postData, commentsData, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, user?.id, sortBy]);
+  }, [focused, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, sortBy]);
 
-  /* ── Loading / Error ── */
-  if (postLoading) {
+  /* ── Header (shared by all states) ── */
+  const Navbar = (
+    <View style={{
+      backgroundColor: BG, paddingTop: insets.top, paddingHorizontal: 16, paddingBottom: 12,
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
+    }}>
+      <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+        <Ionicons name="chevron-back" size={24} color="#111" />
+      </TouchableOpacity>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#111', flex: 1 }}>Thread</Text>
+    </View>
+  );
+
+  /* ── Loading / Not found ── */
+  if (commentsLoading && !focused) {
     return (
       <View style={{ flex: 1, backgroundColor: BG }}>
-        <View style={{
-          backgroundColor: BG, paddingTop: insets.top, paddingHorizontal: 16, paddingBottom: 12,
-          flexDirection: 'row', alignItems: 'center', gap: 12,
-          borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
-        }}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="chevron-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111', flex: 1 }}>Post</Text>
-        </View>
-        <PostCardSkeleton />
+        {Navbar}
         <CommentRowSkeleton />
         <CommentRowSkeleton />
       </View>
     );
   }
 
-  if (postError || (!postLoading && !postData)) {
+  if (!focused) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' }}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="chevron-back" size={24} color="#111" />
-          </TouchableOpacity>
-        </View>
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        {Navbar}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Ionicons name="alert-circle-outline" size={48} color="#E0E0E0" />
+          <Ionicons name="chatbubbles-outline" size={48} color="#E0E0E0" />
           <Text style={{ color: '#999', marginTop: 12, textAlign: 'center', fontSize: 15 }}>
-            This post is unavailable.
+            This thread is unavailable.
           </Text>
-          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: '#A03048' }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: PRIMARY }}>
             <Text style={{ color: '#FFF', fontWeight: '700' }}>Go back</Text>
           </TouchableOpacity>
         </View>
@@ -299,26 +271,8 @@ export default function PostDetailScreen() {
     <PostCardModalsProvider>
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="dark-content" />
+      {Navbar}
 
-      {/* ── Navbar ── */}
-      <View style={{
-        backgroundColor: BG,
-        paddingTop: insets.top,
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#F3F4F6',
-      }}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="chevron-back" size={24} color="#111" />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111', flex: 1 }}>Post</Text>
-      </View>
-
-      {/* ── Content ── */}
       <FlatList
         data={listData}
         renderItem={renderItem}
@@ -329,7 +283,7 @@ export default function PostDetailScreen() {
         style={{ flex: 1, backgroundColor: BG }}
       />
 
-      {/* ── Phase 1: collapsed reply bar (in-flow, anchored to the bottom) ── */}
+      {/* ── Phase 1: collapsed reply bar ── */}
       {!composerExpanded && (
         <View style={{
           backgroundColor: BG,
@@ -353,16 +307,15 @@ export default function PostDetailScreen() {
               borderWidth: 1, borderColor: '#F3F4F6',
               paddingHorizontal: 16, paddingVertical: 11,
             }}>
-              <Text style={{ fontSize: 14, color: '#C4C4C4' }}>Post your reply</Text>
+              <Text style={{ fontSize: 14, color: '#C4C4C4' }}>Reply to {focused.author_name}</Text>
             </View>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* ── Phase 2: floating composer — sticks to the keyboard, floats above all ── */}
+      {/* ── Phase 2: floating composer ── */}
       {composerExpanded && (
         <>
-          {/* Transparent tap-catcher to dismiss */}
           <Pressable
             onPress={collapseComposer}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
@@ -370,9 +323,6 @@ export default function PostDetailScreen() {
 
           <View style={{
             position: 'absolute', left: 0, right: 0,
-            // While a mention is active, the box expands upward (stopping
-            // just below the navbar) so the suggestion list has room to
-            // fill all the way down to the keyboard, full width.
             top: mentionActive ? insets.top + 48 : undefined,
             bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
             zIndex: 50, elevation: 24,
@@ -383,9 +333,10 @@ export default function PostDetailScreen() {
             paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : (insets.bottom > 0 ? insets.bottom : 8),
           }}>
             <View style={{ flex: mentionActive ? 1 : undefined }}>
-              {/* Reply banner (replying to a specific comment) — hidden while
-                  a mention is active to make room for the suggestion list */}
-              {replyingTo && !mentionActive && (
+              {/* On a thread page you're always replying to at least the focused
+                  root, so the banner shows by default; the ✕ only appears when a
+                  more specific reply target was picked, to reset back to root. */}
+              {!mentionActive && (
                 <View style={{
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                   paddingHorizontal: 16, paddingVertical: 8,
@@ -395,20 +346,20 @@ export default function PostDetailScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="return-down-forward-outline" size={14} color={PRIMARY} />
                     <Text style={{ fontSize: 12, color: PRIMARY, fontWeight: '600' }}>
-                      Replying to {replyingTo.author_name}
+                      Replying to {(replyingTo?.author_name) ?? focused.author_name}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => { setReplyingTo(null); draft.setText(''); }}
-                    hitSlop={10}
-                  >
-                    <Ionicons name="close" size={16} color={PRIMARY} />
-                  </TouchableOpacity>
+                  {replyingTo && (
+                    <TouchableOpacity
+                      onPress={() => { setReplyingTo(null); draft.setText(''); }}
+                      hitSlop={10}
+                    >
+                      <Ionicons name="close" size={16} color={PRIMARY} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
-              {/* Text field — always mounted at a stable position, regardless
-                  of mention state, so it never loses focus */}
               <View style={{ paddingHorizontal: 12, paddingTop: 10 }}>
                 <View style={{ flexDirection: 'row' }}>
                   <Avatar name={user?.name || 'U'} uri={user?.profile_image_url} size={32} />
@@ -416,7 +367,7 @@ export default function PostDetailScreen() {
                     <TextInput
                       ref={inputRef}
                       {...draft.mentionInputProps}
-                      placeholder={replyingTo ? `Reply to ${replyingTo.author_name}...` : 'Post your reply'}
+                      placeholder={`Reply to ${(replyingTo?.author_name) ?? focused.author_name}...`}
                       placeholderTextColor="#C4C4C4"
                       style={{ fontSize: 15, color: '#111', minHeight: mentionActive ? undefined : 40, maxHeight: 120, textAlignVertical: 'top', paddingTop: 8 }}
                       multiline
@@ -426,8 +377,6 @@ export default function PostDetailScreen() {
                 </View>
               </View>
 
-              {/* Below the input: full-width mention suggestions filling
-                  remaining space, or the normal media/pet attachments */}
               {mentionActive ? (
                 <View style={{ flex: 1, marginTop: 6, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
                   <MentionSuggestionDropdown {...draft.mentionTriggers.mention} />
@@ -443,8 +392,6 @@ export default function PostDetailScreen() {
                 </View>
               )}
 
-              {/* Toolbar / quick-access bar + Reply — stuck to the keyboard;
-                  hidden while mention suggestions are showing */}
               {!mentionActive && (
                 <View style={{
                   flexDirection: 'row', alignItems: 'center',
