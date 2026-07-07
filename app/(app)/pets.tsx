@@ -16,7 +16,6 @@ import { useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useLocationStore } from '../../src/stores/locationStore';
 import { petApi } from '../../src/api/pets';
-import { StaggeredPlaceholder } from '../../src/components/common/CyclingText';
 import { FONTS } from '../../src/constants/typography';
 import { SkeletonCircle } from '../../src/components/common/Skeleton';
 
@@ -33,7 +32,6 @@ const GREETING_LINES = [
   "Ready to find your perfect match?",
   'Your pet deserves the best care.',
 ];
-const GREETING_INTERVAL = 6500;
 
 const NEARBY_FETCH_LIMIT = 10;
 const NEARBY_VISIBLE_COUNT = 5;
@@ -49,14 +47,9 @@ export default function PetsHubScreen() {
   const user = useAuthStore((state) => state.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
-  const [greetingIndex, setGreetingIndex] = useState(0);
-  useEffect(() => {
-    if (!isFocused) return;
-    const timer = setInterval(() => {
-      setGreetingIndex((prev) => (prev + 1) % GREETING_LINES.length);
-    }, GREETING_INTERVAL);
-    return () => clearInterval(timer);
-  }, [isFocused]);
+  const [greeting] = useState(
+    () => GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)]
+  );
 
   const { cityId, cityName } = useLocationStore();
   const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
@@ -122,11 +115,7 @@ export default function PetsHubScreen() {
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
         <View style={styles.topBar}>
           <Text style={styles.greetingTitle}>Hey {firstName}</Text>
-          <StaggeredPlaceholder
-            text={GREETING_LINES[greetingIndex]}
-            style={styles.greetingSubtitle}
-            wrap
-          />
+          <Text style={styles.greetingSubtitle}>{greeting}</Text>
         </View>
 
         {/* Tile 1 — Adopt a Pet (Hero) */}

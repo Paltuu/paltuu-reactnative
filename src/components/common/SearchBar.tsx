@@ -21,7 +21,6 @@ import { BlurView } from "expo-blur";
 import type { SearchBarProps } from "./SearchBar.types";
 import { runOnJS } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { StaggeredPlaceholder } from "./CyclingText";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -32,7 +31,6 @@ const { width: screenWidth } = Dimensions.get("window");
 export const SearchBar = ({
   placeholder = "Search",
   placeholders,
-  placeholderInterval = 3000,
   onSearch,
   onClear,
   style,
@@ -50,26 +48,16 @@ export const SearchBar = ({
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0 });
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<TextInput>(null);
 
   const hasCyclingPlaceholders = !!placeholders && placeholders.length > 0;
 
-  // Cycle through placeholders while idle (unfocused + empty).
-  useEffect(() => {
-    if (!hasCyclingPlaceholders || isFocused || query) return;
-    const timeout = setTimeout(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % placeholders!.length);
-    }, placeholderInterval);
-    return () => clearTimeout(timeout);
-  }, [
-    placeholderIndex,
-    isFocused,
-    query,
-    hasCyclingPlaceholders,
-    placeholders,
-    placeholderInterval,
-  ]);
+  // Pick one placeholder at random on mount — no cycling/animation.
+  const [resolvedPlaceholder] = useState(() =>
+    hasCyclingPlaceholders
+      ? placeholders![Math.floor(Math.random() * placeholders!.length)]
+      : placeholder
+  );
 
   const Container = Platform.OS === 'ios' ? BlurView : View;
   const containerProps = Platform.OS === 'ios' ? { intensity: 20, tint: 'light' as const } : {};
@@ -274,21 +262,14 @@ export const SearchBar = ({
                 </AnimatedView>
 
                 <AnimatedView style={[{ flex: 1, position: 'relative' }, animatedInputWrapperStyle]}>
-                  {/* Placeholder overlay — cycling staggered text, or static fallback */}
+                  {/* Placeholder overlay — static, randomized once on mount */}
                   <AnimatedView
                     pointerEvents="none"
                     style={[{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center' }, animatedPlaceholderStyle]}
                   >
-                    {hasCyclingPlaceholders ? (
-                      <StaggeredPlaceholder
-                        text={placeholders![placeholderIndex]}
-                        style={[styles.placeholderText, props?.inputStyle as TextStyle]}
-                      />
-                    ) : (
-                      <Text style={[styles.placeholderText, props?.inputStyle as TextStyle]}>
-                        {placeholder}
-                      </Text>
-                    )}
+                    <Text style={[styles.placeholderText, props?.inputStyle as TextStyle]}>
+                      {resolvedPlaceholder}
+                    </Text>
                   </AnimatedView>
 
                     <AnimatedTextInput
@@ -299,11 +280,7 @@ export const SearchBar = ({
                       props?.inputStyle,
                     ]}
                     cursorColor={props?.tint ?? "#A03048"}
-                    placeholder={
-                      hasCyclingPlaceholders
-                        ? placeholders![placeholderIndex]
-                        : placeholder
-                    }
+                    placeholder={resolvedPlaceholder}
                     placeholderTextColor={isFocused ? "#8E8E93" : "transparent"}
                     value={query}
                     onChangeText={handleChangeText}

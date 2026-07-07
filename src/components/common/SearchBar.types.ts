@@ -3,13 +3,11 @@ import { TextInputProps, ViewStyle, TextStyle } from 'react-native';
 export interface SearchBarProps extends TextInputProps {
   placeholder?: string;
   /**
-   * When provided, the idle placeholder cycles through these strings with a
-   * staggered per-character animation (e.g. "Search users", "Search vets").
-   * Falls back to `placeholder` while focused or typing.
+   * When provided, one of these strings is chosen at random (once, on mount)
+   * as the idle placeholder (e.g. "Search users", "Search vets"). Falls back
+   * to `placeholder` while focused or typing.
    */
   placeholders?: string[];
-  /** Time in ms each cycling placeholder is shown. Defaults to 3000. */
-  placeholderInterval?: number;
   onSearch?: (text: string) => void;
   onClear?: () => void;
   style?: ViewStyle;
