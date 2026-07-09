@@ -33,6 +33,7 @@ export default (): ExpoConfig => {
       supportsTablet: true,
       bundleIdentifier,
       googleServicesFile: "./GoogleService-Info.plist",
+      usesAppleSignIn: true,
     },
     android: {
       package: packageName,
@@ -65,6 +66,7 @@ export default (): ExpoConfig => {
     },
     plugins: [
       "expo-secure-store",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {

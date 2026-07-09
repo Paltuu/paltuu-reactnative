@@ -7,8 +7,10 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import Toast from 'react-native-toast-message';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { AuthMethodButton } from '../../src/components/ui/AuthMethodButton';
 import { useAuthStore } from '../../src/stores/authStore';
+import client from '../../src/api/client';
 
 // Required for Android browser redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -18,6 +20,7 @@ const BUILD_VERSION = Constants.nativeBuildVersion ?? '';
 
 export default function WelcomeScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const setAuthAsNewUser = useAuthStore((state) => state.setAuthAsNewUser);
@@ -95,12 +98,83 @@ export default function WelcomeScreen() {
     }
   };
 
-  const handleAppleSignIn = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Coming soon',
-      text2: "Apple Sign-In isn't available yet.",
-    });
+  const handleAppleSignIn = async () => {
+    setIsAppleLoading(true);
+    try {
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        throw new Error('Apple Sign-In is not available on this device.');
+      }
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const { identityToken, fullName, email } = credential;
+      if (!identityToken) {
+        throw new Error('Apple Sign-In did not return an identity token.');
+      }
+
+      const response = await client.post('/auth/apple/mobile', {
+        identityToken,
+        fullName: fullName ? {
+          givenName: fullName.givenName || null,
+          familyName: fullName.familyName || null,
+        } : null,
+        email: email || null,
+      });
+
+      const {
+        token: tokenStr,
+        refreshToken: refreshStr,
+        userId: userIdStr,
+        email: emailStr,
+        name: nameStr,
+        role: roleStr,
+        profile_image_url: avatarStr,
+        isNewUser,
+      } = response.data;
+
+      if (!tokenStr || !refreshStr) {
+        throw new Error('Authentication tokens were not returned.');
+      }
+
+      const appleUser = {
+        id: userIdStr,
+        email: emailStr,
+        name: nameStr || emailStr,
+        role: roleStr || 'regular user',
+        profile_image_url: avatarStr || null,
+      };
+
+      if (isNewUser) {
+        await setAuthAsNewUser(appleUser as any, tokenStr, refreshStr, true);
+        router.replace('/oauth-username');
+      } else {
+        await setAuth(appleUser as any, tokenStr, refreshStr);
+        Toast.show({
+          type: 'success',
+          text1: 'Welcome back!',
+          text2: 'Successfully signed in with Apple',
+        });
+      }
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
+        console.log('[Apple Sign-In] User cancelled sign-in.');
+        return;
+      }
+      console.error('[Apple Sign-In] Error:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Sign In Failed',
+        text2: err.response?.data?.error || err.message || 'An error occurred during Apple Sign-In.',
+      });
+    } finally {
+      setIsAppleLoading(false);
+    }
   };
 
   return (
@@ -130,20 +204,22 @@ export default function WelcomeScreen() {
           label="Continue with Google"
           onPress={handleGoogleSignIn}
           loading={isGoogleLoading}
+          disabled={isAppleLoading}
         />
         <View style={{ height: 12 }} />
         <AuthMethodButton
           variant="apple"
-          label="Login with Apple"
+          label="Continue with Apple"
           onPress={handleAppleSignIn}
-          disabled={isGoogleLoading}
+          loading={isAppleLoading}
+          disabled={isGoogleLoading || isAppleLoading}
         />
         <View style={{ height: 12 }} />
         <AuthMethodButton
           variant="email"
           label="Continue with email"
           onPress={() => router.push('/(auth)/login')}
-          disabled={isGoogleLoading}
+          disabled={isGoogleLoading || isAppleLoading}
         />
 
         <View style={styles.footer}>
