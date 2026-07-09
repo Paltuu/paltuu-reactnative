@@ -7,7 +7,6 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import Toast from 'react-native-toast-message';
-import { IllustrationPlaceholder } from '../../src/components/common/IllustrationPlaceholder';
 import { AuthMethodButton } from '../../src/components/ui/AuthMethodButton';
 import { useAuthStore } from '../../src/stores/authStore';
 
@@ -115,7 +114,11 @@ export default function WelcomeScreen() {
         />
 
         <View style={styles.illustrationZone}>
-          <IllustrationPlaceholder label="Mascot standalone, welcoming pose" style={{ flex: 1, width: '100%' }} />
+          <Image
+            source={require('../../assets/login-journey/login-page.png')}
+            style={{ flex: 1, width: '100%' }}
+            contentFit="contain"
+          />
         </View>
 
         {/* <Text style={styles.tagline}>Pakistan's pet community</Text> */}
