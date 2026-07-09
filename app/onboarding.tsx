@@ -1,9 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { IllustrationPlaceholder } from '../src/components/common/IllustrationPlaceholder';
 import { useAuthStore } from '../src/stores/authStore';
 
 // Equal breathing room between illustration → heading → subheading → dots → button.
@@ -13,21 +12,16 @@ const SLIDES = [
   {
     headline: 'Every pet deserves a home',
     copy: 'Thousands of animals across Pakistan are waiting for theirs',
-    illustration: 'Mascot presenting a cat and dog together — the adoption moment',
-    icon: 'heart' as const,
+    image: require('../assets/login-journey/image1-home.png'),
   },
   {
     headline: 'Find a vet you can trust',
     copy: 'Discover clinics, read reviews — all in one place',
-    illustration: 'Mascot with a stethoscope, clinic setting',
-    icon: 'medkit' as const,
     image: require('../assets/login-journey/image2-vets.png'),
   },
   {
     headline: 'You found your people',
     copy: "Join Pakistan's largest pet community",
-    illustration: 'Mascot surrounded by a mix of pets — community feel, warm and full',
-    icon: 'people' as const,
     image: require('../assets/login-journey/image3-community.png'),
   },
 ];
@@ -38,7 +32,6 @@ export default function OnboardingScreen() {
   const [pagerHeight, setPagerHeight] = useState(height);
   const pagerRef = useRef<PagerView>(null);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const markOnboardingSeen = useAuthStore((state) => state.markOnboardingSeen);
 
   const finish = () => {
@@ -56,14 +49,6 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
-      <TouchableOpacity
-        onPress={finish}
-        style={[styles.skipBtn, { top: insets.top + 8 }]}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
-
       <PagerView
         ref={pagerRef}
         style={styles.pager}
@@ -71,72 +56,41 @@ export default function OnboardingScreen() {
         onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}
         onPageSelected={(e) => setPage(e.nativeEvent.position)}
       >
-        {SLIDES.map((slide, i) =>
-          slide.image ? (
-            <View key={i} style={styles.communitySlide}>
+        {SLIDES.map((slide, i) => (
+          <View key={i} style={styles.communitySlide}>
+            <View style={[styles.communityImageWrap, { height: pagerHeight * 0.86 }]}>
               <Image
                 source={slide.image}
                 style={[
                   styles.communityImage,
-                  { height: pagerHeight * 0.86 },
+                  { height: pagerHeight * 0.86 + (i === 2 ? 30 : 0) },
                   i === 2 && styles.communityImageRaised,
                 ]}
                 resizeMode="cover"
               />
-              <View
-                style={[
-                  styles.communityCard,
-                  { height: pagerHeight * 0.14 },
-                  i === 1 && styles.communityCardSquare,
-                ]}
+            </View>
+            <View
+              style={[styles.communityCard, { height: pagerHeight * 0.14 }]}
+            >
+              <Text
+                style={[styles.headline, { marginBottom: 8 }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
               >
-                <Text
-                  style={[styles.headline, { marginBottom: 8 }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                >
-                  {slide.headline}
-                </Text>
-                <Text
-                  style={styles.copy}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                >
-                  {slide.copy}
-                </Text>
-              </View>
+                {slide.headline}
+              </Text>
+              <Text
+                style={styles.copy}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {slide.copy}
+              </Text>
             </View>
-          ) : (
-            <View key={i} style={[styles.slide, { paddingTop: insets.top }]}>
-              <View style={styles.illustrationZone}>
-                <IllustrationPlaceholder label={slide.illustration} icon={slide.icon} style={{ flex: 1 }} />
-              </View>
-
-              <View style={{ height: GAP }} />
-
-              <View style={styles.textZone}>
-                <Text
-                  style={styles.headline}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                >
-                  {slide.headline}
-                </Text>
-                <Text
-                  style={styles.copy}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                >
-                  {slide.copy}
-                </Text>
-              </View>
-            </View>
-          )
-        )}
+          </View>
+        ))}
       </PagerView>
 
       <View style={styles.dotsRow}>
@@ -161,58 +115,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  skipBtn: {
-    position: 'absolute',
-    top: 8,
-    right: 20,
-    zIndex: 10,
-  },
-  skipText: {
-    fontSize: 14,
-    fontFamily: 'DMSans_500Medium',
-    color: '#555555',
-  },
   pager: {
     flex: 1,
-  },
-  slide: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  illustrationZone: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingTop: 24,
-    paddingBottom: 4,
   },
   communitySlide: {
     flex: 1,
   },
+  communityImageWrap: {
+    width: '100%',
+    overflow: 'hidden',
+  },
   communityImage: {
     width: '100%',
-    flex: 1,
   },
   communityImageRaised: {
     transform: [{ translateY: -30 }],
   },
   communityCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
     marginTop: -28,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  communityCardSquare: {
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-  },
-  textZone: {
-    alignItems: 'center',
-    paddingBottom: GAP,
   },
   headline: {
     fontSize: 28,
