@@ -33,13 +33,10 @@ export default (): ExpoConfig => {
       supportsTablet: true,
       bundleIdentifier,
       googleServicesFile: "./GoogleService-Info.plist",
-<<<<<<< Updated upstream
       usesAppleSignIn: true,
-=======
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
->>>>>>> Stashed changes
     },
     android: {
       package: packageName,
