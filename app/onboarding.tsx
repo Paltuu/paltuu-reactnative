@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { IllustrationPlaceholder } from '../src/components/common/IllustrationPlaceholder';
 import { useAuthStore } from '../src/stores/authStore';
@@ -21,20 +21,24 @@ const SLIDES = [
     copy: 'Discover clinics, read reviews — all in one place',
     illustration: 'Mascot with a stethoscope, clinic setting',
     icon: 'medkit' as const,
+    image: require('../assets/login-journey/image2-vets.png'),
   },
   {
     headline: 'You found your people',
     copy: "Join Pakistan's largest pet community",
     illustration: 'Mascot surrounded by a mix of pets — community feel, warm and full',
     icon: 'people' as const,
+    image: require('../assets/login-journey/image3-community.png'),
   },
 ];
 
 export default function OnboardingScreen() {
   const [page, setPage] = useState(0);
+  const { width, height } = useWindowDimensions();
+  const [pagerHeight, setPagerHeight] = useState(height);
   const pagerRef = useRef<PagerView>(null);
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const markOnboardingSeen = useAuthStore((state) => state.markOnboardingSeen);
 
   const finish = () => {
@@ -51,8 +55,12 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <TouchableOpacity onPress={finish} style={styles.skipBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+      <TouchableOpacity
+        onPress={finish}
+        style={[styles.skipBtn, { top: insets.top + 8 }]}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 
@@ -60,36 +68,75 @@ export default function OnboardingScreen() {
         ref={pagerRef}
         style={styles.pager}
         initialPage={0}
+        onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}
         onPageSelected={(e) => setPage(e.nativeEvent.position)}
       >
-        {SLIDES.map((slide, i) => (
-          <View key={i} style={styles.slide}>
-            <View style={styles.illustrationZone}>
-              <IllustrationPlaceholder label={slide.illustration} icon={slide.icon} style={{ flex: 1 }} />
-            </View>
-
-            <View style={{ height: GAP }} />
-
-            <View style={styles.textZone}>
-              <Text
-                style={styles.headline}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
+        {SLIDES.map((slide, i) =>
+          slide.image ? (
+            <View key={i} style={styles.communitySlide}>
+              <Image
+                source={slide.image}
+                style={[
+                  styles.communityImage,
+                  { height: pagerHeight * 0.86 },
+                  i === 2 && styles.communityImageRaised,
+                ]}
+                resizeMode="cover"
+              />
+              <View
+                style={[
+                  styles.communityCard,
+                  { height: pagerHeight * 0.14 },
+                  i === 1 && styles.communityCardSquare,
+                ]}
               >
-                {slide.headline}
-              </Text>
-              <Text
-                style={styles.copy}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {slide.copy}
-              </Text>
+                <Text
+                  style={[styles.headline, { marginBottom: 8 }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {slide.headline}
+                </Text>
+                <Text
+                  style={styles.copy}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {slide.copy}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ) : (
+            <View key={i} style={[styles.slide, { paddingTop: insets.top }]}>
+              <View style={styles.illustrationZone}>
+                <IllustrationPlaceholder label={slide.illustration} icon={slide.icon} style={{ flex: 1 }} />
+              </View>
+
+              <View style={{ height: GAP }} />
+
+              <View style={styles.textZone}>
+                <Text
+                  style={styles.headline}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {slide.headline}
+                </Text>
+                <Text
+                  style={styles.copy}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {slide.copy}
+                </Text>
+              </View>
+            </View>
+          )
+        )}
       </PagerView>
 
       <View style={styles.dotsRow}>
@@ -137,6 +184,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 24,
     paddingBottom: 4,
+  },
+  communitySlide: {
+    flex: 1,
+  },
+  communityImage: {
+    width: '100%',
+    flex: 1,
+  },
+  communityImageRaised: {
+    transform: [{ translateY: -30 }],
+  },
+  communityCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  communityCardSquare: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
   textZone: {
     alignItems: 'center',
