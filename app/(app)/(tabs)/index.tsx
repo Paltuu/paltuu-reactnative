@@ -8,17 +8,17 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
-import { useHeaderContext } from '../../src/context/HeaderContext';
+import { HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
+import { useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { socialApi, SocialPost } from '../../src/api/social';
+import { socialApi, SocialPost } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import PostCard, { getPostItemType } from '../../src/components/social/PostCard';
-import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
-import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
-import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
-import { storage } from '../../src/utils/storage';
+import PostCard, { getPostItemType } from '../../../src/components/social/PostCard';
+import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
+import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
+import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
+import { storage } from '../../../src/utils/storage';
 
 // (Layout constants are now managed inside the shared PostCard)
 

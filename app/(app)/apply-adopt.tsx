@@ -238,8 +238,6 @@ function ApplyAdoptScreen() {
                 keyboardType="number-pad"
                 maxLength={11}
                 autoFocus
-                returnKeyType="next"
-                onSubmitEditing={handleNext}
               />
             </View>
           )}

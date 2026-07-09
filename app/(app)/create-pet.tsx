@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,18 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
 import { usePetStore } from '../../src/stores/petStore';
+import { petApi } from '../../src/api/pets';
 import { useShallow } from 'zustand/react/shallow';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
@@ -68,18 +70,22 @@ const TOTAL_STEPS = STEPS.length;
 
 function CreatePetScreen() {
   const router = useRouter();
-  const { cities, categories, fetchMetadata, createPet, isLoading } = usePetStore(
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const isEditMode = !!editId;
+  const { cities, categories, fetchMetadata, createPet, updatePet, isLoading } = usePetStore(
     useShallow((state) => ({
       cities: state.cities,
       categories: state.categories,
       fetchMetadata: state.fetchMetadata,
       createPet: state.createPet,
+      updatePet: state.updatePet,
       isLoading: state.isLoading,
     }))
   );
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [fetchingPet, setFetchingPet] = useState(isEditMode);
   const [formData, setFormData] = useState({
     title: '',
     petType: '',
@@ -99,6 +105,46 @@ function CreatePetScreen() {
   useEffect(() => {
     fetchMetadata().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    (async () => {
+      try {
+        const pet = await petApi.getPetDetails(Number(editId));
+
+        const tagIds = new Set<number>((pet.tags || []).map((t: any) => t.tag_id));
+        if (pet.vaccinated) tagIds.add(17);
+        if (pet.neutered) tagIds.add(18);
+
+        setFormData({
+          title: pet.pet_name || '',
+          petType: pet.pet_type != null ? String(pet.pet_type) : '',
+          sex: pet.sex || 'male',
+          cityId: pet.city_id != null ? String(pet.city_id) : '',
+          area: pet.area || '',
+          contactNumber: (pet.contact_number || '').replace(/^\+92/, ''),
+          years: String(Math.floor((pet.age_months || 0) / 12)),
+          months: String((pet.age_months || 0) % 12),
+          breed: pet.pet_breed || '',
+          healthIssues: pet.health_issues || '',
+          description: pet.description || '',
+          selectedTags: Array.from(tagIds),
+        });
+        setImages(
+          (pet.images || []).map((img: any) => ({
+            uri: img.image_url,
+            image_url: img.image_url,
+            image_id: img.image_id,
+          }))
+        );
+      } catch {
+        Alert.alert('Error', 'Failed to load listing details.');
+        router.back();
+      } finally {
+        setFetchingPet(false);
+      }
+    })();
+  }, [editId]);
 
   const set = (patch: Partial<typeof formData>) => setFormData((prev) => ({ ...prev, ...patch }));
 
@@ -182,8 +228,10 @@ function CreatePetScreen() {
   const handleBack = () => {
     if (step > 0) {
       setStep((prev) => prev - 1);
+    } else if (router.canGoBack()) {
+      router.back();
     } else {
-      router.replace('/(app)/pets');
+      router.replace(isEditMode ? '/(app)/my-listings' : '/(app)/pets');
     }
   };
 
@@ -193,7 +241,7 @@ function CreatePetScreen() {
       return;
     }
     try {
-      const payload = {
+      const payload: any = {
         pet_name: formData.title,
         pet_type: Number(formData.petType),
         pet_breed: formData.breed || null,
@@ -207,13 +255,18 @@ function CreatePetScreen() {
         health_issues: formData.healthIssues || null,
         vaccinated: formData.selectedTags.includes(17),
         neutered: formData.selectedTags.includes(18),
-        adoption_status: 'available',
-        listing_type: 'adoption',
       };
-      await createPet(payload, images);
+
+      if (isEditMode) {
+        await updatePet(Number(editId), payload, images);
+      } else {
+        payload.adoption_status = 'available';
+        payload.listing_type = 'adoption';
+        await createPet(payload, images);
+      }
       setSubmitted(true);
     } catch {
-      Alert.alert('Error', 'Launch failed. Check your data.');
+      Alert.alert('Error', isEditMode ? 'Failed to save changes. Check your data.' : 'Launch failed. Check your data.');
     }
   };
 
@@ -236,14 +289,29 @@ function CreatePetScreen() {
           <View style={styles.successIcon}>
             <Ionicons name="paw" size={40} color="#a03048" />
           </View>
-          <Text style={styles.successTitle}>Listing sent for review</Text>
+          <Text style={styles.successTitle}>{isEditMode ? 'Listing updated' : 'Listing sent for review'}</Text>
           <Text style={styles.successText}>
-            Thanks for opening your heart! Your pet is now with our team for a quick review. Once it's
-            approved, the listing goes live in the adoption feed for adopters to discover.
+            {isEditMode
+              ? 'Your changes have been saved and are now live on your listing.'
+              : "Thanks for opening your heart! Your pet is now with our team for a quick review. Once it's approved, the listing goes live in the adoption feed for adopters to discover."}
           </Text>
         </View>
         <View style={styles.bottom}>
-          <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
+          <PaltuuButton
+            label={isEditMode ? 'Back to Listings' : 'Back to Pets'}
+            onPress={() => router.replace(isEditMode ? '/(app)/my-listings' : '/(app)/pets')}
+            radius={26}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (fetchingPet) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#a03048" />
         </View>
       </SafeAreaView>
     );
@@ -351,8 +419,6 @@ function CreatePetScreen() {
                 keyboardType="number-pad"
                 maxLength={11}
                 autoFocus
-                returnKeyType="next"
-                onSubmitEditing={handleNext}
               />
             </View>
           )}
@@ -480,8 +546,8 @@ function CreatePetScreen() {
         {/* Bottom CTA */}
         <View style={styles.bottom}>
           <PaltuuButton
-            label={isLast ? 'Post Pet for Adoption' : 'Next'}
-            successLabel={isLast ? 'Pet posted!' : undefined}
+            label={isLast ? (isEditMode ? 'Save Changes' : 'Post Pet for Adoption') : 'Next'}
+            successLabel={isLast ? (isEditMode ? 'Saved!' : 'Pet posted!') : undefined}
             onPress={handleNext}
             loading={isLoading}
             radius={26}

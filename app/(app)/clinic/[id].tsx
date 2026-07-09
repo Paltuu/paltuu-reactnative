@@ -122,26 +122,25 @@ function ClinicDetailsScreen() {
 
   return (
     <View style={styles.root}>
+      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={26} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {clinic.name}
+          </Text>
+          <View style={{ width: 26 }} />
+        </View>
+      </SafeAreaView>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
       >
-        <SafeAreaView edges={['top']}>
-          {/* Header bar */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="chevron-back" size={26} color="#111827" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {clinic.name}
-            </Text>
-            <View style={{ width: 26 }} />
-          </View>
-        </SafeAreaView>
-
         <View style={styles.body}>
           {/* Logo + name card */}
           <View style={styles.card}>
@@ -342,6 +341,11 @@ const styles = StyleSheet.create({
   errorBtn: { marginTop: 16, backgroundColor: PRIMARY, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
   errorBtnText: { color: '#FFF', fontFamily: FONTS.headingSemi },
 
+  headerSafeArea: {
+    backgroundColor: '#FAFAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F2',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

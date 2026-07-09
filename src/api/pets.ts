@@ -36,6 +36,11 @@ export const petApi = {
     return data;
   },
 
+  async updatePet(id: number, petData: any) {
+    const { data } = await client.put(`/pets/${id}`, petData);
+    return data;
+  },
+
   async applyForAdoption(formData: any) {
     const { data } = await client.post('/applications/adoption', formData);
     return data;
@@ -69,7 +74,7 @@ export const petApi = {
   },
 
   async updatePetStatus(id: number, status: string) {
-    const { data } = await client.patch(`/pets/${id}/status`, { status });
+    const { data } = await client.put(`/pets/${id}`, { adoption_status: status });
     return data;
   },
 

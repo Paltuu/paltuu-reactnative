@@ -23,19 +23,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuthStore } from '../../../src/stores/authStore';
+import { useAuthStore } from '../../../../src/stores/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { socialApi, SocialPost } from '../../../src/api/social';
-import { petProfilesApi } from '../../../src/api/petProfiles';
-import client from '../../../src/api/client';
-import PostCardShared from '../../../src/components/social/PostCard';
-import { Avatar } from '../../../src/components/common/Avatar';
-import { PetIdCard } from '../../../src/components/pets/PetIdCard';
-import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
+import { socialApi, SocialPost } from '../../../../src/api/social';
+import { petProfilesApi } from '../../../../src/api/petProfiles';
+import client from '../../../../src/api/client';
+import PostCardShared from '../../../../src/components/social/PostCard';
+import { Avatar } from '../../../../src/components/common/Avatar';
+import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
+import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
 
 const Icons = {
-  pawLikeSelect: require('../../../assets/icons/paw-like-select.svg'),
-  pawLikeUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+  pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
+  pawLikeUnselect: require('../../../../assets/icons/paw-like-unselect.svg'),
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -442,7 +442,7 @@ export default function ProfileScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
               <ExpoImage
-                source={require('../../../assets/icons/share-solid.svg')}
+                source={require('../../../../assets/icons/share-solid.svg')}
                 style={{ width: 22, height: 22 }}
                 contentFit="contain"
                 tintColor="#000000"
@@ -450,7 +450,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
               <ExpoImage
-                source={require('../../../assets/icons/hamburger-solid.svg')}
+                source={require('../../../../assets/icons/hamburger-solid.svg')}
                 style={{ width: 24, height: 24 }}
                 contentFit="contain"
                 tintColor="#000000"
@@ -594,7 +594,7 @@ export default function ProfileScreen() {
       ) : (
         <TouchableOpacity style={s.addBioBtn} onPress={() => setIsEditing(true)}>
           <ExpoImage
-            source={require('../../../assets/icons/plus-solid.svg')}
+            source={require('../../../../assets/icons/plus-solid.svg')}
             style={{ width: 10, height: 10 }}
             contentFit="contain"
             tintColor="#000000"
@@ -626,7 +626,7 @@ export default function ProfileScreen() {
           style={s.addPetBtn}
         >
           <ExpoImage
-            source={require('../../../assets/icons/plus-solid.svg')}
+            source={require('../../../../assets/icons/plus-solid.svg')}
             style={{ width: 14, height: 14 }}
             contentFit="contain"
             tintColor={DS.primary}

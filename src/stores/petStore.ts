@@ -34,6 +34,7 @@ interface PetState {
 
   // Creation
   createPet: (petData: any, images: any[]) => Promise<any>;
+  updatePet: (id: number, petData: any, images: any[]) => Promise<any>;
   createLostFoundPost: (postData: any, images: any[]) => Promise<any>;
 }
 
@@ -145,6 +146,44 @@ export const usePetStore = create<PetState>((set, get) => ({
     }
   },
 
+  updatePet: async (id, petData, images) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Existing images carry an image_id; only images without one are new local files.
+      const newLocalImages = (images || []).filter((img) => !img.image_id);
+      let newImageUrls: string[] = [];
+
+      if (newLocalImages.length > 0) {
+        const formData = new FormData();
+        newLocalImages.forEach((image, index) => {
+          formData.append('files', {
+            uri: image.uri,
+            type: image.type || 'image/jpeg',
+            name: image.name || `pet_image_${index}.jpg`,
+          } as any);
+        });
+        const uploadRes = await client.post('/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        newImageUrls = uploadRes.data?.urls || [];
+      }
+
+      let urlIndex = 0;
+      const finalImages = (images || []).map((img) =>
+        img.image_id
+          ? { image_id: img.image_id, image_url: img.image_url }
+          : { image_url: newImageUrls[urlIndex++] }
+      );
+
+      const response = await petsApi.updatePet(id, { ...petData, images: finalImages });
+      set({ isLoading: false });
+      return response;
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update pet', isLoading: false });
+      throw error;
+    }
+  },
+
   createLostFoundPost: async (postData, images) => {
     set({ isLoading: true, error: null });
     try {
@@ -198,12 +237,12 @@ export const usePetStore = create<PetState>((set, get) => ({
   },
 
   deletePet: async (id) => {
+    const previousListings = get().myListings;
+    set({ myListings: previousListings.filter(p => p.pet_id !== id) });
     try {
       await petsApi.deletePet(id);
-      const myListings = get().myListings.filter(p => p.pet_id !== id);
-      set({ myListings });
     } catch (error: any) {
-      set({ error: error.message || 'Failed to delete listing' });
+      set({ myListings: previousListings, error: error.message || 'Failed to delete listing' });
       throw error;
     }
   },

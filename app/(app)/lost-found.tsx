@@ -85,6 +85,47 @@ function LostFoundScreen() {
 
   return (
     <View style={{ flex: 1 }} className="bg-white">
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 20,
+          paddingTop: insets.top + 8,
+          paddingBottom: 16,
+          backgroundColor: '#FFF',
+          borderBottomWidth: 1,
+          borderBottomColor: '#F0F0F0',
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: '#FFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
+          }}
+        >
+          <Ionicons name="arrow-back" size={22} color="#111" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+            Lost & Found
+          </Text>
+          <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+            Help reunite pets with their families
+          </Text>
+        </View>
+      </View>
+
       {isLoading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#A03048" />
@@ -100,44 +141,12 @@ function LostFoundScreen() {
           contentContainerStyle={{
             paddingHorizontal: 12,
             paddingBottom: 100,
-            paddingTop: insets.top + 8,
+            paddingTop: 16,
           }}
           onRefresh={handleRefresh}
           refreshing={refreshing}
           ListHeaderComponent={
             <View>
-              {/* Page heading */}
-              <View style={{ paddingHorizontal: 6, paddingTop: 8, paddingBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <TouchableOpacity
-                    onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: '#FFF',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 2,
-                      elevation: 2,
-                    }}
-                  >
-                    <Ionicons name="arrow-back" size={22} color="#111" />
-                  </TouchableOpacity>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
-                      Lost & Found
-                    </Text>
-                    <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
-                      Help reunite pets with their families
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
               {/* Filter tabs */}
               <View className="flex-row bg-white rounded-2xl mx-1.5 mb-3 p-1 border border-gray-100"
                 style={{

@@ -111,20 +111,6 @@ function PetCareScreen() {
 
   const renderHeader = () => (
     <View style={{ paddingHorizontal: H_PAD }}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Pet Care</Text>
-          <Text style={styles.subtitle}>Find trusted clinics & vets near you</Text>
-        </View>
-      </View>
-
       {/* Search */}
       <View style={styles.searchBar}>
         <Ionicons name="search" size={18} color="#9AA0A6" />
@@ -239,6 +225,19 @@ function PetCareScreen() {
 
   return (
     <View style={styles.root}>
+      <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Pet Care</Text>
+          <Text style={styles.subtitle}>Find trusted clinics & vets near you</Text>
+        </View>
+      </View>
+
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.clinic_id)}
@@ -260,7 +259,7 @@ function PetCareScreen() {
         onRefresh={refetch}
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120 }}
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.empty}>
@@ -284,7 +283,15 @@ function PetCareScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FAFAFB' },
 
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 16,
+    backgroundColor: '#FAFAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
   title: { fontFamily: FONTS.heading, fontSize: 26, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
 

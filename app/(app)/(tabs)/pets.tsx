@@ -13,12 +13,12 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { useAuthStore } from '../../src/stores/authStore';
-import { useLocationStore } from '../../src/stores/locationStore';
-import { petApi } from '../../src/api/pets';
-import { StaggeredPlaceholder } from '../../src/components/common/CyclingText';
-import { FONTS } from '../../src/constants/typography';
-import { SkeletonCircle } from '../../src/components/common/Skeleton';
+import { useAuthStore } from '../../../src/stores/authStore';
+import { useLocationStore } from '../../../src/stores/locationStore';
+import { petApi } from '../../../src/api/pets';
+import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
+import { FONTS } from '../../../src/constants/typography';
+import { SkeletonCircle } from '../../../src/components/common/Skeleton';
 
 const H_PAD = 20;
 const ROSE = '#A03048';
@@ -128,7 +128,7 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
               <View key={pet.pet_id} style={styles.nearbyCircle}>
                 <Image
                   source={
-                    getPetImage(pet) ? { uri: getPetImage(pet) } : require('../../assets/dog-placeholder.png')
+                    getPetImage(pet) ? { uri: getPetImage(pet) } : require('../../../assets/dog-placeholder.png')
                   }
                   style={styles.nearbyCircleImg}
                   contentFit="cover"
@@ -220,7 +220,7 @@ export default function PetsHubScreen() {
           </View>
           <View style={styles.heroIllustrationSpace}>
             <Image
-              source={require('../../assets/pets-hub/huugging.png')}
+              source={require('../../../assets/pets-hub/huugging.png')}
               style={styles.heroIllustrationImg}
               contentFit="contain"
             />
@@ -250,7 +250,7 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../assets/pets-hub/doctor.png')}
+                source={require('../../../assets/pets-hub/doctor.png')}
                 style={styles.clinicIllustrationImg}
                 contentFit="contain"
               />
@@ -270,7 +270,7 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../assets/pets-hub/playing.png')}
+                source={require('../../../assets/pets-hub/playing.png')}
                 style={styles.squareIllustrationImg}
                 contentFit="contain"
               />
@@ -293,7 +293,7 @@ export default function PetsHubScreen() {
           style={styles.lostFoundStrip}
         >
           <Image
-            source={require('../../assets/pets-hub/sad.png')}
+            source={require('../../../assets/pets-hub/sad.png')}
             style={styles.lostFoundImg}
             contentFit="contain"
           />

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../../../src/api/social';
 import PostCard from '../../../../../src/components/social/PostCard';
-import { QuickProfileModal } from '../../../index';
+import { QuickProfileModal } from '../../../(tabs)/index';
 import { withFocusUnmount } from '../../../../../src/components/common/withFocusUnmount';
 
 function CollectionPostsScreen() {

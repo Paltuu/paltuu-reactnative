@@ -144,9 +144,9 @@ function AdoptScreen() {
     />
   ), []);
 
-  const renderHeader = useCallback(() => (
-    <View style={{ paddingBottom: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+  return (
+    <View style={{ flex: 1, backgroundColor: '#FAFAFB' }}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -162,20 +162,15 @@ function AdoptScreen() {
           </Text>
         </View>
       </View>
-    </View>
-  ), []);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFB' }}>
       {showSkeleton ? (
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
             paddingBottom: 120,
-            paddingTop: insets.top + 8,
+            paddingTop: 16,
           }}
         >
-          {renderHeader()}
           {renderSkeletonGrid()}
         </ScrollView>
       ) : (
@@ -184,11 +179,10 @@ function AdoptScreen() {
           renderItem={renderPetCard}
           keyExtractor={(item) => item.pet_id.toString()}
           onScroll={scrollHandler}
-          ListHeaderComponent={renderHeader}
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
             paddingBottom: 120,
-            paddingTop: insets.top + 8
+            paddingTop: 16
           }}
           onRefresh={refetch}
           refreshing={isRefetching}
@@ -402,5 +396,18 @@ function AdoptScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: H_PAD,
+    paddingBottom: 16,
+    backgroundColor: '#FAFAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+});
 
 export default withFocusUnmount(AdoptScreen);
