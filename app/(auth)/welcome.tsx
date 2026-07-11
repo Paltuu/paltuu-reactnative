@@ -180,22 +180,25 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.top}>
-        <Image
-          source={require('../../assets/paltuu_bilkul_tight.svg')}
-          style={{ width: 120, height: 64 }}
-          contentFit="contain"
-          tintColor="#a03048"
-        />
+        <Text
+          style={styles.headline}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          Find Your New Best Friend
+        </Text>
+        <Text style={styles.subheadline}>
+          Join Pakistan's largest pet community
+        </Text>
 
         <View style={styles.illustrationZone}>
           <Image
             source={require('../../assets/login-journey/login-page.png')}
-            style={{ flex: 1, width: '100%' }}
+            style={styles.illustrationImg}
             contentFit="contain"
           />
         </View>
-
-        {/* <Text style={styles.tagline}>Pakistan's pet community</Text> */}
       </View>
 
       <View style={styles.bottom}>
@@ -247,16 +250,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 32,
   },
+  headline: {
+    fontSize: 26,
+    fontFamily: 'Montserrat_700Bold',
+    color: '#1A1A2E',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  subheadline: {
+    fontSize: 15,
+    fontFamily: 'DMSans_400Regular',
+    color: '#555555',
+    textAlign: 'center',
+    marginTop: 8,
+  },
   illustrationZone: {
     flex: 1,
     width: '100%',
     marginTop: 24,
     marginBottom: 20,
   },
-  tagline: {
-    fontSize: 15,
-    fontFamily: 'DMSans_400Regular',
-    color: '#555555',
+  illustrationImg: {
+    flex: 1,
+    width: '100%',
+    transform: [{ scale: 0.95 }, { translateY: -12 }],
   },
   bottom: {
     paddingHorizontal: 20,
