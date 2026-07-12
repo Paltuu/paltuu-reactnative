@@ -41,9 +41,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "[YOUR_APPLE_ID_HERE]",
-        "companyName": "[YOUR_COMPANY_NAME_HERE]",
-        "ascAppId": "[YOUR_APP_STORE_CONNECT_APP_ID_HERE]",
+        "appleId": "ashhalh44@gmail.com",
+        "companyName": "Paltuu (Private) Limited",
+        "ascAppId": "6789732258",
         "bundleIdentifier": "com.paltuu.app"
       }
     }
