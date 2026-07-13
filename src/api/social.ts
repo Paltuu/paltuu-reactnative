@@ -146,6 +146,14 @@ export const socialApi = {
     return data as { success: boolean; user: any };
   },
 
+  async checkUsername(handle: string) {
+    const { data } = await client.get('/social/username/check', {
+      params: { q: handle },
+      timeout: 5000,
+    });
+    return data as { valid: boolean; available: boolean; error?: string };
+  },
+
   async getReposts(userId: string | number, page: number = 1) {
     const { data } = await client.get(`/social/profile/${userId}/reposts?page=${page}`);
     return data as { reposts: SocialPost[]; meta: { page: number; limit: number } };

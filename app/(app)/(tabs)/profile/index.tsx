@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Pressable,
   Image,
@@ -139,16 +138,6 @@ export default function ProfileScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
 
-  // ── Inline editing state ──────────────────────────────────────────────────
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editUsername, setEditUsername] = useState('');
-  const [editBio, setEditBio] = useState('');
-  const [editBioHeight, setEditBioHeight] = useState(40);
-  const nameInputRef = useRef<TextInput>(null);
-  const usernameInputRef = useRef<TextInput>(null);
-  const bioInputRef = useRef<TextInput>(null);
-
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
 
   const userId = user?.id;
@@ -174,40 +163,6 @@ export default function ProfileScreen() {
       queryFn: () => petProfilesApi.getUserPetProfiles(userId),
     });
   }, [userId, queryClient]);
-
-  // ── Sync edit fields when profile loads or editing starts ─────────────────
-  useEffect(() => {
-    if (isEditing && profile) {
-      setEditName(profile.name || '');
-      setEditUsername(profile.social_username || profile.username || '');
-      setEditBio(profile.bio || '');
-      setTimeout(() => nameInputRef.current?.focus(), 100);
-    }
-  }, [isEditing]);
-
-  // ── Inline update mutation ────────────────────────────────────────────────
-  const updateMutation = useMutation({
-    mutationFn: (payload: any) => socialApi.updateProfile(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
-      setIsEditing(false);
-    },
-    onError: (err: any) => {
-      Alert.alert('Error', err?.response?.data?.error?.message || 'Failed to update profile.');
-    },
-  });
-
-  const handleInlineSave = () => {
-    if (!editName.trim()) {
-      Alert.alert('Name required', 'Display name cannot be empty.');
-      return;
-    }
-    updateMutation.mutate({
-      name: editName.trim(),
-      social_username: editUsername.trim().toLowerCase(),
-      bio: editBio.trim(),
-    });
-  };
 
   const togglePrivacyMutation = useMutation({
     mutationFn: (newPrivacy: boolean) => socialApi.togglePrivacy(newPrivacy),
@@ -420,44 +375,25 @@ export default function ProfileScreen() {
     <View style={s.headerWrapper}>
       {/* Top action bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
-        {isEditing ? (
-          <TouchableOpacity onPress={() => setIsEditing(false)} style={s.topBarCancelBtn}>
-            <Text style={s.topBarCancelText}>Cancel</Text>
+        <View style={{ width: 40 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
+            <ExpoImage
+              source={require('../../../../assets/icons/share-solid.svg')}
+              style={{ width: 22, height: 22 }}
+              contentFit="contain"
+              tintColor="#000000"
+            />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
-
-        {isEditing ? (
-          <TouchableOpacity
-            onPress={handleInlineSave}
-            disabled={updateMutation.isPending}
-            style={[s.topBarSaveBtn, updateMutation.isPending && { opacity: 0.6 }]}
-          >
-            {updateMutation.isPending
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={s.topBarSaveText}>Save</Text>}
+          <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
+            <ExpoImage
+              source={require('../../../../assets/icons/hamburger-solid.svg')}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+              tintColor="#000000"
+            />
           </TouchableOpacity>
-        ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
-              <ExpoImage
-                source={require('../../../../assets/icons/share-solid.svg')}
-                style={{ width: 22, height: 22 }}
-                contentFit="contain"
-                tintColor="#000000"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
-              <ExpoImage
-                source={require('../../../../assets/icons/hamburger-solid.svg')}
-                style={{ width: 24, height: 24 }}
-                contentFit="contain"
-                tintColor="#000000"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+        </View>
       </View>
 
       {/* Avatar */}
@@ -471,67 +407,27 @@ export default function ProfileScreen() {
             uri={profile?.profile_image_url}
             size={AVATAR_SIZE}
           />
-          {isEditing && (
-            <View style={s.avatarCamBadge}>
-              {uploading === 'profile'
-                ? <ActivityIndicator size="small" color="#fff" style={{ width: 16, height: 16 }} />
-                : <Ionicons name="camera" size={15} color="#fff" />}
-            </View>
-          )}
         </TouchableOpacity>
-        {isEditing && (
-          <Text style={s.changePhotoHint}>Tap to change photo</Text>
-        )}
       </View>
 
       {/* Identity */}
       <View style={{ alignItems: 'center', position: 'relative' }}>
-        {isEditing ? (
-          <View style={{ width: SCREEN_WIDTH - 48, alignItems: 'center' }}>
-            <TextInput
-              ref={nameInputRef}
-              value={editName}
-              onChangeText={setEditName}
-              style={s.editNameInput}
-              placeholder="Your name"
-              placeholderTextColor={DS.gray400}
-              maxLength={60}
-              textAlign="center"
-              returnKeyType="next"
-              onSubmitEditing={() => usernameInputRef.current?.focus()}
-            />
-            <TextInput
-              ref={usernameInputRef}
-              value={editUsername}
-              onChangeText={(t) => setEditUsername(t.replace(/\s/g, '').toLowerCase())}
-              style={s.editUsernameInput}
-              placeholder="username"
-              placeholderTextColor={DS.gray400}
-              autoCapitalize="none"
-              autoCorrect={false}
-              textAlign="center"
-              returnKeyType="next"
-              onSubmitEditing={() => bioInputRef.current?.focus()}
-            />
-          </View>
-        ) : (
-          <View
-            style={{ alignItems: 'center' }}
-            onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
-          >
-            <Text style={s.displayName}>{profile?.name || 'User'}</Text>
-            <Text style={s.usernameText}>
-              @{profile?.social_username || profile?.username || 'user'}
-            </Text>
-          </View>
-        )}
-        {!isEditing && nameBlockWidth > 0 && (
+        <View
+          style={{ alignItems: 'center' }}
+          onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
+        >
+          <Text style={s.displayName}>{profile?.name || 'User'}</Text>
+          <Text style={s.usernameText}>
+            @{profile?.social_username || profile?.username || 'user'}
+          </Text>
+        </View>
+        {nameBlockWidth > 0 && (
           <TouchableOpacity
             style={[
               s.editSmallBtn,
               { position: 'absolute', left: '50%', marginLeft: nameBlockWidth / 2 + 14, top: 5 },
             ]}
-            onPress={() => setIsEditing(true)}
+            onPress={() => router.push('/(app)/profile/edit')}
           >
             <Text style={s.editSmallBtnText}>Edit</Text>
           </TouchableOpacity>
@@ -574,25 +470,10 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {isEditing ? (
-        <TextInput
-          ref={bioInputRef}
-          value={editBio}
-          onChangeText={setEditBio}
-          style={[s.editBioInput, { height: Math.max(40, editBioHeight) }]}
-          placeholder="Add a bio…"
-          placeholderTextColor={DS.gray400}
-          multiline
-          maxLength={200}
-          textAlign="center"
-          onContentSizeChange={(e) =>
-            setEditBioHeight(e.nativeEvent.contentSize.height + 8)
-          }
-        />
-      ) : profile?.bio ? (
+      {profile?.bio ? (
         <Text style={s.bio}>{profile.bio}</Text>
       ) : (
-        <TouchableOpacity style={s.addBioBtn} onPress={() => setIsEditing(true)}>
+        <TouchableOpacity style={s.addBioBtn} onPress={() => router.push('/(app)/profile/edit')}>
           <ExpoImage
             source={require('../../../../assets/icons/plus-solid.svg')}
             style={{ width: 10, height: 10 }}
@@ -932,56 +813,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCancelBtn: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    justifyContent: 'center',
-  },
-  topBarCancelText: {
-    fontSize: 15,
-    color: DS.dark,
-    fontFamily: 'DMSans_400Regular',
-  },
-  topBarSaveBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 7,
-    borderRadius: 22,
-    backgroundColor: DS.primary,
-    minWidth: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarSaveText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-    fontFamily: 'Montserrat_700Bold',
-  },
 
   // ─ Avatar ─
   avatarCenter: {
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 12,
-  },
-  avatarCamBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: DS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  changePhotoHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: DS.primary,
-    fontFamily: 'Montserrat_600SemiBold',
   },
 
   // ─ Identity ─
@@ -1012,80 +849,6 @@ const s = StyleSheet.create({
     color: DS.dark,
   },
 
-  // ─ Inline edit inputs ─
-  editNameInput: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 22,
-    color: DS.dark,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-    borderWidth: 1,
-    borderColor: '#E4E6EF',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 8,
-    width: '100%',
-  },
-  editUsernameInput: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 14,
-    color: DS.gray500,
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: '#E4E6EF',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 8,
-    width: '100%',
-  },
-  editBioInput: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 14,
-    color: DS.gray500,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    lineHeight: 20,
-    borderWidth: 1,
-    borderColor: '#E4E6EF',
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginBottom: 16,
-  },
-  editActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  cancelEditBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#E4E6EF',
-  },
-  cancelEditBtnText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 13,
-    color: DS.dark,
-  },
-  saveEditBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 22,
-    backgroundColor: DS.primary,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  saveEditBtnText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 13,
-    color: '#fff',
-  },
   bio: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,

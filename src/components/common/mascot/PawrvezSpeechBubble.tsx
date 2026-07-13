@@ -72,7 +72,7 @@ export interface PawrvezSpeechBubbleProps {
  * Pawrvez mascot + speech bubble with a letter-by-letter "typing" reveal.
  * The mascot's mouth flips open/closed while typing so it reads as speaking.
  *
- * Shared visual for both PawrvezTooltip and PawrvezDialog. Spans the full given
+ * Shared visual used by PawrvezDialog. Spans the full given
  * width (screen width by default). The bubble art comes in 1/2/3-line variants;
  * the message is measured off-screen up front to pick the variant that fits its
  * wrapped line count, and the text is placed in the art's real interior (top

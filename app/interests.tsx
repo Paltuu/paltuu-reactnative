@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
-import { PawrvezTooltip } from '../src/components/common/mascot';
+import { PawrvezDialog } from '../src/components/common/mascot';
 import client from '../src/api/client';
 import { useAuthStore } from '../src/stores/authStore';
 
@@ -44,11 +44,11 @@ export default function InterestsScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
 
-  // Auto-surface the mascot tip shortly after arriving on this screen.
+  // Auto-surface the mascot dialog shortly after arriving on this screen.
   useEffect(() => {
-    const timer = setTimeout(() => setShowMascotTooltip(true), 400);
+    const timer = setTimeout(() => setShowMascotDialog(true), 400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -122,16 +122,9 @@ export default function InterestsScreen() {
                 Step 2 of 2
               </Text>
             )}
-            <PawrvezTooltip
-              visible={showMascotTooltip}
-              text="Help us find the right pets and posts for you"
-              onDismiss={() => setShowMascotTooltip(false)}
-              placement="top"
-            >
-              <Text className="font-heading text-3xl text-dark mb-2 mt-[10px]">
-                Let's set up your feed
-              </Text>
-            </PawrvezTooltip>
+            <Text className="font-heading text-3xl text-dark mb-2 mt-[10px]">
+              Let's set up your feed
+            </Text>
             <Text className="font-body text-gray-500 leading-6">
               Choose what matters to you — you can change this anytime.
             </Text>
@@ -199,6 +192,14 @@ export default function InterestsScreen() {
             </TouchableOpacity>
           </View>
         }
+      />
+
+      <PawrvezDialog
+        visible={showMascotDialog}
+        text="Help us find the right pets and posts for you"
+        onDismiss={() => setShowMascotDialog(false)}
+        actionLabel="Got it"
+        onAction={() => setShowMascotDialog(false)}
       />
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,85 +10,62 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../../src/api/social';
+import client from '../../../src/api/client';
+import { Avatar } from '../../../src/components/common/Avatar';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
-// ── Reusable enhanced field ──────────────────────────────────────────────────
-function FormField({
+const DS = {
+  primary: '#A03048',
+  link: '#3B82F6',
+  dark: '#111111',
+  gray500: '#6B7280',
+  gray400: '#9CA3AF',
+  border: '#EDEEF0',
+  bg: '#FFFFFF',
+};
+
+const AVATAR_SIZE = 92;
+const USERNAME_REGEX = /^[a-z0-9_.]{1,30}$/;
+
+// ── Reusable list row (Instagram edit-profile style) ─────────────────────────
+// Defined at module scope (never re-created between renders) so the embedded
+// TextInput keeps focus across keystrokes — an inline row component would remount
+// on every parent state change and drop the keyboard after one character.
+function FieldRow({
   label,
-  hint,
-  icon,
-  prefix,
+  children,
   multiline = false,
-  ...props
 }: {
   label: string;
-  hint?: string;
-  icon?: keyof typeof Ionicons.glyphMap;
-  prefix?: string;
+  children: React.ReactNode;
   multiline?: boolean;
-} & React.ComponentProps<typeof TextInput>) {
-  const [focused, setFocused] = useState(false);
-  const borderAnim = useRef(new Animated.Value(0)).current;
-
-  const handleFocus = (e: any) => {
-    setFocused(true);
-    Animated.timing(borderAnim, { toValue: 1, duration: 180, useNativeDriver: false }).start();
-    props.onFocus?.(e);
-  };
-  const handleBlur = (e: any) => {
-    setFocused(false);
-    Animated.timing(borderAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start();
-    props.onBlur?.(e);
-  };
-
-  const borderColor = borderAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#E5E7EB', '#a03048'],
-  });
-  const shadowOpacity = borderAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.1],
-  });
-
+}) {
   return (
-    <View style={s.fieldContainer}>
-      <Text style={[s.fieldLabel, focused && s.fieldLabelFocused]}>{label}</Text>
-      <Animated.View
-        style={[
-          s.fieldWrapper,
-          { borderColor, shadowOpacity, shadowColor: '#a03048' },
-          focused && s.fieldWrapperFocused,
-        ]}
-      >
-        {icon && (
-          <Ionicons name={icon} size={18} color={focused ? '#a03048' : '#9CA3AF'} style={s.fieldIcon} />
-        )}
-        {prefix && <Text style={[s.prefix, focused && s.prefixFocused]}>{prefix}</Text>}
-        <TextInput
-          style={[s.fieldInput, multiline && s.fieldInputMulti]}
-          placeholderTextColor="#B0B7C3"
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          multiline={multiline}
-          textAlignVertical={multiline ? 'top' : 'center'}
-          {...props}
-        />
-      </Animated.View>
-      {hint ? <Text style={s.hint}>{hint}</Text> : null}
+    <View style={[s.row, multiline && s.rowMultiline]}>
+      <Text style={s.rowLabel}>{label}</Text>
+      <View style={s.rowValue}>{children}</View>
     </View>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
+function clientValidateUsername(handle: string): string | null {
+  if (handle.length === 0) return 'Username cannot be empty';
+  if (handle.length > 30) return 'Max 30 characters';
+  if (!USERNAME_REGEX.test(handle)) return 'Letters, numbers, _ and . only';
+  if (handle.startsWith('.')) return 'Cannot start with a period';
+  if (handle.endsWith('.')) return 'Cannot end with a period';
+  if (handle.includes('..')) return 'Cannot contain consecutive periods';
+  return null;
+}
 
 function EditProfileScreen() {
   const router = useRouter();
@@ -103,19 +80,132 @@ function EditProfileScreen() {
   });
 
   const profile = profileData?.profile;
+  const originalUsername = (profile?.social_username || profile?.username || '').toLowerCase();
 
-  const [name, setName] = useState(profile?.name || '');
-  const [username, setUsername] = useState(profile?.social_username || profile?.username || '');
-  const [bio, setBio] = useState(profile?.bio || '');
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null); // freshly picked, not yet saved
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // ── Hydrate once from the loaded profile ──────────────────────────────────
+  useEffect(() => {
+    if (profile && !hydrated) {
+      setName(profile.name || '');
+      setUsername((profile.social_username || profile.username || '').toLowerCase());
+      setBio(profile.bio || '');
+      setHydrated(true);
+    }
+  }, [profile, hydrated]);
+
+  // ── Username availability check (debounced) ───────────────────────────────
+  const [debouncedUsername, setDebouncedUsername] = useState('');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const usernameFormatError = clientValidateUsername(username);
+  const usernameUnchanged = username === originalUsername;
+  const needsCheck = !usernameFormatError && !usernameUnchanged;
 
   useEffect(() => {
-    if (profile) {
-      setName(profile.name || '');
-      setUsername(profile.social_username || profile.username || '');
-      setBio(profile.bio || '');
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    if (!needsCheck) {
+      setDebouncedUsername('');
+      return;
     }
-  }, [profile]);
+    debounceTimer.current = setTimeout(() => setDebouncedUsername(username), 350);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [username, needsCheck]);
 
+  const {
+    data: checkResult,
+    isFetching: isChecking,
+    isError: checkFailed,
+  } = useQuery({
+    queryKey: ['username-check', debouncedUsername],
+    queryFn: () => socialApi.checkUsername(debouncedUsername),
+    enabled: debouncedUsername.length > 0,
+    staleTime: 30_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  const isCheckPending = needsCheck && (debouncedUsername !== username || isChecking);
+  const isAvailable = checkResult?.valid && checkResult?.available;
+  const usernameOk =
+    !usernameFormatError && (usernameUnchanged || (!isCheckPending && isAvailable === true));
+
+  const usernameHint = useMemo((): { text: string; color: string } | null => {
+    if (usernameUnchanged) return null;
+    if (usernameFormatError) return { text: usernameFormatError, color: '#EF4444' };
+    if (isCheckPending) return { text: `Checking @${username}…`, color: DS.gray500 };
+    if (checkFailed) return { text: 'Could not verify — try again', color: '#F59E0B' };
+    if (isAvailable === true) return { text: `@${username} is available!`, color: '#10B981' };
+    if (isAvailable === false) return { text: `@${username} is already taken`, color: '#EF4444' };
+    return null;
+  }, [usernameUnchanged, usernameFormatError, isCheckPending, checkFailed, isAvailable, username]);
+
+  // ── Avatar pick + circular (square 1:1) crop + upload ─────────────────────
+  const pickAvatar = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true, // force the built-in crop UI
+      aspect: [1, 1], // always a square crop so it fits the circular avatar
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    // Guarantee a centered square regardless of what the crop UI returned, then
+    // downscale — the avatar is always displayed inside a circle mask.
+    const side = Math.min(asset.width ?? 0, asset.height ?? 0);
+    const cropped = side
+      ? await manipulateAsync(
+          asset.uri,
+          [
+            {
+              crop: {
+                originX: Math.floor(((asset.width ?? side) - side) / 2),
+                originY: Math.floor(((asset.height ?? side) - side) / 2),
+                width: side,
+                height: side,
+              },
+            },
+            { resize: { width: 512, height: 512 } },
+          ],
+          { compress: 0.85, format: SaveFormat.JPEG }
+        )
+      : { uri: asset.uri };
+
+    setAvatarUri(cropped.uri);
+    uploadAvatar(cropped.uri);
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', { uri, name: 'profile.jpg', type: 'image/jpeg' } as any);
+      await client.post('/social/profile/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+    } catch {
+      setAvatarUri(null);
+      Alert.alert('Upload failed', 'Could not update your photo. Please try again.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: (payload: any) => socialApi.updateProfile(payload),
     onSuccess: () => {
@@ -123,102 +213,136 @@ function EditProfileScreen() {
       router.back();
     },
     onError: (err: any) => {
-      Alert.alert('Error', err?.message || 'Failed to update profile. Please try again.');
+      Alert.alert('Error', err?.response?.data?.error?.message || 'Failed to update profile.');
     },
   });
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert('Validation Error', 'Name cannot be empty.');
+      Alert.alert('Name required', 'Display name cannot be empty.');
       return;
     }
+    if (!usernameOk) {
+      Alert.alert('Username unavailable', usernameHint?.text || 'Please pick a valid, available username.');
+      return;
+    }
+    // Only send social_username when the handle actually changed — re-sending the
+    // user's own (possibly reserved/legacy) handle makes the update endpoint reject
+    // it as "reserved"/"taken".
     updateMutation.mutate({
       name: name.trim(),
-      social_username: username.trim().toLowerCase(),
       bio: bio.trim(),
+      ...(usernameUnchanged ? {} : { social_username: username.trim().toLowerCase() }),
     });
   };
 
-  return (
-    <SafeAreaView style={s.root}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        {/* ── Header ── */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.navigate('/(app)/profile')} style={s.headerBtn}>
-            <Feather name="x" size={20} color="#374151" />
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={updateMutation.isPending}
-            style={s.saveBtn}
-          >
-            {updateMutation.isPending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={s.saveBtnText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+  const canSave = hydrated && name.trim().length > 0 && usernameOk && !updateMutation.isPending;
 
+  return (
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.headerSide}>
+          <Ionicons name="chevron-back" size={26} color={DS.dark} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Edit profile</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={!canSave}
+          hitSlop={12}
+          style={s.headerSide}
+        >
+          {updateMutation.isPending ? (
+            <ActivityIndicator size="small" color={DS.primary} />
+          ) : (
+            <Text style={[s.saveText, !canSave && s.saveTextDisabled]}>Save</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── Photo hint card ── */}
-          <View style={s.hintCard}>
-            <View style={s.hintIconWrap}>
-              <LinearGradient colors={['#FAF0F2', '#f3e0e4']} style={s.hintIconBg}>
-                <Ionicons name="camera-outline" size={22} color="#a03048" />
-              </LinearGradient>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.hintCardTitle}>Change your photo</Text>
-              <Text style={s.hintCardSub}>
-                Tap your profile or cover photo directly on your profile page to update it.
-              </Text>
-            </View>
+          {/* ── Avatar ── */}
+          <View style={s.avatarBlock}>
+            <TouchableOpacity activeOpacity={0.85} onPress={pickAvatar} style={{ position: 'relative' }}>
+              <Avatar uri={avatarUri || profile?.profile_image_url} size={AVATAR_SIZE} />
+              {uploadingAvatar && (
+                <View style={s.avatarOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickAvatar} hitSlop={8}>
+              <Text style={s.editPicText}>Edit picture or avatar</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* ── Section label ── */}
-          <Text style={s.sectionLabel}>Public Info</Text>
+          {/* ── Fields ── */}
+          <View style={s.rows}>
+            <FieldRow label="Name">
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                style={s.input}
+                placeholder="Name"
+                placeholderTextColor={DS.gray400}
+                maxLength={60}
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </FieldRow>
 
-          <FormField
-            label="Display Name"
-            icon="person-outline"
-            value={name}
-            onChangeText={setName}
-            placeholder="Your full name"
-            autoCorrect={false}
-          />
+            <FieldRow label="Username">
+              <View style={s.usernameRow}>
+                <Text style={s.at}>@</Text>
+                <TextInput
+                  value={username}
+                  onChangeText={(t) => setUsername(t.replace(/[^a-zA-Z0-9_.]/g, '').toLowerCase())}
+                  style={[s.input, { flex: 1 }]}
+                  placeholder="username"
+                  placeholderTextColor={DS.gray400}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                  returnKeyType="next"
+                />
+                {!usernameUnchanged && isCheckPending && (
+                  <ActivityIndicator size="small" color={DS.primary} />
+                )}
+                {!usernameUnchanged && !isCheckPending && isAvailable === true && (
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                )}
+                {!usernameUnchanged && !isCheckPending && (usernameFormatError || isAvailable === false) && (
+                  <Ionicons name="close-circle" size={20} color="#EF4444" />
+                )}
+              </View>
+            </FieldRow>
+            {usernameHint && (
+              <Text style={[s.hint, { color: usernameHint.color }]}>{usernameHint.text}</Text>
+            )}
 
-          <FormField
-            label="Username"
-            icon="at-outline"
-            prefix="@"
-            value={username}
-            onChangeText={setUsername}
-            placeholder="username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            hint="This is how people can find and mention you."
-          />
-
-          <FormField
-            label="Bio"
-            icon="pencil-outline"
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Write a little about yourself or your pets..."
-            multiline
-            numberOfLines={4}
-            maxLength={200}
-          />
-          {bio.length > 0 && (
-            <Text style={s.charCount}>{bio.length}/200</Text>
-          )}
+            <FieldRow label="Bio" multiline>
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                style={[s.input, s.inputMultiline]}
+                placeholder="Write a little about yourself or your pets…"
+                placeholderTextColor={DS.gray400}
+                multiline
+                maxLength={200}
+                textAlignVertical="top"
+              />
+            </FieldRow>
+            {bio.length > 0 && <Text style={s.charCount}>{bio.length}/200</Text>}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -226,148 +350,96 @@ function EditProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: DS.bg },
 
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  headerBtn: {
-    width: 36, height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontFamily: 'DMSans_700Bold',
-    color: '#111827',
-  },
-  saveBtn: {
-    backgroundColor: '#a03048',
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 14,
-  },
-
-  scrollContent: { padding: 20, paddingBottom: 80 },
-
-  // Hint card
-  hintCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#FAF9FF',
-    borderWidth: 1,
-    borderColor: '#EDE9F8',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 28,
-  },
-  hintIconWrap: {
-    shadowColor: '#a03048',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-  },
-  hintIconBg: {
-    width: 44, height: 44,
-    borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  hintCardTitle: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
-    color: '#374151',
-    marginBottom: 2,
-  },
-  hintCardSub: {
-    fontSize: 11,
-    fontFamily: 'Montserrat_400Regular',
-    color: '#6B7280',
-    lineHeight: 16,
-  },
-
-  // Section label
-  sectionLabel: {
-    fontSize: 11,
-    fontFamily: 'Montserrat_700Bold',
-    color: '#9CA3AF',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 16,
-  },
-
-  // Form field
-  fieldContainer: { marginBottom: 20 },
-  fieldLabel: {
-    fontSize: 11,
-    fontFamily: 'Montserrat_600SemiBold',
-    color: '#6B7280',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  fieldLabelFocused: { color: '#a03048' },
-  fieldWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-  },
-  fieldWrapperFocused: { backgroundColor: '#FFFFFF' },
-  fieldIcon: { marginRight: 10 },
-  prefix: {
-    fontSize: 15,
-    fontFamily: 'DMSans_700Bold',
-    color: '#9CA3AF',
-    marginRight: 2,
-  },
-  prefixFocused: { color: '#a03048' },
-  fieldInput: {
-    flex: 1,
+    paddingHorizontal: 12,
     height: 52,
-    fontSize: 15,
-    fontFamily: 'DMSans_400Regular',
-    color: '#111827',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: DS.border,
   },
-  fieldInputMulti: {
-    height: undefined,
-    minHeight: 110,
-    paddingTop: 14,
-    paddingBottom: 14,
+  headerSide: { minWidth: 60, height: 44, justifyContent: 'center' },
+  headerTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 17,
+    color: DS.dark,
+  },
+  saveText: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    color: DS.primary,
+    textAlign: 'right',
+  },
+  saveTextDisabled: { color: DS.gray400 },
+
+  scrollContent: { paddingBottom: 60 },
+
+  // Avatar
+  avatarBlock: { alignItems: 'center', paddingTop: 24, paddingBottom: 20, gap: 12 },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: AVATAR_SIZE / 2,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editPicText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    color: DS.primary,
+  },
+
+  // Rows
+  rows: { paddingHorizontal: 16 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 56,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: DS.border,
+  },
+  rowMultiline: { alignItems: 'flex-start', paddingTop: 16 },
+  rowLabel: {
+    width: 92,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 15,
+    color: DS.dark,
+  },
+  rowValue: { flex: 1 },
+  usernameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  at: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 15,
+    color: DS.gray500,
+  },
+  input: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 15,
+    color: DS.dark,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+  },
+  inputMultiline: {
+    minHeight: 72,
+    paddingTop: 0,
+    lineHeight: 20,
   },
   hint: {
-    fontSize: 11,
-    fontFamily: 'Montserrat_400Regular',
-    color: '#9CA3AF',
-    marginTop: 5,
-    marginLeft: 2,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 12,
+    marginLeft: 92,
+    marginTop: 6,
+    marginBottom: 2,
   },
   charCount: {
-    fontSize: 11,
-    fontFamily: 'Montserrat_400Regular',
-    color: '#9CA3AF',
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 12,
+    color: DS.gray400,
     textAlign: 'right',
-    marginTop: -14,
-    marginBottom: 8,
+    marginTop: 6,
   },
 });
 

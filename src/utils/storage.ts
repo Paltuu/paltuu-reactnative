@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   USER_DATA: 'user_data',
   FEED_BANNER_DISMISSED: 'feed_banner_dismissed',
   ONBOARDING_SEEN: 'onboarding_seen',
+  WELCOME_MASCOT_SEEN: 'welcome_mascot_seen',
 };
 
 // expo-secure-store is not supported on web; fall back to localStorage
@@ -71,6 +72,13 @@ export const storage = {
   },
   async isOnboardingSeen(): Promise<boolean> {
     const val = await store.getItem(STORAGE_KEYS.ONBOARDING_SEEN);
+    return val === '1';
+  },
+  async markWelcomeMascotSeen() {
+    await store.setItem(STORAGE_KEYS.WELCOME_MASCOT_SEEN, '1');
+  },
+  async isWelcomeMascotSeen(): Promise<boolean> {
+    const val = await store.getItem(STORAGE_KEYS.WELCOME_MASCOT_SEEN);
     return val === '1';
   },
 };

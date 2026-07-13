@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +9,9 @@ import Constants from 'expo-constants';
 import Toast from 'react-native-toast-message';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { AuthMethodButton } from '../../src/components/ui/AuthMethodButton';
+import { PawrvezDialog } from '../../src/components/common/mascot';
 import { useAuthStore } from '../../src/stores/authStore';
+import { storage } from '../../src/utils/storage';
 import client from '../../src/api/client';
 
 // Required for Android browser redirect handling
@@ -21,9 +23,24 @@ const BUILD_VERSION = Constants.nativeBuildVersion ?? '';
 export default function WelcomeScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const setAuthAsNewUser = useAuthStore((state) => state.setAuthAsNewUser);
+
+  // The very first time a freshly-installed app lands on this screen (right
+  // after the onboarding slides), Pawrvez pops up to say hi. Shown once ever.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    (async () => {
+      if (await storage.isWelcomeMascotSeen()) return;
+      await storage.markWelcomeMascotSeen();
+      timer = setTimeout(() => setShowGreeting(true), 550);
+    })();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -234,6 +251,14 @@ export default function WelcomeScreen() {
           )}
         </View>
       </View>
+
+      <PawrvezDialog
+        visible={showGreeting}
+        text="Hey, I'm Pawrvez! So happy you're here. Let's find your new best friend together!"
+        onDismiss={() => setShowGreeting(false)}
+        actionLabel="Let's go"
+        onAction={() => setShowGreeting(false)}
+      />
     </SafeAreaView>
   );
 }

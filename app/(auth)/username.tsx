@@ -1,10 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   KeyboardAvoidingView,
-  Keyboard,
-  KeyboardEvent,
   Platform,
   Alert,
   StyleSheet,
@@ -14,11 +12,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { UsernameField, UsernameFieldState } from '../../src/components/auth/UsernameField';
-import { PawrvezSpeechBubble } from '../../src/components/common/mascot';
+import { PawrvezDialog } from '../../src/components/common/mascot';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
 const MASCOT_TIP = 'Pick something fun — this is how the community will know you';
-const AUTO_DISMISS_MS = 1800;
 
 export default function UsernameScreen() {
   const { name, email, password } = useLocalSearchParams<{
@@ -28,39 +25,15 @@ export default function UsernameScreen() {
   }>();
 
   const [field, setField] = useState<UsernameFieldState>({ value: '', canContinue: false });
-  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
   const router = useRouter();
   const { sendOtp } = useAuthActions();
 
-  // Surface the mascot tip the moment the keyboard opens, right above it —
-  // and drop it again as soon as the keyboard closes.
+  // Auto-surface the mascot dialog shortly after arriving on this screen.
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e: KeyboardEvent) => {
-        setKeyboardHeight(e.endCoordinates.height);
-        setShowMascotTooltip(true);
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setShowMascotTooltip(false);
-        if (dismissTimer.current) clearTimeout(dismissTimer.current);
-      }
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-      if (dismissTimer.current) clearTimeout(dismissTimer.current);
-    };
+    const timer = setTimeout(() => setShowMascotDialog(true), 400);
+    return () => clearTimeout(timer);
   }, []);
-
-  const handleTypingComplete = () => {
-    dismissTimer.current = setTimeout(() => setShowMascotTooltip(false), AUTO_DISMISS_MS);
-  };
 
   // Falls back to the previous step in the flow if there's no navigation
   // history to pop (e.g. this screen was reached directly rather than by
@@ -116,16 +89,13 @@ export default function UsernameScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {showMascotTooltip && (
-        <View style={[styles.mascotAboveKeyboard, { bottom: keyboardHeight + 8 }]} pointerEvents="none">
-          <PawrvezSpeechBubble
-            text={MASCOT_TIP}
-            mascotSize={56}
-            fontSize={10}
-            onTypingComplete={handleTypingComplete}
-          />
-        </View>
-      )}
+      <PawrvezDialog
+        visible={showMascotDialog}
+        text={MASCOT_TIP}
+        onDismiss={() => setShowMascotDialog(false)}
+        actionLabel="Got it"
+        onAction={() => setShowMascotDialog(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -134,11 +104,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  mascotAboveKeyboard: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
   },
   body: {
     flex: 1,

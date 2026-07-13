@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
 import { UsernameField, UsernameFieldState } from '../src/components/auth/UsernameField';
-import { PawrvezTooltip } from '../src/components/common/mascot';
+import { PawrvezDialog } from '../src/components/common/mascot';
 import client from '../src/api/client';
 
 /**
@@ -24,11 +24,11 @@ import client from '../src/api/client';
 export default function OAuthUsernameScreen() {
   const router = useRouter();
   const [field, setField] = useState<UsernameFieldState>({ value: '', canContinue: false });
-  const [showMascotTooltip, setShowMascotTooltip] = useState(false);
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowMascotTooltip(true), 400);
+    const timer = setTimeout(() => setShowMascotDialog(true), 400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -55,14 +55,7 @@ export default function OAuthUsernameScreen() {
       >
         <View style={styles.body}>
           <Text style={styles.stepTag}>Step 1 of 2</Text>
-          <PawrvezTooltip
-            visible={showMascotTooltip}
-            text="Pick something fun — this is how the community will know you"
-            onDismiss={() => setShowMascotTooltip(false)}
-            placement="top"
-          >
-            <Text style={styles.heading}>One last thing</Text>
-          </PawrvezTooltip>
+          <Text style={styles.heading}>One last thing</Text>
           <Text style={styles.subtext}>Pick a username for your Paltuu profile.</Text>
 
           <UsernameField onStateChange={setField} onSubmitEditing={handleContinue} />
@@ -78,6 +71,14 @@ export default function OAuthUsernameScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      <PawrvezDialog
+        visible={showMascotDialog}
+        text="Pick something fun — this is how the community will know you"
+        onDismiss={() => setShowMascotDialog(false)}
+        actionLabel="Got it"
+        onAction={() => setShowMascotDialog(false)}
+      />
     </SafeAreaView>
   );
 }
