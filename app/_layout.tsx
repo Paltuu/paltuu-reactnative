@@ -109,10 +109,11 @@ export default function RootLayout() {
     // they must be exempt from both the "logged out" and "logged in" redirects.
     const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
     const onOnboardingSlides = segments[0] === 'onboarding';
-    const shouldShowOnboarding = !hasSeenOnboarding;
 
     if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
-      router.replace(shouldShowOnboarding ? '/onboarding' : '/(auth)/welcome');
+      // TEMP: onboarding slides are disabled — send everyone straight to welcome.
+      // Re-enable by restoring: router.replace(!hasSeenOnboarding ? '/onboarding' : '/(auth)/welcome');
+      router.replace('/(auth)/welcome');
     } else if (isAuthenticated && inAuthGroup) {
       const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
       router.replace(!newUser ? '/(app)' : needsUsername ? '/oauth-username' : '/interests');

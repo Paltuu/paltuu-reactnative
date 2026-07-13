@@ -20,27 +20,40 @@ WebBrowser.maybeCompleteAuthSession();
 const APP_VERSION = Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '';
 const BUILD_VERSION = Constants.nativeBuildVersion ?? '';
 
+// Pawrvez greets the user, then delivers what used to be the onboarding slides
+// as a sequence of dialogs. Shown once, right after a fresh install.
+const INTRO_DIALOGS = [
+  "Hey, I'm Pawrvez! So happy you're here. Let's find your new best friend together!",
+  'Every pet deserves a home — thousands across Pakistan are still waiting for theirs.',
+  'Find a vet you can trust: discover clinics and read reviews, all in one place.',
+  "You found your people — welcome to Pakistan's largest pet community!",
+];
+
 export default function WelcomeScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
-  const [showGreeting, setShowGreeting] = useState(false);
+  const [dialogIndex, setDialogIndex] = useState(-1);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const setAuthAsNewUser = useAuthStore((state) => state.setAuthAsNewUser);
 
-  // The very first time a freshly-installed app lands on this screen (right
-  // after the onboarding slides), Pawrvez pops up to say hi. Shown once ever.
+  // The very first time a freshly-installed app lands on this screen, Pawrvez
+  // walks through the intro dialogs one after the other. Shown once ever.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     (async () => {
       if (await storage.isWelcomeMascotSeen()) return;
       await storage.markWelcomeMascotSeen();
-      timer = setTimeout(() => setShowGreeting(true), 550);
+      timer = setTimeout(() => setDialogIndex(0), 550);
     })();
     return () => {
       if (timer) clearTimeout(timer);
     };
   }, []);
+
+  // Advance to the next intro dialog, or close the sequence after the last one.
+  const advanceDialog = () =>
+    setDialogIndex((i) => (i + 1 < INTRO_DIALOGS.length ? i + 1 : -1));
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -253,11 +266,11 @@ export default function WelcomeScreen() {
       </View>
 
       <PawrvezDialog
-        visible={showGreeting}
-        text="Hey, I'm Pawrvez! So happy you're here. Let's find your new best friend together!"
-        onDismiss={() => setShowGreeting(false)}
-        actionLabel="Let's go"
-        onAction={() => setShowGreeting(false)}
+        visible={dialogIndex >= 0}
+        text={INTRO_DIALOGS[dialogIndex] ?? ''}
+        onDismiss={() => setDialogIndex(-1)}
+        actionLabel={dialogIndex >= INTRO_DIALOGS.length - 1 ? "Let's go" : 'Next'}
+        onAction={advanceDialog}
       />
     </SafeAreaView>
   );

@@ -27,6 +27,7 @@ const PostIcons = {
   repostUnselect: require('../../../assets/icons/repost-unselect.svg'),
   bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
   bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
+  verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
 };
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
