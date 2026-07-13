@@ -94,14 +94,14 @@ const AccountCard = ({
         style={{
           marginTop: 12,
           alignSelf: 'stretch',
-          height: 36,
-          borderRadius: 10,
+          height: 30,
+          borderRadius: 8,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: account.is_following ? '#F5F5F7' : PRIMARY,
         }}
       >
-        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: account.is_following ? DARK : '#FFF' }}>
+        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: account.is_following ? DARK : '#FFF' }}>
           {account.is_following ? 'Following' : 'Follow'}
         </Text>
       </TouchableOpacity>

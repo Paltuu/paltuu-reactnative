@@ -57,7 +57,7 @@ export const Rail = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 12 }}
         decelerationRate="fast"
       >
         {isLoading

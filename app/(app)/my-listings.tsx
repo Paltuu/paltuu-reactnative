@@ -209,7 +209,7 @@ function MyListingsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFB' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/profile'))}
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: H_PAD,
     paddingBottom: 16,
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },

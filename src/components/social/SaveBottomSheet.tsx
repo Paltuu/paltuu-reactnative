@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { BottomSheetModal, BottomSheetView, BottomSheetFlatList, BottomSheetTextInput, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView, BottomSheetScrollView, BottomSheetTextInput, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, Collection } from '../../api/social';
 
 interface SaveBottomSheetProps {
@@ -16,19 +17,12 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
   const [isCreating, setIsCreating] = useState(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const queryClient = useQueryClient();
-
-  const snapPoints = useMemo(() => ['50%', '75%'], []);
-
-  useEffect(() => {
-    if (visible && postId) {
-      const timer = setTimeout(() => {
-        bottomSheetModalRef.current?.present();
-      }, 0);
-      return () => clearTimeout(timer);
-    } else {
-      bottomSheetModalRef.current?.dismiss();
-    }
-  }, [visible, postId]);
+  const insets = useSafeAreaInsets();
+  // Fixed rather than computed from content — a single generous percentage
+  // comfortably fits a typical handful of collections with no data-dependent
+  // measurement to race or get wrong; the list scrolls internally if there
+  // are ever enough collections to exceed it.
+  const snapPoints = useMemo(() => ['55%'], []);
 
   // 1. Fetch user's collections
   const { data: collectionsData, isLoading: loadingCollections } = useQuery({
@@ -44,9 +38,26 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
     enabled: !!postId && visible,
   });
 
-  const collections = collectionsData?.collections || [];
+  // "All Posts" is the implicit default every saved post lands in already —
+  // not something to file into, so it's excluded from the picker.
+  const collections = (collectionsData?.collections || []).filter((c) => !c.is_default);
   const isSavedGlobally = saveStatusData?.is_saved || false;
   const postCollections = saveStatusData?.collections || [];
+
+  // Present only once both queries have resolved, so the sheet slides up
+  // already at its final size — Instagram-style — instead of opening small
+  // and visibly resizing as the collections/save-status data arrives.
+  const contentReady = !loadingCollections && !loadingSaveStatus;
+  useEffect(() => {
+    if (visible && postId && contentReady) {
+      const timer = setTimeout(() => {
+        bottomSheetModalRef.current?.present();
+      }, 0);
+      return () => clearTimeout(timer);
+    } else if (!visible) {
+      bottomSheetModalRef.current?.dismiss();
+    }
+  }, [visible, postId, contentReady]);
 
   const isPostInCollection = (collectionId: number) => {
     return postCollections.some((c) => c.collection_id === collectionId);
@@ -229,7 +240,7 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
       onDismiss={onClose}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ 
+      backgroundStyle={{
         backgroundColor: 'white',
         borderRadius: 24,
       }}
@@ -238,7 +249,7 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
         width: 40,
       }}
     >
-      <View className="flex-1">
+      <BottomSheetView style={{ flex: 1 }}>
         {/* Header */}
         <View className="flex-row items-center justify-between py-4 border-b border-gray-100 px-5">
           <TouchableOpacity onPress={onClose}>
@@ -254,11 +265,11 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
 
         {/* Loading Indicator */}
         {(loadingCollections || loadingSaveStatus) ? (
-          <View className="flex-1 items-center justify-center">
+          <View style={{ flex: 1 }} className="items-center justify-center">
             <ActivityIndicator color="#A03048" />
           </View>
         ) : (
-          <View className="flex-1">
+          <View style={{ flex: 1 }}>
             {/* Create New Collection Inline Button */}
             {!isCreating ? (
               <TouchableOpacity
@@ -300,13 +311,12 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
             )}
 
             {/* Collections List */}
-            <BottomSheetFlatList
-              data={collections}
-              keyExtractor={(item) => item.collection_id.toString()}
-              renderItem={renderCollectionItem}
-              contentContainerStyle={{ paddingBottom: 60 }}
+            <BottomSheetScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) }}
               showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
+            >
+              {collections.length === 0 ? (
                 <View className="py-20 items-center px-10">
                   <Ionicons name="bookmark-outline" size={48} color="#9CA3AF" className="mb-3" />
                   <Text className="font-headingSemi text-gray-500 text-base mb-1 text-center">No collections yet</Text>
@@ -314,11 +324,17 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
                     Create collections to organize your saved posts by topic, pet, or categories!
                   </Text>
                 </View>
-              }
-            />
+              ) : (
+                collections.map((item) => (
+                  <View key={item.collection_id}>
+                    {renderCollectionItem({ item })}
+                  </View>
+                ))
+              )}
+            </BottomSheetScrollView>
           </View>
         )}
-      </View>
+      </BottomSheetView>
     </BottomSheetModal>
   );
 };

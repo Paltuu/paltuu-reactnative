@@ -61,7 +61,7 @@ function CollectionPostsScreen() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFA', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: insets.top }}>
       <StatusBar barStyle="dark-content" />
       {/* Top Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' }}>
@@ -97,7 +97,7 @@ function CollectionPostsScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}

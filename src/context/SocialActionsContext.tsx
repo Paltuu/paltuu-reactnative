@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { Alert } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../hooks/useSocialActions';
 import { socialApi } from '../api/social';
 
@@ -12,6 +12,10 @@ export interface SocialActionsContextValue {
   updatePost: (postId: string | number, payload: any) => Promise<any>;
   repost: (postId: string, isReposted: boolean, quote?: string) => Promise<any>;
   confirmBlock: (userId: number, authorName: string) => void;
+  // True once the user has created at least one collection beyond the
+  // default "All Posts" one — used to decide whether saving a post should
+  // prompt for a collection instead of silently going to the default.
+  hasCustomCollections: boolean;
 }
 
 const SocialActionsContext = createContext<SocialActionsContextValue | null>(null);
@@ -19,6 +23,15 @@ const SocialActionsContext = createContext<SocialActionsContextValue | null>(nul
 export function SocialActionsProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { toggleLike, toggleSave, toggleFollow, deletePost, updatePost } = useSocialActions();
+
+  // Kept warm here (rather than only inside SaveBottomSheet) so PostCard can
+  // read collection count synchronously the moment the bookmark is tapped.
+  const { data: collectionsData } = useQuery({
+    queryKey: ['social-collections'],
+    queryFn: () => socialApi.getCollections(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const hasCustomCollections = (collectionsData?.collections?.length ?? 0) > 1;
 
   const repostMutation = useMutation({
     mutationFn: ({ postId, isReposted, quote }: { postId: string; isReposted: boolean; quote?: string }) =>
@@ -76,7 +89,8 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
         ]
       );
     },
-  }), [toggleLike, toggleSave, toggleFollow, deletePost, updatePost, repostMutation, blockMutation]);
+    hasCustomCollections,
+  }), [toggleLike, toggleSave, toggleFollow, deletePost, updatePost, repostMutation, blockMutation, hasCustomCollections]);
 
   return (
     <SocialActionsContext.Provider value={value}>

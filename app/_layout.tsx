@@ -109,10 +109,7 @@ export default function RootLayout() {
     // they must be exempt from both the "logged out" and "logged in" redirects.
     const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
     const onOnboardingSlides = segments[0] === 'onboarding';
-    // Dev-only: always re-show the onboarding slides on launch (ignoring the
-    // persisted "seen" flag) so they're easy to iterate on without clearing
-    // storage every time. Production respects the flag as normal.
-    const shouldShowOnboarding = __DEV__ ? true : !hasSeenOnboarding;
+    const shouldShowOnboarding = !hasSeenOnboarding;
 
     if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
       router.replace(shouldShowOnboarding ? '/onboarding' : '/(auth)/welcome');

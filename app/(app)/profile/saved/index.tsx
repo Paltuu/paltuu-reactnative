@@ -76,11 +76,6 @@ function SavedCollectionsScreen() {
             size={36}
             color={palette.icon}
           />
-          {item.post_count > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: palette.icon }]}>
-              <Text style={styles.countBadgeText}>{item.post_count}</Text>
-            </View>
-          )}
         </View>
 
         {/* Info */}
@@ -109,7 +104,7 @@ function SavedCollectionsScreen() {
           style={styles.addBtn}
           hitSlop={8}
         >
-          <Ionicons name="add" size={22} color={PRIMARY} />
+          <Ionicons name="add" size={22} color="#111" />
         </TouchableOpacity>
       </View>
 
@@ -201,7 +196,7 @@ function SavedCollectionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FAFAFA' },
+  screen: { flex: 1, backgroundColor: '#fff' },
 
   header: {
     flexDirection: 'row',
@@ -218,7 +213,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FDF0F2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -262,18 +256,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  countBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  countBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   cardInfo: { flex: 1, paddingHorizontal: 14 },
   cardName: { fontSize: 15, fontWeight: '600', color: '#111', fontFamily: 'Montserrat_600SemiBold' },
   cardSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2, fontFamily: 'DMSans_400Regular' },

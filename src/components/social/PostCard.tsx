@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Share, ScrollView
+  Share, ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -845,10 +845,35 @@ export const PostCard = React.memo(({
   }, [actions, post.post_id]);
 
   const handleSave = useCallback(() => {
-    const wasSaved = saved;
-    setSaved(!wasSaved);
-    actions?.toggleSave(post.post_id, wasSaved);
-  }, [actions, post.post_id, saved]);
+    if (saved) {
+      // Unsaving needs no collection choice — just toggle straight off.
+      setSaved(false);
+      actions?.toggleSave(post.post_id, true);
+      return;
+    }
+    // Saving: fill the icon and fire the save to the default collection in
+    // the background — don't make opening the picker wait on the network.
+    // Seed the picker's own save-status cache so it shows "already saved"
+    // the instant it opens rather than flashing "not saved" until its fetch
+    // resolves; the real fetch (triggered by showSaveSheet below) will still
+    // reconcile the exact collection membership shortly after.
+    setSaved(true);
+    if (actions?.hasCustomCollections) {
+      queryClient.setQueryData(['save-status', post.post_id], (old: any) => ({
+        ...(old || { collections: [] }),
+        is_saved: true,
+      }));
+      modals?.showSaveSheet(post.post_id);
+      // Fired synchronously (not deferred) — the sheet lets the user toggle
+      // collections immediately, and the backend requires the post to
+      // already be in saved_posts before it'll add it to another
+      // collection, so this needs to be in flight right away rather than
+      // waiting for interactions to settle.
+      actions.toggleSave(post.post_id, false);
+    } else {
+      actions?.toggleSave(post.post_id, false);
+    }
+  }, [actions, post.post_id, saved, modals, queryClient]);
   const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(post.post_id), [modals, post.post_id]);
   const handleCommentPress = useCallback(() => {
     if (onComment) {
@@ -865,18 +890,14 @@ export const PostCard = React.memo(({
     isOwnPost,
     isFollowing: !!post.is_following,
     isSaved: saved,
-    onSave: () => {
-      const wasSaved = saved;
-      setSaved(!wasSaved);
-      actions?.toggleSave(post.post_id, wasSaved);
-    },
+    onSave: handleSave,
     onEdit: handleEdit,
     onDelete: handleDelete,
     onReport: () => modals?.showReportSheet(post.post_id),
     onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
     onUnfollow: () => actions?.toggleFollow(post.user_id),
     onHide: handleHide,
-  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved]);
+  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved, handleSave]);
   const handleAvatarPress = useCallback(() => {
     if (String(currentUserId) === String(displayUserId)) {
       router.push('/(app)/profile');
