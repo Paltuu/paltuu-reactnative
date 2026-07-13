@@ -102,7 +102,6 @@ const s = StyleSheet.create({
   card: {
     paddingVertical: 12,
     backgroundColor: '#FFF',
-    overflow: 'hidden',
   },
   postSeparator: {
     height: 1,
@@ -532,6 +531,7 @@ const MediaBlock = React.memo(({
         snapToInterval={CAROUSEL_CARD_W + CAROUSEL_GAP}
         decelerationRate="fast"
         bounces={false}
+        overScrollMode="never"
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: carouselImgH, overflow: 'visible' }}
       >
