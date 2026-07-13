@@ -12,11 +12,12 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../src/stores/authStore';
 import { socialApi } from '../src/api/social';
@@ -27,6 +28,7 @@ import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagShe
 import { useMentionInput, MentionSuggestionDropdown } from '../src/components/social/MentionInput';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
+import { queryClient } from '../src/api/queryClient';
 import Toast from 'react-native-toast-message';
 import { NO_PROFILE_IMAGE } from '../src/constants/images';
 
@@ -187,8 +189,27 @@ const MilestoneSelector = ({
 
 export default function CreatePostScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
+
+  // ── Keep the keyboard out of the transition ────────────────────────────────
+  // Opening the keyboard via `autoFocus` while the screen is still sliding in
+  // makes both animations fight for the main thread and drops frames. Instead we
+  // focus the caption only once the slide-in has fully settled, and dismiss the
+  // keyboard the instant a swipe-back begins so it isn't animating during exit.
+  useEffect(() => {
+    // `transitionStart`/`transitionEnd` are native-stack events not present on
+    // expo-router's generic navigation type, hence the `any` cast.
+    const nav = navigation as any;
+    const onEnd = nav.addListener('transitionEnd', (e: any) => {
+      if (!e?.data?.closing) inputRef.current?.focus();
+    });
+    const onStart = nav.addListener('transitionStart', (e: any) => {
+      if (e?.data?.closing) Keyboard.dismiss();
+    });
+    return () => { onEnd(); onStart(); };
+  }, [navigation]);
 
   const user = useAuthStore((state) => state.user);
 
@@ -238,12 +259,16 @@ export default function CreatePostScreen() {
   }, []);
 
   useEffect(() => {
-    if (user?.id) {
+    if (!user?.id) return;
+    // Defer until the slide-in has settled so the fetch's state update doesn't
+    // trigger a re-render in the middle of the navigation animation.
+    const task = InteractionManager.runAfterInteractions(() => {
       petProfilesApi.getUserPetProfiles(user.id)
         .then((res) => setPetProfiles(res.pet_profiles))
         .catch((err) => console.error('Error fetching pet profiles:', err))
         .finally(() => setIsLoadingPetProfiles(false));
-    }
+    });
+    return () => task.cancel();
   }, [user]);
 
   const canPost = caption.trim().length > 0 || mediaItems.length > 0;
@@ -485,6 +510,41 @@ export default function CreatePostScreen() {
       }
 
 
+      // ── Show the fresh post at the very top of the feed, instantly ────────
+      // Prepend to every cached feed variant (personalized/global) so the user
+      // lands back on Home with their post already sitting on top — no refetch,
+      // no skeleton flash. Author fields fall back to the signed-in user since
+      // the create response doesn't join them in.
+      const optimisticPost: any = {
+        ...post,
+        author_name:     post.author_name ?? user?.name,
+        author_image:    post.author_image ?? user?.profile_image_url,
+        social_username: post.social_username ?? (user as any)?.social_username ?? (user as any)?.username,
+        like_count:      post.like_count ?? 0,
+        comment_count:   post.comment_count ?? 0,
+        repost_count:    post.repost_count ?? 0,
+        is_liked:        false,
+        created_at:      post.created_at ?? new Date().toISOString(),
+      };
+      if (optimisticPost.post_id) {
+        queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+          if (!old?.pages?.length) return old;
+          const already = old.pages.some((pg: any) =>
+            pg.posts?.some((p: any) => p.post_id === optimisticPost.post_id)
+          );
+          if (already) return old;
+          const [first, ...rest] = old.pages;
+          return {
+            ...old,
+            pages: [{ ...first, posts: [optimisticPost, ...(first.posts ?? [])] }, ...rest],
+          };
+        });
+      } else {
+        // Response didn't include a post id we can key on — fall back to a refetch
+        // so the new post still shows once Home is revealed.
+        queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+      }
+
       router.back();
       Toast.show({
         type: 'info',
@@ -588,7 +648,6 @@ export default function CreatePostScreen() {
                 }
                 placeholderTextColor="#9CA3AF"
                 multiline
-                autoFocus
                 style={{
                   fontSize: 15,
                   lineHeight: 22,
@@ -712,29 +771,28 @@ export default function CreatePostScreen() {
         isLoading={isLoadingPetProfiles}
       />
 
-      {/* ── Premium Posting Loader Overlay ── */}
-      {isPosting && (
+      {/* ── Media Upload Loader Overlay ──
+            Only shown while media is actively uploading. The "Finalizing Post…"
+            step no longer surfaces a full-screen loader — the header button's
+            own spinner covers it and the screen swipes straight back to Home. */}
+      {isPosting && uploadStage === 'uploading' && (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
           <View style={{ backgroundColor: '#fff', padding: 24, borderRadius: 16, width: '80%', alignItems: 'center', gap: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 }}>
             <ActivityIndicator size="large" color="#a03048" />
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>
-                {uploadStage === 'uploading' ? 'Uploading Media…' : 'Finalizing Post…'}
+                Uploading Media…
               </Text>
-              {uploadStage === 'uploading' && (
-                <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-                  {Math.round(uploadProgress * 100)}% complete
-                </Text>
-              )}
+              <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+                {Math.round(uploadProgress * 100)}% complete
+              </Text>
             </View>
             {/* Progress bar */}
-            {uploadStage === 'uploading' && (
-              <View style={{ width: '100%', height: 6, backgroundColor: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
-                <View 
-                  style={{ height: '100%', backgroundColor: '#a03048', width: `${Math.round(uploadProgress * 100)}%` }} 
-                />
-              </View>
-            )}
+            <View style={{ width: '100%', height: 6, backgroundColor: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
+              <View
+                style={{ height: '100%', backgroundColor: '#a03048', width: `${Math.round(uploadProgress * 100)}%` }}
+              />
+            </View>
           </View>
         </View>
       )}

@@ -179,7 +179,7 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
             <SocialActionsProvider>
             <PostCardModalsProvider>
-              <Stack screenOptions={{ headerShown: false }}>
+              <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
@@ -201,12 +201,17 @@ export default function RootLayout() {
                   name="notifications"
                   options={{ animation: 'slide_from_right', gestureEnabled: true }}
                 />
-                {/* Create post: slides in from the left, swipe-back exits the same way */}
+                {/* Create post: slides in from the left; a right-to-left swipe
+                    anywhere on the page slides it back out to Home (mirrors the
+                    left-to-right swipe that opens it). fullScreenGestureEnabled
+                    lifts the dismiss gesture off the screen edge to the whole
+                    surface; animationMatchesGesture points it right-to-left. */}
                 <Stack.Screen
                   name="create-post"
                   options={{
                     animation: 'slide_from_left',
                     gestureEnabled: true,
+                    fullScreenGestureEnabled: true,
                     animationMatchesGesture: true,
                   }}
                 />

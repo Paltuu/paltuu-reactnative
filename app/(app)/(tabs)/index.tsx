@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import { FlashList } from '@shopify/flash-list';
 const CustomFlashList = FlashList as any;
 import {
-  View, Text, TouchableOpacity, Platform,
+  View, Text, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -161,13 +161,18 @@ export default function HomeScreen() {
   );
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
+  // Swipe left-to-right anywhere on the feed to pull in the composer.
+  // - activeOffsetX only claims rightward horizontal movement (never leftward),
+  //   so it can't hijack a left-swipe.
+  // - failOffsetY bails the moment the finger travels vertically, so the
+  //   FlashList keeps full control of vertical scrolling.
   const openComposeGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX([-1_000_000, 10])
-        .failOffsetY([-5, 5])
+        .activeOffsetX([-1_000_000, 20])
+        .failOffsetY([-14, 14])
         .onEnd((event) => {
-          if (event.translationX > 60 || event.velocityX > 500) {
+          if (event.translationX > 70 || event.velocityX > 600) {
             runOnJS(router.push)('/create-post');
           }
         }),
@@ -256,6 +261,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-white">
+      <GestureDetector gesture={openComposeGesture}>
       <CustomFlashList
         style={{ flex: 1 }}
         data={posts}
@@ -279,20 +285,6 @@ export default function HomeScreen() {
         ListFooterComponent={listFooter}
         showsVerticalScrollIndicator={false}
       />
-
-      {/* Left-edge swipe to open composer — narrower on Android to avoid
-          overlapping the system back-gesture area */}
-      <GestureDetector gesture={openComposeGesture}>
-        <View
-          pointerEvents="box-only"
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: topOffset,
-            bottom: 0,
-            width: Platform.OS === 'android' ? 12 : 20,
-          }}
-        />
       </GestureDetector>
 
       <QuickProfileModal
