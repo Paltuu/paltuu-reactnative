@@ -16,7 +16,6 @@ function PersonalInfoScreen() {
   const fetchProfile = useAuthStore((state) => state.fetchProfile);
 
   const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone_number || '');
 
   const updateMutation = useMutation({
     mutationFn: (payload: any) => socialApi.updateProfile(payload),
@@ -46,7 +45,6 @@ function PersonalInfoScreen() {
 
     updateMutation.mutate({
       email: email.trim().toLowerCase(),
-      phone_number: phone.trim(),
     });
   };
 
@@ -90,15 +88,6 @@ function PersonalInfoScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               leftIcon="mail-outline"
-            />
-
-            <CustomInput
-              label="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+92 300 1234567"
-              keyboardType="phone-pad"
-              leftIcon="call-outline"
             />
           </View>
 
