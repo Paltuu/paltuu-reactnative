@@ -909,11 +909,9 @@ export const PostCard = React.memo(({
   }, [router, displayUserId, currentUserId]);
   const handleShare = useCallback(async () => {
     try {
-      const plainText = mentionsToPlainText(post.content);
-      const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\n${getShareUrl(`post/${post.post_id}`)}`;
       const result = await Share.share({
         title: 'Paltuu Social Post',
-        message: shareText,
+        message: getShareUrl(`post/${post.post_id}`),
       });
       if (result.action === Share.sharedAction) {
         queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {

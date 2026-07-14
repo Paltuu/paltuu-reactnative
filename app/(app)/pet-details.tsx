@@ -74,7 +74,7 @@ function PetDetailsScreen() {
   const onShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${pet?.pet_name || 'this pet'} on Paltuu!\n\n${getShareUrl(`pet-details?petId=${id}`)}`,
+        message: getShareUrl(`pet-details?petId=${id}`),
       });
     } catch (error) {
       console.error('Share error:', error);

@@ -140,8 +140,7 @@ function UserProfileScreen() {
 
   const handleShareProfile = async () => {
     try {
-      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\n${getShareUrl(`profile/${profile?.user_id ?? userId}`)}`;
-      await Share.share({ title: 'Paltuu Profile', message: shareText });
+      await Share.share({ title: 'Paltuu Profile', message: getShareUrl(`profile/${profile?.user_id ?? userId}`) });
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
