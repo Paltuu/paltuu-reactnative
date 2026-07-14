@@ -71,10 +71,19 @@ export default function CommentComposerScreen() {
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      const height = e.endCoordinates?.height ?? 0;
+      // RN's Android `keyboardDidShow` height is computed as
+      // `imeInset - systemBarInset` (ReactRootView#checkForKeyboardEvents), i.e.
+      // it deliberately excludes the nav-bar height because it assumes the app's
+      // content already stops above the nav bar. This screen is edge-to-edge, so
+      // content actually extends behind the nav bar — add that inset back in so
+      // `bottom: keyboardHeight` reaches the real top of the keyboard.
+      setKeyboardHeight(Platform.OS === 'android' ? height + insets.bottom : height);
+    });
     const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
     return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
+  }, [insets.bottom]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
@@ -212,7 +221,15 @@ export default function CommentComposerScreen() {
           position: 'absolute', left: 0, right: 0, bottom: keyboardHeight,
           borderTopWidth: 0.5, borderTopColor: '#F0F0F0',
           paddingHorizontal: 16, paddingTop: 12,
-          paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 12),
+          // Android's gesture-nav inset (~16-24dp) is inherently smaller than
+          // iOS's home-indicator inset (~34pt), so the same raw insets.bottom
+          // that reads fine on iOS sits the icons visually flush against the
+          // nav bar on Android — pad it out a bit more there.
+          paddingBottom: keyboardVisible
+            ? 10
+            : Platform.OS === 'android'
+            ? insets.bottom + 12
+            : (insets.bottom > 0 ? insets.bottom : 12),
           backgroundColor: '#fff',
         }}>
           <ComposerToolbar

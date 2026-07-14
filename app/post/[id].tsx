@@ -54,6 +54,7 @@ export default function PostDetailScreen() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const sortBy: SortBy = 'top'; // comments always sort by Top
+  const keyboardVisible = keyboardHeight > 0;
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
   // Auto-play the video in the detail screen when opened, and pause on close
@@ -67,16 +68,22 @@ export default function PostDetailScreen() {
   }, [id]);
 
   // Track keyboard height so the floating composer can stick directly above it.
-
-  // (Android defaults to adjustResize, so the window already excludes the keyboard
-  // and we anchor to bottom: 0 there; iOS needs the explicit offset.)
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      const height = e.endCoordinates?.height ?? 0;
+      // RN's Android `keyboardDidShow` height is computed as
+      // `imeInset - systemBarInset` (ReactRootView#checkForKeyboardEvents), i.e.
+      // it deliberately excludes the nav-bar height because it assumes the app's
+      // content already stops above the nav bar. This screen is edge-to-edge, so
+      // content actually extends behind the nav bar — add that inset back in so
+      // `bottom: keyboardHeight` reaches the real top of the keyboard.
+      setKeyboardHeight(Platform.OS === 'android' ? height + insets.bottom : height);
+    });
     const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
     return () => { showSub.remove(); hideSub.remove(); };
-  }, []);
+  }, [insets.bottom]);
 
   /* ── Queries ── */
   const { data: postData, isLoading: postLoading, isError: postError } = useQuery({
@@ -358,7 +365,10 @@ export default function PostDetailScreen() {
           backgroundColor: BG,
           borderTopWidth: 0.5,
           borderTopColor: '#F3F4F6',
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          // Android's gesture-nav inset is inherently smaller than iOS's
+          // home-indicator inset, so pad it out a bit more there to avoid
+          // sitting flush against the nav bar.
+          paddingBottom: Platform.OS === 'android' ? insets.bottom + 12 : (insets.bottom > 0 ? insets.bottom : 10),
         }}>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -409,7 +419,16 @@ export default function PostDetailScreen() {
             borderTopWidth: 0.5, borderTopColor: '#F3F4F6',
             shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
             shadowOpacity: 0.1, shadowRadius: 10,
-            paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : (insets.bottom > 0 ? insets.bottom : 8),
+            // Android's gesture-nav inset is inherently smaller than iOS's
+            // home-indicator inset, so pad it out a bit more there to avoid
+            // the media icons sitting flush against the nav bar — but only
+            // when resting (no keyboard): once the keyboard is up, `bottom:
+            // keyboardHeight` already includes that inset (see the listener
+            // above), so adding it again here would double-count it and leave
+            // a gap between the composer and the keyboard.
+            paddingBottom: keyboardVisible
+              ? (Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 10)
+              : (Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : insets.bottom + 12),
           }}>
             <View style={{ flex: mentionActive ? 1 : undefined }}>
               {/* Reply banner (replying to a specific comment) — hidden while
