@@ -247,14 +247,20 @@ export default function CreatePostScreen() {
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
-  // flush above the keyboard when it's open.
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // Track the real keyboard height so the bottom toolbar can float directly
+  // above it. `softwareKeyboardLayoutMode` is 'pan' on Android, which only
+  // shifts the window enough to reveal the focused input's caret — it does
+  // NOT resize the layout, so anything anchored in-flow at the bottom (like
+  // this toolbar, which sits far below the caption input) stays pinned under
+  // the keyboard unless we measure and follow the real height ourselves, on
+  // both platforms.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardVisible = keyboardHeight > 0;
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    const showSub = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
@@ -577,6 +583,14 @@ export default function CreatePostScreen() {
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // KeyboardAvoidingView always subscribes to keyboard events and, on
+        // every show/hide, calls LayoutAnimation.configureNext(...) — even
+        // when `behavior` is undefined. That global animation collides with
+        // our own manual keyboardHeight-driven repositioning below, and on
+        // Android visibly glitches the content (it can render as if the
+        // header/caption vanished). `enabled={false}` fully suppresses that
+        // internal side effect on the platform we don't need it for.
+        enabled={Platform.OS === 'ios'}
         keyboardVerticalOffset={0}
       >
         {/* ── Top bar ── */}
@@ -723,43 +737,52 @@ export default function CreatePostScreen() {
             </>
           )}
         </ScrollView>
-
-        {/* ── Bottom toolbar — hidden while mention suggestions are showing,
-              so the list extends all the way down to the keyboard ── */}
-        {!mentionActive && (
-          <View
-            style={{
-              paddingTop: 10,
-              paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
-              paddingHorizontal: 16,
-              borderTopWidth: 1,
-              borderTopColor: '#F3F4F6',
-              backgroundColor: '#fff',
-            }}
-          >
-            {/* Media tools row */}
-            <View className="flex-row items-center gap-5">
-              <TouchableOpacity onPress={pickMedia} hitSlop={8}>
-                <Ionicons name="image-outline" size={24} color="#a03048" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={pickCamera} hitSlop={8}>
-                <Ionicons name="camera-outline" size={24} color="#a03048" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
-                <Ionicons name="paw-outline" size={24} color="#a03048" />
-              </TouchableOpacity>
-
-              {mediaItems.length > 0 && (
-                <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
-                  <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
       </KeyboardAvoidingView>
+
+      {/* ── Bottom toolbar — floats directly above the real keyboard height
+            (tracked manually; Android's 'pan' softwareKeyboardLayoutMode only
+            shifts the window enough to reveal the focused input's caret, not
+            sibling content further down, so an in-flow/KeyboardAvoidingView
+            position would stay pinned under the keyboard). Hidden while
+            mention suggestions are showing, so the list extends all the way
+            down to the keyboard. ── */}
+      {!mentionActive && (
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: keyboardHeight,
+            paddingTop: 10,
+            paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 10),
+            paddingHorizontal: 16,
+            borderTopWidth: 1,
+            borderTopColor: '#F3F4F6',
+            backgroundColor: '#fff',
+          }}
+        >
+          {/* Media tools row */}
+          <View className="flex-row items-center gap-5">
+            <TouchableOpacity onPress={pickMedia} hitSlop={8}>
+              <Ionicons name="image-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={pickCamera} hitSlop={8}>
+              <Ionicons name="camera-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
+              <Ionicons name="paw-outline" size={24} color="#a03048" />
+            </TouchableOpacity>
+
+            {mediaItems.length > 0 && (
+              <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
+                <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
 
       <PetTagSheet
         visible={petSheetVisible}

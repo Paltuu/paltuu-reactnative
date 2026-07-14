@@ -76,19 +76,19 @@ export default function PostDetailScreen() {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  const hasProcessingVideo = useMemo(() => {
-    return postData?.media?.some(
-      (m: any) => m.media_type === 'video' && (m.video_status === 'pending' || m.video_status === 'processing')
-    );
-  }, [postData]);
-
   /* ── Queries ── */
   const { data: postData, isLoading: postLoading, isError: postError } = useQuery({
     queryKey: ['post', id],
     queryFn: () => socialApi.getPostById(id as string),
     enabled: !!id,
     retry: 1,
-    refetchInterval: hasProcessingVideo ? 5000 : false, // Poll every 5 seconds if transcoding
+    refetchInterval: (query) => {
+      const media = query.state.data?.media;
+      const isProcessing = media?.some(
+        (m: any) => m.media_type === 'video' && (m.video_status === 'pending' || m.video_status === 'processing')
+      );
+      return isProcessing ? 5000 : false; // Poll every 5 seconds if transcoding
+    },
   });
 
 
@@ -395,7 +395,13 @@ export default function PostDetailScreen() {
             // just below the navbar) so the suggestion list has room to
             // fill all the way down to the keyboard, full width.
             top: mentionActive ? insets.top + 48 : undefined,
-            bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+            // `softwareKeyboardLayoutMode` is 'pan' on Android, which only
+            // shifts the window enough to reveal the focused input's caret —
+            // it does NOT resize the layout, so anything anchored at the
+            // physical bottom (like this composer) stays pinned under the
+            // keyboard unless we measure and follow the real keyboard height
+            // ourselves, on both platforms.
+            bottom: keyboardHeight,
             zIndex: 50, elevation: 24,
             backgroundColor: BG,
             borderTopWidth: 0.5, borderTopColor: '#F3F4F6',

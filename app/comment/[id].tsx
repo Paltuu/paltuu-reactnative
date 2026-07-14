@@ -60,14 +60,19 @@ export default function CommentComposerScreen() {
   // toggling this never costs focus or cursor position.
   const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
 
-  // Track the keyboard so the bottom toolbar drops its safe-area inset and sits
-  // flush above the keyboard when it's open.
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // Track the real keyboard height so the bottom toolbar can float directly
+  // above it. `softwareKeyboardLayoutMode` is 'pan' on Android, which only
+  // shifts the window enough to reveal the focused input's caret — it does
+  // NOT resize the layout, so an in-flow toolbar can stay pinned under the
+  // keyboard unless we measure and follow the real height ourselves, on both
+  // platforms.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardVisible = keyboardHeight > 0;
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    const showSub = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates?.height ?? 0));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
@@ -101,12 +106,23 @@ export default function CommentComposerScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // KeyboardAvoidingView always subscribes to keyboard events and, on
+        // every show/hide, calls LayoutAnimation.configureNext(...) — even
+        // when `behavior` is undefined. That global animation collides with
+        // our own manual keyboardHeight-driven repositioning below, and on
+        // Android visibly glitches the content. `enabled={false}` fully
+        // suppresses that internal side effect on the platform we don't need
+        // it for.
+        enabled={Platform.OS === 'ios'}
         keyboardVerticalOffset={0}
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 24 }}
+          // Extra bottom padding — the toolbar below is now an absolutely
+          // positioned overlay (so it can float above the real keyboard
+          // height), so content needs room to scroll clear of it.
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: mentionActive ? 24 : 90 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -184,26 +200,29 @@ export default function CommentComposerScreen() {
             </>
           )}
         </ScrollView>
-
-        {/* ── Bottom toolbar — sticky directly above the keyboard; hidden
-              while mention suggestions are showing so the list reaches
-              all the way down to the keyboard ── */}
-        {!mentionActive && (
-          <View style={{
-            borderTopWidth: 0.5, borderTopColor: '#F0F0F0',
-            paddingHorizontal: 16, paddingTop: 12,
-            paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 12),
-            backgroundColor: '#fff',
-          }}>
-            <ComposerToolbar
-              onImage={draft.pickImage}
-              onCamera={draft.pickCamera}
-              onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
-              count={draft.media.length}
-            />
-          </View>
-        )}
       </KeyboardAvoidingView>
+
+      {/* ── Bottom toolbar — floats directly above the real keyboard height
+            (tracked manually; Android's 'pan' softwareKeyboardLayoutMode
+            doesn't resize the layout, so an in-flow position can stay pinned
+            under the keyboard). Hidden while mention suggestions are showing
+            so the list reaches all the way down to the keyboard. ── */}
+      {!mentionActive && (
+        <View style={{
+          position: 'absolute', left: 0, right: 0, bottom: keyboardHeight,
+          borderTopWidth: 0.5, borderTopColor: '#F0F0F0',
+          paddingHorizontal: 16, paddingTop: 12,
+          paddingBottom: keyboardVisible ? 10 : (insets.bottom > 0 ? insets.bottom : 12),
+          backgroundColor: '#fff',
+        }}>
+          <ComposerToolbar
+            onImage={draft.pickImage}
+            onCamera={draft.pickCamera}
+            onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
+            count={draft.media.length}
+          />
+        </View>
+      )}
 
       <PetTagSheet
         visible={petSheetVisible}

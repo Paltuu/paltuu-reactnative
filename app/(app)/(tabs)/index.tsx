@@ -18,6 +18,7 @@ import PostCard, { getPostItemType } from '../../../src/components/social/PostCa
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
+import { subscribeToHomeTabPress } from '../../../src/utils/homeTabPressSubscription';
 import { storage } from '../../../src/utils/storage';
 
 // (Layout constants are now managed inside the shared PostCard)
@@ -129,6 +130,9 @@ export default function HomeScreen() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
 
+  const listRef = useRef<any>(null);
+  const scrollYRef = useRef(0);
+
   // Load persisted dismiss state on mount
   useEffect(() => {
     storage.isFeedBannerDismissed().then(dismissed => {
@@ -204,6 +208,18 @@ export default function HomeScreen() {
     }
   }, [refetch]);
 
+  // Instagram-style re-tap: if the feed is scrolled down, scroll to top;
+  // if it's already at the top, trigger a refresh instead.
+  useEffect(() => {
+    return subscribeToHomeTabPress(() => {
+      if (scrollYRef.current > 40) {
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      } else {
+        handleRefresh();
+      }
+    });
+  }, [handleRefresh]);
+
   const posts = useMemo(() => {
     return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
@@ -273,13 +289,17 @@ export default function HomeScreen() {
     <View className="flex-1 bg-white">
       <GestureDetector gesture={openComposeGesture}>
       <CustomFlashList
+        ref={listRef}
         style={{ flex: 1 }}
         data={posts}
         renderItem={renderFeedItem}
         keyExtractor={(item: SocialPost) => item.post_id}
         getItemType={getPostItemType}
         estimatedItemSize={350}
-        onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+        onScroll={(e: any) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+          handleScrollY(e.nativeEvent.contentOffset.y);
+        }}
         onScrollEndDrag={handleScrollEnd}
         onMomentumScrollEnd={handleScrollEnd}
         scrollEventThrottle={16}

@@ -324,7 +324,13 @@ export default function CommentThreadScreen() {
           <View style={{
             position: 'absolute', left: 0, right: 0,
             top: mentionActive ? insets.top + 48 : undefined,
-            bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+            // `softwareKeyboardLayoutMode` is 'pan' on Android, which only
+            // shifts the window enough to reveal the focused input's caret —
+            // it does NOT resize the layout, so anything anchored at the
+            // physical bottom (like this composer) stays pinned under the
+            // keyboard unless we measure and follow the real keyboard height
+            // ourselves, on both platforms.
+            bottom: keyboardHeight,
             zIndex: 50, elevation: 24,
             backgroundColor: BG,
             borderTopWidth: 0.5, borderTopColor: '#F3F4F6',

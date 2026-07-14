@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
+import { emitHomeTabPress } from '../../../src/utils/homeTabPressSubscription';
 
 const Icons = {
   homeSelect: require('../../../assets/icons/home-select.svg'),
@@ -42,6 +43,13 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            // Instagram-style behavior: re-tapping the Home tab while already
+            // on it should scroll the feed to top / trigger a refresh.
+            if (navigation.isFocused()) emitHomeTabPress();
+          },
+        })}
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => (
