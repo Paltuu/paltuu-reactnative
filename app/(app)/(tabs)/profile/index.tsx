@@ -31,6 +31,7 @@ import PostCardShared from '../../../../src/components/social/PostCard';
 import { Avatar } from '../../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
 import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
+import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
 
 const Icons = {
   pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
@@ -214,6 +215,13 @@ export default function ProfileScreen() {
       setIsRefreshing(false);
     }
   }, [queryClient, userId]);
+
+  // Re-tapping the Profile tab while already on it refreshes the profile data.
+  useEffect(() => {
+    return subscribeToTabPress('profile', () => {
+      handleRefresh();
+    });
+  }, [handleRefresh]);
 
   // ── Menu animation ──────────────────────────────────────────────────────────
   const openMenu = () => {

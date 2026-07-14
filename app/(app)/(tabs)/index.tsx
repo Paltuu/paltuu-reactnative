@@ -18,7 +18,7 @@ import PostCard, { getPostItemType } from '../../../src/components/social/PostCa
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
-import { subscribeToHomeTabPress } from '../../../src/utils/homeTabPressSubscription';
+import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { storage } from '../../../src/utils/storage';
 
 // (Layout constants are now managed inside the shared PostCard)
@@ -211,7 +211,7 @@ export default function HomeScreen() {
   // Instagram-style re-tap: if the feed is scrolled down, scroll to top;
   // if it's already at the top, trigger a refresh instead.
   useEffect(() => {
-    return subscribeToHomeTabPress(() => {
+    return subscribeToTabPress('home', () => {
       if (scrollYRef.current > 40) {
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
       } else {

@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
-import { emitHomeTabPress } from '../../../src/utils/homeTabPressSubscription';
+import { emitTabPress } from '../../../src/utils/tabPressSubscription';
 
 const Icons = {
   homeSelect: require('../../../assets/icons/home-select.svg'),
@@ -47,7 +47,7 @@ export default function TabsLayout() {
           tabPress: () => {
             // Instagram-style behavior: re-tapping the Home tab while already
             // on it should scroll the feed to top / trigger a refresh.
-            if (navigation.isFocused()) emitHomeTabPress();
+            if (navigation.isFocused()) emitTabPress('home');
           },
         })}
         options={{
@@ -64,6 +64,11 @@ export default function TabsLayout() {
 
       <Tabs.Screen
         name="pets"
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            if (navigation.isFocused()) emitTabPress('pets');
+          },
+        })}
         options={{
           title: 'Pets',
           tabBarIcon: ({ focused }) => (
@@ -77,6 +82,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="search"
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            if (navigation.isFocused()) emitTabPress('search');
+          },
+        })}
         options={{
           title: 'Search',
           tabBarIcon: ({ focused }) => (
@@ -90,6 +100,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile/index"
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            if (navigation.isFocused()) emitTabPress('profile');
+          },
+        })}
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => (

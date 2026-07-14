@@ -19,6 +19,7 @@ import { petApi } from '../../../src/api/pets';
 import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
+import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 
 const H_PAD = 20;
 const ROSE = '#A03048';
@@ -150,7 +151,7 @@ export default function PetsHubScreen() {
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
   const { cityId, cityName } = useLocationStore();
-  const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched } = useQuery({
+  const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched, refetch: refetchCityPets } = useQuery({
     queryKey: ['nearby-pets', cityId],
     queryFn: () =>
       petApi.getAdoptionPets({
@@ -167,10 +168,18 @@ export default function PetsHubScreen() {
   // Fired in parallel with the city query (not gated on its result) so an
   // empty-city response doesn't have to wait on a second sequential
   // round-trip before the fallback can show.
-  const { data: fallbackPetsData, isPending: isFallbackPending } = useQuery({
+  const { data: fallbackPetsData, isPending: isFallbackPending, refetch: refetchFallbackPets } = useQuery({
     queryKey: ['nearby-pets-fallback'],
     queryFn: () => petApi.getAdoptionPets({ limit: NEARBY_FETCH_LIMIT }),
   });
+
+  // Re-tapping the Pets tab while already on it refreshes the nearby-pets data.
+  useEffect(() => {
+    return subscribeToTabPress('pets', () => {
+      refetchCityPets();
+      refetchFallbackPets();
+    });
+  }, [refetchCityPets, refetchFallbackPets]);
 
   const noCityResults = isCityPetsFetched && cityPets.length === 0 && !!cityId;
   const isNearbyLoading = isCityPetsPending || (noCityResults && isFallbackPending);

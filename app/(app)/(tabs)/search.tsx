@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import PostCard, { getPostItemType } from '../../../src/components/social/PostCa
 import { ExploreSections } from '../../../src/components/explore/ExploreSections';
 import { chunkArray, PostGridItem, GRID_MARGIN, GRID_GAP } from '../../../src/components/explore/MediaGrid';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
+import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 
 const CustomFlashList = FlashList as any;
 
@@ -250,6 +251,17 @@ export default function SearchScreen() {
       setIsExploreRefreshing(false);
     }
   }, [queryClient]);
+
+  // Re-tapping the Search tab while already on it refreshes whichever view is active.
+  useEffect(() => {
+    return subscribeToTabPress('search', () => {
+      if (debouncedQuery) {
+        refetchSearch();
+      } else {
+        handleExploreRefresh();
+      }
+    });
+  }, [debouncedQuery, refetchSearch, handleExploreRefresh]);
 
   const exploreHeader = useMemo(() => <ExploreSections />, []);
 
