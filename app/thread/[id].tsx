@@ -35,6 +35,7 @@ import {
   buildTree, buildOrderRank, sortTreeByRank, flatten, findComment, rebaseTree,
   Avatar, CommentRow, EmptyComments, FocusedCommentHeader,
 } from '../../src/components/social/commentTree';
+import { LoadingDots } from '../../src/components/ui/LoadingDots';
 
 /* ─────────────────── Comment thread screen ─────────────────── */
 export default function CommentThreadScreen() {
@@ -439,11 +440,12 @@ export default function CommentThreadScreen() {
                     style={{
                       marginLeft: 'auto',
                       backgroundColor: draft.canSubmit ? PRIMARY : '#E5E7EB',
-                      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
+                      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8, minWidth: 80,
+                      alignItems: 'center', justifyContent: 'center',
                     }}
                   >
                     {draft.isSubmitting ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoadingDots size={4} gap={4} color="#fff" />
                     ) : (
                       <Text style={{ color: draft.canSubmit ? '#fff' : '#9CA3AF', fontWeight: '700', fontSize: 14 }}>Reply</Text>
                     )}

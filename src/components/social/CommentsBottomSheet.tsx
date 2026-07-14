@@ -11,6 +11,7 @@ import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
 import { CommentRowSkeleton } from './CommentRowSkeleton';
+import { LoadingDots } from '../ui/LoadingDots';
 
 interface CommentsBottomSheetProps {
   visible: boolean;
@@ -325,13 +326,14 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
             onChangeText={setCommentText}
             multiline
           />
-          <TouchableOpacity 
-            className="ml-3" 
+          <TouchableOpacity
+            className="ml-3"
             onPress={handlePost}
             disabled={!commentText.trim() || postMutation.isPending}
+            style={{ minWidth: 40, alignItems: 'center' }}
           >
             {postMutation.isPending ? (
-              <ActivityIndicator size="small" color="#A03048" />
+              <LoadingDots size={4} gap={4} color="#A03048" />
             ) : (
               <Text className={`text-sm font-headingBold ${!commentText.trim() ? 'text-gray-300' : 'text-primary'}`}>
                 Post

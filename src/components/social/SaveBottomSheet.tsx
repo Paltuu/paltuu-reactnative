@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi, Collection } from '../../api/social';
+import { LoadingDots } from '../ui/LoadingDots';
 
 interface SaveBottomSheetProps {
   visible: boolean;
@@ -297,9 +298,10 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
                   onPress={handleCreateCollection}
                   disabled={!newCollectionName.trim() || createCollectionMutation.isPending}
                   className="bg-primary px-4 h-11 rounded-xl items-center justify-center"
+                  style={{ minWidth: 80 }}
                 >
                   {createCollectionMutation.isPending ? (
-                    <ActivityIndicator color="white" size="small" />
+                    <LoadingDots size={4} gap={4} color="#fff" />
                   ) : (
                     <Text className="text-sm font-headingSemi text-white">Create</Text>
                   )}

@@ -85,13 +85,9 @@ export const QuickProfileModal = ({
                   onPress={() => toggleFollow(userId!)}
                   disabled={isFollowing}
                 >
-                  {isFollowing ? (
-                    <ActivityIndicator color={profile.is_following ? '#111' : 'white'} size="small" />
-                  ) : (
-                    <Text className={`font-bold ${profile.is_following ? 'text-[#111]' : 'text-white'}`}>
-                      {profile.is_following ? 'Following' : 'Follow'}
-                    </Text>
-                  )}
+                  <Text className={`font-bold ${profile.is_following ? 'text-[#111]' : 'text-white'}`}>
+                    {profile.is_following ? 'Following' : 'Follow'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

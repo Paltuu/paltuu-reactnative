@@ -38,6 +38,7 @@ import {
   buildTree, buildOrderRank, sortTreeByRank, flatten,
   Avatar, CommentRow, EmptyComments,
 } from '../../src/components/social/commentTree';
+import { LoadingDots } from '../../src/components/ui/LoadingDots';
 
 /* ─────────────────── Main screen ─────────────────── */
 export default function PostDetailScreen() {
@@ -515,11 +516,12 @@ export default function PostDetailScreen() {
                     style={{
                       marginLeft: 'auto',
                       backgroundColor: draft.canSubmit ? PRIMARY : '#E5E7EB',
-                      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
+                      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8, minWidth: 80,
+                      alignItems: 'center', justifyContent: 'center',
                     }}
                   >
                     {draft.isSubmitting ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoadingDots size={4} gap={4} color="#fff" />
                     ) : (
                       <Text style={{ color: draft.canSubmit ? '#fff' : '#9CA3AF', fontWeight: '700', fontSize: 14 }}>Reply</Text>
                     )}

@@ -23,6 +23,7 @@ import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTag
 import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
+import { LoadingDots } from '../../src/components/ui/LoadingDots';
 
 const PRIMARY = '#a03048';
 const Avatar = ({ name, uri, size = 40 }: { name?: string; uri?: string | null; size?: number }) => (
@@ -101,12 +102,13 @@ export default function CommentComposerScreen() {
           onPress={() => draft.submit()}
           disabled={!draft.canSubmit}
           style={{
-            paddingHorizontal: 18, paddingVertical: 7, borderRadius: 999,
+            paddingHorizontal: 18, paddingVertical: 7, borderRadius: 999, minWidth: 72,
+            alignItems: 'center', justifyContent: 'center',
             backgroundColor: draft.canSubmit ? PRIMARY : '#E5E7EB',
           }}
         >
           {draft.isSubmitting ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <LoadingDots size={4} gap={4} color="#fff" />
           ) : (
             <Text style={{ color: draft.canSubmit ? '#fff' : '#9CA3AF', fontWeight: '700', fontSize: 14 }}>Post</Text>
           )}

@@ -310,13 +310,9 @@ function UserProfileScreen() {
             onPress={() => toggleFollow(userId)}
             disabled={followMutationLoading}
           >
-            {followMutationLoading ? (
-              <ActivityIndicator size="small" color={profile?.is_following ? DS.primary : "#fff"} />
-            ) : (
-              <Text style={[s.btnPrimaryText, profile?.is_following && s.btnSecondaryText]}>
-                {profile?.is_following ? 'Following' : 'Follow'}
-              </Text>
-            )}
+            <Text style={[s.btnPrimaryText, profile?.is_following && s.btnSecondaryText]}>
+              {profile?.is_following ? 'Following' : 'Follow'}
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>
