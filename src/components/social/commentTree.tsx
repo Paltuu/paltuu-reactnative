@@ -70,7 +70,9 @@ export interface FlatComment extends Comment {
   hiddenCount?: number;
 }
 
-export type SortBy = 'top' | 'newest' | 'oldest';
+// Comments are always ordered by "Top" (most-liked first). Kept as a
+// single-member union so shared components can still take a `sortBy` prop.
+export type SortBy = 'top';
 
 /* ── Build comment tree from a flat list ── */
 export const buildTree = (flat: any[]): Comment[] => {
@@ -135,17 +137,11 @@ export const subtreeAvatars = (descendants: Comment[], max = 3): ReplyAvatar[] =
  * top of the "Top" tab the instant you like it; the new order is applied the
  * next time the page is opened / the comment set changes.
  */
-export const buildOrderRank = (comments: any[], sortBy: SortBy): Map<string, number> => {
-  const cmp = (a: any, b: any) => {
-    if (sortBy === 'top') {
-      return (b.like_count || 0) - (a.like_count || 0) ||
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-    if (sortBy === 'oldest') {
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); // newest
-  };
+export const buildOrderRank = (comments: any[], _sortBy: SortBy): Map<string, number> => {
+  // "Top": most-liked first, newest breaking ties.
+  const cmp = (a: any, b: any) =>
+    (b.like_count || 0) - (a.like_count || 0) ||
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   const rank = new Map<string, number>();
   [...comments].sort(cmp).forEach((c, i) => rank.set(String(c.comment_id), i));
   return rank;
@@ -558,32 +554,4 @@ export const EmptyComments = ({ label = 'No comments yet', hint = 'Be the first 
   </View>
 );
 
-/* ── Sort selector ── */
-const SORT_OPTIONS: { key: SortBy; label: string }[] = [
-  { key: 'top', label: 'Top' },
-  { key: 'newest', label: 'Newest' },
-  { key: 'oldest', label: 'Oldest' },
-];
-
-export const SortSelector = ({ value, onChange }: { value: SortBy; onChange: (v: SortBy) => void }) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG }}>
-    {SORT_OPTIONS.map((opt) => {
-      const active = opt.key === value;
-      return (
-        <TouchableOpacity
-          key={opt.key}
-          onPress={() => onChange(opt.key)}
-          activeOpacity={0.7}
-          style={{
-            paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999,
-            backgroundColor: active ? '#fdf0f2' : '#F3F4F6',
-          }}
-        >
-          <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? PRIMARY : '#6B7280' }}>
-            {opt.label}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+// Comments are always ordered by "Top", so there is no sort selector UI.

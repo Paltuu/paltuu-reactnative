@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, Platform, ActivityIndicator } from 'react
 import { Image } from 'expo-image';
 import { BottomSheetModal, BottomSheetView, BottomSheetFlatList, BottomSheetTextInput, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { useCommentsQuery, removeCommentsByUserInPages } from '../../hooks/useComments';
 import { timeAgo } from '../../utils/timeAgo';
 import { ReportBottomSheet } from './ReportBottomSheet';
 import { useAuthStore } from '../../stores/authStore';
@@ -44,16 +45,14 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
     }
   }, [visible, postId]);
 
-  // 1. Fetch Comments (Real-time fetching)
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['comments', normalizedPostId],
-    queryFn: () => socialApi.getComments(normalizedPostId!),
-    enabled: !!normalizedPostId && visible,
-    retry: false,
-    staleTime: 10000,
-  });
-
-  const comments = data?.comments || [];
+  // 1. Fetch Comments (cursor-paginated; auto-loads every page)
+  const {
+    comments,
+    isLoading,
+    refetch,
+    isFetchingNextPage,
+    loadMore,
+  } = useCommentsQuery(normalizedPostId, visible);
 
   // 2. Post Comment Mutation
   const postMutation = useMutation({
@@ -126,14 +125,10 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
       import('react-native-toast-message').then((mod) => {
         mod.default.show({ type: 'success', text1: 'User blocked' });
       });
-      // Filter out comments from this user
-      queryClient.setQueryData(['comments', normalizedPostId], (old: any) => {
-        if (!old?.comments) return old;
-        return {
-          ...old,
-          comments: old.comments.filter((c: any) => c.user_id !== userId)
-        };
-      });
+      // Filter out comments from this user (paginated pages[] cache shape)
+      queryClient.setQueryData(['comments', normalizedPostId], (old: any) =>
+        removeCommentsByUserInPages(old, userId)
+      );
       // Also invalidate feed and profile
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
@@ -297,6 +292,15 @@ export const CommentsBottomSheet = ({ visible, onClose, postId }: CommentsBottom
               showsVerticalScrollIndicator={false}
               refreshing={isLoading}
               onRefresh={refetch}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                isFetchingNextPage ? (
+                  <View style={{ paddingVertical: 16 }}>
+                    <ActivityIndicator size="small" color="#A03048" />
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View className="py-20 items-center">
                   <Text className="font-body text-gray-400">No comments yet. Be the first!</Text>

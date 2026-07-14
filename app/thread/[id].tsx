@@ -14,8 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
+import { useCommentsQuery, commentsQueryKey, updateCommentInPages } from '../../src/hooks/useComments';
 import { useAuthStore } from '../../src/stores/authStore';
 import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
@@ -31,7 +32,7 @@ import {
   BG, PRIMARY,
   type SortBy, type FlatComment,
   buildTree, buildOrderRank, sortTreeByRank, flatten, findComment, rebaseTree,
-  Avatar, CommentRow, SortSelector, EmptyComments, FocusedCommentHeader,
+  Avatar, CommentRow, EmptyComments, FocusedCommentHeader,
 } from '../../src/components/social/commentTree';
 
 /* ─────────────────── Comment thread screen ─────────────────── */
@@ -48,7 +49,7 @@ export default function CommentThreadScreen() {
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [sortBy, setSortBy] = useState<SortBy>('top');
+  const sortBy: SortBy = 'top'; // comments always sort by Top
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
   useEffect(() => {
@@ -60,60 +61,53 @@ export default function CommentThreadScreen() {
   }, []);
 
   /* ── Query (shared with the post page's comment list) ── */
-  const commentsQueryKey = ['comments', postId] as const;
-  const { data: commentsData, isLoading: commentsLoading } = useQuery({
-    queryKey: commentsQueryKey,
-    queryFn: () => socialApi.getComments(postId as string),
-    enabled: !!postId,
-  });
+  const commentsKey = commentsQueryKey(postId);
+  const {
+    comments,
+    isLoading: commentsLoading,
+    isFetchingNextPage,
+    loadMore,
+  } = useCommentsQuery(postId);
 
   // Frozen sort order (see commentTree.buildOrderRank): only re-snapshots when
-  // the comment set or sort tab changes — likes never reorder the list.
+  // the comment set changes — likes never reorder the list.
   const commentIdsKey = useMemo(
-    () => (commentsData?.comments ?? []).map((c: any) => c.comment_id).join(','),
-    [commentsData]
+    () => comments.map((c: any) => c.comment_id).join(','),
+    [comments]
   );
   const orderRank = useMemo(
-    () => buildOrderRank(commentsData?.comments ?? [], sortBy),
+    () => buildOrderRank(comments, sortBy),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id set, not live like counts
     [commentIdsKey, sortBy]
   );
 
   /* ── Locate the focused comment + its (re-based) subtree ── */
   const { focused, flatComments } = useMemo(() => {
-    const fullTree = buildTree(commentsData?.comments ?? []);
+    const fullTree = buildTree(comments);
     const node = findComment(fullTree, id as string);
     if (!node) return { focused: null, flatComments: [] as FlatComment[] };
     // Re-base so the focused comment's direct replies start at display depth 0.
     const rebased = rebaseTree(node.replies, node.depth + 1);
     return { focused: node, flatComments: flatten(sortTreeByRank(rebased, orderRank), expanded) };
-  }, [commentsData, id, expanded, orderRank]);
+  }, [comments, id, expanded, orderRank]);
 
   /* ── Comment/reply like — optimistic (same cache the post page uses) ── */
   const toggleCommentLike = useMutation({
     mutationFn: (commentId: string) => socialApi.toggleCommentLike(commentId),
     onMutate: async (commentId: string) => {
-      await queryClient.cancelQueries({ queryKey: commentsQueryKey });
-      const previous = queryClient.getQueryData<{ comments: any[] }>(commentsQueryKey);
-      queryClient.setQueryData(commentsQueryKey, (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          comments: old.comments.map((c: any) =>
-            String(c.comment_id) === commentId
-              ? {
-                  ...c,
-                  is_liked: !c.is_liked,
-                  like_count: Math.max(0, (c.like_count || 0) + (c.is_liked ? -1 : 1)),
-                }
-              : c
-          ),
-        };
-      });
+      await queryClient.cancelQueries({ queryKey: commentsKey });
+      const previous = queryClient.getQueryData(commentsKey);
+      queryClient.setQueryData(commentsKey, (old: any) =>
+        updateCommentInPages(old, commentId, (c) => ({
+          ...c,
+          is_liked: !c.is_liked,
+          like_count: Math.max(0, (c.like_count || 0) + (c.is_liked ? -1 : 1)),
+        }))
+      );
       return { previous };
     },
     onError: (_err, _commentId, context) => {
-      if (context?.previous) queryClient.setQueryData(commentsQueryKey, context.previous);
+      if (context?.previous) queryClient.setQueryData(commentsKey, context.previous);
     },
   });
 
@@ -186,7 +180,6 @@ export default function CommentThreadScreen() {
     }
     return [
       { type: 'focused', key: 'focused' },
-      { type: 'sort', key: 'sort' },
       ...commentItems,
     ];
   }, [focused, flatComments, commentsLoading]);
@@ -202,8 +195,6 @@ export default function CommentThreadScreen() {
             onOpenProfile={setSelectedUserId}
           />
         );
-      case 'sort':
-        return <SortSelector value={sortBy} onChange={setSortBy} />;
       case 'empty':
         return <EmptyComments label="No replies yet" hint="Be the first to reply" />;
       case 'comment-skeleton':
@@ -281,6 +272,15 @@ export default function CommentThreadScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 72 + insets.bottom, backgroundColor: BG }}
         style={{ flex: 1, backgroundColor: BG }}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={{ paddingVertical: 16 }}>
+              <ActivityIndicator size="small" color={PRIMARY} />
+            </View>
+          ) : null
+        }
       />
 
       {/* ── Phase 1: collapsed reply bar ── */}

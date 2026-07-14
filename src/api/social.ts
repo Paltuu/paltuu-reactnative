@@ -166,8 +166,10 @@ export const socialApi = {
     return data as { pets: SocialPet[] };
   },
 
-  async getComments(postId: string | number) {
-    const { data } = await client.get(`/social/posts/${postId}/comments`);
+  async getComments(postId: string | number, cursor?: string | null) {
+    const { data } = await client.get(`/social/posts/${postId}/comments`, {
+      params: cursor ? { cursor } : undefined,
+    });
     return data as { comments: any[]; has_more: boolean; next_cursor: string | null };
   },
 

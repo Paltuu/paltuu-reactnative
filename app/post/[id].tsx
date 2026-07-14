@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
+import { useCommentsQuery, commentsQueryKey, updateCommentInPages } from '../../src/hooks/useComments';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
 import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
@@ -34,7 +35,7 @@ import {
   BG, PRIMARY,
   type SortBy, type FlatComment,
   buildTree, buildOrderRank, sortTreeByRank, flatten,
-  Avatar, CommentRow, SortSelector, EmptyComments,
+  Avatar, CommentRow, EmptyComments,
 } from '../../src/components/social/commentTree';
 
 /* ─────────────────── Main screen ─────────────────── */
@@ -51,7 +52,7 @@ export default function PostDetailScreen() {
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [sortBy, setSortBy] = useState<SortBy>('top');
+  const sortBy: SortBy = 'top'; // comments always sort by Top
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
   // Auto-play the video in the detail screen when opened, and pause on close
@@ -92,38 +93,31 @@ export default function PostDetailScreen() {
   });
 
 
-  const { data: commentsData, isLoading: commentsLoading } = useQuery({
-    queryKey: ['comments', id],
-    queryFn: () => socialApi.getComments(id as string),
-    enabled: !!id,
-  });
+  const {
+    comments,
+    isLoading: commentsLoading,
+    isFetchingNextPage,
+    loadMore,
+  } = useCommentsQuery(id);
 
   /* ── Comment/reply like — optimistic, with rollback on failure ── */
-  const commentsQueryKey = ['comments', id] as const;
+  const commentsKey = commentsQueryKey(id);
   const toggleCommentLike = useMutation({
     mutationFn: (commentId: string) => socialApi.toggleCommentLike(commentId),
     onMutate: async (commentId: string) => {
-      await queryClient.cancelQueries({ queryKey: commentsQueryKey });
-      const previous = queryClient.getQueryData<{ comments: any[] }>(commentsQueryKey);
-      queryClient.setQueryData(commentsQueryKey, (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          comments: old.comments.map((c: any) =>
-            String(c.comment_id) === commentId
-              ? {
-                  ...c,
-                  is_liked: !c.is_liked,
-                  like_count: Math.max(0, (c.like_count || 0) + (c.is_liked ? -1 : 1)),
-                }
-              : c
-          ),
-        };
-      });
+      await queryClient.cancelQueries({ queryKey: commentsKey });
+      const previous = queryClient.getQueryData(commentsKey);
+      queryClient.setQueryData(commentsKey, (old: any) =>
+        updateCommentInPages(old, commentId, (c) => ({
+          ...c,
+          is_liked: !c.is_liked,
+          like_count: Math.max(0, (c.like_count || 0) + (c.is_liked ? -1 : 1)),
+        }))
+      );
       return { previous };
     },
     onError: (_err, _commentId, context) => {
-      if (context?.previous) queryClient.setQueryData(commentsQueryKey, context.previous);
+      if (context?.previous) queryClient.setQueryData(commentsKey, context.previous);
     },
   });
 
@@ -198,19 +192,19 @@ export default function PostDetailScreen() {
   // A signature of just the comment *set* (ids) — changes on add/remove but not
   // when a like mutates a count, so the frozen sort order survives likes.
   const commentIdsKey = useMemo(
-    () => (commentsData?.comments ?? []).map((c: any) => c.comment_id).join(','),
-    [commentsData]
+    () => comments.map((c: any) => c.comment_id).join(','),
+    [comments]
   );
   const orderRank = useMemo(
-    () => buildOrderRank(commentsData?.comments ?? [], sortBy),
+    () => buildOrderRank(comments, sortBy),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id set, not live like counts
     [commentIdsKey, sortBy]
   );
 
   const flatComments = useMemo(() => {
-    const tree = sortTreeByRank(buildTree(commentsData?.comments ?? []), orderRank);
+    const tree = sortTreeByRank(buildTree(comments), orderRank);
     return flatten(tree, expanded);
-  }, [commentsData, expanded, orderRank]);
+  }, [comments, expanded, orderRank]);
 
   const listData = useMemo(() => {
     if (!postData) return [];
@@ -224,7 +218,6 @@ export default function PostDetailScreen() {
     }
     return [
       { type: 'post', key: 'post' },
-      { type: 'sort', key: 'sort' },
       ...commentItems,
     ];
   }, [postData, flatComments, commentsLoading]);
@@ -233,7 +226,7 @@ export default function PostDetailScreen() {
   const renderItem = useCallback(({ item }: { item: any }) => {
     switch (item.type) {
       case 'post': {
-        const hasUserCommented = !!commentsData?.comments?.some(
+        const hasUserCommented = comments.some(
           (c: any) => String(c.user_id) === String(user?.id)
         );
         const postWithCommentState = postData
@@ -251,8 +244,6 @@ export default function PostDetailScreen() {
           </View>
         );
       }
-      case 'sort':
-        return <SortSelector value={sortBy} onChange={setSortBy} />;
       case 'empty':
         return <EmptyComments />;
       case 'comment-skeleton':
@@ -272,7 +263,7 @@ export default function PostDetailScreen() {
       default:
         return null;
     }
-  }, [postData, commentsData, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, user?.id, sortBy]);
+  }, [postData, comments, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, user?.id, sortBy]);
 
   /* ── Loading / Error ── */
   if (postLoading) {
@@ -348,6 +339,15 @@ export default function PostDetailScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 72 + insets.bottom, backgroundColor: BG }}
         style={{ flex: 1, backgroundColor: BG }}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={{ paddingVertical: 16 }}>
+              <ActivityIndicator size="small" color={PRIMARY} />
+            </View>
+          ) : null
+        }
       />
 
       {/* ── Phase 1: collapsed reply bar (in-flow, anchored to the bottom) ── */}
