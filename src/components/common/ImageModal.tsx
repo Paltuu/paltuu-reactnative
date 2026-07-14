@@ -65,8 +65,8 @@ export const ImageModal: React.FC<ImageModalProps> = ({
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
         <View style={styles.container}>
           <View style={[styles.closeButtonContainer, { top: Math.max(insets.top, 16) }]}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="white" />
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={12}>
+              <Ionicons name="close" size={30} color="white" />
             </TouchableOpacity>
           </View>
 
@@ -165,9 +165,9 @@ const ZoomableImage = ({ url }: { url: string }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)' },
-  closeButtonContainer: { position: 'absolute', right: 16, zIndex: 10 },
-  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#000' },
+  closeButtonContainer: { position: 'absolute', left: 16, zIndex: 10 },
+  closeButton: { justifyContent: 'center', alignItems: 'center' },
   pager: { flex: 1 },
   page: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   image: { width: SCREEN_W, height: SCREEN_H * 0.8 },

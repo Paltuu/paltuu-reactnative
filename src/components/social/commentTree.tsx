@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
 import { MentionText } from './MentionText';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
+import { usePostCardModals } from '../../context/PostCardModalsContext';
 
 export const PRIMARY = '#A03048';
 export const MUTED = '#C4C4C4';
@@ -292,19 +293,37 @@ const ThreadLines = ({
   );
 };
 
-/* ── Read-only media grid for a posted comment/reply ── */
+/* ── Media grid for a posted comment/reply ──
+ * Tapping any item opens the shared full-screen media viewer (same one the post
+ * card uses), starting on the tapped item. */
 export const CommentMediaGrid = ({ media }: { media?: CommentMedia[] }) => {
+  const modals = usePostCardModals();
   if (!media || media.length === 0) return null;
+  const viewerItems = media.map((m) => ({
+    url: m.url,
+    type: m.media_type,
+    thumbnail_url: m.thumbnail_url ?? undefined,
+  }));
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
       {media.map((m, i) => (
-        <View key={`${m.url}-${i}`} style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F4F6' }}>
+        <TouchableOpacity
+          key={`${m.url}-${i}`}
+          activeOpacity={0.9}
+          onPress={() => modals?.showImageViewer(viewerItems, i)}
+          style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F4F6' }}
+        >
           <Image
             source={{ uri: m.thumbnail_url || m.url }}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
           />
-        </View>
+          {m.media_type === 'video' && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="play-circle" size={30} color="rgba(255,255,255,0.9)" />
+            </View>
+          )}
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -407,6 +426,33 @@ export const CommentRow = ({
     hasChildrenBelow: item.hasChildrenBelow ?? false,
   };
 
+  // Single tap opens the thread; double tap likes the comment. Distinguishing
+  // them (single fires only after the double-tap window lapses) also fixes the
+  // fast double-open that used to push the thread route — and mount it — twice.
+  const DOUBLE_TAP_MS = 260;
+  const lastTapRef = React.useRef(0);
+  const singleTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(
+    () => () => { if (singleTapTimer.current) clearTimeout(singleTapTimer.current); },
+    []
+  );
+  const handleRowPress = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+      // Double tap → like only (never unlike, never navigate).
+      if (singleTapTimer.current) { clearTimeout(singleTapTimer.current); singleTapTimer.current = null; }
+      lastTapRef.current = 0;
+      if (!item.is_liked) onToggleLike(item.comment_id);
+    } else {
+      lastTapRef.current = now;
+      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+      singleTapTimer.current = setTimeout(() => {
+        singleTapTimer.current = null;
+        onOpenThread(item.comment_id);
+      }, DOUBLE_TAP_MS);
+    }
+  };
+
   if (item.isContinueThread) {
     return (
       <SubStubRow
@@ -430,11 +476,11 @@ export const CommentRow = ({
   }
 
   return (
-    // Tapping the row (content / timestamp / media) opens this comment's thread;
-    // name + avatar open the author's profile; the sub-buttons keep their own
-    // actions (nested touchables win over the row press).
+    // Single tap opens this comment's thread, double tap likes it; name + avatar
+    // open the author's profile; the sub-buttons keep their own actions (nested
+    // touchables win over the row press).
     <Pressable
-      onPress={() => onOpenThread(item.comment_id)}
+      onPress={handleRowPress}
       style={{ position: 'relative', backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}
     >
       <ThreadLines {...threadProps} />

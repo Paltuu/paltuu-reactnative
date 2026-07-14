@@ -16,6 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { useCommentsQuery, commentsQueryKey, updateCommentInPages } from '../../src/hooks/useComments';
+import { triggerLikeHaptic } from '../../src/utils/haptics';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
 import { PostCardSkeleton } from '../../src/components/social/PostCardSkeleton';
@@ -122,6 +123,7 @@ export default function PostDetailScreen() {
   });
 
   const handleToggleCommentLike = useCallback((commentId: string) => {
+    triggerLikeHaptic();
     toggleCommentLike.mutate(commentId);
   }, [toggleCommentLike]);
 
