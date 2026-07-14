@@ -83,8 +83,11 @@ const stripHtml = (s: string) =>
 export const getPostItemType = (post: SocialPost): string => {
   const isRepost = post.post_type === 'repost' && !!post.original_post_id;
   const hasCaption = !!stripHtml(post.content);
-  const isQuoteRepost = isRepost && hasCaption;
-  const isPlainRepost = isRepost && !hasCaption;
+  const hasOwnMedia = (post.media?.length ?? 0) > 0;
+  // A quote carries its own body (caption and/or attached media); a plain
+  // repost has neither and just re-surfaces the original.
+  const isQuoteRepost = isRepost && (hasCaption || hasOwnMedia);
+  const isPlainRepost = isRepost && !hasCaption && !hasOwnMedia;
   const bodyMedia = isPlainRepost ? (post.original_media ?? []) : (post.media ?? []);
 
   if (isQuoteRepost) return 'quote';
@@ -702,8 +705,12 @@ export const PostCard = React.memo(({
   // points to — guards against posts mislabeled post_type:'repost' without any
   // original_* data, which otherwise drew a stray "reposted" header.
   const isRepost = post.post_type === 'repost' && !!post.original_post_id;
-  const isQuoteRepost = isRepost && !!caption;
-  const isPlainRepost = isRepost && !caption;
+  // A quote carries its own body (caption and/or attached media); a plain
+  // repost has neither and just re-surfaces the original. Keep in sync with
+  // getPostItemType above.
+  const hasOwnMedia = (post.media?.length ?? 0) > 0;
+  const isQuoteRepost = isRepost && (!!caption || hasOwnMedia);
+  const isPlainRepost = isRepost && !caption && !hasOwnMedia;
 
   const displayName = isPlainRepost ? (post.original_author_name || 'User') : (post.author_name || 'User');
   const displayUsername = isPlainRepost
@@ -830,12 +837,27 @@ export const PostCard = React.memo(({
   }, [actions, post.post_id, post.is_reposted]);
 
   const handleQuotePost = useCallback(() => {
-    modals?.showQuoteSheet({
-      post,
-      onSubmitAsync: (content) =>
-        actions?.repost(post.post_id, !!post.is_reposted, content) ?? Promise.resolve(),
-    });
-  }, [modals, post, actions]);
+    // Preview the post that will actually be quoted. For a plain repost card the
+    // server dereferences to the original, so preview the original's author/
+    // content (not the hollow repost entry). Stash it for the composer screen.
+    const target = isPlainRepost
+      ? {
+          author_name: post.original_author_name,
+          author_image: post.original_author_image,
+          content: post.original_content,
+          media: post.original_media,
+          created_at: post.original_post?.created_at ?? post.created_at,
+        }
+      : {
+          author_name: post.author_name,
+          author_image: post.author_image,
+          content: post.content,
+          media: post.media,
+          created_at: post.created_at,
+        };
+    queryClient.setQueryData(['quote-target', String(post.post_id)], target);
+    router.push(`/quote/${post.post_id}`);
+  }, [isPlainRepost, post, queryClient, router]);
 
   const handleRepostPress = useCallback(() => {
     modals?.showRepostSheet({
@@ -1029,6 +1051,18 @@ export const PostCard = React.memo(({
               <MentionText
                 content={bodyContent}
                 textStyle={{ fontSize: 15, lineHeight: 22, color: '#111', letterSpacing: -0.4 }}
+              />
+            </View>
+          )}
+
+          {/* ── Quote's own attached media (images/videos), above the embedded
+               original — the quoter's media reads first, then the quoted post ── */}
+          {isQuoteRepost && bodyMedia?.length > 0 && (
+            <View style={!bodyContent ? { marginTop: -12 } : undefined}>
+              <MediaBlock
+                media={computedMedia}
+                onImagePress={handleImagePress}
+                isPlaying={isVideoPlaying}
               />
             </View>
           )}

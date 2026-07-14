@@ -223,6 +223,12 @@ export default function RootLayout() {
                   name="comment/[id]"
                   options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
+                {/* Quote-post composer: same full-screen slide-up as the
+                    comment composer, editable full screen (not a bottom sheet) */}
+                <Stack.Screen
+                  name="quote/[id]"
+                  options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
               </Stack>
             </PostCardModalsProvider>
             </SocialActionsProvider>

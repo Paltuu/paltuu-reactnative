@@ -334,8 +334,17 @@ export const socialApi = {
     return data as { following: boolean };
   },
 
-  async toggleRepost(postId: string | number, quote?: string) {
-    const { data } = await client.post(`/social/posts/${postId}/repost`, { content: quote });
+  async toggleRepost(
+    postId: string | number,
+    quote?: string,
+    extras?: { media?: any[]; petProfileTags?: number[] }
+  ) {
+    const { data } = await client.post(`/social/posts/${postId}/repost`, {
+      content: quote,
+      // Only include when present so a plain repost stays a plain repost.
+      ...(extras?.media?.length ? { media: extras.media } : {}),
+      ...(extras?.petProfileTags?.length ? { pet_profile_tags: extras.petProfileTags } : {}),
+    });
     return data;
   },
 
