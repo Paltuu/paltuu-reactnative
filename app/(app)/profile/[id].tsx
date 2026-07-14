@@ -33,6 +33,7 @@ import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { getShareUrl } from '../../../src/utils/share';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -139,7 +140,7 @@ function UserProfileScreen() {
 
   const handleShareProfile = async () => {
     try {
-      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\npaltuu://profile/${profile?.user_id ?? userId}`;
+      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\n${getShareUrl(`profile/${profile?.user_id ?? userId}`)}`;
       await Share.share({ title: 'Paltuu Profile', message: shareText });
     } catch (err: any) {
       Alert.alert('Error', err.message);

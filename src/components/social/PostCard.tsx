@@ -39,6 +39,7 @@ import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
+import { getShareUrl } from '../../utils/share';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -909,7 +910,7 @@ export const PostCard = React.memo(({
   const handleShare = useCallback(async () => {
     try {
       const plainText = mentionsToPlainText(post.content);
-      const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\npaltuu://post/${post.post_id}`;
+      const shareText = `Check out ${post.author_name || 'a user'}'s post on Paltuu: "${plainText}" \n\n${getShareUrl(`post/${post.post_id}`)}`;
       const result = await Share.share({
         title: 'Paltuu Social Post',
         message: shareText,

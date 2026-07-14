@@ -32,6 +32,7 @@ import { Avatar } from '../../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
 import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
 import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
+import { getShareUrl } from '../../../../src/utils/share';
 
 const Icons = {
   pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
@@ -248,7 +249,7 @@ export default function ProfileScreen() {
 
   const handleShareProfile = async () => {
     try {
-      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\npaltuu://profile/${profile?.user_id ?? userId}`;
+      const shareText = `Check out ${profile?.name || 'this profile'} on Paltuu\n\n${getShareUrl(`profile/${profile?.user_id ?? userId}`)}`;
       await Share.share({ title: 'Paltuu Profile', message: shareText });
     } catch (err: any) {
       Alert.alert('Error', err.message);

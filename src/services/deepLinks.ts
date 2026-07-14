@@ -28,9 +28,11 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       console.log(`[Deep Link Router] Parsed path: ${combinedPath}`);
     }
 
-    const routes: Record<string, (parts: string[]) => string> = {
+    const routes: Record<string, (parts: string[], url?: URL) => string> = {
       '/social/post': (p) => `/post/${p[2]}`,
+      '/post':        (p) => `/post/${p[1]}`,
       '/profile':     (p) => `/(app)/profile/${p[1]}`,
+      '/pet-details': (p, u) => `/pet-details?id=${u?.searchParams.get('petId') || u?.searchParams.get('id') || p[1] || ''}`,
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
       '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,
       '/adoptions':   (p) => `/(app)/adopt/${p[1]}`,
@@ -44,7 +46,7 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
     const matchedKey = Object.keys(routes).find(key => combinedPath.startsWith(key));
 
     if (matchedKey) {
-      const destination = routes[matchedKey](parts);
+      const destination = routes[matchedKey](parts, url);
       if (__DEV__) {
         console.log(`[Deep Link Router] Navigating to target route: ${destination}`);
       }

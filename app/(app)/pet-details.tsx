@@ -20,6 +20,7 @@ import { useSocialActions } from '../../src/hooks/useSocialActions';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { PetDetailsScreenSkeleton } from '../../src/components/common/PetDetailsScreenSkeleton';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { getShareUrl } from '../../src/utils/share';
 
 const { width } = Dimensions.get('window');
 // Wider and less tall layout (5:4 aspect ratio)
@@ -73,7 +74,7 @@ function PetDetailsScreen() {
   const onShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${pet?.pet_name || 'this pet'} on Paltuu!\n\npaltuu://pet-details?petId=${id}`,
+        message: `Check out ${pet?.pet_name || 'this pet'} on Paltuu!\n\n${getShareUrl(`pet-details?petId=${id}`)}`,
       });
     } catch (error) {
       console.error('Share error:', error);
