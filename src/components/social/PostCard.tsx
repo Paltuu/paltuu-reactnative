@@ -28,6 +28,7 @@ const PostIcons = {
   bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
   bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
   verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
+  pawTag: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
 };
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
@@ -199,6 +200,20 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#A03048',
+  },
+  // Subtle "{paw} Lino" tag under the media — signals the pet in the picture.
+  petTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: MEDIA_LEFT_OFFSET,
+    marginTop: 6,
+    marginBottom: 2,
+    gap: 5,
+  },
+  petTagText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   caption: {
     marginLeft: MEDIA_LEFT_OFFSET,
@@ -667,6 +682,14 @@ export const PostCard = React.memo(({
   const timeAgo = useMemo(() => formatTime(post.created_at), [post.created_at]);
   const caption = useMemo(() => stripHtml(post.content), [post.content]);
 
+  // Tagged pets come from the API as a `tagged_pets` array ({ name, ... }),
+  // not a flat pet_name field. Label = first pet, "+N" when more than one.
+  const petTagLabel = useMemo(() => {
+    const pets = post.tagged_pets ?? [];
+    if (!pets.length) return '';
+    return pets.length === 1 ? pets[0].name : `${pets[0].name} +${pets.length - 1}`;
+  }, [post.tagged_pets]);
+
   // ── Repost display model ──────────────────────────────────────────────
   // Quote repost = repost WITH a caption → reads like a normal post with the
   //   original embedded (no "reposted" header).
@@ -990,9 +1013,11 @@ export const PostCard = React.memo(({
           />
 
           {/* ── Pet chip (optional) ── */}
-          {post.pet_name && !isPlainRepost && (
+          {/* Pet chip above the body only when there's no media — when there is
+              media the pet is labelled with a subtle tag right under it instead. */}
+          {!!petTagLabel && !isPlainRepost && !bodyMedia?.length && (
             <View style={s.petChipRow}>
-              <PetChip name={post.pet_name} />
+              <PetChip name={petTagLabel} />
             </View>
           )}
 
@@ -1044,6 +1069,19 @@ export const PostCard = React.memo(({
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
               />
+            </View>
+          )}
+
+          {/* ── Pet tag: sits right under the media to signal the pet in the picture ── */}
+          {!!petTagLabel && !isPlainRepost && bodyMedia?.length > 0 && (
+            <View style={s.petTag}>
+              <Image
+                source={PostIcons.pawTag}
+                style={{ width: 14, height: 14 }}
+                contentFit="contain"
+                tintColor="#9CA3AF"
+              />
+              <Text style={s.petTagText}>{petTagLabel}</Text>
             </View>
           )}
 

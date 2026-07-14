@@ -142,53 +142,64 @@ export const PetTagSheet = ({
 
   const handleDone = () => sheetRef.current?.close();
 
+  // Header (title + Done + search) rides along as a sticky list header so the
+  // FlatList can be the BottomSheet's single scrollable child — nesting a
+  // FlatList beside other children forces the sheet into a plain ScrollView,
+  // which throws "VirtualizedLists should never be nested inside ScrollViews".
+  const ListHeader = (
+    <View style={{ backgroundColor: '#fff' }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10 }}>
+        <Text style={{ fontSize: 17, fontWeight: '700', color: '#111' }}>Tag your pets</Text>
+        <TouchableOpacity onPress={handleDone} hitSlop={8}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: PRIMARY }}>Done</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
+      {petProfiles.length > 4 && (
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 8,
+          marginHorizontal: 20, marginBottom: 6, paddingHorizontal: 12,
+          backgroundColor: '#F3F4F6', borderRadius: 12, height: 40,
+        }}>
+          <Ionicons name="search" size={16} color="#9CA3AF" />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search your pets"
+            placeholderTextColor="#9CA3AF"
+            style={{ flex: 1, fontSize: 14, color: '#111' }}
+          />
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <Modal visible transparent animationType="none" onRequestClose={handleDone} statusBarTranslucent navigationBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BottomSheet ref={sheetRef} snapPoints={snapPoints} onClose={onClose}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 10 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#111' }}>Tag your pets</Text>
-            <TouchableOpacity onPress={handleDone} hitSlop={8}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: PRIMARY }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search */}
-          {petProfiles.length > 4 && (
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              marginHorizontal: 20, marginBottom: 6, paddingHorizontal: 12,
-              backgroundColor: '#F3F4F6', borderRadius: 12, height: 40,
-            }}>
-              <Ionicons name="search" size={16} color="#9CA3AF" />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search your pets"
-                placeholderTextColor="#9CA3AF"
-                style={{ flex: 1, fontSize: 14, color: '#111' }}
-              />
-            </View>
-          )}
-
-          {isLoading ? (
-            <View style={{ paddingHorizontal: 12, paddingTop: 4 }}>
-              <PetRowSkeleton />
-              <PetRowSkeleton />
-              <PetRowSkeleton />
-            </View>
-          ) : (
           <FlatList
-            data={filtered}
+            data={isLoading ? [] : filtered}
             keyExtractor={(item) => String(item.pet_profile_id)}
             keyboardShouldPersistTaps="handled"
+            stickyHeaderIndices={[0]}
+            ListHeaderComponent={ListHeader}
             contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 32 }}
             ListEmptyComponent={
-              <View style={{ alignItems: 'center', paddingVertical: 28, gap: 8 }}>
-                <Ionicons name="paw-outline" size={32} color="#D1D5DB" />
-                <Text style={{ color: '#9CA3AF', fontSize: 14 }}>No pets yet</Text>
-              </View>
+              isLoading ? (
+                <View style={{ paddingTop: 4 }}>
+                  <PetRowSkeleton />
+                  <PetRowSkeleton />
+                  <PetRowSkeleton />
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: 28, gap: 8 }}>
+                  <Ionicons name="paw-outline" size={32} color="#D1D5DB" />
+                  <Text style={{ color: '#9CA3AF', fontSize: 14 }}>No pets yet</Text>
+                </View>
+              )
             }
             renderItem={({ item }) => {
               const selected = selectedPets.includes(item.pet_profile_id);
@@ -233,7 +244,6 @@ export const PetTagSheet = ({
               ) : null
             }
           />
-          )}
         </BottomSheet>
       </GestureHandlerRootView>
     </Modal>
