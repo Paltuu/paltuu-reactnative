@@ -1035,11 +1035,16 @@ export const PostCard = React.memo(({
           {/* ── Media: post media for normal posts, original media for plain reposts.
                (Quote reposts show media inside the embedded original above.) ── */}
           {!isQuoteRepost && bodyMedia?.length > 0 && (
-            <MediaBlock
-              media={computedMedia}
-              onImagePress={handleImagePress}
-              isPlaying={isVideoPlaying}
-            />
+            // When there's no caption, pull the media up under the single
+            // name/username line the same way the caption does — otherwise the
+            // media starts below the taller avatar's overhang, leaving a gap.
+            <View style={!bodyContent && { marginTop: -12 }}>
+              <MediaBlock
+                media={computedMedia}
+                onImagePress={handleImagePress}
+                isPlaying={isVideoPlaying}
+              />
+            </View>
           )}
 
           {/* ── Action bar ── */}

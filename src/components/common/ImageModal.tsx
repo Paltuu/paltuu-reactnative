@@ -16,11 +16,12 @@ import {
   GestureDetector, 
   GestureHandlerRootView 
 } from 'react-native-gesture-handler';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withTiming 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 import VideoPlayer from '../social/VideoPlayer';
 
@@ -38,6 +39,9 @@ interface ImageModalProps {
 }
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// Matches styles.image dimensions — used to bound how far a zoomed image can pan.
+const IMG_DISPLAY_W = SCREEN_W;
+const IMG_DISPLAY_H = SCREEN_H * 0.8;
 
 export const ImageModal: React.FC<ImageModalProps> = ({
   mediaItems,
@@ -120,16 +124,31 @@ const ZoomableImage = ({ url }: { url: string }) => {
         scale.value = withSpring(1);
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
-        setIsZoomed(false);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+        runOnJS(setIsZoomed)(false);
       } else {
-        setIsZoomed(true);
+        // Clamp any existing offset into the new zoom's bounds, then persist it
+        // so the image can never sit stranded in empty space.
+        const maxX = (IMG_DISPLAY_W * (scale.value - 1)) / 2;
+        const maxY = (IMG_DISPLAY_H * (scale.value - 1)) / 2;
+        const cx = Math.min(Math.max(translateX.value, -maxX), maxX);
+        const cy = Math.min(Math.max(translateY.value, -maxY), maxY);
+        translateX.value = withSpring(cx);
+        translateY.value = withSpring(cy);
+        savedTranslateX.value = cx;
+        savedTranslateY.value = cy;
+        runOnJS(setIsZoomed)(true);
       }
       savedScale.value = scale.value;
     });
 
   const panGesture = Gesture.Pan().enabled(isZoomed).onUpdate((e) => {
-    translateX.value = savedTranslateX.value + e.translationX;
-    translateY.value = savedTranslateY.value + e.translationY;
+    // Bound the drag to the zoomed image's edges so it can't be flung off-screen.
+    const maxX = (IMG_DISPLAY_W * (scale.value - 1)) / 2;
+    const maxY = (IMG_DISPLAY_H * (scale.value - 1)) / 2;
+    translateX.value = Math.min(Math.max(savedTranslateX.value + e.translationX, -maxX), maxX);
+    translateY.value = Math.min(Math.max(savedTranslateY.value + e.translationY, -maxY), maxY);
   }).onEnd(() => {
     savedTranslateX.value = translateX.value;
     savedTranslateY.value = translateY.value;
@@ -143,11 +162,11 @@ const ZoomableImage = ({ url }: { url: string }) => {
       savedScale.value = 1;
       savedTranslateX.value = 0;
       savedTranslateY.value = 0;
-      setIsZoomed(false);
+      runOnJS(setIsZoomed)(false);
     } else {
       scale.value = withTiming(2);
       savedScale.value = 2;
-      setIsZoomed(true);
+      runOnJS(setIsZoomed)(true);
     }
   });
 
