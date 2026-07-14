@@ -24,7 +24,7 @@ interface AuthState {
   setAuthAsNewUser: (user: User | null, accessToken: string, refreshToken: string, needsUsername?: boolean) => Promise<void>;
   clearNewUser: () => void;
   markOnboardingSeen: () => Promise<void>;
-  updateAccessToken: (accessToken: string) => Promise<void>;
+  updateAccessToken: (accessToken: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
   fetchProfile: () => Promise<void>;
@@ -74,9 +74,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  updateAccessToken: async (accessToken) => {
+  updateAccessToken: async (accessToken, refreshToken) => {
     await storage.saveToken(accessToken);
     set({ accessToken });
+    if (refreshToken) {
+      await storage.saveRefreshToken(refreshToken);
+      set({ refreshToken });
+    }
   },
 
   logout: async () => {

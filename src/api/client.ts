@@ -69,10 +69,10 @@ client.interceptors.response.use(
           refreshToken,
         });
 
-        const { accessToken: newAccessToken } = response.data;
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
         
-        // Update store and storage
-        await updateAccessToken(newAccessToken);
+        // Update store and storage with new access and rotated refresh tokens
+        await updateAccessToken(newAccessToken, newRefreshToken);
 
         // Retry original request
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
