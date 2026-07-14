@@ -426,8 +426,13 @@ export default function PostDetailScreen() {
             // keyboardHeight` already includes that inset (see the listener
             // above), so adding it again here would double-count it and leave
             // a gap between the composer and the keyboard.
+            // When the keyboard is up there's no home indicator to clear (the
+            // keyboard covers that region, and on iOS `keyboardHeight` already
+            // spans down to the physical bottom), so use a small fixed padding —
+            // adding `insets.bottom` here is what left a big gap above the
+            // keyboard. Only apply the safe-area inset when resting.
             paddingBottom: keyboardVisible
-              ? (Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 10)
+              ? (Platform.OS === 'ios' ? 8 : 10)
               : (Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : insets.bottom + 12),
           }}>
             <View style={{ flex: mentionActive ? 1 : undefined }}>

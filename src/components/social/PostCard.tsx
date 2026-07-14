@@ -28,7 +28,7 @@ const PostIcons = {
   bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
   bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
   verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
-  pawTag: require('../../../assets/icons/MAIN_PAW_unselect.svg'),
+  pawTag: require('../../../assets/icons/paw-like-unselect.svg'),
 };
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
@@ -206,14 +206,17 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: MEDIA_LEFT_OFFSET,
-    marginTop: 6,
-    marginBottom: 2,
-    gap: 5,
+    // media above already has marginBottom:10; keep the tag hugging the image
+    // rather than drifting toward the action bar below it.
+    marginTop: 0,
+    marginBottom: 6,
+    gap: 6,
   },
   petTagText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#9CA3AF',
+    letterSpacing: -0.2,
   },
   caption: {
     marginLeft: MEDIA_LEFT_OFFSET,
@@ -684,11 +687,10 @@ export const PostCard = React.memo(({
 
   // Tagged pets come from the API as a `tagged_pets` array ({ name, ... }),
   // not a flat pet_name field. Label = first pet, "+N" when more than one.
-  const petTagLabel = useMemo(() => {
-    const pets = post.tagged_pets ?? [];
-    if (!pets.length) return '';
-    return pets.length === 1 ? pets[0].name : `${pets[0].name} +${pets.length - 1}`;
-  }, [post.tagged_pets]);
+  const petTagLabel = useMemo(
+    () => (post.tagged_pets ?? []).map((p) => p.name).join(', '),
+    [post.tagged_pets],
+  );
 
   // ── Repost display model ──────────────────────────────────────────────
   // Quote repost = repost WITH a caption → reads like a normal post with the
