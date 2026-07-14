@@ -703,6 +703,8 @@ export default function ProfileScreen() {
         transparent
         animationType="fade"
         onRequestClose={closeModal}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View style={s.imgModalBg}>
           {/* Header */}

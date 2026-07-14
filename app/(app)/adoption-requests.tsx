@@ -201,6 +201,8 @@ function AdoptionRequestsScreen() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedItem(null)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         {selectedItem && (
           <SafeAreaView className="flex-1 bg-white" edges={['top', 'left', 'right']}>

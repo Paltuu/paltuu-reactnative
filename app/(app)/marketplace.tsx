@@ -213,6 +213,8 @@ function MarketplaceScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsFilterVisible(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <View className="bg-white rounded-t-[3rem] p-8 max-h-[85%]">

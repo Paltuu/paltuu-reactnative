@@ -65,7 +65,7 @@ function PremiumDropdown({ label, value, options, onSelect, icon }: any) {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={open} transparent animationType="slide">
+      <Modal visible={open} transparent animationType="slide" statusBarTranslucent navigationBarTranslucent>
         <TouchableOpacity
           style={s.modalOverlay}
           activeOpacity={1}

@@ -10,7 +10,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
@@ -37,6 +37,7 @@ const TOTAL_STEPS = STEPS.length;
 
 function ApplyAdoptScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { pet_id, pet_name } = useLocalSearchParams<{ pet_id?: string; pet_name?: string }>();
   const cities = usePetStore((state) => state.cities);
   const fetchMetadata = usePetStore((state) => state.fetchMetadata);
@@ -161,7 +162,7 @@ function ApplyAdoptScreen() {
             application and reach out if it's a match.
           </Text>
         </View>
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/adopt')} radius={26} />
         </View>
       </SafeAreaView>
@@ -364,7 +365,7 @@ function ApplyAdoptScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? 'Submit Application' : 'Next'}
             successLabel={isLast ? 'Application sent!' : undefined}

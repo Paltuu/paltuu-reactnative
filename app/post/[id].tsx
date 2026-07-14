@@ -279,7 +279,7 @@ export default function PostDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: BG }}>
         <View style={{
-          backgroundColor: BG, paddingTop: insets.top, paddingHorizontal: 16, paddingBottom: 12,
+          backgroundColor: BG, paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: 12,
           flexDirection: 'row', alignItems: 'center', gap: 12,
           borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
         }}>
@@ -297,7 +297,7 @@ export default function PostDetailScreen() {
 
   if (postError || (!postLoading && !postData)) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top }}>
+      <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top + 8 }}>
         <View style={{ paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' }}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
             <Ionicons name="chevron-back" size={24} color="#111" />
@@ -324,7 +324,7 @@ export default function PostDetailScreen() {
       {/* ── Navbar ── */}
       <View style={{
         backgroundColor: BG,
-        paddingTop: insets.top,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 16,
         paddingBottom: 12,
         flexDirection: 'row',

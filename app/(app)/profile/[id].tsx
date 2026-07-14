@@ -373,7 +373,7 @@ function UserProfileScreen() {
       />
 
       {/* Image Viewer */}
-      <Modal visible={imageModal !== null} transparent animationType="fade" onRequestClose={() => setImageModal(null)}>
+      <Modal visible={imageModal !== null} transparent animationType="fade" onRequestClose={() => setImageModal(null)} statusBarTranslucent navigationBarTranslucent>
         <View style={s.imgModalBg}>
           <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}><TouchableOpacity onPress={() => setImageModal(null)} style={s.imgModalClose}><Ionicons name="close" size={26} color="#FFFFFF" /></TouchableOpacity><Text style={s.imgModalTitle}>{imageModal === 'profile' ? 'Profile Photo' : 'Cover Photo'}</Text><View style={{ width: 40 }} /></View>
           <View style={s.imgModalContent}>{imageModal === 'profile' ? (<Image source={profile?.profile_image_url ? { uri: profile.profile_image_url } : NO_PROFILE_IMAGE} style={s.imgModalImage} resizeMode="contain" />) : (profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="image-outline" size={80} color="white" /></View>)}</View>

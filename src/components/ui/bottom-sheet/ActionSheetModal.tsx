@@ -54,7 +54,7 @@ export const ActionSheetModal = ({
     : null;
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={dismiss}>
+    <Modal visible transparent animationType="none" onRequestClose={dismiss} statusBarTranslucent navigationBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
         {snapHeight != null && (
           <BottomSheet

@@ -150,6 +150,8 @@ function SavedCollectionsScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setCreateModalVisible(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>

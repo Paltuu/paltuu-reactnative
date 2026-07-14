@@ -31,7 +31,7 @@ export const PawrvezDialog: React.FC<PawrvezDialogProps> = ({
   dismissOnBackdropPress = true,
 }) => {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss} statusBarTranslucent navigationBarTranslucent>
       <Pressable
         style={styles.backdrop}
         onPress={dismissOnBackdropPress ? onDismiss : undefined}

@@ -5,7 +5,7 @@ import {
   Dimensions, RefreshControl
 } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bazaarApi, BazaarFilters } from '../../src/api/bazaar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
@@ -113,14 +113,25 @@ function BazaarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { scrollHandler } = useHeaderContext();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isDowntime] = useState(false); // Mobile active for testing
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleSearch = () => {
     if (search.trim()) {
       router.push({ pathname: '/(app)/marketplace', params: { keyword: search.trim() } });
     }
   };
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['bazaar-section'] });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   if (isDowntime) {
     return (
@@ -151,7 +162,7 @@ function BazaarScreen() {
           paddingBottom: 100 
         }}
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={() => {}} tintColor="#a03048" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#a03048" />
         }
       >
         {/* 🐾 Hero Section */}

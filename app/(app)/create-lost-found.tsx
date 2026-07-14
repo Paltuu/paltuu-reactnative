@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,6 +43,7 @@ const TOTAL_STEPS = STEPS.length;
 
 function CreateLostFoundScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } = usePetStore(
     useShallow((state) => ({
@@ -193,7 +194,7 @@ function CreateLostFoundScreen() {
             approved, it'll appear in the Lost & Found feed for the community to see.
           </Text>
         </View>
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
         </View>
       </SafeAreaView>
@@ -352,7 +353,7 @@ function CreateLostFoundScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? 'Submit Report' : 'Next'}
             successLabel={isLast ? 'Report submitted!' : undefined}

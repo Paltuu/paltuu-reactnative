@@ -181,7 +181,7 @@ export default function HomeScreen() {
 
   const {
     data, fetchNextPage, hasNextPage,
-    isFetchingNextPage, isLoading: isLoadingFeed,
+    isFetchingNextPage, isLoading: isLoadingFeed, refetch,
   } = useInfiniteQuery({
     queryKey: ['social-feed', forYouMode],
     queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode),
@@ -193,6 +193,16 @@ export default function HomeScreen() {
     // loading-skeleton flash right after the feed first paints.
     enabled: !isLoadingInterests,
   });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const posts = useMemo(() => {
     return data?.pages.flatMap(p => p.posts) ?? [];
@@ -275,6 +285,9 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#a03048" />
+        }
         contentContainerStyle={{
           paddingTop: topOffset + 8,
           paddingBottom: 100,

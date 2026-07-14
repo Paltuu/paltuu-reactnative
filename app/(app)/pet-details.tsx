@@ -252,6 +252,8 @@ function PetDetailsScreen() {
         transparent={true}
         animationType="fade"
         onRequestClose={() => setPreviewImageIndex(null)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View style={s.modalBackground}>
           {/* Top Close Button using Safe Area insets */}

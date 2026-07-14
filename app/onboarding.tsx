@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Image, Platform } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -74,17 +74,21 @@ export default function OnboardingScreen() {
             >
               <Text
                 style={[styles.headline, { marginBottom: 8 }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
+                // adjustsFontSizeToFit is unreliable on Android — combined with a
+                // custom font it can render the text fully blank instead of
+                // shrinking it, so only iOS gets the shrink-to-fit behavior;
+                // Android just wraps to a second line if needed.
+                {...(Platform.OS === 'ios'
+                  ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 }
+                  : { numberOfLines: 2 })}
               >
                 {slide.headline}
               </Text>
               <Text
                 style={styles.copy}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
+                {...(Platform.OS === 'ios'
+                  ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 }
+                  : { numberOfLines: 2 })}
               >
                 {slide.copy}
               </Text>

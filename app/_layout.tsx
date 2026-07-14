@@ -177,6 +177,7 @@ export default function RootLayout() {
         <NotificationProvider>
           <SafeAreaProvider>
             <StatusBar style="dark" />
+            <OfflineBanner />
             <BottomSheetModalProvider>
             <SocialActionsProvider>
             <PostCardModalsProvider>
@@ -228,10 +229,10 @@ export default function RootLayout() {
             </BottomSheetModalProvider>
           </SafeAreaProvider>
         </NotificationProvider>
-        {/* Toast and OfflineBanner must be inside QueryClientProvider
-            in case they (or their children) call useQuery internally */}
+        {/* Toast must be inside QueryClientProvider in case it (or its
+            children) calls useQuery internally. OfflineBanner lives inside
+            SafeAreaProvider above so it can read real safe-area insets. */}
         <Toast config={toastConfig} />
-        <OfflineBanner />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

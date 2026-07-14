@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -70,6 +70,7 @@ const TOTAL_STEPS = STEPS.length;
 
 function CreatePetScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const isEditMode = !!editId;
   const { cities, categories, fetchMetadata, createPet, updatePet, isLoading } = usePetStore(
@@ -296,7 +297,7 @@ function CreatePetScreen() {
               : "Thanks for opening your heart! Your pet is now with our team for a quick review. Once it's approved, the listing goes live in the adoption feed for adopters to discover."}
           </Text>
         </View>
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton
             label={isEditMode ? 'Back to Listings' : 'Back to Pets'}
             onPress={() => router.replace(isEditMode ? '/(app)/my-listings' : '/(app)/pets')}
@@ -544,7 +545,7 @@ function CreatePetScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? (isEditMode ? 'Save Changes' : 'Post Pet for Adoption') : 'Next'}
             successLabel={isLast ? (isEditMode ? 'Saved!' : 'Pet posted!') : undefined}

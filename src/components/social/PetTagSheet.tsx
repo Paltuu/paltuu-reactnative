@@ -143,7 +143,7 @@ export const PetTagSheet = ({
   const handleDone = () => sheetRef.current?.close();
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={handleDone}>
+    <Modal visible transparent animationType="none" onRequestClose={handleDone} statusBarTranslucent navigationBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BottomSheet ref={sheetRef} snapPoints={snapPoints} onClose={onClose}>
           {/* Header */}

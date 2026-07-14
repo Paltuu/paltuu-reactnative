@@ -275,6 +275,8 @@ function AdoptScreen() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setIsFilterVisible(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <View className="flex-1 bg-white">
           <View className="flex-row justify-between items-center px-6 py-6 border-b border-gray-100">

@@ -32,7 +32,7 @@ export const QuickProfileModal = ({
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Pressable className="flex-1 bg-black/50 justify-center items-center px-6" onPress={onClose}>
         <Pressable className="w-full bg-white rounded-3xl p-6" onPress={(e) => e.stopPropagation()}>
           {isLoading ? (

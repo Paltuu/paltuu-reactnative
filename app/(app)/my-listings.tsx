@@ -271,6 +271,8 @@ function MyListingsScreen() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedItem(null)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         {selectedItem && (
           <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'left', 'right']}>

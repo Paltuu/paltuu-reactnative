@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View, Animated, Platform } from 'react-native';
+import { Text, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
 
 const cardShadow = {
@@ -14,6 +15,7 @@ const cardShadow = {
 
 export function OfflineBanner() {
   const netInfo = useNetInfo();
+  const insets = useSafeAreaInsets();
   const [showBanner, setShowBanner] = useState(false);
   const [isBackOnline, setIsBackOnline] = useState(false);
   const slideAnim = useRef(new Animated.Value(-100)).current; // Start hidden above screen
@@ -23,9 +25,11 @@ export function OfflineBanner() {
     if (netInfo.isConnected === false) {
       setShowBanner(true);
       setIsBackOnline(false);
-      // Slide down
+      // Slide down to just below the status bar / notch, using the real inset
+      // rather than a guessed pixel value (Android status bar height varies by
+      // device, especially with edge-to-edge enabled).
       Animated.spring(slideAnim, {
-        toValue: Platform.OS === 'ios' ? 50 : 30, // Fits perfectly below notch/status bar
+        toValue: insets.top + 10,
         useNativeDriver: true,
         bounciness: 6,
       }).start();

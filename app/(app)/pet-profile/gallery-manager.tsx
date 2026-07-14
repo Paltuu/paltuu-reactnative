@@ -186,7 +186,7 @@ function PetGalleryManagerScreen() {
 
       {/* Detail / Action Sheet Modal */}
       {selectedPhoto && (
-        <Modal visible={!!selectedPhoto} transparent animationType="fade">
+        <Modal visible={!!selectedPhoto} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
           <TouchableOpacity
             className="flex-1 bg-black/80 justify-center items-center p-5"
             activeOpacity={1}

@@ -62,7 +62,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
         <View style={styles.container}>
           <View style={[styles.closeButtonContainer, { top: Math.max(insets.top, 16) }]}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>

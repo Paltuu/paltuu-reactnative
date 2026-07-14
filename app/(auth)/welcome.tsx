@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -212,9 +212,13 @@ export default function WelcomeScreen() {
       <View style={styles.top}>
         <Text
           style={styles.headline}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
+          // adjustsFontSizeToFit is unreliable on Android — combined with a
+          // custom font it can render the text fully blank instead of
+          // shrinking it, so only iOS gets the shrink-to-fit behavior; Android
+          // just wraps to a second line if needed.
+          {...(Platform.OS === 'ios'
+            ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 }
+            : { numberOfLines: 2 })}
         >
           Find Your New Best Friend
         </Text>

@@ -228,7 +228,7 @@ export default function CommentThreadScreen() {
   /* ── Header (shared by all states) ── */
   const Navbar = (
     <View style={{
-      backgroundColor: BG, paddingTop: insets.top, paddingHorizontal: 16, paddingBottom: 12,
+      backgroundColor: BG, paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: 12,
       flexDirection: 'row', alignItems: 'center', gap: 12,
       borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6',
     }}>

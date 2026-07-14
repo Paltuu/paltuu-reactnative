@@ -35,6 +35,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { scheduleOnRN } from "react-native-worklets";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // @ts-ignore
 import type { BottomSheetProps, BottomSheetMethods } from "./types";
@@ -74,9 +75,17 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
     },
     ref,
   ) => {
+    // Android draws edge-to-edge, so the window's bottom edge sits behind the
+    // system nav bar (gesture pill or 3-button bar). Snap points are inflated
+    // by that inset and the extra height is reserved as bottom padding on the
+    // content below, so the sheet's real content always clears the nav bar
+    // instead of rendering underneath it.
+    const insets = useSafeAreaInsets();
+    const bottomInset = insets.bottom;
+
     const parsedSnapPoints = useMemo<number[]>(
-      () => snapPoints.map(parseSnapPoint),
-      [snapPoints],
+      () => snapPoints.map((point) => parseSnapPoint(point) + bottomInset),
+      [snapPoints, bottomInset],
     );
 
     const maxSnapPoint = useMemo<number>(
@@ -518,6 +527,10 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
 
         const enhancedList = cloneElement(listElement, {
           ...scrollProps,
+          contentContainerStyle: [
+            (listElement.props as any).contentContainerStyle,
+            { paddingBottom: bottomInset },
+          ],
           onScroll: (event: any) => {
             (scrollProps.onScroll as any)?.(event);
             (listElement.props as any).onScroll?.(event);
@@ -542,6 +555,10 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
             return cloneElement(listElement, {
               key: (listElement.key as string) || index,
               ...scrollProps,
+              contentContainerStyle: [
+                (listElement.props as any).contentContainerStyle,
+                { paddingBottom: bottomInset },
+              ],
               onScroll: (event: any) => {
                 (scrollProps.onScroll as any)?.(event);
                 (listElement.props as any).onScroll?.(event);
@@ -564,7 +581,7 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
           <Animated.ScrollView
             ref={scrollViewRef}
             style={styles.scrollView}
-            contentContainerStyle={contentContainerStyle}
+            contentContainerStyle={[contentContainerStyle, { paddingBottom: bottomInset }]}
             scrollEnabled={enableScroll}
             onScroll={onScroll}
             scrollEventThrottle={16}
@@ -586,6 +603,7 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
       contentContainerStyle,
       enableScroll,
       onScroll,
+      bottomInset,
     ]);
 
     return (
