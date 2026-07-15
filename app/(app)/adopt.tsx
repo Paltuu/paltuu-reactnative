@@ -4,7 +4,7 @@ import {
   ActivityIndicator, ScrollView, TextInput, Modal,
   Platform, StyleSheet, FlatList, Animated as RNAnimated
 } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,7 +39,7 @@ function AdoptScreen() {
   }, [breedParam]);
 
   const insets = useSafeAreaInsets();
-  const { scrollHandler } = useHeaderContext();
+  const { handleScrollY, handleScrollEnd } = useHeaderContext();
 
   // --- Infinite Query ---
   const {
@@ -165,7 +165,7 @@ function AdoptScreen() {
 
       {showSkeleton ? (
         <ScrollView
-          // See the matching comment on the Animated.FlatList below — the
+          // See the matching comment on the FlashList below — the
           // list's own frame (not just its end-of-scroll padding) needs to
           // stop above the edge-to-edge system nav bar.
           style={{ marginBottom: insets.bottom }}
@@ -178,11 +178,18 @@ function AdoptScreen() {
           {renderSkeletonGrid()}
         </ScrollView>
       ) : (
-        <Animated.FlatList
+        <FlashList
           data={pets}
           renderItem={renderPetCard}
-          keyExtractor={(item) => item.pet_id.toString()}
-          onScroll={scrollHandler}
+          keyExtractor={(item: any) => item.pet_id.toString()}
+          // FlashList isn't wrapped in reanimated's Animated component (see
+          // search.tsx for the same pattern), so the collapsing header is
+          // driven by plain scroll callbacks instead of the worklet-based
+          // `scrollHandler` used by the reanimated Animated.FlatList lists.
+          onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
+          scrollEventThrottle={16}
           // `contentContainerStyle`'s paddingBottom only clears the nav bar
           // once scrolled all the way to the end — the list's own frame still
           // extends the full screen height, so mid-scroll rows rest right
@@ -196,11 +203,6 @@ function AdoptScreen() {
           }}
           onRefresh={refetch}
           refreshing={isRefetching}
-          windowSize={5}
-          maxToRenderPerBatch={6}
-          initialNumToRender={8}
-          removeClippedSubviews={true}
-          updateCellsBatchingPeriod={50}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage();

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AuthSession from 'expo-auth-session';
 import Constants from 'expo-constants';
 import Toast from 'react-native-toast-message';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -63,7 +64,13 @@ export default function WelcomeScreen() {
         throw new Error('API URL is not configured.');
       }
 
-      const redirectUrl = Linking.createURL('oauth2redirect');
+      // Use the app's own registered scheme directly (via `native`) rather than
+      // expo-linking's auto-resolved host, which bakes the Metro packager's LAN
+      // address (e.g. 192.168.x.x:8081) into the URI on dev-client builds and
+      // breaks the redirect hand-off back from the browser.
+      const appScheme = Constants.expoConfig?.scheme;
+      const nativeScheme = Array.isArray(appScheme) ? appScheme[0] : appScheme;
+      const redirectUrl = AuthSession.makeRedirectUri({ native: `${nativeScheme}://oauth2redirect` });
       const authUrl = `${apiBaseUrl}/v1/auth/google/mobile?app_redirect=${encodeURIComponent(redirectUrl)}`;
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);

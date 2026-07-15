@@ -8,6 +8,7 @@ import {
   StyleSheet,
   FlatList,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -238,7 +239,7 @@ function PetCareScreen() {
         </View>
       </View>
 
-      <FlatList
+      <FlashList
         data={filtered}
         keyExtractor={(item) => String(item.clinic_id)}
         renderItem={({ item }) => (

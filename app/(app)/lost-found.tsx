@@ -7,7 +7,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,7 +20,7 @@ import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 function LostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { scrollHandler } = useHeaderContext();
+  const { handleScrollY, handleScrollEnd } = useHeaderContext();
 
   const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore(
     useShallow((state) => ({
@@ -132,12 +132,18 @@ function LostFoundScreen() {
           <Text className="font-body text-gray-500 mt-3">Fetching reports...</Text>
         </View>
       ) : (
-        <Animated.FlatList
+        <FlashList
           data={lostFoundPosts.filter((p: any) => p.post_type === filter)}
           renderItem={renderCard}
-          keyExtractor={(item) => item.post_id?.toString()}
+          keyExtractor={(item: any) => item.post_id?.toString()}
           numColumns={2}
-          onScroll={scrollHandler}
+          // FlashList isn't wrapped in reanimated's Animated component (same
+          // pattern as search.tsx), so the collapsing header is driven by
+          // plain scroll callbacks instead of a worklet-based scrollHandler.
+          onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
+          scrollEventThrottle={16}
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: 12,

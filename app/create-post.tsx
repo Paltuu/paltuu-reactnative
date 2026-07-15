@@ -25,7 +25,7 @@ import { petProfilesApi } from '../src/api/petProfiles';
 import { useSocialActions } from '../src/hooks/useSocialActions';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
-import { useMentionInput, MentionSuggestionDropdown } from '../src/components/social/MentionInput';
+import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
 import { queryClient } from '../src/api/queryClient';
@@ -224,7 +224,7 @@ export default function CreatePostScreen() {
   // keeping `caption` itself as the encoded value, so edit-mode pre-fill
   // (initialCaption, which IS the stored encoded content) needs no decoding.
   const [caption, setCaption] = useState((params.initialCaption as string) || '');
-  const { triggers: mentionTriggers, textInputProps: mentionInputProps } = useMentionInput({
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState } = useMentionInput({
     value: caption,
     onChange: setCaption,
   });
@@ -657,9 +657,10 @@ export default function CreatePostScreen() {
               </Text>
 
               {/* Caption input */}
-              <TextInput
+              <MentionInputField
                 ref={inputRef}
-                {...mentionInputProps}
+                textInputProps={mentionInputProps}
+                mentionState={mentionState}
                 placeholder={
                   postType === 'diary'
                     ? 'Write a diary entry for your pet...'

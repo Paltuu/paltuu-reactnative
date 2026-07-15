@@ -32,7 +32,7 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
-import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
+import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import {
   BG, PRIMARY,
   type SortBy, type FlatComment,
@@ -514,9 +514,10 @@ export default function PostDetailScreen() {
                 <View style={{ flexDirection: 'row' }}>
                   <Avatar name={user?.name || 'U'} uri={user?.profile_image_url} size={32} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <TextInput
+                    <MentionInputField
                       ref={inputRef}
-                      {...draft.mentionInputProps}
+                      textInputProps={draft.mentionInputProps}
+                      mentionState={draft.mentionState}
                       placeholder={replyingTo ? `Reply to ${replyingTo.author_name}...` : 'Post your reply'}
                       placeholderTextColor="#C4C4C4"
                       style={{ fontSize: 15, color: '#111', minHeight: mentionActive ? undefined : 40, maxHeight: 120, textAlignVertical: 'top', paddingTop: 8 }}

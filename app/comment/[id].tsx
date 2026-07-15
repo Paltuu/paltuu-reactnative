@@ -20,7 +20,7 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
-import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
+import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
 import { LoadingDots } from '../../src/components/ui/LoadingDots';
@@ -180,11 +180,12 @@ export default function CommentComposerScreen() {
               <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 16 }}>
                 <Avatar name={user?.name} uri={user?.profile_image_url} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <TextInput
+                  <MentionInputField
                     ref={inputRef}
                     autoFocus
                     multiline
-                    {...draft.mentionInputProps}
+                    textInputProps={draft.mentionInputProps}
+                    mentionState={draft.mentionState}
                     placeholder="Post your reply"
                     placeholderTextColor="#9CA3AF"
                     style={{ fontSize: 17, color: '#111', minHeight: mentionActive ? undefined : 90, textAlignVertical: 'top', paddingTop: 8 }}

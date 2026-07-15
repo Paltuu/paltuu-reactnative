@@ -16,13 +16,14 @@
 // `id` slot (e.g. id "pet:42" or "user:7") since the library only tracks a
 // single id per mention, not a separate type field — see lib/mentions.ts on
 // the backend, which parses this exact wire format.
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Platform
+import React, { useMemo, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Platform
 } from 'react-native';
+import type { TextInputProps } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useMentions } from 'react-native-controlled-mentions';
-import type { TriggersConfig, SuggestionsProvidedProps, Suggestion } from 'react-native-controlled-mentions';
+import type { TriggersConfig, SuggestionsProvidedProps, Suggestion, Part } from 'react-native-controlled-mentions';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi, type MentionSuggestionPet, type MentionSuggestionUser } from '../../api/social';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -62,23 +63,92 @@ export function useMentionInput({
         []
     );
 
-    const { triggers, textInputProps } = useMentions<MentionTriggerName>({
+    const { triggers, textInputProps, mentionState } = useMentions<MentionTriggerName>({
         value,
         onChange,
         triggersConfig,
     });
 
     // On Android, TextInput with `children` (used by the library for styled
-    // mention rendering) becomes non-editable. Strip children and use `value`
-    // directly so the keyboard works. Mentions still parse/insert correctly —
-    // they just won't show inline highlight colour on Android.
+    // mention rendering) becomes non-editable. Strip children and drive
+    // `value` ourselves instead — but with `mentionState.plainText`, NOT the
+    // raw encoded `value`. `children` on iOS is built from the same
+    // `mentionState.parts[].text` that makes up `plainText` (each mention
+    // part renders as its decoded "@name", not the wire-format token — see
+    // getTriggerPlainString in the library), so plainText is exactly what iOS
+    // visually shows there. It's also exactly what `onChangeText`
+    // (handleTextChange) expects to diff incoming text against before
+    // re-encoding — feeding it the raw encoded value instead showed the raw
+    // `{@}[name](type:id)` token in the box and corrupted the mention into
+    // plain text on the next edit.
     const { children: _mentionChildren, ...textInputPropsBase } = textInputProps as any;
     const safeTextInputProps = Platform.OS === 'android'
-        ? { ...textInputPropsBase, value }
+        ? { ...textInputPropsBase, value: mentionState.plainText }
         : textInputProps;
 
-    return { triggers, textInputProps: safeTextInputProps };
+    return { triggers, textInputProps: safeTextInputProps, mentionState };
 }
+
+type MentionStateLike = { plainText: string; parts: Part[] };
+
+/**
+ * Drop-in replacement for `<TextInput {...mentionInputProps} />` that also
+ * live-highlights mentions in red WHILE TYPING on Android, matching iOS
+ * (which gets this for free from the library's `children` rendering — see
+ * useMentionInput above) and matching what native apps like Instagram do
+ * with Android's Spannable text, which RN's TextInput has no equivalent for.
+ *
+ * Since `children` breaks Android's TextInput editability, we can't color
+ * the real input's own text. Instead this stacks two views on Android: the
+ * real `TextInput` underneath with its text made transparent (so it still
+ * owns typing/cursor/keyboard/selection — nothing about editing changes),
+ * and a non-interactive, styled `Text` overlay on top that mirrors the same
+ * content with mention parts colored. `onScroll` keeps the overlay's
+ * vertical position synced to the real input whenever it internally scrolls
+ * (e.g. a maxHeight-capped composer once text overflows it).
+ */
+export const MentionInputField = React.forwardRef<TextInput, TextInputProps & {
+    textInputProps: any;
+    mentionState: MentionStateLike;
+}>(({ textInputProps, mentionState, style, ...rest }, ref) => {
+    const [scrollY, setScrollY] = useState(0);
+
+    if (Platform.OS !== 'android') {
+        return <TextInput ref={ref} {...textInputProps} {...rest} style={style} />;
+    }
+
+    return (
+        <View style={{ position: 'relative' }}>
+            <TextInput
+                ref={ref}
+                {...textInputProps}
+                {...rest}
+                style={[style, { color: 'transparent' }]}
+                onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+                scrollEventThrottle={16}
+            />
+            <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+                <Text style={[style, { transform: [{ translateY: -scrollY }] }]}>
+                    {mentionState.parts.map((part, index) => (
+                        <Text
+                            key={index}
+                            style={
+                                part.config
+                                    ? (typeof part.config.textStyle === 'function'
+                                        ? part.config.textStyle(part.data)
+                                        : part.config.textStyle)
+                                    : undefined
+                            }
+                        >
+                            {part.text}
+                        </Text>
+                    ))}
+                </Text>
+            </View>
+        </View>
+    );
+});
+MentionInputField.displayName = 'MentionInputField';
 
 /** Programmatic mention insert (e.g. for the reply-to-comment prefill) — splices
  *  a mention token at the end of the current value, matching the library's own
