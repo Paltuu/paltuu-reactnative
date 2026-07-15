@@ -135,7 +135,7 @@ export default function SearchScreen() {
       textPosts.slice(0, 5).forEach((p: SocialPost) =>
         items.push({ ...p, type: 'post_compact', _key: `pc-${p.post_id}` })
       );
-      chunkArray(mediaPosts, 3).forEach((chunk, i) =>
+      chunkArray(mediaPosts.slice(0, 6), 3).forEach((chunk, i) =>
         items.push({ type: 'post_grid_row', posts: chunk, _key: `grid-${i}` })
       );
     }

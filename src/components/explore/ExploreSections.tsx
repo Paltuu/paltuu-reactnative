@@ -15,7 +15,7 @@ import { VetsNearbyRail } from './VetsNearbyRail';
 const DARK = '#1A1A2E';
 const SURFACE_SUBTLE = '#F5F5F7';
 
-const MEDIA_PREVIEW_COUNT = 12;
+const MEDIA_PREVIEW_COUNT = 6;
 
 // ─── Progressive section reveal ─────────────────────────────────────────────
 // This whole tree is FlashList's ListHeaderComponent, so none of it is
