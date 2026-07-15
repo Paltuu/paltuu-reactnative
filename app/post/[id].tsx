@@ -199,8 +199,14 @@ export default function PostDetailScreen() {
 
   const collapseComposer = useCallback(() => {
     Keyboard.dismiss();
-    setComposerExpanded(false);
-  }, []);
+    // Only fall back to the static placeholder (Phase 1) when there's
+    // nothing in progress — otherwise this would unmount the real
+    // TextInput and visually wipe out whatever the user just typed,
+    // even though the underlying draft state is untouched.
+    if (!draft.text && draft.media.length === 0 && !replyingTo) {
+      setComposerExpanded(false);
+    }
+  }, [draft.text, draft.media, replyingTo]);
 
   const handleReply = useCallback((comment: FlatComment) => {
     setReplyingTo(comment);
@@ -431,11 +437,17 @@ export default function PostDetailScreen() {
       {/* ── Phase 2: floating composer — sticks to the keyboard, floats above all ── */}
       {composerExpanded && (
         <>
-          {/* Transparent tap-catcher to dismiss */}
-          <Pressable
-            onPress={collapseComposer}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
-          />
+          {/* Transparent tap-catcher to dismiss the keyboard. Only active
+              while the keyboard is actually up — once it's down there's
+              nothing left to dismiss, and leaving it mounted would block
+              scrolling/tapping the comment list behind a composer that's
+              now just sitting at the bottom with a draft in progress. */}
+          {keyboardVisible && (
+            <Pressable
+              onPress={collapseComposer}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
+            />
+          )}
 
           <View style={{
             position: 'absolute', left: 0, right: 0,

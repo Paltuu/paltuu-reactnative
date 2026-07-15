@@ -221,6 +221,7 @@ function PetProfileScreen() {
       {/* ── Scrollable Body ── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
+        style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
           <RefreshControl

@@ -448,11 +448,23 @@ export const CommentRow = ({
   // Single tap opens the thread; double tap likes the comment. Distinguishing
   // them (single fires only after the double-tap window lapses) also fixes the
   // fast double-open that used to push the thread route — and mount it — twice.
+  //
+  // That alone isn't enough: if the second tap lands just *after* the window
+  // (too slow to count as a double tap), it looks like a fresh single tap and
+  // schedules its own navigation on top of the first tap's already-fired one —
+  // pushing (and mounting) the thread route twice. `navCooldownRef` suppresses
+  // any tap that follows too closely behind a navigation that already fired.
   const DOUBLE_TAP_MS = 260;
+  const NAV_COOLDOWN_MS = 600;
   const lastTapRef = React.useRef(0);
   const singleTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navCooldownTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressNavRef = React.useRef(false);
   React.useEffect(
-    () => () => { if (singleTapTimer.current) clearTimeout(singleTapTimer.current); },
+    () => () => {
+      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+      if (navCooldownTimer.current) clearTimeout(navCooldownTimer.current);
+    },
     []
   );
   const handleRowPress = () => {
@@ -462,14 +474,18 @@ export const CommentRow = ({
       if (singleTapTimer.current) { clearTimeout(singleTapTimer.current); singleTapTimer.current = null; }
       lastTapRef.current = 0;
       if (!item.is_liked) onToggleLike(item.comment_id);
-    } else {
-      lastTapRef.current = now;
-      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
-      singleTapTimer.current = setTimeout(() => {
-        singleTapTimer.current = null;
-        onOpenThread(item.comment_id);
-      }, DOUBLE_TAP_MS);
+      return;
     }
+    if (suppressNavRef.current) return; // trailing slow second tap right after a navigation — ignore it
+    lastTapRef.current = now;
+    if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+    singleTapTimer.current = setTimeout(() => {
+      singleTapTimer.current = null;
+      onOpenThread(item.comment_id);
+      suppressNavRef.current = true;
+      if (navCooldownTimer.current) clearTimeout(navCooldownTimer.current);
+      navCooldownTimer.current = setTimeout(() => { suppressNavRef.current = false; }, NAV_COOLDOWN_MS);
+    }, DOUBLE_TAP_MS);
   };
 
   if (item.isContinueThread) {

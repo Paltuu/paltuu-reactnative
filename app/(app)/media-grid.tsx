@@ -52,7 +52,7 @@ function MediaGridScreen() {
           <Text style={{ color: '#999', marginTop: 12 }}>No media posts yet</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}>
+        <ScrollView style={{ marginBottom: insets.bottom }} contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}>
           <MediaGrid posts={posts} onPostPress={(p) => router.push(`/post/${p.post_id}`)} />
         </ScrollView>
       )}

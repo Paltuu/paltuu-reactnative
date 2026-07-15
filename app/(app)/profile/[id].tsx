@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Alert,
   ScrollView,
   Share,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,6 +82,17 @@ function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<any>('Posts');
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
+
+  // Rendered as a plain in-tree overlay rather than a native <Modal> (see
+  // below) — preserve hardware-back-closes-viewer behavior manually.
+  useEffect(() => {
+    if (!imageModal) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setImageModal(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [imageModal]);
 
   const userId = id as string;
   const isMe = String(currentUser?.id) === String(userId);
@@ -350,6 +362,7 @@ function UserProfileScreen() {
         renderItem={renderItem}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
+        style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
         ListEmptyComponent={
@@ -368,13 +381,14 @@ function UserProfileScreen() {
         }
       />
 
-      {/* Image Viewer */}
-      <Modal visible={imageModal !== null} transparent animationType="fade" onRequestClose={() => setImageModal(null)} statusBarTranslucent navigationBarTranslucent>
-        <View style={s.imgModalBg}>
+      {/* Image Viewer — plain in-tree overlay, not a native <Modal> (see the
+          matching comment in (tabs)/profile/index.tsx for why). */}
+      {imageModal !== null && (
+        <View style={[s.imgModalBg, StyleSheet.absoluteFillObject, { zIndex: 100, elevation: 100 }]}>
           <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}><TouchableOpacity onPress={() => setImageModal(null)} style={s.imgModalClose}><Ionicons name="close" size={26} color="#FFFFFF" /></TouchableOpacity><Text style={s.imgModalTitle}>{imageModal === 'profile' ? 'Profile Photo' : 'Cover Photo'}</Text><View style={{ width: 40 }} /></View>
           <View style={s.imgModalContent}>{imageModal === 'profile' ? (<Image source={profile?.profile_image_url ? { uri: profile.profile_image_url } : NO_PROFILE_IMAGE} style={s.imgModalImage} resizeMode="contain" />) : (profile?.cover_photo_url ? <Image source={{ uri: profile.cover_photo_url }} style={s.imgModalImage} resizeMode="contain" /> : <View style={s.center}><Ionicons name="image-outline" size={80} color="white" /></View>)}</View>
         </View>
-      </Modal>
+      )}
 
       <ReportBottomSheet
         visible={reportSheetVisible}

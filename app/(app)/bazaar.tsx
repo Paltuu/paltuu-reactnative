@@ -157,9 +157,10 @@ function BazaarScreen() {
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <Animated.ScrollView
         onScroll={scrollHandler}
-        contentContainerStyle={{ 
+        style={{ marginBottom: insets.bottom }}
+        contentContainerStyle={{
           paddingTop: HEADER_HEIGHT + insets.top,
-          paddingBottom: 100 
+          paddingBottom: 100
         }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#a03048" />

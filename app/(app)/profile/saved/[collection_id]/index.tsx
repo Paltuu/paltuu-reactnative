@@ -82,6 +82,7 @@ function CollectionPostsScreen() {
       ) : (
         <FlatList
           data={posts}
+          style={{ marginBottom: insets.bottom }}
           renderItem={({ item }) => (
             <PostCard
               post={item}

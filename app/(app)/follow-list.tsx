@@ -148,6 +148,7 @@ function FollowListScreen() {
           data={data}
           renderItem={renderItem}
           keyExtractor={(item) => item.user_id.toString()}
+          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

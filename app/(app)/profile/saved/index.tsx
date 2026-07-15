@@ -118,6 +118,7 @@ function SavedCollectionsScreen() {
           data={collections}
           keyExtractor={(item) => item.collection_id.toString()}
           renderItem={renderCard}
+          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshing={isRefetching}

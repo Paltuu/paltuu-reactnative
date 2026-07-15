@@ -259,6 +259,12 @@ function PetCareScreen() {
         onRefresh={refetch}
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}
+        // `contentContainerStyle`'s paddingBottom only clears the nav bar once
+        // scrolled all the way to the end — the list's own frame still extends
+        // the full screen height, so mid-scroll rows rest right behind the
+        // (edge-to-edge, translucent) system nav bar. Shrinking the list's own
+        // style by insets.bottom keeps every row above it at any scroll position.
+        style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 120 }}
         ListEmptyComponent={
           isLoading ? (

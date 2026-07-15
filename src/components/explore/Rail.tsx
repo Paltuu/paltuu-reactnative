@@ -5,6 +5,7 @@ import { FONTS } from '../../constants/typography';
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
 const SURFACE_SUBTLE = '#F5F5F7';
+const DIVIDER = '#EEEEEE';
 
 interface SectionHeaderProps {
   title: string;
@@ -12,21 +13,22 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader = ({ title, onSeeAll }: SectionHeaderProps) => (
-  <View
-    style={{
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      marginBottom: 12,
-    }}
-  >
-    <Text style={{ fontFamily: FONTS.heading, fontSize: 18, color: DARK }}>{title}</Text>
-    {onSeeAll && (
-      <TouchableOpacity onPress={onSeeAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY }}>See All</Text>
-      </TouchableOpacity>
-    )}
+  <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+    <View style={{ height: 1, backgroundColor: DIVIDER, marginBottom: 16 }} />
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ fontFamily: FONTS.heading, fontSize: 18, color: DARK }}>{title}</Text>
+      {onSeeAll && (
+        <TouchableOpacity onPress={onSeeAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY }}>See All</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   </View>
 );
 

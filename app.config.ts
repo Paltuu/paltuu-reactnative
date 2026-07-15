@@ -52,6 +52,16 @@ export default (): ExpoConfig => {
       permissions: ["android.permission.RECORD_AUDIO"],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
     },
+    // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
+    // the 3-button nav bar by default (`enforceContrast`) so its buttons stay
+    // legible over arbitrary content — that's the gray strip that doesn't
+    // match the app's white background. Matching the bar's own color to the
+    // app and turning that scrim off is what makes it blend in instead.
+    androidNavigationBar: {
+      backgroundColor: "#FFFFFF",
+      barStyle: "dark-content",
+      enforceContrast: false,
+    },
     web: {
       favicon: "./assets/favicon.png",
     },

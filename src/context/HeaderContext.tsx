@@ -17,6 +17,12 @@ interface HeaderContextValue {
     /** Plain JS callback — use with non-animated lists (e.g. FlashList) */
     handleScrollY: (y: number) => void;
     handleScrollEnd: () => void;
+    /** Snaps the header fully visible and forgets the last scroll offset —
+     * call on screen focus. `headerTranslateY`/`lastY` are shared across every
+     * screen under this provider, so without this a header hidden by scrolling
+     * on one screen (e.g. Home) stays hidden on the next screen (e.g. Search)
+     * until a scroll gesture there happens to reach y<=0. */
+    resetHeader: () => void;
     onPlusPress: () => void;
     onHeartPress: () => void;
     setOnPlusPress: (fn: () => void) => void;
@@ -75,6 +81,11 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         runOnUI(snapHeader)();
     }, []);
 
+    const resetHeader = useCallback(() => {
+        headerTranslateY.value = 0;
+        lastY.value = 0;
+    }, []);
+
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => {
             'worklet';
@@ -113,12 +124,13 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         scrollHandler,
         handleScrollY,
         handleScrollEnd,
+        resetHeader,
         onPlusPress,
         onHeartPress,
         setOnPlusPress,
         setOnHeartPress,
         setHeaderEnabled,
-    }), [isLoading, setLoading, scrollHandler, handleScrollY, handleScrollEnd, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
+    }), [isLoading, setLoading, scrollHandler, handleScrollY, handleScrollEnd, resetHeader, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
 
     return (
         <HeaderContext.Provider value={contextValue}>

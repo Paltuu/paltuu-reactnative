@@ -205,6 +205,13 @@ export default function RootLayout() {
                   name="thread/[id]"
                   options={{ animation: 'slide_from_right', gestureEnabled: true }}
                 />
+                {/* Tapped-media detail (X/Twitter-style): same slide-in as the
+                    post detail — the swipe-down-to-dismiss gesture inside it
+                    is an additional way out, not a replacement for this one */}
+                <Stack.Screen
+                  name="media/[id]"
+                  options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                />
                 {/* Notifications: slides in from the right, covers the tab bar */}
                 <Stack.Screen
                   name="notifications"

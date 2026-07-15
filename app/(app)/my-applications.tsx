@@ -13,7 +13,7 @@ import { usePetStore } from '../../src/stores/petStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const PRIMARY = '#a03048';
@@ -45,6 +45,7 @@ function MyApplicationsScreen() {
     }))
   );
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   useEffect(() => {
@@ -118,7 +119,7 @@ function MyApplicationsScreen() {
           keyExtractor={(item) => item.application_id?.toString() || Math.random().toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          style={{ backgroundColor: '#FAFAFA' }}
+          style={{ backgroundColor: '#FAFAFA', marginBottom: insets.bottom }}
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-24 px-10">

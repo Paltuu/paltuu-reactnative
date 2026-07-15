@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -56,6 +56,7 @@ async function copyText(value: string) {
 function ClinicDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState(false);
 
   const { data: clinic, isLoading, error } = useQuery({
@@ -139,7 +140,8 @@ function ClinicDetailsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        style={{ marginBottom: insets.bottom }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
       >
         <View style={styles.body}>
           {/* Logo + name card */}

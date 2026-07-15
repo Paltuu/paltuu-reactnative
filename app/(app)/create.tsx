@@ -38,7 +38,7 @@ function CreateListingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 70 }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={{ marginBottom: insets.bottom }} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>What would you like to list?</Text>
           <Text style={styles.subtitle}>Choose a category to start your listing process</Text>

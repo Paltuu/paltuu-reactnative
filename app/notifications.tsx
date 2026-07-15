@@ -614,6 +614,7 @@ export default function NotificationsScreen() {
             </View>
           )}
           ItemSeparatorComponent={() => <View className="h-[0.5px] bg-gray-100 ml-[72px]" />}
+          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           refreshControl={

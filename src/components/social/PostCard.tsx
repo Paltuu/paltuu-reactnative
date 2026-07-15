@@ -795,16 +795,14 @@ export const PostCard = React.memo(({
 
 
   const handleImagePress = useCallback((index: number) => {
-    // Pause background video player before opening full screen viewer
+    // Pause background video player before opening the media detail screen
     setPlayingPostId(null);
-
-    const items = bodyMedia?.map((m: any) => ({
-      url: m.media_type === 'video' ? (m.hls_url || m.url) : m.url,
-      type: m.media_type as 'image' | 'video',
-      thumbnail_url: m.thumbnail_url,
-    })) ?? [];
-    modals?.showImageViewer(items, index);
-  }, [modals, bodyMedia]);
+    // Seed the media screen's ['post', id] query with what's already on
+    // screen (including the local video-processing-status overrides above),
+    // so it renders instantly instead of waiting on a redundant refetch.
+    queryClient.setQueryData(['post', post.post_id], { ...post, media: bodyMedia });
+    router.push({ pathname: '/media/[id]', params: { id: post.post_id, index: String(index) } });
+  }, [router, queryClient, post, bodyMedia]);
 
 
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
@@ -1104,12 +1102,11 @@ export const PostCard = React.memo(({
                   }
                 }}
                 onMediaPress={(index) => {
-                  const items = post.original_media?.map((m: SocialPostMedia) => ({
-                    url: m.url,
-                    type: m.media_type as 'image' | 'video',
-                    thumbnail_url: m.thumbnail_url,
-                  })) ?? [];
-                  modals?.showImageViewer(items, index);
+                  if (!post.original_post_id) return;
+                  router.push({
+                    pathname: '/media/[id]',
+                    params: { id: post.original_post_id, index: String(index) },
+                  });
                 }}
               />
             </View>

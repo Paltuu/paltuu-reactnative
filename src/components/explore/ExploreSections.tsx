@@ -108,6 +108,7 @@ export const ExploreSections = () => {
 
       {/* The FlashList's own data (the personalized feed) renders directly below */}
       <View style={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: 18 }}>
+        <View style={{ height: 1, backgroundColor: '#EEEEEE', marginBottom: 16 }} />
         <Text style={{ fontFamily: FONTS.heading, fontSize: 18, color: DARK }}>For You</Text>
       </View>
     </View>

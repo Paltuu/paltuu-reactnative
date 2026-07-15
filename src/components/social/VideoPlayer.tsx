@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Text,
+  PanResponder,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -30,6 +31,15 @@ interface VideoPlayerProps {
   isProcessing?: boolean;
   /** If provided, tapping the video calls this instead of toggling play/pause */
   onPress?: () => void;
+  /**
+   * Dedicated-viewer chrome: bigger top-right mute button instead of the
+   * small feed-card one, a bottom progress bar, and no feed-only "is a video"
+   * badge. Also lifts the feed's 2-loop autoplay cap, which exists to save
+   * battery/data on cards passively cycling in the background while
+   * scrolling — not appropriate once the user has deliberately opened the
+   * video full-screen to watch it.
+   */
+  fullscreen?: boolean;
 }
 
 interface InnerVideoPlayerProps extends VideoPlayerProps {
@@ -50,6 +60,7 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
   loop = true,
   isProcessing = false,
   onPress,
+  fullscreen = false,
 }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -57,10 +68,16 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
   const [userPaused, setUserPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playCount, setPlayCount] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekRatio, setSeekRatio] = useState(0);
 
   const player = useVideoPlayer(resolvedUri, (p) => {
     p.loop = true;
     p.muted = true;
+    // Defaults to 0, which means the `timeUpdate` event never fires at all —
+    // needed to drive the fullscreen viewer's progress bar/seeker.
+    if (fullscreen) p.timeUpdateEventInterval = 0.25;
   });
 
   // Reset states when source URI changes
@@ -94,7 +111,7 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
 
       if (status === 'readyToPlay') {
         setIsReady(true);
-        if (!paused && !userPaused && playCount < 2) {
+        if (!paused && !userPaused && (fullscreen || playCount < 2)) {
           player.play();
         }
       }
@@ -105,7 +122,11 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
       }
     });
 
+    // The feed's 2-loop autoplay cap only applies to cards passively cycling
+    // in the background — a video deliberately opened full-screen should
+    // keep looping until the user leaves or pauses it themselves.
     const finishSub = player.addListener('playToEnd', () => {
+      if (fullscreen) return;
       setPlayCount(prev => {
         const next = prev + 1;
         if (next >= 2) {
@@ -115,11 +136,19 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
       });
     });
 
+    const timeSub = fullscreen
+      ? player.addListener('timeUpdate', (payload) => {
+          const duration = player.duration;
+          setProgress(duration > 0 ? payload.currentTime / duration : 0);
+        })
+      : null;
+
     return () => {
       statusSub.remove();
       finishSub.remove();
+      timeSub?.remove();
     };
-  }, [player, uri, paused, userPaused, playCount]);
+  }, [player, uri, paused, userPaused, playCount, fullscreen]);
 
   // Sync external paused prop
   useEffect(() => {
@@ -143,6 +172,34 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
     }
   }, [player, isPlaying]);
 
+  // Draggable seeker for the fullscreen viewer. While dragging, the thumb
+  // follows the touch directly (not the player's own progress, which would
+  // otherwise fight the gesture); on release it seeks the player and lets
+  // `timeUpdate` take back over.
+  const seekResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => fullscreen,
+      onMoveShouldSetPanResponder: () => fullscreen,
+      onPanResponderGrant: (evt) => {
+        setIsSeeking(true);
+        setSeekRatio(Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1));
+      },
+      onPanResponderMove: (evt) => {
+        setSeekRatio(Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1));
+      },
+      onPanResponderRelease: (evt) => {
+        const ratio = Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1);
+        if (player.duration > 0) {
+          player.currentTime = ratio * player.duration;
+        }
+        setIsSeeking(false);
+      },
+      onPanResponderTerminate: () => setIsSeeking(false),
+    })
+  ).current;
+
+  const displayedProgress = isSeeking ? seekRatio : progress;
+
   if (isProcessing) {
     return (
       <View style={[s.processingContainer, { width, height, borderRadius }]}>
@@ -158,7 +215,11 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
       <VideoView
         player={player}
         style={{ width, height }}
-        contentFit="cover"
+        // Feed cards crop-to-fill a fixed-aspect card ("cover"); the
+        // full-screen viewer should show the whole frame like X/Twitter does,
+        // letterboxing instead of cropping when the aspect ratio doesn't
+        // match the screen ("contain").
+        contentFit={fullscreen ? 'contain' : 'cover'}
         nativeControls={false}
       />
       {/* Thumbnail placeholder overlay until the video buffer is ready to avoid black flashes */}
@@ -166,7 +227,7 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
         <Image
           source={{ uri: thumbnailUri }}
           style={StyleSheet.absoluteFill}
-          contentFit="cover"
+          contentFit={fullscreen ? 'contain' : 'cover'}
           transition={150}
         />
       )}
@@ -174,9 +235,24 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
       {/* Overlay above the native VideoView to reliably catch touches on Android */}
       <TouchableOpacity activeOpacity={1} onPress={onPress ?? togglePlay} style={StyleSheet.absoluteFill} />
 
-      <TouchableOpacity style={s.muteBtn} onPress={() => setIsMuted((prev) => !prev)} hitSlop={12}>
-        <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={15} color="#fff" />
+      <TouchableOpacity
+        style={fullscreen ? s.muteBtnFullscreen : s.muteBtn}
+        onPress={() => setIsMuted((prev) => !prev)}
+        hitSlop={12}
+      >
+        <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={fullscreen ? 20 : 15} color="#fff" />
       </TouchableOpacity>
+
+      {fullscreen && (
+        // Hit area is taller than the visible track so the thumb is easy to
+        // grab; the track itself stays a thin line, centered inside it.
+        <View style={s.seekerHitArea} {...seekResponder.panHandlers}>
+          <View style={s.progressTrack}>
+            <View style={[s.progressFill, { width: `${displayedProgress * 100}%` }]} />
+            <View style={[s.progressThumb, { left: `${displayedProgress * 100}%` }]} />
+          </View>
+        </View>
+      )}
 
       {isBuffering && (
         <View style={[StyleSheet.absoluteFill, s.bufferingOverlay]}>
@@ -199,9 +275,11 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
         </View>
       )}
 
-      <View style={s.videoBadge}>
-        <Ionicons name="videocam" size={10} color="#fff" />
-      </View>
+      {!fullscreen && (
+        <View style={s.videoBadge}>
+          <Ionicons name="videocam" size={10} color="#fff" />
+        </View>
+      )}
     </View>
   );
 };
@@ -301,6 +379,20 @@ const s = StyleSheet.create({
   processingText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   processingSubText: { color: '#888', fontSize: 11 },
   muteBtn: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 20, padding: 5 },
+  muteBtnFullscreen: { position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 24, padding: 10 },
+  seekerHitArea: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 24, justifyContent: 'center' },
+  progressTrack: { height: 2.5, backgroundColor: 'rgba(255,255,255,0.3)' },
+  progressFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff' },
+  progressThumb: {
+    position: 'absolute',
+    top: '50%',
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#fff',
+    marginLeft: -5.5,
+    marginTop: -5.5,
+  },
   bufferingOverlay: { backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   pausedOverlay: { alignItems: 'center', justifyContent: 'center' },
   errorOverlay: { backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 4 },

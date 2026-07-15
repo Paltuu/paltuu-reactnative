@@ -95,6 +95,7 @@ function HashtagFeedScreen() {
           data={posts}
           renderItem={renderItem}
           keyExtractor={(item) => (item as SocialPost).post_id}
+          style={{ marginBottom: insets.bottom }}
           {...({ estimatedItemSize: 350 } as any)}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();

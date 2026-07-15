@@ -16,6 +16,7 @@ import {
   Alert,
   ScrollView,
   RefreshControl,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -265,6 +266,17 @@ export default function ProfileScreen() {
     setSelectedLocalAsset(null);
     setImageModal(null);
   };
+
+  // Rendered as a plain in-tree overlay rather than a native <Modal> (see
+  // below) — preserve hardware-back-closes-viewer behavior manually.
+  useEffect(() => {
+    if (!imageModal) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeModal();
+      return true;
+    });
+    return () => sub.remove();
+  }, [imageModal]);
 
   const handlePickAndUpload = async (type: 'profile' | 'cover') => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -710,16 +722,15 @@ export default function ProfileScreen() {
         </Pressable>
       </Modal>
 
-      {/* ── Image viewer / uploader ─────────────────────────────────────────── */}
-      <Modal
-        visible={imageModal !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closeModal}
-        statusBarTranslucent
-        navigationBarTranslucent
-      >
-        <View style={s.imgModalBg}>
+      {/* ── Image viewer / uploader ─────────────────────────────────────────────
+            Rendered in-tree (not via React Native's <Modal>) — Android's native
+            Modal window doesn't compose reliably with this screen's edge-to-edge
+            translucent status/nav bars (statusBarTranslucent/navigationBarTranslucent
+            on Modal), leaving gaps where the screen behind shows through. A plain
+            absolutely-positioned overlay lives in the same window and inherits the
+            same safe-area handling as the rest of the screen, so it can't gap. ── */}
+      {imageModal !== null && (
+        <View style={[s.imgModalBg, StyleSheet.absoluteFillObject, { zIndex: 100, elevation: 100 }]}>
           {/* Header */}
           <View style={[s.imgModalHeader, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity onPress={closeModal} style={s.imgModalClose}>
@@ -797,7 +808,7 @@ export default function ProfileScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      )}
     </View>
     </GestureDetector>
   );

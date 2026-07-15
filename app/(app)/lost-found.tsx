@@ -138,6 +138,7 @@ function LostFoundScreen() {
           keyExtractor={(item) => item.post_id?.toString()}
           numColumns={2}
           onScroll={scrollHandler}
+          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: 12,
             paddingBottom: 100,

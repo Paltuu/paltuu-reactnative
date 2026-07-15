@@ -11,7 +11,7 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -69,6 +69,7 @@ function clientValidateUsername(handle: string): string | null {
 
 function EditProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const userId = user?.id;
@@ -265,7 +266,7 @@ function EditProfileScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          style={{ flex: 1 }}
+          style={{ flex: 1, marginBottom: insets.bottom }}
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
