@@ -189,7 +189,6 @@ export default function RootLayout() {
             <SocialActionsProvider>
             <PostCardModalsProvider>
               <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
                 <Stack.Screen name="interests" options={{ headerShown: false }} />

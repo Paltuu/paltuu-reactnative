@@ -6,9 +6,9 @@ import {
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
-import { GestureDetector } from 'react-native-gesture-handler';
-import { useTabSwipeGesture } from '../../../src/hooks/useTabSwipeGesture';
-import { HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
+import { MainHeader, HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
 import { useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -170,7 +170,24 @@ export default function HomeScreen() {
 
   // Swipe left-to-right to open the composer, right-to-left to move to the
   // Pets tab — part of the create-post <-> home <-> pets <-> search <-> profile chain.
-  const openComposeGesture = useTabSwipeGesture('/create-post', '/(app)/pets');
+  // Home is the pager's first page; the pager owns the leftward swipe to Pets.
+  // We only add a rightward swipe that *triggers* opening the compose
+  // (create-post) screen — it lives outside the pager and plays its own native
+  // `slide_from_left` animation, so this gesture must NOT translate the feed
+  // itself (that caused a double-slide). Trigger only.
+  const openComposeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-1_000_000, 24]) // rightward only; leftward stays with the pager
+        .failOffsetY([-14, 14])
+        .onEnd((event) => {
+          'worklet';
+          if (event.translationX > 70 || event.velocityX > 600) {
+            runOnJS(router.push)('/create-post');
+          }
+        }),
+    [router],
+  );
 
   const {
     data, fetchNextPage, hasNextPage,
@@ -308,6 +325,9 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
       </GestureDetector>
+      {/* Rendered inside the home page (not the parent layout) so the pager
+          carries the header along with the feed during a tab swipe. */}
+      <MainHeader />
 
       <QuickProfileModal
         userId={selectedUserId}

@@ -24,7 +24,10 @@ function LayoutContent() {
     pathname = usePathname();
   } catch (e) { }
 
-  const showHeader = pathname === '/' || pathname === '/index' || pathname === '' || pathname === '/(app)' || pathname?.includes('bazaar');
+  // Home renders its own <MainHeader/> *inside* the tab pager (see (tabs)/index.tsx)
+  // so the header swipes along with the page. Only non-pager screens that rely on
+  // the layout-level header (e.g. bazaar) render it here.
+  const showHeader = pathname?.includes('bazaar');
   const isGreyScreen =
     pathname === '/pet-care' || pathname === '/adopt' || pathname?.includes('/clinic') || pathname?.includes('/vet');
 
