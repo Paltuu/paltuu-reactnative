@@ -408,7 +408,7 @@ const SubStubRow = ({
 /* ── Single comment row ── */
 export const CommentRow = ({
   item, onReply, onToggleLike, onExpand, onContinueThread, onOpenThread, onOpenProfile,
-  onDelete, currentUserId,
+  onAvatarPress, onDelete, currentUserId,
 }: {
   item: FlatComment;
   onReply: (c: FlatComment) => void;
@@ -417,6 +417,7 @@ export const CommentRow = ({
   onContinueThread: (commentId: string) => void;
   onOpenThread: (commentId: string) => void;
   onOpenProfile: (userId: number) => void;
+  onAvatarPress: (userId: number) => void;
   onDelete?: (id: string) => void;
   currentUserId?: number | string | null;
 }) => {
@@ -506,7 +507,7 @@ export const CommentRow = ({
       <ThreadLines {...threadProps} />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
 
-        <TouchableOpacity onPress={() => onOpenProfile(item.user_id)} style={{ marginRight: 10 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onAvatarPress(item.user_id)} style={{ marginRight: 10 }} activeOpacity={0.7}>
           <Avatar name={item.author_name} uri={item.author_image} size={32} />
         </TouchableOpacity>
 
@@ -563,16 +564,17 @@ export const CommentRow = ({
  * Renders the re-rooted comment prominently, like the post at the top of the
  * post page: full-width, larger, with a like/reply action row + separator. */
 export const FocusedCommentHeader = ({
-  comment, onReply, onToggleLike, onOpenProfile,
+  comment, onReply, onToggleLike, onOpenProfile, onAvatarPress,
 }: {
   comment: Comment;
   onReply: () => void;
   onToggleLike: () => void;
   onOpenProfile: (userId: number) => void;
+  onAvatarPress: (userId: number) => void;
 }) => (
   <View style={{ backgroundColor: BG }}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 12 }}>
-      <TouchableOpacity onPress={() => onOpenProfile(comment.user_id)} style={{ marginRight: 10 }} activeOpacity={0.7}>
+      <TouchableOpacity onPress={() => onAvatarPress(comment.user_id)} style={{ marginRight: 10 }} activeOpacity={0.7}>
         <Avatar name={comment.author_name} uri={comment.author_image} size={40} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => onOpenProfile(comment.user_id)} style={{ flex: 1 }} activeOpacity={0.7}>

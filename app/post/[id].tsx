@@ -157,6 +157,16 @@ export default function PostDetailScreen() {
     deleteComment.mutate(commentId);
   }, [deleteComment]);
 
+  // Tapping a commenter's profile picture goes straight to their profile page
+  // (same route PostCard's author avatar uses) rather than the quick-view modal.
+  const handleAvatarPress = useCallback((userId: number) => {
+    if (String(user?.id) === String(userId)) {
+      router.push('/(app)/profile');
+    } else {
+      router.push(`/(app)/profile/${userId}`);
+    }
+  }, [router, user?.id]);
+
   // Past the inline-depth cap, tapping "Continue this thread" opens a focused
   // page rooted at that comment (fresh indentation budget).
   const handleContinueThread = useCallback((commentId: string) => {
@@ -290,6 +300,7 @@ export default function PostDetailScreen() {
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
             onOpenProfile={setSelectedUserId}
+            onAvatarPress={handleAvatarPress}
             onDelete={handleDeleteComment}
             currentUserId={user?.id}
           />
@@ -297,7 +308,7 @@ export default function PostDetailScreen() {
       default:
         return null;
     }
-  }, [postData, comments, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleContinueThread, openComposer, user?.id, sortBy]);
+  }, [postData, comments, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleAvatarPress, handleContinueThread, openComposer, user?.id, sortBy]);
 
   /* ── Loading / Error ── */
   if (postLoading) {

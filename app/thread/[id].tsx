@@ -150,6 +150,16 @@ export default function CommentThreadScreen() {
     deleteComment.mutate(commentId);
   }, [deleteComment]);
 
+  // Tapping a commenter's profile picture goes straight to their profile page
+  // (same route PostCard's author avatar uses) rather than the quick-view modal.
+  const handleAvatarPress = useCallback((userId: number) => {
+    if (String(user?.id) === String(userId)) {
+      router.push('/(app)/profile');
+    } else {
+      router.push(`/(app)/profile/${userId}`);
+    }
+  }, [router, user?.id]);
+
   const handleContinueThread = useCallback((commentId: string) => {
     guardedPush(router, { pathname: '/thread/[id]', params: { id: commentId, postId: String(postId) } });
   }, [router, postId]);
@@ -228,6 +238,7 @@ export default function CommentThreadScreen() {
             onReply={openComposer}
             onToggleLike={() => handleToggleCommentLike(focused!.comment_id)}
             onOpenProfile={setSelectedUserId}
+            onAvatarPress={handleAvatarPress}
           />
         );
       case 'empty':
@@ -244,6 +255,7 @@ export default function CommentThreadScreen() {
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
             onOpenProfile={setSelectedUserId}
+            onAvatarPress={handleAvatarPress}
             onDelete={handleDeleteComment}
             currentUserId={user?.id}
           />
@@ -251,7 +263,7 @@ export default function CommentThreadScreen() {
       default:
         return null;
     }
-  }, [focused, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleContinueThread, openComposer, user?.id, sortBy]);
+  }, [focused, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleAvatarPress, handleContinueThread, openComposer, user?.id, sortBy]);
 
   /* ── Header (shared by all states) ── */
   const Navbar = (
