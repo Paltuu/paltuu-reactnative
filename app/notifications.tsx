@@ -18,7 +18,7 @@ import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/
 import { notificationsApi, Notification } from '../src/api/notifications';
 import { handleDeepLink } from '../src/services/deepLinks';
 import { useAuthStore } from '../src/stores/authStore';
-import { NO_PROFILE_IMAGE } from '../src/constants/images';
+import { NO_PROFILE_IMAGE, PALTUU_LOGO } from '../src/constants/images';
 import { COLORS } from '../src/constants/colors';
 import {
   isToday,
@@ -44,6 +44,15 @@ const formatTime = (dateString: string) => {
 
 /* ── Category split: pets/adoptions vs social (no visible labels) ── */
 const isSocialNotification = (type?: string) => (type ?? '').startsWith('social');
+
+/* ── Messages authored by the Paltuu team itself (admin broadcasts, platform
+   announcements) — shown with the Paltuu logo instead of a person's name/photo. ── */
+const TEAM_BROADCAST_TYPES = new Set([
+  'system_admin_broadcast',
+  'system_broadcast',
+  'system_platform_update',
+]);
+const isTeamBroadcast = (type?: string) => TEAM_BROADCAST_TYPES.has(type ?? '');
 
 /* ── Strip emoji/pictographs from body copy for a clean, uniform look ── */
 const stripEmoji = (text: string) =>
@@ -175,16 +184,18 @@ const groupNotificationsByDate = (notifications: Notification[]): NotificationSe
 const ActorAvatar = ({
   name,
   uri,
+  source,
   size = 48,
   square = false,
 }: {
   name: string;
   uri?: string | null;
+  source?: number;
   size?: number;
   square?: boolean;
 }) => (
   <Image
-    source={uri ? { uri } : NO_PROFILE_IMAGE}
+    source={source ?? (uri ? { uri } : NO_PROFILE_IMAGE)}
     style={{ width: size, height: size, borderRadius: square ? size * 0.28 : size / 2 }}
     contentFit="cover"
     className="border border-gray-100"
@@ -256,6 +267,7 @@ const NotificationRow = ({
 }) => {
   const { items, latest } = group;
   const isSocial = isSocialNotification(latest.type);
+  const isBroadcast = isTeamBroadcast(latest.type);
   const isGrouped = items.length > 1;
   const anyUnread = items.some((n) => !n.is_read);
 
@@ -270,9 +282,11 @@ const NotificationRow = ({
       onPress={() => onPress(group)}
       className="flex-row items-center px-3 py-4 active:bg-gray-50"
     >
-      {/* Avatar — stacked for groups; square/rounded for pets & adoptions */}
+      {/* Avatar — Paltuu logo for team broadcasts; stacked for groups; square/rounded for pets & adoptions */}
       <View className="mr-3.5">
-        {isGrouped ? (
+        {isBroadcast ? (
+          <ActorAvatar name="Paltuu" source={PALTUU_LOGO} square />
+        ) : isGrouped ? (
           <StackedAvatars items={items} square={!isSocial} />
         ) : (
           <ActorAvatar name={actorName} uri={avatarUri} square={!isSocial} />
@@ -280,8 +294,19 @@ const NotificationRow = ({
       </View>
 
       {/* Message Text column */}
-      <View className="flex-1 mr-2 gap-1">
-        {isGrouped ? (
+      <View className={`flex-1 mr-2 ${isBroadcast ? 'gap-0.5' : 'gap-1'}`}>
+        {isBroadcast ? (
+          <>
+            <Text className="font-headingSemi text-sm text-dark leading-[18px]" numberOfLines={2}>
+              {latest.title}
+            </Text>
+            {!!latest.body && (
+              <Text className="font-body text-sm text-dark leading-[18px]" numberOfLines={2}>
+                {formatBodyText(latest.body)}
+              </Text>
+            )}
+          </>
+        ) : isGrouped ? (
           <GroupTitleLine items={items} />
         ) : (
           <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
