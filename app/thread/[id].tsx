@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Pressable,
-  TextInput, Platform, Keyboard,
+  TextInput, Platform, Keyboard, Alert,
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
-import { useCommentsQuery, commentsQueryKey, updateCommentInPages } from '../../src/hooks/useComments';
+import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
 import { triggerLikeHaptic } from '../../src/utils/haptics';
 import { useAuthStore } from '../../src/stores/authStore';
 import { guardedPush } from '../../src/utils/navigationGuard';
@@ -129,6 +129,27 @@ export default function CommentThreadScreen() {
     toggleCommentLike.mutate(commentId);
   }, [toggleCommentLike]);
 
+  /* ── Comment/reply delete (own comments only) — optimistic, with rollback on failure ── */
+  const deleteComment = useMutation({
+    mutationFn: (commentId: string) => socialApi.deleteComment(commentId),
+    onMutate: async (commentId: string) => {
+      await queryClient.cancelQueries({ queryKey: commentsKey });
+      const previous = queryClient.getQueryData(commentsKey);
+      queryClient.setQueryData(commentsKey, (old: any) =>
+        removeCommentAndDescendantsInPages(old, commentId)
+      );
+      return { previous };
+    },
+    onError: (_err, _commentId, context) => {
+      if (context?.previous) queryClient.setQueryData(commentsKey, context.previous);
+      Alert.alert('Error', 'Failed to delete comment');
+    },
+  });
+
+  const handleDeleteComment = useCallback((commentId: string) => {
+    deleteComment.mutate(commentId);
+  }, [deleteComment]);
+
   const handleContinueThread = useCallback((commentId: string) => {
     guardedPush(router, { pathname: '/thread/[id]', params: { id: commentId, postId: String(postId) } });
   }, [router, postId]);
@@ -223,12 +244,14 @@ export default function CommentThreadScreen() {
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
             onOpenProfile={setSelectedUserId}
+            onDelete={handleDeleteComment}
+            currentUserId={user?.id}
           />
         );
       default:
         return null;
     }
-  }, [focused, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, sortBy]);
+  }, [focused, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleContinueThread, openComposer, user?.id, sortBy]);
 
   /* ── Header (shared by all states) ── */
   const Navbar = (

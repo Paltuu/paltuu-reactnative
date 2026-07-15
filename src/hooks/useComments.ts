@@ -92,3 +92,33 @@ export function removeCommentsByUserInPages(old: any, userId: number) {
     })),
   };
 }
+
+/**
+ * Drop a comment and every descendant reply beneath it across all loaded
+ * pages (used on delete — the backend cascades the same way).
+ */
+export function removeCommentAndDescendantsInPages(old: any, commentId: string | number) {
+  if (!old?.pages) return old;
+  const all = old.pages.flatMap((page: CommentsPage) => page.comments);
+
+  const toRemove = new Set<string>([String(commentId)]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const c of all) {
+      const parentId = c.parent_comment_id != null ? String(c.parent_comment_id) : null;
+      if (parentId && toRemove.has(parentId) && !toRemove.has(String(c.comment_id))) {
+        toRemove.add(String(c.comment_id));
+        grew = true;
+      }
+    }
+  }
+
+  return {
+    ...old,
+    pages: old.pages.map((page: CommentsPage) => ({
+      ...page,
+      comments: page.comments.filter((c: any) => !toRemove.has(String(c.comment_id))),
+    })),
+  };
+}

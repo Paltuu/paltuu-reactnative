@@ -7,7 +7,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Pressable,
-  TextInput, Platform, Keyboard,
+  TextInput, Platform, Keyboard, Alert,
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
-import { useCommentsQuery, commentsQueryKey, updateCommentInPages } from '../../src/hooks/useComments';
+import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
 import { triggerLikeHaptic } from '../../src/utils/haptics';
 import { useAuthStore } from '../../src/stores/authStore';
 import PostCard from '../../src/components/social/PostCard';
@@ -135,6 +135,27 @@ export default function PostDetailScreen() {
     triggerLikeHaptic();
     toggleCommentLike.mutate(commentId);
   }, [toggleCommentLike]);
+
+  /* ── Comment/reply delete (own comments only) — optimistic, with rollback on failure ── */
+  const deleteComment = useMutation({
+    mutationFn: (commentId: string) => socialApi.deleteComment(commentId),
+    onMutate: async (commentId: string) => {
+      await queryClient.cancelQueries({ queryKey: commentsKey });
+      const previous = queryClient.getQueryData(commentsKey);
+      queryClient.setQueryData(commentsKey, (old: any) =>
+        removeCommentAndDescendantsInPages(old, commentId)
+      );
+      return { previous };
+    },
+    onError: (_err, _commentId, context) => {
+      if (context?.previous) queryClient.setQueryData(commentsKey, context.previous);
+      Alert.alert('Error', 'Failed to delete comment');
+    },
+  });
+
+  const handleDeleteComment = useCallback((commentId: string) => {
+    deleteComment.mutate(commentId);
+  }, [deleteComment]);
 
   // Past the inline-depth cap, tapping "Continue this thread" opens a focused
   // page rooted at that comment (fresh indentation budget).
@@ -269,12 +290,14 @@ export default function PostDetailScreen() {
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
             onOpenProfile={setSelectedUserId}
+            onDelete={handleDeleteComment}
+            currentUserId={user?.id}
           />
         );
       default:
         return null;
     }
-  }, [postData, comments, handleReply, handleExpand, handleToggleCommentLike, handleContinueThread, openComposer, user?.id, sortBy]);
+  }, [postData, comments, handleReply, handleExpand, handleToggleCommentLike, handleDeleteComment, handleContinueThread, openComposer, user?.id, sortBy]);
 
   /* ── Loading / Error ── */
   if (postLoading) {

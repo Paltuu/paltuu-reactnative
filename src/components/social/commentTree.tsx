@@ -7,9 +7,10 @@
 // row that navigates to a focused comment page where that comment becomes the
 // new root (depth 0), giving the thread a fresh indentation budget.
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
 import { MentionText } from './MentionText';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
@@ -407,6 +408,7 @@ const SubStubRow = ({
 /* ── Single comment row ── */
 export const CommentRow = ({
   item, onReply, onToggleLike, onExpand, onContinueThread, onOpenThread, onOpenProfile,
+  onDelete, currentUserId,
 }: {
   item: FlatComment;
   onReply: (c: FlatComment) => void;
@@ -415,8 +417,24 @@ export const CommentRow = ({
   onContinueThread: (commentId: string) => void;
   onOpenThread: (commentId: string) => void;
   onOpenProfile: (userId: number) => void;
+  onDelete?: (id: string) => void;
+  currentUserId?: number | string | null;
 }) => {
   const depth = Math.min(item.depth, MAX_INLINE_DEPTH + 1);
+  const isOwnComment = currentUserId != null && String(item.user_id) === String(currentUserId);
+
+  const handleLongPress = () => {
+    if (!isOwnComment || !onDelete) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment? Replies to it will be deleted too.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDelete(item.comment_id) },
+      ]
+    );
+  };
   const indent = 16 + depth * 24;
   const ancestorContinues = item.ancestorContinues ?? [];
   const threadProps = {
@@ -481,6 +499,8 @@ export const CommentRow = ({
     // touchables win over the row press).
     <Pressable
       onPress={handleRowPress}
+      onLongPress={isOwnComment ? handleLongPress : undefined}
+      delayLongPress={400}
       style={{ position: 'relative', backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}
     >
       <ThreadLines {...threadProps} />
