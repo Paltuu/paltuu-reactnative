@@ -24,6 +24,8 @@ import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import PostCard, { getPostItemType } from '../../../src/components/social/PostCard';
 import { ExploreSections } from '../../../src/components/explore/ExploreSections';
 import { chunkArray, PostGridItem, GRID_MARGIN, GRID_GAP } from '../../../src/components/explore/MediaGrid';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useTabSwipeGesture } from '../../../src/hooks/useTabSwipeGesture';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 
@@ -57,6 +59,8 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  // create-post <-> home <-> pets <-> search <-> profile
+  const swipeGesture = useTabSwipeGesture('/(app)/pets', '/(app)/profile');
   const { scrollHandler, handleScrollY, handleScrollEnd } = useHeaderContext();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
@@ -272,6 +276,7 @@ export default function SearchScreen() {
   ), [isLoadingFeed, isFetchingNextPage]);
 
   return (
+    <GestureDetector gesture={swipeGesture}>
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
       {debouncedQuery ? (
         <Animated.FlatList
@@ -348,5 +353,6 @@ export default function SearchScreen() {
         onClose={() => setViewerVisible(false)}
       />
     </View>
+    </GestureDetector>
   );
 }

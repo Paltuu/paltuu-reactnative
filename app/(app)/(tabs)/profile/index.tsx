@@ -33,6 +33,8 @@ import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
 import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
 import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
 import { getShareUrl } from '../../../../src/utils/share';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useTabSwipeGesture } from '../../../../src/hooks/useTabSwipeGesture';
 
 const Icons = {
   pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
@@ -131,6 +133,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  // create-post <-> home <-> pets <-> search <-> profile (end of chain, no left swipe)
+  const swipeGesture = useTabSwipeGesture('/(app)/search', undefined);
 
   const [activeTab, setActiveTab] = useState<TabKey>('Posts');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -535,6 +539,7 @@ export default function ProfileScreen() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
+    <GestureDetector gesture={swipeGesture}>
     <View style={s.screen}>
       <FlatList
         key={activeTab}
@@ -794,6 +799,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </View>
+    </GestureDetector>
   );
 }
 

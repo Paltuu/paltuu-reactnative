@@ -6,8 +6,8 @@ import {
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useTabSwipeGesture } from '../../../src/hooks/useTabSwipeGesture';
 import { HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
 import { useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -169,23 +169,9 @@ export default function HomeScreen() {
   );
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
-  // Swipe left-to-right anywhere on the feed to pull in the composer.
-  // - activeOffsetX only claims rightward horizontal movement (never leftward),
-  //   so it can't hijack a left-swipe.
-  // - failOffsetY bails the moment the finger travels vertically, so the
-  //   FlashList keeps full control of vertical scrolling.
-  const openComposeGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-1_000_000, 20])
-        .failOffsetY([-14, 14])
-        .onEnd((event) => {
-          if (event.translationX > 70 || event.velocityX > 600) {
-            runOnJS(router.push)('/create-post');
-          }
-        }),
-    [router]
-  );
+  // Swipe left-to-right to open the composer, right-to-left to move to the
+  // Pets tab — part of the create-post <-> home <-> pets <-> search <-> profile chain.
+  const openComposeGesture = useTabSwipeGesture('/create-post', '/(app)/pets');
 
   const {
     data, fetchNextPage, hasNextPage,

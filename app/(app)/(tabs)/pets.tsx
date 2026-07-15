@@ -20,6 +20,8 @@ import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useTabSwipeGesture } from '../../../src/hooks/useTabSwipeGesture';
 
 const H_PAD = 20;
 const ROSE = '#A03048';
@@ -147,6 +149,8 @@ export default function PetsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  // create-post <-> home <-> pets <-> search <-> profile
+  const swipeGesture = useTabSwipeGesture('/(app)', '/(app)/search');
   const user = useAuthStore((state) => state.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
@@ -196,6 +200,7 @@ export default function PetsHubScreen() {
   }, [nearbyPets]);
 
   return (
+    <GestureDetector gesture={swipeGesture}>
     <View style={styles.root}>
       {/* ── Scrollable Content ─────────────────────────────── */}
       <ScrollView
@@ -318,6 +323,7 @@ export default function PetsHubScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
+    </GestureDetector>
   );
 }
 
