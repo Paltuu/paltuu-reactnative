@@ -711,6 +711,12 @@ export const PostCard = React.memo(({
   const hasOwnMedia = (post.media?.length ?? 0) > 0;
   const isQuoteRepost = isRepost && (!!caption || hasOwnMedia);
   const isPlainRepost = isRepost && !caption && !hasOwnMedia;
+  // A plain repost entry is a hollow row with no genuine likes/comments/saves
+  // of its own — every interaction (and the stats shown) belong to the root
+  // post it re-surfaces. The server also dereferences this independently, but
+  // targeting the resolved id directly here keeps optimistic UI + cache keys
+  // (e.g. comment thread, save-status) pointed at the same post everywhere.
+  const interactionPostId = isPlainRepost ? (post.original_post_id ?? post.post_id) : post.post_id;
 
   const displayName = isPlainRepost ? (post.original_author_name || 'User') : (post.author_name || 'User');
   const displayUsername = isPlainRepost
@@ -890,14 +896,14 @@ export const PostCard = React.memo(({
       liked: !prev.liked,
       count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1,
     }));
-    actions?.toggleLike(post.post_id);
-  }, [actions, post.post_id]);
+    actions?.toggleLike(interactionPostId);
+  }, [actions, interactionPostId]);
 
   const handleSave = useCallback(() => {
     if (saved) {
       // Unsaving needs no collection choice — just toggle straight off.
       setSaved(false);
-      actions?.toggleSave(post.post_id, true);
+      actions?.toggleSave(interactionPostId, true);
       return;
     }
     // Saving: fill the icon and fire the save to the default collection in
@@ -908,33 +914,49 @@ export const PostCard = React.memo(({
     // reconcile the exact collection membership shortly after.
     setSaved(true);
     if (actions?.hasCustomCollections) {
-      queryClient.setQueryData(['save-status', post.post_id], (old: any) => ({
+      queryClient.setQueryData(['save-status', interactionPostId], (old: any) => ({
         ...(old || { collections: [] }),
         is_saved: true,
       }));
-      modals?.showSaveSheet(post.post_id);
+      modals?.showSaveSheet(interactionPostId);
       // Fired synchronously (not deferred) — the sheet lets the user toggle
       // collections immediately, and the backend requires the post to
       // already be in saved_posts before it'll add it to another
       // collection, so this needs to be in flight right away rather than
       // waiting for interactions to settle.
-      actions.toggleSave(post.post_id, false);
+      actions.toggleSave(interactionPostId, false);
     } else {
-      actions?.toggleSave(post.post_id, false);
+      actions?.toggleSave(interactionPostId, false);
     }
-  }, [actions, post.post_id, saved, modals, queryClient]);
-  const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(post.post_id), [modals, post.post_id]);
+  }, [actions, interactionPostId, saved, modals, queryClient]);
+  const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(interactionPostId), [modals, interactionPostId]);
   const handleCommentPress = useCallback(() => {
     if (onComment) {
       onComment();
       return;
     }
-    // Seed the comment screen's query cache with the post we already have in
-    // memory so it can render immediately instead of waiting on a redundant
-    // network fetch for data the feed just loaded.
-    queryClient.setQueryData(['post', post.post_id], post);
-    router.push(`/comment/${post.post_id}`);
-  }, [onComment, router, queryClient, post]);
+    // Seed the comment screen's query cache so it can render immediately
+    // instead of waiting on a redundant network fetch for data the feed just
+    // loaded. For a plain repost, comments belong to the root post, so the
+    // cache entry (and the screen we navigate to) must describe the root
+    // post's own fields — not the hollow repost entry's.
+    const commentTarget = isPlainRepost
+      ? {
+          ...post,
+          post_id: interactionPostId,
+          content: post.original_content,
+          media: post.original_media,
+          author_name: post.original_author_name,
+          author_image: post.original_author_image,
+          social_username: post.original_social_username,
+          user_id: post.original_user_id,
+          like_count: likeState.count,
+          comment_count: post.comment_count,
+        }
+      : post;
+    queryClient.setQueryData(['post', String(interactionPostId)], commentTarget);
+    router.push(`/comment/${interactionPostId}`);
+  }, [onComment, router, queryClient, post, isPlainRepost, interactionPostId, likeState.count]);
   const handleMenuPress = useCallback(() => modals?.showOptionsSheet({
     isOwnPost,
     isFollowing: !!post.is_following,
@@ -942,11 +964,11 @@ export const PostCard = React.memo(({
     onSave: handleSave,
     onEdit: handleEdit,
     onDelete: handleDelete,
-    onReport: () => modals?.showReportSheet(post.post_id),
+    onReport: () => modals?.showReportSheet(interactionPostId),
     onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
     onUnfollow: () => actions?.toggleFollow(post.user_id),
     onHide: handleHide,
-  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved, handleSave]);
+  }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved, handleSave, interactionPostId]);
   const handleAvatarPress = useCallback(() => {
     if (String(currentUserId) === String(displayUserId)) {
       router.push('/(app)/profile');
@@ -958,7 +980,7 @@ export const PostCard = React.memo(({
     try {
       const result = await Share.share({
         title: 'Paltuu Social Post',
-        message: getShareUrl(`post/${post.post_id}`),
+        message: getShareUrl(`post/${interactionPostId}`),
       });
       if (result.action === Share.sharedAction) {
         queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
@@ -978,7 +1000,7 @@ export const PostCard = React.memo(({
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
-  }, [post.content, post.author_name, post.post_id, post.user_id, queryClient]);
+  }, [post.content, post.author_name, post.post_id, post.user_id, interactionPostId, queryClient]);
 
   if (isHidden) {
     return (

@@ -199,6 +199,11 @@ export const socialApi = {
     return data as { liked: boolean; like_count: number };
   },
 
+  async deleteComment(commentId: string | number) {
+    const { data } = await client.delete(`/social/comments/${commentId}`);
+    return data as { deleted: boolean; deleted_comment_ids: (string | number)[] };
+  },
+
   async uploadMedia(files: string[]) {
     const formData = new FormData();
     files.forEach((uri) => {
