@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
+import { useAuthReady } from '../../hooks/useAuthReady';
 import { FONTS } from '../../constants/typography';
 import { SectionHeader } from './Rail';
 import { TrendingRail } from './TrendingRail';
@@ -49,12 +50,14 @@ const useProgressiveSections = (total: number) => {
 
 export const ExploreSections = () => {
   const router = useRouter();
+  const authReady = useAuthReady();
   const visibleSections = useProgressiveSections(TOTAL_SECTIONS);
 
   const { data: discovery, isLoading: isLoadingDiscovery } = useQuery({
     queryKey: ['explore', 'discovery'],
     queryFn: () => socialApi.getExploreDiscovery(),
     staleTime: 5 * 60 * 1000,
+    enabled: authReady,
   });
 
   const keywords = discovery?.trending_keywords ?? [];

@@ -89,7 +89,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchProfile: async () => {
-    const { accessToken } = get();
+    let { accessToken } = get();
+    if (!accessToken) {
+      accessToken = await storage.getToken();
+      if (accessToken) set({ accessToken, isAuthenticated: true });
+    }
     if (!accessToken) return;
 
     try {
@@ -124,8 +128,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (accessToken) {
         set({ user, accessToken, refreshToken, isAuthenticated: true });
-        // If we have token but no user (or to refresh), fetch profile
-        get().fetchProfile();
+        await get().fetchProfile();
       }
     } catch (e) {
       console.error('Failed to hydrate auth store', e);

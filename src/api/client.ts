@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { storage } from '../utils/storage';
 
@@ -9,6 +9,72 @@ const client = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+/** Single-flight refresh — rotation invalidates the old token, so concurrent 401 handlers must share one refresh. */
+let refreshInFlight: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+
+async function syncTokensFromStorage(): Promise<void> {
+  const { accessToken, refreshToken } = useAuthStore.getState();
+  if (accessToken && refreshToken) return;
+
+  const storedAccess = accessToken ?? (await storage.getToken());
+  const storedRefresh = refreshToken ?? (await storage.getRefreshToken());
+
+  if (storedAccess || storedRefresh) {
+    useAuthStore.setState({
+      ...(storedAccess ? { accessToken: storedAccess, isAuthenticated: true } : {}),
+      ...(storedRefresh ? { refreshToken: storedRefresh } : {}),
+    });
+  }
+}
+
+async function getRefreshToken(): Promise<string | null> {
+  await syncTokensFromStorage();
+  return useAuthStore.getState().refreshToken ?? storage.getRefreshToken();
+}
+
+async function performTokenRefresh(): Promise<{ accessToken: string; refreshToken: string }> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) {
+      const err = new Error('No refresh token') as Error & { isAuthError?: boolean };
+      err.isAuthError = true;
+      throw err;
+    }
+
+    const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`, {
+      refreshToken,
+    });
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
+    await useAuthStore.getState().updateAccessToken(newAccessToken, newRefreshToken);
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+function isAuthFailure(error: unknown): boolean {
+  if (error && typeof error === 'object' && (error as { isAuthError?: boolean }).isAuthError) {
+    return true;
+  }
+  if (error instanceof AxiosError) {
+    const status = error.response?.status;
+    return status === 400 || status === 401 || status === 403;
+  }
+  return false;
+}
+
+function shouldAttemptRefresh(config: { url?: string } | undefined): boolean {
+  const url = config?.url ?? '';
+  return !url.includes('/auth/refresh') && !url.includes('/auth/login');
+}
 
 // Request interceptor: Logger
 client.interceptors.request.use((config) => {
@@ -21,12 +87,11 @@ client.interceptors.request.use((config) => {
 // Request interceptor: Attach access token (fall back to SecureStore while hydrating)
 client.interceptors.request.use(
   async (config) => {
-    let { accessToken } = useAuthStore.getState();
-    if (!accessToken) {
-      accessToken = await storage.getToken();
-    }
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    await syncTokensFromStorage();
+    const { accessToken } = useAuthStore.getState();
+    const token = accessToken ?? (await storage.getToken());
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -49,62 +114,31 @@ client.interceptors.response.use(
   }
 );
 
-
 // Response interceptor: Handle token refresh on 401
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and not already retrying
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const { isLoading, updateAccessToken, logout } = useAuthStore.getState();
-        let { refreshToken } = useAuthStore.getState();
-
-        // Recover refresh token from SecureStore if the in-memory store isn't ready yet
-        if (!refreshToken) {
-          refreshToken = await storage.getRefreshToken();
-          if (refreshToken) {
-            useAuthStore.setState({ refreshToken });
-          }
-        }
-
-        if (!refreshToken) {
-          // During startup hydration a missing in-memory token doesn't mean the
-          // session is invalid — don't wipe SecureStore before hydrate() runs.
-          if (!isLoading) {
-            await logout();
-          }
-          return Promise.reject(error);
-        }
-
-        // Call refresh endpoint
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
-        
-        // Update store and storage with new access and rotated refresh tokens
-        await updateAccessToken(newAccessToken, newRefreshToken);
-
-        // Retry original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return client(originalRequest);
-      } catch (refreshError) {
-        const { isLoading, logout } = useAuthStore.getState();
-        // Only clear persisted session after hydration confirms tokens are unusable
-        if (!isLoading) {
-          await logout();
-        }
-        return Promise.reject(refreshError);
-      }
+    if (error.response?.status !== 401 || originalRequest._retry || !shouldAttemptRefresh(originalRequest)) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    try {
+      const { accessToken } = await performTokenRefresh();
+
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+      return client(originalRequest);
+    } catch (refreshError) {
+      const { isLoading, logout } = useAuthStore.getState();
+      // Only wipe the session when refresh genuinely failed — not on network blips.
+      if (!isLoading && isAuthFailure(refreshError)) {
+        await logout();
+      }
+      return Promise.reject(refreshError);
+    }
   }
 );
 

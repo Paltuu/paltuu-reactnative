@@ -6,20 +6,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext, HEADER_HEIGHT } from '../../context/HeaderContext';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsApi } from '../../api/notifications';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 export { HEADER_HEIGHT };
 
 export const MainHeader: React.FC = () => {
     const insets = useSafeAreaInsets();
     const { headerTranslateY, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const authReady = useAuthReady();
 
     const { data: unreadData } = useQuery({
         queryKey: ['unread-count'],
         queryFn: () => notificationsApi.getUnreadCount(),
         staleTime: 5 * 60 * 1000,
-        enabled: isAuthenticated,
+        enabled: authReady,
     });
 
     const unreadCount = unreadData?.unread_count ?? 0;

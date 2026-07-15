@@ -172,6 +172,12 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError, isLoading]);
 
+  const appReady = (fontsLoaded || !!fontError) && !isLoading;
+
+  if (!appReady) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>

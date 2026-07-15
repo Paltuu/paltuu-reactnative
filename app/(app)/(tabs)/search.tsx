@@ -28,6 +28,7 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import { useTabSwipeGesture } from '../../../src/hooks/useTabSwipeGesture';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
+import { useAuthReady } from '../../../src/hooks/useAuthReady';
 
 const CustomFlashList = FlashList as any;
 
@@ -55,6 +56,7 @@ const PostCompactItem = ({ post, onPress }: { post: SocialPost; onPress: () => v
 );
 
 export default function SearchScreen() {
+  const authReady = useAuthReady();
   const { toggleFollow } = useSocialActions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -95,6 +97,7 @@ export default function SearchScreen() {
     queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, 'personalized'),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
+    enabled: authReady,
   });
 
   const forYouPosts = useMemo(() => feedData?.pages.flatMap((p) => p.posts) ?? [], [feedData]);

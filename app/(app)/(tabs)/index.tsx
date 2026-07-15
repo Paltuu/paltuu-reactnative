@@ -20,7 +20,7 @@ import { QuickProfileModal } from '../../../src/components/social/QuickProfileMo
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { storage } from '../../../src/utils/storage';
-import { useAuthStore } from '../../../src/stores/authStore';
+import { useAuthReady } from '../../../src/hooks/useAuthReady';
 
 // (Layout constants are now managed inside the shared PostCard)
 
@@ -127,8 +127,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { handleScrollY, handleScrollEnd } = useHeaderContext();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
-  const authReady = isAuthenticated && !isAuthLoading;
+  const authReady = useAuthReady();
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
