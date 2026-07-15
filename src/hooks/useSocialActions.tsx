@@ -226,6 +226,9 @@ export const useSocialActions = () => {
       queryClient.invalidateQueries({ queryKey: ['social-profile'] });
       queryClient.invalidateQueries({ queryKey: ['save-status', postId] });
       queryClient.invalidateQueries({ queryKey: ['social-collections'] });
+      // Invalidate all open collection-posts caches so unsaved posts
+      // are not shown as stale data when navigating back into a collection.
+      queryClient.invalidateQueries({ queryKey: ['collection-posts'] });
     },
   });
 
