@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { storage } from '../utils/storage';
 
 const client = axios.create({
   baseURL: `${process.env.EXPO_PUBLIC_API_URL}/v1`,
@@ -17,10 +18,13 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// Request interceptor: Attach access token
+// Request interceptor: Attach access token (fall back to SecureStore while hydrating)
 client.interceptors.request.use(
-  (config) => {
-    const { accessToken } = useAuthStore.getState();
+  async (config) => {
+    let { accessToken } = useAuthStore.getState();
+    if (!accessToken) {
+      accessToken = await storage.getToken();
+    }
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -57,10 +61,23 @@ client.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const { refreshToken, updateAccessToken, logout } = useAuthStore.getState();
-        
+        const { isLoading, updateAccessToken, logout } = useAuthStore.getState();
+        let { refreshToken } = useAuthStore.getState();
+
+        // Recover refresh token from SecureStore if the in-memory store isn't ready yet
         if (!refreshToken) {
-          logout();
+          refreshToken = await storage.getRefreshToken();
+          if (refreshToken) {
+            useAuthStore.setState({ refreshToken });
+          }
+        }
+
+        if (!refreshToken) {
+          // During startup hydration a missing in-memory token doesn't mean the
+          // session is invalid — don't wipe SecureStore before hydrate() runs.
+          if (!isLoading) {
+            await logout();
+          }
           return Promise.reject(error);
         }
 
@@ -78,8 +95,11 @@ client.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return client(originalRequest);
       } catch (refreshError) {
-        // Refresh failed (e.g. refresh token expired)
-        useAuthStore.getState().logout();
+        const { isLoading, logout } = useAuthStore.getState();
+        // Only clear persisted session after hydration confirms tokens are unusable
+        if (!isLoading) {
+          await logout();
+        }
         return Promise.reject(refreshError);
       }
     }

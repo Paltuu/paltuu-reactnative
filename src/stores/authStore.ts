@@ -122,7 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ hasSeenOnboarding });
 
-      if (accessToken && refreshToken) {
+      if (accessToken) {
         set({ user, accessToken, refreshToken, isAuthenticated: true });
         // If we have token but no user (or to refresh), fetch profile
         get().fetchProfile();

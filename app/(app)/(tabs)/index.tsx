@@ -20,6 +20,7 @@ import { QuickProfileModal } from '../../../src/components/social/QuickProfileMo
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { storage } from '../../../src/utils/storage';
+import { useAuthStore } from '../../../src/stores/authStore';
 
 // (Layout constants are now managed inside the shared PostCard)
 
@@ -126,6 +127,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { handleScrollY, handleScrollEnd } = useHeaderContext();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const authReady = isAuthenticated && !isAuthLoading;
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
@@ -146,6 +149,7 @@ export default function HomeScreen() {
     queryFn: () => socialApi.getInterests(),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    enabled: authReady,
   });
   const hasPicks = interestsData?.has_picks ?? false;
   const forYouMode = hasPicks ? 'personalized' : 'global';
@@ -195,7 +199,7 @@ export default function HomeScreen() {
     // fetch — otherwise this fires once for 'global', then again a beat later
     // for 'personalized' once interests load, causing a double fetch + a
     // loading-skeleton flash right after the feed first paints.
-    enabled: !isLoadingInterests,
+    enabled: authReady && !isLoadingInterests,
   });
 
   const [refreshing, setRefreshing] = useState(false);

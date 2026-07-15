@@ -164,12 +164,13 @@ export default function RootLayout() {
     };
   }, [isAuthenticated, isLoading, user, navigationState?.key]);
 
-  // 4. Hide Splash Screen
+  // 4. Hide Splash Screen — wait for fonts AND auth hydration so protected
+  // screens don't fire authenticated API calls before tokens are in memory.
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && !isLoading) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, isLoading]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSocialActions } from '../hooks/useSocialActions';
 import { socialApi } from '../api/social';
+import { useAuthStore } from '../stores/authStore';
 
 export interface SocialActionsContextValue {
   toggleLike: (postId: string | number) => void;
@@ -28,6 +29,7 @@ const SocialActionsContext = createContext<SocialActionsContextValue | null>(nul
 export function SocialActionsProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { toggleLike, toggleSave, toggleFollow, deletePost, updatePost } = useSocialActions();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
 
   // Kept warm here (rather than only inside SaveBottomSheet) so PostCard can
   // read collection count synchronously the moment the bookmark is tapped.
@@ -35,6 +37,7 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
     queryKey: ['social-collections'],
     queryFn: () => socialApi.getCollections(),
     staleTime: 5 * 60 * 1000,
+    enabled: isAuthenticated && !isAuthLoading,
   });
   const hasCustomCollections = (collectionsData?.collections?.length ?? 0) > 1;
 
