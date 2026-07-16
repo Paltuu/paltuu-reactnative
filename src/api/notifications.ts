@@ -7,6 +7,7 @@ export interface Notification {
   body: string;
   entity_type: string | null;
   entity_id: number | null;
+  entity_comment_id: number | null;
   deep_link: string | null;
   image_url: string | null;
   is_read: boolean;

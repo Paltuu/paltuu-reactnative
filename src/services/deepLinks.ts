@@ -28,6 +28,22 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       console.log(`[Deep Link Router] Parsed path: ${combinedPath}`);
     }
 
+    const parts = combinedPath.split('/').filter(Boolean);
+
+    // Comment/reply notifications: push the post first so the thread screen's
+    // back button lands the user back on the post, then push the focused
+    // thread on top of it — mirrors the in-app "Continue this thread" flow.
+    if (parts[0] === 'social' && parts[1] === 'post' && parts[3] === 'comment' && parts[4]) {
+      const postId = parts[2];
+      const commentId = parts[4];
+      if (__DEV__) {
+        console.log(`[Deep Link Router] Navigating to thread ${commentId} on post ${postId}`);
+      }
+      router.push(`/post/${postId}` as any);
+      router.push({ pathname: '/thread/[id]', params: { id: commentId, postId } } as any);
+      return;
+    }
+
     const routes: Record<string, (parts: string[], url?: URL) => string> = {
       '/social/post': (p) => `/post/${p[2]}`,
       '/post':        (p) => `/post/${p[1]}`,
@@ -42,7 +58,6 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/vet-panel':   ()  => `/(app)/vet-panel`,
     };
 
-    const parts = combinedPath.split('/').filter(Boolean);
     const matchedKey = Object.keys(routes).find(key => combinedPath.startsWith(key));
 
     if (matchedKey) {

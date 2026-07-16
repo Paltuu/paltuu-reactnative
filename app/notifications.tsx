@@ -232,6 +232,15 @@ const StackedAvatars = ({ items, square }: { items: Notification[]; square: bool
   );
 };
 
+/* ── Pull the quoted post/comment preview the backend already embeds in a
+   single notification's body (e.g. `commented: "hello world"`) so collapsed
+   groups can show the same context instead of a bare "commented on your
+   post" with nothing to point at. ── */
+const extractPreview = (body: string): string | null => {
+  const match = stripEmoji(body ?? '').match(/"([^"]*)"/);
+  return match ? match[1] : null;
+};
+
 /* ── Build the "A, B and N others <action>" line for a collapsed group ── */
 const GroupTitleLine = ({ items }: { items: Notification[] }) => {
   const senders = uniqueSenders(items);
@@ -239,6 +248,8 @@ const GroupTitleLine = ({ items }: { items: Notification[] }) => {
   const first = senders[0]?.name || 'Someone';
   const second = senders[1]?.name;
   const extra = senders.length - 2;
+  // Only worth showing when there's no thumbnail to carry that context instead.
+  const preview = !items[0].image_url ? extractPreview(items[0].body) : null;
 
   return (
     <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
@@ -251,6 +262,9 @@ const GroupTitleLine = ({ items }: { items: Notification[] }) => {
       )}
       {extra > 0 && <Text className="font-body text-dark"> and {extra} others</Text>}
       <Text> {action}</Text>
+      {preview && (
+        <Text className="font-headingSemi text-dark text-sm"> "{preview}"</Text>
+      )}
     </Text>
   );
 };
