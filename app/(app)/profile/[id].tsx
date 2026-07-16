@@ -15,6 +15,8 @@ import {
   ScrollView,
   Share,
   BackHandler,
+  Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -189,39 +191,33 @@ function UserProfileScreen() {
     );
   };
 
+  const confirmBlock = () => {
+    Alert.alert('Block User', 'Are you sure you want to block this user?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
+    ]);
+  };
+
   const handleProfileMenu = () => {
-    import('react-native').then(({ ActionSheetIOS, Platform, Alert }) => {
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            options: ['Cancel', 'Report Profile', 'Block User'],
-            destructiveButtonIndex: 2,
-            cancelButtonIndex: 0,
-          },
-          (btnIdx) => {
-            if (btnIdx === 1) setReportSheetVisible(true);
-            else if (btnIdx === 2) {
-              Alert.alert('Block User', 'Are you sure you want to block this user?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
-              ]);
-            }
-          }
-        );
-      } else {
-        Alert.alert('Profile Options', undefined, [
-          { text: 'Report Profile', onPress: () => setReportSheetVisible(true) },
-          { text: 'Block User', style: 'destructive', onPress: () => {
-              Alert.alert('Block User', 'Are you sure you want to block this user?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Block', style: 'destructive', onPress: () => blockMutation.mutate() },
-              ]);
-            }
-          },
-          { text: 'Cancel', style: 'cancel' }
-        ]);
-      }
-    });
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Profile', 'Block User'],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+        },
+        (btnIdx) => {
+          if (btnIdx === 1) setReportSheetVisible(true);
+          else if (btnIdx === 2) confirmBlock();
+        }
+      );
+    } else {
+      Alert.alert('Profile Options', undefined, [
+        { text: 'Report Profile', onPress: () => setReportSheetVisible(true) },
+        { text: 'Block User', style: 'destructive', onPress: confirmBlock },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
   };
 
   const renderItem = ({ item }: { item: any }) => {

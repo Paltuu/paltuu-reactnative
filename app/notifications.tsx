@@ -619,6 +619,9 @@ export default function NotificationsScreen() {
       ) : (
         <SectionList
           sections={sections}
+          // Date headers (Today/Yesterday/…) scroll away with their section
+          // instead of pinning to the top and overlapping rows underneath.
+          stickySectionHeadersEnabled={false}
           keyExtractor={(group) => group.key}
           renderItem={({ item: group }) => (
             <NotificationRow group={group} onPress={handlePress} onOptionsPress={openOptionsSheet} />
