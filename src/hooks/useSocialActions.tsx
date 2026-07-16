@@ -297,7 +297,13 @@ export const useSocialActions = () => {
     onSettled: (data, err, { postId }) => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
       queryClient.invalidateQueries({ queryKey: ['social-profile'] });
-      queryClient.invalidateQueries({ queryKey: ['save-status', postId] });
+      // refetchType: 'none' — this quick-save can race with SaveBottomSheet's
+      // own toggleCollectionMutation, which also writes ['save-status', postId]
+      // optimistically. A forced active refetch here can resolve after that
+      // optimistic write and clobber a checkbox the user just toggled. Marking
+      // stale (without refetching) still keeps the cache correct for the next
+      // real read, without fighting the sheet's own reconciliation.
+      queryClient.invalidateQueries({ queryKey: ['save-status', postId], refetchType: 'none' });
       queryClient.invalidateQueries({ queryKey: ['social-collections'] });
       // Invalidate all open collection-posts caches so unsaved posts
       // are not shown as stale data when navigating back into a collection.

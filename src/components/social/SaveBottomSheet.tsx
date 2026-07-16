@@ -45,20 +45,16 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
   const isSavedGlobally = saveStatusData?.is_saved || false;
   const postCollections = saveStatusData?.collections || [];
 
-  // Present only once both queries have resolved, so the sheet slides up
-  // already at its final size — Instagram-style — instead of opening small
-  // and visibly resizing as the collections/save-status data arrives.
-  const contentReady = !loadingCollections && !loadingSaveStatus;
+  // Present immediately on tap — snapPoints is a fixed percentage, not
+  // content-measured, so there's no resize jump to wait out. The loading
+  // spinner below covers the brief gap while collections/save-status arrive.
   useEffect(() => {
-    if (visible && postId && contentReady) {
-      const timer = setTimeout(() => {
-        bottomSheetModalRef.current?.present();
-      }, 0);
-      return () => clearTimeout(timer);
+    if (visible && postId) {
+      bottomSheetModalRef.current?.present();
     } else if (!visible) {
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [visible, postId, contentReady]);
+  }, [visible, postId]);
 
   const isPostInCollection = (collectionId: number) => {
     return postCollections.some((c) => c.collection_id === collectionId);

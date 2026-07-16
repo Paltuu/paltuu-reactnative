@@ -8,7 +8,9 @@ import {
   Share,
   StyleSheet,
   FlatList,
-  Modal
+  Modal,
+  Linking,
+  Alert
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -79,6 +81,24 @@ function PetDetailsScreen() {
     } catch (error) {
       console.error('Share error:', error);
     }
+  };
+
+  const handleCallGuardian = () => {
+    if (!pet?.owner_phone) {
+      Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
+      return;
+    }
+    Linking.openURL(`tel:${pet.owner_phone}`);
+  };
+
+  const handleMessageGuardian = () => {
+    if (!pet?.owner_phone) {
+      Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
+      return;
+    }
+    let p = String(pet.owner_phone).trim().replace(/[^\d+]/g, '');
+    if (p.startsWith('0')) p = '92' + p.slice(1);
+    Linking.openURL(`whatsapp://send?phone=${p}`);
   };
 
   const handleToggleSave = async () => {
@@ -193,10 +213,10 @@ function PetDetailsScreen() {
                 <Text style={s.sellerName}>{pet.owner_name || 'Legendary Kiwi'}</Text>
               </View>
               <View style={s.sellerActions}>
-                <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7}>
+                <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7} onPress={handleMessageGuardian}>
                   <Ionicons name="chatbubble-ellipses-outline" size={18} color="#111827" />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7}>
+                <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7} onPress={handleCallGuardian}>
                   <Ionicons name="call-outline" size={18} color="#111827" />
                 </TouchableOpacity>
               </View>
