@@ -7,7 +7,7 @@ import { useAuthReady } from '../hooks/useAuthReady';
 
 export interface SocialActionsContextValue {
   toggleLike: (postId: string | number) => void;
-  toggleSave: (postId: string | number, isSaved: boolean) => void;
+  toggleSave: (postId: string | number, isSaved: boolean) => Promise<any>;
   toggleFollow: (userId: string | number) => void;
   deletePost: (postId: string | number) => void;
   updatePost: (postId: string | number, payload: any) => Promise<any>;

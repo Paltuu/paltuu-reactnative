@@ -236,7 +236,7 @@ export const useSocialActions = () => {
   const toggleFollow = (userId: string | number) => { followMutation.mutate(userId); };
   const deletePost = (postId: string | number) => { deletePostMutation.mutate(postId); };
   const updatePost = (postId: string | number, payload: any) => updatePostMutation.mutateAsync({ postId, payload });
-  const toggleSave = (postId: string | number, isSaved: boolean) => { saveMutation.mutate({ postId, isSaved }); };
+  const toggleSave = (postId: string | number, isSaved: boolean) => saveMutation.mutateAsync({ postId, isSaved });
 
   return {
     toggleLike,

@@ -915,36 +915,48 @@ export const PostCard = React.memo(({
     actions?.toggleLike(interactionPostId);
   }, [actions, interactionPostId]);
 
-  const handleSave = useCallback(() => {
-    if (saved) {
-      // Unsaving needs no collection choice — just toggle straight off.
-      setSaved(false);
-      actions?.toggleSave(interactionPostId, true);
-      return;
+  const saveInProgress = useRef(false);
+  const handleSave = useCallback(async () => {
+    if (saveInProgress.current) return;
+    saveInProgress.current = true;
+
+    try {
+      if (saved) {
+        // Unsaving needs no collection choice — just toggle straight off.
+        setSaved(false);
+        await actions?.toggleSave(interactionPostId, true);
+      } else {
+        // Saving: fill the icon and fire the save to the default collection in
+        // the background — don't make opening the picker wait on the network.
+        // Seed the picker's own save-status cache so it shows "already saved"
+        // the instant it opens rather than flashing "not saved" until its fetch
+        // resolves; the real fetch (triggered by showSaveSheet below) will still
+        // reconcile the exact collection membership shortly after.
+        setSaved(true);
+        if (actions?.hasCustomCollections) {
+          queryClient.setQueryData(['save-status', interactionPostId], (old: any) => ({
+            ...(old || { collections: [] }),
+            is_saved: true,
+          }));
+          modals?.showSaveSheet(interactionPostId);
+          // Fired synchronously (not deferred) — the sheet lets the user toggle
+          // collections immediately, and the backend requires the post to
+          // already be in saved_posts before it'll add it to another
+          // collection, so this needs to be in flight right away rather than
+          // waiting for interactions to settle.
+          await actions.toggleSave(interactionPostId, false);
+        } else {
+          await actions?.toggleSave(interactionPostId, false);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to toggle save:', e);
+      // Revert state if save failed
+      setSaved(!!post.is_saved);
+    } finally {
+      saveInProgress.current = false;
     }
-    // Saving: fill the icon and fire the save to the default collection in
-    // the background — don't make opening the picker wait on the network.
-    // Seed the picker's own save-status cache so it shows "already saved"
-    // the instant it opens rather than flashing "not saved" until its fetch
-    // resolves; the real fetch (triggered by showSaveSheet below) will still
-    // reconcile the exact collection membership shortly after.
-    setSaved(true);
-    if (actions?.hasCustomCollections) {
-      queryClient.setQueryData(['save-status', interactionPostId], (old: any) => ({
-        ...(old || { collections: [] }),
-        is_saved: true,
-      }));
-      modals?.showSaveSheet(interactionPostId);
-      // Fired synchronously (not deferred) — the sheet lets the user toggle
-      // collections immediately, and the backend requires the post to
-      // already be in saved_posts before it'll add it to another
-      // collection, so this needs to be in flight right away rather than
-      // waiting for interactions to settle.
-      actions.toggleSave(interactionPostId, false);
-    } else {
-      actions?.toggleSave(interactionPostId, false);
-    }
-  }, [actions, interactionPostId, saved, modals, queryClient]);
+  }, [actions, interactionPostId, saved, modals, queryClient, post.is_saved]);
   const handleSaveLongPress = useCallback(() => modals?.showSaveSheet(interactionPostId), [modals, interactionPostId]);
   const handleCommentPress = useCallback(() => {
     if (onComment) {
