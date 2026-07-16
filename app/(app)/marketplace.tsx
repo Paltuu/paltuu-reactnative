@@ -10,7 +10,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
@@ -34,7 +34,7 @@ function MarketplaceScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { scrollHandler } = useHeaderContext();
+  const { scrollHandler } = useHeaderScroll();
 
   const { 
     products, 

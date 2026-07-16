@@ -10,7 +10,7 @@ import { petApi, PetFilters } from '../../src/api/pets';
 import { Ionicons } from '@expo/vector-icons';
 import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PetCard } from '../../src/components/adoption/PetCard';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
@@ -39,7 +39,7 @@ function AdoptScreen() {
   }, [breedParam]);
 
   const insets = useSafeAreaInsets();
-  const { handleScrollY, handleScrollEnd } = useHeaderContext();
+  const { handleScrollY, handleScrollEnd } = useHeaderScroll();
 
   // --- Infinite Query ---
   const {

@@ -8,10 +8,10 @@ import Animated from 'react-native-reanimated';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bazaarApi, BazaarFilters } from '../../src/api/bazaar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { HEADER_HEIGHT } from '../../src/components/common/MainHeader';
+import { MainHeader, HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
-import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
@@ -112,7 +112,7 @@ const ProductSection = ({ title, icon, filters, onSeeAll }: { title: string, ico
 function BazaarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { scrollHandler } = useHeaderContext();
+  const { headerTranslateY, scrollHandler } = useHeaderScroll();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isDowntime] = useState(false); // Mobile active for testing
@@ -263,6 +263,8 @@ function BazaarScreen() {
         </View>
 
       </Animated.ScrollView>
+
+      <MainHeader headerTranslateY={headerTranslateY} />
     </View>
   );
 }

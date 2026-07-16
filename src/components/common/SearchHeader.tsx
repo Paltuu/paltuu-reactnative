@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderContext, HEADER_HEIGHT } from '../../context/HeaderContext';
+import { HEADER_HEIGHT } from '../../context/HeaderContext';
 import { SearchBar } from './SearchBar';
 
 export type SearchTab = 'all' | 'posts' | 'users';
@@ -22,6 +22,9 @@ interface SearchHeaderProps {
   onHeightChange?: (height: number) => void;
   /** Show the All/Posts/People filter row — only relevant while a query is active */
   showTabs?: boolean;
+  /** Owned by the caller (via `useHeaderScroll()`) — kept private per screen
+   * so hiding this header via scroll never leaks into another screen's header. */
+  headerTranslateY: SharedValue<number>;
 }
 
 const TabItem = React.memo(
@@ -45,9 +48,9 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   onTabChange,
   onHeightChange,
   showTabs = true,
+  headerTranslateY,
 }) => {
   const insets = useSafeAreaInsets();
-  const { headerTranslateY } = useHeaderContext();
 
   // Keep height as SharedValue so the ratio runs on UI thread
   const heightSV = useSharedValue(112);

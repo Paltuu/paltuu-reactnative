@@ -10,35 +10,18 @@ import {
 export const HEADER_HEIGHT = 60;
 
 interface HeaderContextValue {
-    headerTranslateY: SharedValue<number>;
     isLoading: boolean;
     setLoading: (v: boolean) => void;
-    scrollHandler: ReturnType<typeof useAnimatedScrollHandler>;
-    /** Plain JS callback — use with non-animated lists (e.g. FlashList) */
-    handleScrollY: (y: number) => void;
-    handleScrollEnd: () => void;
-    /** Snaps the header fully visible and forgets the last scroll offset —
-     * call on screen focus. `headerTranslateY`/`lastY` are shared across every
-     * screen under this provider, so without this a header hidden by scrolling
-     * on one screen (e.g. Home) stays hidden on the next screen (e.g. Search)
-     * until a scroll gesture there happens to reach y<=0. */
-    resetHeader: () => void;
     onPlusPress: () => void;
     onHeartPress: () => void;
     setOnPlusPress: (fn: () => void) => void;
     setOnHeartPress: (fn: () => void) => void;
-    setHeaderEnabled: (v: boolean) => void;
 }
 
 const HeaderContext = createContext<HeaderContextValue | null>(null);
 
 export function HeaderProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
-
-    // 0 = fully visible, -HEADER_HEIGHT = fully hidden
-    const headerTranslateY = useSharedValue(0);
-    const headerEnabled = useSharedValue(1);
-    const lastY = useSharedValue(0);
 
     const plusRef = useRef<() => void>(() => {});
     const heartRef = useRef<() => void>(() => {});
@@ -48,6 +31,54 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
     const setOnHeartPress = useCallback((fn: () => void) => { heartRef.current = fn; }, []);
     const onPlusPress = useCallback(() => plusRef.current(), []);
     const onHeartPress = useCallback(() => heartRef.current(), []);
+
+    const contextValue = useMemo(() => ({
+        isLoading,
+        setLoading,
+        onPlusPress,
+        onHeartPress,
+        setOnPlusPress,
+        setOnHeartPress,
+    }), [isLoading, setLoading, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress]);
+
+    return (
+        <HeaderContext.Provider value={contextValue}>
+            {children}
+        </HeaderContext.Provider>
+    );
+}
+
+export function useHeaderContext(): HeaderContextValue {
+    const ctx = useContext(HeaderContext);
+    if (!ctx) throw new Error('useHeaderContext must be used inside <HeaderProvider>');
+    return ctx;
+}
+
+interface HeaderScroll {
+    headerTranslateY: SharedValue<number>;
+    scrollHandler: ReturnType<typeof useAnimatedScrollHandler>;
+    /** Plain JS callback — use with non-animated lists (e.g. FlashList) */
+    handleScrollY: (y: number) => void;
+    handleScrollEnd: () => void;
+    /** Snaps the header fully visible and forgets the last scroll offset —
+     * call on screen focus so a header left hidden from a previous scroll
+     * doesn't render already off-screen on the next visit. */
+    resetHeader: () => void;
+    setHeaderEnabled: (v: boolean) => void;
+}
+
+/**
+ * Self-contained collapsing-header animation. Each screen that renders a
+ * scroll-collapsing header (or drives one rendered nearby) calls this itself
+ * to get its own private `headerTranslateY` — screens no longer share one
+ * global value, so hiding the header via scroll on one screen can never leak
+ * into another screen's header state.
+ */
+export function useHeaderScroll(): HeaderScroll {
+    // 0 = fully visible, -HEADER_HEIGHT = fully hidden
+    const headerTranslateY = useSharedValue(0);
+    const headerEnabled = useSharedValue(1);
+    const lastY = useSharedValue(0);
 
     const setHeaderEnabled = useCallback((v: boolean) => {
         headerEnabled.value = v ? 1 : 0;
@@ -117,30 +148,12 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
         },
     });
 
-    const contextValue = useMemo(() => ({
+    return {
         headerTranslateY,
-        isLoading,
-        setLoading,
         scrollHandler,
         handleScrollY,
         handleScrollEnd,
         resetHeader,
-        onPlusPress,
-        onHeartPress,
-        setOnPlusPress,
-        setOnHeartPress,
         setHeaderEnabled,
-    }), [isLoading, setLoading, scrollHandler, handleScrollY, handleScrollEnd, resetHeader, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress, setHeaderEnabled]);
-
-    return (
-        <HeaderContext.Provider value={contextValue}>
-            {children}
-        </HeaderContext.Provider>
-    );
-}
-
-export function useHeaderContext(): HeaderContextValue {
-    const ctx = useContext(HeaderContext);
-    if (!ctx) throw new Error('useHeaderContext must be used inside <HeaderProvider>');
-    return ctx;
+    };
 }

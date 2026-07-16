@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderContext, HEADER_HEIGHT } from '../../context/HeaderContext';
@@ -10,9 +10,15 @@ import { useAuthReady } from '../../hooks/useAuthReady';
 
 export { HEADER_HEIGHT };
 
-export const MainHeader: React.FC = () => {
+interface MainHeaderProps {
+    /** Owned by the caller (via `useHeaderScroll()`) — kept private per screen
+     * so hiding this header via scroll never leaks into another screen's header. */
+    headerTranslateY: SharedValue<number>;
+}
+
+export const MainHeader: React.FC<MainHeaderProps> = ({ headerTranslateY }) => {
     const insets = useSafeAreaInsets();
-    const { headerTranslateY, isLoading, onPlusPress, onHeartPress } = useHeaderContext();
+    const { isLoading, onPlusPress, onHeartPress } = useHeaderContext();
     const authReady = useAuthReady();
 
     const { data: unreadData } = useQuery({

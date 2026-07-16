@@ -11,8 +11,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { useHeaderContext } from '../../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../../src/context/HeaderContext';
 import { SearchHeader, SearchTab } from '../../../src/components/common/SearchHeader';
 import { useRouter } from 'expo-router';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -61,17 +60,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   // create-post <-> home <-> pets <-> search <-> profile
-  const { scrollHandler, handleScrollY, handleScrollEnd, resetHeader } = useHeaderContext();
-
-  // headerTranslateY is shared across every screen under HeaderProvider — if it
-  // was left scrolled-hidden on the previous screen (e.g. Home), the search bar
-  // could mount already translated off-screen with no scroll event guaranteed to
-  // bring it back. Snap it visible every time this tab gains focus.
-  useFocusEffect(
-    useCallback(() => {
-      resetHeader();
-    }, [resetHeader])
-  );
+  const { headerTranslateY, scrollHandler, handleScrollY, handleScrollEnd } = useHeaderScroll();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
@@ -354,6 +343,7 @@ export default function SearchScreen() {
         onTabChange={setActiveTab}
         onHeightChange={setStickyHeaderHeight}
         showTabs={!!debouncedQuery}
+        headerTranslateY={headerTranslateY}
       />
 
       <ImageModal

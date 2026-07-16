@@ -2,7 +2,6 @@ import { Stack, useRouter, usePathname } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext';
-import { MainHeader } from '../../src/components/common/MainHeader';
 import { useEffect } from 'react';
 
 function LayoutContent() {
@@ -24,10 +23,9 @@ function LayoutContent() {
     pathname = usePathname();
   } catch (e) { }
 
-  // Home renders its own <MainHeader/> *inside* the tab pager (see (tabs)/index.tsx)
-  // so the header swipes along with the page. Only non-pager screens that rely on
-  // the layout-level header (e.g. bazaar) render it here.
-  const showHeader = pathname?.includes('bazaar');
+  // Home, Search, and Bazaar each render their own <MainHeader>/<SearchHeader>
+  // (see (tabs)/index.tsx, (tabs)/search.tsx, bazaar.tsx) bound to a private
+  // `useHeaderScroll()` instance, so no header is rendered at the layout level.
   const isGreyScreen =
     pathname === '/pet-care' || pathname === '/adopt' || pathname?.includes('/clinic') || pathname?.includes('/vet');
 
@@ -45,7 +43,6 @@ function LayoutContent() {
           zIndex: 9999,
         }}
       />
-      {showHeader && <MainHeader />}
       {/*
         Only "(tabs)" (the real bottom-tab screens: index/pets/search/profile)
         lives in the Tabs navigator. Every other screen here is a Stack sibling

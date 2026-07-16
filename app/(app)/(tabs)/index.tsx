@@ -9,7 +9,7 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { MainHeader, HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
-import { useHeaderContext } from '../../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { socialApi, SocialPost } from '../../../src/api/social';
@@ -126,7 +126,7 @@ export const MOCK_POSTS: SocialPost[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { handleScrollY, handleScrollEnd } = useHeaderContext();
+  const { headerTranslateY, handleScrollY, handleScrollEnd } = useHeaderScroll();
   const authReady = useAuthReady();
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -327,7 +327,7 @@ export default function HomeScreen() {
       </GestureDetector>
       {/* Rendered inside the home page (not the parent layout) so the pager
           carries the header along with the feed during a tab swipe. */}
-      <MainHeader />
+      <MainHeader headerTranslateY={headerTranslateY} />
 
       <QuickProfileModal
         userId={selectedUserId}

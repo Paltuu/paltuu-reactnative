@@ -14,13 +14,13 @@ import { useRouter } from 'expo-router';
 import { usePetStore } from '../../src/stores/petStore';
 import { useShallow } from 'zustand/react/shallow';
 import { LFPCard } from '../../src/components/lost-found/LFPCard';
-import { useHeaderContext } from '../../src/context/HeaderContext';
+import { useHeaderScroll } from '../../src/context/HeaderContext';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 function LostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { handleScrollY, handleScrollEnd } = useHeaderContext();
+  const { handleScrollY, handleScrollEnd } = useHeaderScroll();
 
   const { lostFoundPosts, isLoading, fetchLostFoundPosts } = usePetStore(
     useShallow((state) => ({
