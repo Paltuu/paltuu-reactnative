@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 function AboutScreen() {
@@ -32,15 +33,24 @@ function AboutScreen() {
 
         {/* Links */}
         <View className="bg-gray-50 rounded-2xl mb-8 border border-gray-100 overflow-hidden">
-          <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
+          <TouchableOpacity
+            onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/terms-and-conditions')}
+            className="flex-row items-center justify-between p-4 border-b border-gray-100"
+          >
             <Text className="font-body text-gray-700">Terms of Service</Text>
             <Feather name="external-link" size={18} color="#9CA3AF" />
           </TouchableOpacity>
-          <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
+          <TouchableOpacity
+            onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/privacy-policy')}
+            className="flex-row items-center justify-between p-4 border-b border-gray-100"
+          >
             <Text className="font-body text-gray-700">Data Policy</Text>
             <Feather name="external-link" size={18} color="#9CA3AF" />
           </TouchableOpacity>
-          <TouchableOpacity className="flex-row items-center justify-between p-4">
+          <TouchableOpacity
+            onPress={() => router.navigate('/(app)/profile/licenses')}
+            className="flex-row items-center justify-between p-4"
+          >
             <Text className="font-body text-gray-700">Open Source Libraries</Text>
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
@@ -49,13 +59,22 @@ function AboutScreen() {
         {/* Social Links */}
         <Text className="font-headingSemi text-sm text-gray-400 mb-4 uppercase tracking-wider text-center">Follow Us</Text>
         <View className="flex-row justify-center space-x-6 mb-12">
-          <TouchableOpacity className="bg-gray-100 p-3 rounded-full">
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://instagram.com/paltuupk')}
+            className="bg-gray-100 p-3 rounded-full"
+          >
             <Ionicons name="logo-instagram" size={24} color="#374151" />
           </TouchableOpacity>
-          <TouchableOpacity className="bg-gray-100 p-3 rounded-full">
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://twitter.com/paltuupk')}
+            className="bg-gray-100 p-3 rounded-full"
+          >
             <Ionicons name="logo-twitter" size={24} color="#374151" />
           </TouchableOpacity>
-          <TouchableOpacity className="bg-gray-100 p-3 rounded-full">
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://facebook.com/paltuu.pk')}
+            className="bg-gray-100 p-3 rounded-full"
+          >
             <Ionicons name="logo-facebook" size={24} color="#374151" />
           </TouchableOpacity>
         </View>

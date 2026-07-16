@@ -267,7 +267,15 @@ export default function WelcomeScreen() {
         />
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Privacy Policy · Terms of Service</Text>
+          <Text style={styles.footerText}>
+            <Text onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/privacy-policy')}>
+              Privacy Policy
+            </Text>
+            {' · '}
+            <Text onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/terms-and-conditions')}>
+              Terms of Service
+            </Text>
+          </Text>
           {!!APP_VERSION && (
             <Text style={styles.versionText}>
               v{APP_VERSION}{BUILD_VERSION ? ` (${BUILD_VERSION})` : ''}
