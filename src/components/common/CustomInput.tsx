@@ -172,6 +172,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
     );
   }
 
+  const isMultiline = !!props.multiline;
+
   return (
     <View style={[styles.container, containerClassName ? undefined : undefined]}>
       {/* Label */}
@@ -187,6 +189,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           { borderColor, shadowOpacity, shadowColor: '#a03048' },
           isFocused && styles.inputWrapperFocused,
           error ? styles.inputWrapperError : null,
+          isMultiline ? styles.inputWrapperMultiline : null,
         ]}
       >
         {leftIcon && (
@@ -194,7 +197,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
             name={leftIcon}
             size={18}
             color={iconColor}
-            style={styles.leftIcon}
+            style={[styles.leftIcon, isMultiline ? styles.leftIconMultiline : null]}
           />
         )}
 
@@ -205,11 +208,16 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
 
         <TextInput
-          style={[styles.input, leftIcon ? styles.inputWithIcon : null]}
+          style={[
+            styles.input,
+            leftIcon ? styles.inputWithIcon : null,
+            isMultiline ? styles.inputMultiline : null,
+          ]}
           placeholderTextColor="#B0B7C3"
           secureTextEntry={isSecure}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          textAlignVertical={isMultiline ? 'top' : 'center'}
           {...props}
         />
 
@@ -318,6 +326,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Montserrat_400Regular',
     color: '#EF4444',
+  },
+  inputWrapperMultiline: {
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
+  leftIconMultiline: {
+    marginTop: 2,
+  },
+  inputMultiline: {
+    height: 100,
   },
 });
 
