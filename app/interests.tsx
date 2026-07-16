@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { OnboardingHeader } from '../src/components/auth/OnboardingHeader';
 import { PawrvezDialog } from '../src/components/common/mascot';
 import client from '../src/api/client';
@@ -37,6 +38,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isOauthFlow = flow === 'oauth';
   const clearNewUser = useAuthStore((state) => state.clearNewUser);
@@ -83,6 +85,7 @@ export default function InterestsScreen() {
     setSaving(true);
     try {
       await client.post('/social/interests', { tagIds: Array.from(selected) });
+      await queryClient.invalidateQueries({ queryKey: ['user-interests-check'] });
     } catch {
       // Non-fatal — interests can be set later; proceed anyway
     } finally {

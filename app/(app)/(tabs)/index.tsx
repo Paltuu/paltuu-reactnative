@@ -243,7 +243,7 @@ export default function HomeScreen() {
   const listHeader = useMemo(() => {
     if (hasPicks || bannerDismissed) return null;
     return (
-      <View className="mx-4 my-3 bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center gap-3">
+      <View className="mx-4 mb-3 bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center gap-3">
         <TouchableOpacity
           onPress={() => router.push('/interests')}
           activeOpacity={0.8}
@@ -315,7 +315,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#a03048" />
         }
         contentContainerStyle={{
-          paddingTop: topOffset + 8,
+          paddingTop: topOffset + 12,
           paddingBottom: 100,
         }}
         ListHeaderComponent={listHeader}
