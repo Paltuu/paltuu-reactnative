@@ -239,7 +239,9 @@ export default function CreatePostScreen() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
 
   const [selectedPets, setSelectedPets] = useState<number[]>(
-    params.initialPetProfileId ? [Number(params.initialPetProfileId)] : []
+    params.initialPetProfileIds
+      ? String(params.initialPetProfileIds).split(',').filter(Boolean).map(Number)
+      : []
   );
   const [milestone, setMilestone] = useState('');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
@@ -286,7 +288,10 @@ export default function CreatePostScreen() {
     return () => task.cancel();
   }, [user]);
 
-  const canPost = caption.trim().length > 0 || mediaItems.length > 0;
+  // In edit mode there's no media picker to fall back on (see below), so an
+  // image-only post with no caption must still be re-savable after just
+  // toggling a pet tag — the post itself already has content.
+  const canPost = isEditMode || caption.trim().length > 0 || mediaItems.length > 0;
 
   // ── Media pickers ────────────────────────────────────────────────────────────
 
@@ -695,13 +700,15 @@ export default function CreatePostScreen() {
             </View>
           ) : (
             <>
-              {/* Milestone selector */}
-              {postType === 'milestone' && (
+              {/* Milestone selector — edit mode only allows changing the
+                    caption and pet tags, not the post type/milestone. */}
+              {!isEditMode && postType === 'milestone' && (
                 <MilestoneSelector value={milestone} onChange={setMilestone} />
               )}
 
-              {/* ── Media grid ── */}
-              {mediaItems.length > 0 && (
+              {/* ── Media grid — hidden in edit mode; media can't be changed
+                    once a post exists, only the caption and pet tags can. ── */}
+              {!isEditMode && mediaItems.length > 0 && (
                 <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
                   {mediaItems.map((item, i) => (
                     <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
@@ -778,21 +785,26 @@ export default function CreatePostScreen() {
             backgroundColor: '#fff',
           }}
         >
-          {/* Media tools row */}
+          {/* Media tools row — edit mode only allows changing the caption
+                and pet tags, so the image/camera pickers are hidden there. */}
           <View className="flex-row items-center gap-5">
-            <TouchableOpacity onPress={pickMedia} hitSlop={8}>
-              <Ionicons name="image-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+            {!isEditMode && (
+              <>
+                <TouchableOpacity onPress={pickMedia} hitSlop={8}>
+                  <Ionicons name="image-outline" size={24} color="#a03048" />
+                </TouchableOpacity>
 
-            <TouchableOpacity onPress={pickCamera} hitSlop={8}>
-              <Ionicons name="camera-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+                <TouchableOpacity onPress={pickCamera} hitSlop={8}>
+                  <Ionicons name="camera-outline" size={24} color="#a03048" />
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
               <Ionicons name="paw-outline" size={24} color="#a03048" />
             </TouchableOpacity>
 
-            {mediaItems.length > 0 && (
+            {!isEditMode && mediaItems.length > 0 && (
               <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
                 <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
               </View>

@@ -309,6 +309,7 @@ const AuthorBlock = React.memo(({
   verified,
   uri,
   timeAgo,
+  edited,
   onPlusPress,
   onMenuPress,
   onAvatarPress,
@@ -318,6 +319,7 @@ const AuthorBlock = React.memo(({
   verified?: boolean;
   uri?: string | null;
   timeAgo: string;
+  edited?: boolean;
   onPlusPress?: () => void;
   onMenuPress?: () => void;
   onAvatarPress?: () => void;
@@ -356,6 +358,7 @@ const AuthorBlock = React.memo(({
             )}
             {!!username && <Text style={s.authorUsername} numberOfLines={1}>@{username}</Text>}
           </TouchableOpacity>
+          {!!edited && <Text style={s.timeAgo}>Edited · </Text>}
           <Text style={s.timeAgo}>{timeAgo}</Text>
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
@@ -745,6 +748,11 @@ export const PostCard = React.memo(({
     ? (post.original_user_id ?? post.original_post?.user_id ?? post.user_id)
     : post.user_id;
   const displayTime = isPlainRepost ? formatTime(post.original_post?.created_at || post.created_at) : timeAgo;
+  // Mirrors displayTime's own created_at fallback so a plain repost's "Edited"
+  // status tracks whichever row's timestamp is actually being shown.
+  const displayUpdatedAt = isPlainRepost ? post.original_post?.updated_at : post.updated_at;
+  const displayCreatedAt = isPlainRepost ? (post.original_post?.created_at || post.created_at) : post.created_at;
+  const isEdited = !!displayUpdatedAt && displayUpdatedAt !== displayCreatedAt;
   // Raw (un-stripped) content for MentionText to render — `caption` above
   // stays the stripped-text version since it's also used as a truthiness
   // signal for the quote-vs-plain repost layout decision.
@@ -844,7 +852,7 @@ export const PostCard = React.memo(({
       params: {
         editId: post.post_id,
         initialCaption: post.content,
-        initialPetId: post.pet_id,
+        initialPetProfileIds: (post.tagged_pets ?? []).map((p) => p.pet_profile_id).join(','),
         initialPostType: post.post_type
       }
     });
@@ -1082,6 +1090,7 @@ export const PostCard = React.memo(({
             verified={displayVerified}
             uri={displayImage}
             timeAgo={displayTime}
+            edited={isEdited}
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
             onMenuPress={handleMenuPress}
             onAvatarPress={handleAvatarPress}

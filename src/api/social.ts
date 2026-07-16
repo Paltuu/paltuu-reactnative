@@ -43,6 +43,7 @@ export interface SocialPost {
   comment_count: number;
   repost_count?: number;
   created_at: string;
+  updated_at?: string;
   post_type: 'original' | 'repost' | 'image' | 'video' | 'text';
   media: SocialPostMedia[];
   author_name?: string;

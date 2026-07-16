@@ -170,10 +170,11 @@ export const useSocialActions = () => {
   const updatePostMutation = useMutation({
     mutationFn: ({ postId, payload }: { postId: string | number; payload: any }) =>
       socialApi.updatePost(postId, payload),
-    onSettled: () => {
+    onSettled: (data, err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
       queryClient.invalidateQueries({ queryKey: ['social-profile'] });
       queryClient.invalidateQueries({ queryKey: ['social-trending'] });
+      queryClient.invalidateQueries({ queryKey: ['post', String(variables.postId)] });
     },
   });
 

@@ -223,7 +223,11 @@ function MediaDetailScreen() {
       onEdit: () =>
         router.push({
           pathname: '/create-post',
-          params: { editId: post.post_id, initialCaption: post.content, initialPetId: post.pet_id },
+          params: {
+            editId: post.post_id,
+            initialCaption: post.content,
+            initialPetProfileIds: (post.tagged_pets ?? []).map((p) => p.pet_profile_id).join(','),
+          },
         }),
       onDelete: () => {
         Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
