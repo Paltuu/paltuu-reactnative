@@ -79,15 +79,32 @@ function FollowListScreen() {
         {!isMe && (
           <View style={styles.actionButtonContainer}>
             {activeTab === 'followers' && isOwner ? (
-              <TouchableOpacity 
-                style={styles.removeButton}
-                onPress={() => removeFollowerMutation.mutate(item.user_id)}
-                disabled={removeFollowerMutation.isPending}
-              >
-                <Text style={styles.removeButtonText}>Remove</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.followButton,
+                    item.is_followed_by_me && styles.followingButton
+                  ]}
+                  onPress={() => toggleFollow(item.user_id)}
+                >
+                  <Text style={[
+                    styles.followButtonText,
+                    item.is_followed_by_me && styles.followingButtonText
+                  ]}>
+                    {item.is_followed_by_me ? 'Following' : 'Follow back'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.removeIconButton}
+                  onPress={() => removeFollowerMutation.mutate(item.user_id)}
+                  disabled={removeFollowerMutation.isPending}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={18} color="#6B7280" />
+                </TouchableOpacity>
+              </>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.followButton,
                   item.is_followed_by_me && styles.followingButton
@@ -201,7 +218,7 @@ const styles = StyleSheet.create({
   userText: { marginLeft: 12, flex: 1 },
   userName: { fontSize: 15, fontWeight: '700', color: '#111' },
   userHandle: { fontSize: 14, color: '#6B7280', marginTop: 1 },
-  actionButtonContainer: { marginLeft: 12 },
+  actionButtonContainer: { marginLeft: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   followButton: {
     backgroundColor: '#A03048',
     paddingHorizontal: 16,
@@ -213,17 +230,15 @@ const styles = StyleSheet.create({
   followingButton: { backgroundColor: '#F3F4F6' },
   followButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   followingButtonText: { color: '#111' },
-  removeButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  removeIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minWidth: 90,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  removeButtonText: { color: '#111', fontSize: 13, fontWeight: '700' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 100 },
   emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 15 },

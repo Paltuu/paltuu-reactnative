@@ -45,6 +45,10 @@
         "companyName": "Paltuu (Private) Limited",
         "ascAppId": "6789732258",
         "bundleIdentifier": "com.paltuu.app"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
       }
     }
   }
