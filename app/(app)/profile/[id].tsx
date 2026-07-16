@@ -34,6 +34,9 @@ import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { COLORS } from '../../../src/constants/colors';
+
+const VerifiedIcon = require('../../../assets/icons/verified-check-svgrepo-com.svg');
 import { getShareUrl } from '../../../src/utils/share';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -278,7 +281,14 @@ function UserProfileScreen() {
       </View>
 
       <Text style={s.displayName}>{profile?.name || 'User'}</Text>
-      <Text style={s.usernameText}>@{profile?.social_username || profile?.username || 'user'}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 2, marginBottom: 8 }}>
+        <Text style={[s.usernameText, { marginTop: 0, marginBottom: 0 }]}>
+          @{profile?.social_username || profile?.username || 'user'}
+        </Text>
+        {!!profile?.verified && (
+          <ExpoImage source={VerifiedIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
+        )}
+      </View>
 
       <View style={s.statsRow}>
         <TouchableOpacity style={s.statItem} onPress={() => router.push({ pathname: '/(app)/follow-list', params: { userId: profile?.user_id, type: 'followers', name: profile?.name } })}>

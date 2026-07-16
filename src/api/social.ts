@@ -5,6 +5,7 @@ export interface SocialProfile {
   name: string;
   username: string;
   social_username: string | null;
+  verified?: boolean;
   bio: string | null;
   follower_count: number;
   following_count: number;

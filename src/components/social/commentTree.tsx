@@ -27,6 +27,7 @@ export const MAX_INLINE_DEPTH = 3;
 const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
   pawUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
+  verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
 };
 
 /* ── Types ── */
@@ -43,6 +44,7 @@ export interface Comment {
   author_name: string;
   author_image: string | null;
   social_username: string | null;
+  author_verified?: boolean;
   content: string;
   created_at: string;
   like_count: number;
@@ -529,10 +531,16 @@ export const CommentRow = ({
 
         <View style={{ flex: 1, marginRight: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <TouchableOpacity onPress={() => onOpenProfile(item.user_id)} hitSlop={4} activeOpacity={0.7}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#111' }}>
+            <TouchableOpacity onPress={() => onOpenProfile(item.user_id)} hitSlop={4} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#111' }} numberOfLines={1}>
                 {item.author_name}
               </Text>
+              {!!item.author_verified && (
+                <Image source={PostIcons.verified} style={{ width: 12, height: 12 }} tintColor={PRIMARY} />
+              )}
+              {!!item.social_username && (
+                <Text style={{ fontSize: 12, color: '#9CA3AF' }} numberOfLines={1}>@{item.social_username}</Text>
+              )}
             </TouchableOpacity>
             <Text style={{ fontSize: 11, color: '#9CA3AF' }}>• {formatTime(item.created_at)}</Text>
           </View>
@@ -594,7 +602,12 @@ export const FocusedCommentHeader = ({
         <Avatar name={comment.author_name} uri={comment.author_image} size={40} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => onOpenProfile(comment.user_id)} style={{ flex: 1 }} activeOpacity={0.7}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>{comment.author_name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>{comment.author_name}</Text>
+          {!!comment.author_verified && (
+            <Image source={PostIcons.verified} style={{ width: 14, height: 14 }} tintColor={PRIMARY} />
+          )}
+        </View>
         {!!comment.social_username && (
           <Text style={{ fontSize: 12.5, color: '#9CA3AF' }}>@{comment.social_username}</Text>
         )}

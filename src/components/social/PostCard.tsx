@@ -38,6 +38,7 @@ import VideoPlayer, { VideoThumbnail } from './VideoPlayer';
 import { subscribeToVideoStatus } from '../../utils/videoStatusPoller';
 import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
+import { COLORS } from '../../constants/colors';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
 import { getShareUrl } from '../../utils/share';
@@ -171,6 +172,17 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: '#666',
   },
+  authorNameWrap: {
+    flex: 1,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  verifiedIcon: {
+    width: 13,
+    height: 13,
+  },
   timeAgo: {
     fontSize: 13,
     color: '#9CA3AF',
@@ -294,6 +306,7 @@ const s = StyleSheet.create({
 const AuthorBlock = React.memo(({
   name,
   username,
+  verified,
   uri,
   timeAgo,
   onPlusPress,
@@ -302,6 +315,7 @@ const AuthorBlock = React.memo(({
 }: {
   name: string;
   username?: string;
+  verified?: boolean;
   uri?: string | null;
   timeAgo: string;
   onPlusPress?: () => void;
@@ -335,11 +349,12 @@ const AuthorBlock = React.memo(({
       {/* Name + username on a single line */}
       <View style={s.authorTextCol}>
         <View style={s.authorNameRow}>
-          <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={{ flex: 1, marginRight: 8 }}>
-            <Text numberOfLines={1}>
-              <Text style={s.authorName}>{name || 'Anonymous'}</Text>
-              {!!username && <Text style={s.authorUsername}>  @{username}</Text>}
-            </Text>
+          <TouchableOpacity activeOpacity={0.7} onPress={onAvatarPress} style={s.authorNameWrap}>
+            <Text style={s.authorName} numberOfLines={1}>{name || 'Anonymous'}</Text>
+            {!!verified && (
+              <Image source={PostIcons.verified} style={s.verifiedIcon} tintColor={COLORS.primary} />
+            )}
+            {!!username && <Text style={s.authorUsername} numberOfLines={1}>@{username}</Text>}
           </TouchableOpacity>
           <Text style={s.timeAgo}>{timeAgo}</Text>
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
@@ -722,6 +737,9 @@ export const PostCard = React.memo(({
   const displayUsername = isPlainRepost
     ? (post.original_social_username ?? post.original_post?.social_username)
     : post.social_username;
+  const displayVerified = isPlainRepost
+    ? (post.original_author_verified ?? post.original_post?.author_verified)
+    : post.author_verified;
   const displayImage = isPlainRepost ? post.original_author_image : post.author_image;
   const displayUserId = isPlainRepost
     ? (post.original_user_id ?? post.original_post?.user_id ?? post.user_id)
@@ -1049,6 +1067,7 @@ export const PostCard = React.memo(({
           <AuthorBlock
             name={displayName}
             username={displayUsername}
+            verified={displayVerified}
             uri={displayImage}
             timeAgo={displayTime}
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}

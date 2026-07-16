@@ -34,6 +34,9 @@ import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
 import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
 import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
 import { getShareUrl } from '../../../../src/utils/share';
+import { COLORS } from '../../../../src/constants/colors';
+
+const VerifiedIcon = require('../../../../assets/icons/verified-check-svgrepo-com.svg');
 
 const Icons = {
   pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
@@ -438,9 +441,14 @@ export default function ProfileScreen() {
           onLayout={(e) => setNameBlockWidth(e.nativeEvent.layout.width)}
         >
           <Text style={s.displayName}>{profile?.name || 'User'}</Text>
-          <Text style={s.usernameText}>
-            @{profile?.social_username || profile?.username || 'user'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, marginBottom: 8 }}>
+            <Text style={[s.usernameText, { marginTop: 0, marginBottom: 0 }]}>
+              @{profile?.social_username || profile?.username || 'user'}
+            </Text>
+            {!!profile?.verified && (
+              <ExpoImage source={VerifiedIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
+            )}
+          </View>
         </View>
         {nameBlockWidth > 0 && (
           <TouchableOpacity
@@ -628,9 +636,14 @@ export default function ProfileScreen() {
                     <Text style={s.menuHeaderName} numberOfLines={1}>
                       {profile?.name || 'User'}
                     </Text>
-                    <Text style={s.menuHeaderUsername} numberOfLines={1}>
-                      @{profile?.social_username || profile?.username || 'user'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={s.menuHeaderUsername} numberOfLines={1}>
+                        @{profile?.social_username || profile?.username || 'user'}
+                      </Text>
+                      {!!profile?.verified && (
+                        <ExpoImage source={VerifiedIcon} style={{ width: 12, height: 12 }} tintColor={COLORS.primary} />
+                      )}
+                    </View>
                   </View>
                   <TouchableOpacity onPress={closeMenu} hitSlop={12} style={{ padding: 4 }}>
                     <Ionicons name="close" size={24} color={DS.dark} />
