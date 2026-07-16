@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { OriginalPostPreview } from '../../src/components/social/PostCard';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { useMentionInput, MentionInputField, MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { useSocialActionsContext } from '../../src/context/SocialActionsContext';
 import { socialApi } from '../../src/api/social';
 import { petProfilesApi } from '../../src/api/petProfiles';
@@ -56,6 +57,10 @@ export default function QuoteComposerScreen() {
   const queryClient = useQueryClient();
 
   const [content, setContent] = useState('');
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState, mentionActive } = useMentionInput({
+    value: content,
+    onChange: setContent,
+  });
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
@@ -293,76 +298,88 @@ export default function QuoteComposerScreen() {
               contentFit="cover"
             />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <TextInput
+              <MentionInputField
                 ref={inputRef}
                 autoFocus
                 multiline
-                value={content}
-                onChangeText={setContent}
+                textInputProps={mentionInputProps}
+                mentionState={mentionState}
                 placeholder="Add a comment"
                 placeholderTextColor="#9CA3AF"
                 style={{ fontSize: 17, color: '#111', minHeight: 44, textAlignVertical: 'top', paddingTop: 10, paddingBottom: 0 }}
               />
 
-              {/* ── Attached media grid ── */}
-              {mediaItems.length > 0 && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                  {mediaItems.map((item, i) => (
-                    <View key={`${item.uri}-${i}`} style={{ width: (width - 16 - 40 - 12 - 16 - 16) / 3, aspectRatio: 1, borderRadius: 12, overflow: 'hidden' }}>
-                      <Image
-                        source={{ uri: item.type === 'video' ? (item.thumbnailUri || item.uri) : item.uri }}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                      />
-                      {item.type === 'video' && (
-                        <View style={{
-                          position: 'absolute', bottom: 4, left: 4,
-                          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
-                          paddingHorizontal: 4, paddingVertical: 2,
-                        }}>
-                          <Ionicons name="videocam" size={10} color="#fff" />
+              {!mentionActive && (
+                <>
+                  {/* ── Attached media grid ── */}
+                  {mediaItems.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                      {mediaItems.map((item, i) => (
+                        <View key={`${item.uri}-${i}`} style={{ width: (width - 16 - 40 - 12 - 16 - 16) / 3, aspectRatio: 1, borderRadius: 12, overflow: 'hidden' }}>
+                          <Image
+                            source={{ uri: item.type === 'video' ? (item.thumbnailUri || item.uri) : item.uri }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                          />
+                          {item.type === 'video' && (
+                            <View style={{
+                              position: 'absolute', bottom: 4, left: 4,
+                              backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
+                              paddingHorizontal: 4, paddingVertical: 2,
+                            }}>
+                              <Ionicons name="videocam" size={10} color="#fff" />
+                            </View>
+                          )}
+                          <TouchableOpacity
+                            onPress={() => removeMedia(i)}
+                            style={{
+                              position: 'absolute', top: 4, right: 4,
+                              backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+                              width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name="close" size={12} color="#fff" />
+                          </TouchableOpacity>
                         </View>
-                      )}
-                      <TouchableOpacity
-                        onPress={() => removeMedia(i)}
-                        style={{
-                          position: 'absolute', top: 4, right: 4,
-                          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
-                          width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        <Ionicons name="close" size={12} color="#fff" />
-                      </TouchableOpacity>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              )}
+                  )}
 
-              {/* ── Tagged pets ── */}
-              {selectedPets.length > 0 && (
-                <View style={{ marginTop: 12 }}>
-                  <SelectedPetsRow
-                    petProfiles={petProfiles}
-                    selectedPets={selectedPets}
-                    onToggle={togglePet}
-                  />
-                </View>
-              )}
+                  {/* ── Tagged pets ── */}
+                  {selectedPets.length > 0 && (
+                    <View style={{ marginTop: 12 }}>
+                      <SelectedPetsRow
+                        petProfiles={petProfiles}
+                        selectedPets={selectedPets}
+                        onToggle={togglePet}
+                      />
+                    </View>
+                  )}
 
-              {/* ── Embedded quoted post ── */}
-              {target && (
-                <View style={{ marginTop: 12 }}>
-                  <OriginalPostPreview
-                    authorName={target.author_name}
-                    authorImage={target.author_image}
-                    content={target.content}
-                    media={target.media}
-                    createdAt={target.created_at}
-                  />
-                </View>
+                  {/* ── Embedded quoted post ── */}
+                  {target && (
+                    <View style={{ marginTop: 12 }}>
+                      <OriginalPostPreview
+                        authorName={target.author_name}
+                        authorImage={target.author_image}
+                        content={target.content}
+                        media={target.media}
+                        createdAt={target.created_at}
+                      />
+                    </View>
+                  )}
+                </>
               )}
             </View>
           </View>
+
+          {/* ── Mention suggestions — replaces media/pets/quoted-preview
+                while an "@" search is active, matching comment/[id].tsx ── */}
+          {mentionActive && (
+            <View style={{ flex: 1, marginTop: 6, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+              <MentionSuggestionDropdown {...mentionTriggers.mention} />
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 

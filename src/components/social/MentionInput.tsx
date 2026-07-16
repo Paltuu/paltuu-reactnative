@@ -86,7 +86,17 @@ export function useMentionInput({
         ? { ...textInputPropsBase, value: mentionState.plainText }
         : textInputProps;
 
-    return { triggers, textInputProps: safeTextInputProps, mentionState };
+    const keyword = triggers.mention.keyword;
+
+    // `allowedSpacesCount: 3` above only keeps the *keyword itself* alive
+    // across spaces so multi-word pet names ("Mr Fluffy") can still be typed
+    // and matched by `MentionSuggestionDropdown`'s own search. The dropdown's
+    // visibility is separate: a username never contains a space, so as soon
+    // as the user types one, close the dropdown immediately rather than
+    // waiting for allowedSpacesCount to run out.
+    const mentionActive = keyword !== undefined && !keyword.includes(' ');
+
+    return { triggers, textInputProps: safeTextInputProps, mentionState, mentionActive };
 }
 
 type MentionStateLike = { plainText: string; parts: Part[] };

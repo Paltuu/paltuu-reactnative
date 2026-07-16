@@ -188,7 +188,7 @@ export default function PostDetailScreen() {
   // can fill all the way down to the keyboard — the reply banner and toolbar
   // hide to make room. The TextInput stays mounted at a stable position
   // throughout, so this never costs focus.
-  const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
+  const mentionActive = draft.mentionActive;
 
   /* ── Handlers ── */
   const openComposer = useCallback(() => {

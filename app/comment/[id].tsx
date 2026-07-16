@@ -59,7 +59,7 @@ export default function CommentComposerScreen() {
   // fill all remaining space down to the keyboard. The reply TextInput stays
   // mounted at a stable tree position throughout (see render below), so
   // toggling this never costs focus or cursor position.
-  const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
+  const mentionActive = draft.mentionActive;
 
   // Track the real keyboard height so the bottom toolbar can float directly
   // above it. `softwareKeyboardLayoutMode` is 'pan' on Android, which only

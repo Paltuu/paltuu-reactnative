@@ -174,7 +174,7 @@ export default function CommentThreadScreen() {
     },
   });
 
-  const mentionActive = draft.mentionTriggers.mention.keyword !== undefined;
+  const mentionActive = draft.mentionActive;
 
   const openComposer = useCallback(() => {
     setReplyingTo(null);

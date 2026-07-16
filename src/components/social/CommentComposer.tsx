@@ -36,7 +36,7 @@ export const useCommentDraft = ({
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
 
-  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState } = useMentionInput({
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState, mentionActive } = useMentionInput({
     value: text,
     onChange: setText,
   });
@@ -161,6 +161,7 @@ export const useCommentDraft = ({
     mentionTriggers,
     mentionInputProps,
     mentionState,
+    mentionActive,
     media,
     pickImage,
     pickCamera,

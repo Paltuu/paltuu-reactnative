@@ -224,7 +224,7 @@ export default function CreatePostScreen() {
   // keeping `caption` itself as the encoded value, so edit-mode pre-fill
   // (initialCaption, which IS the stored encoded content) needs no decoding.
   const [caption, setCaption] = useState((params.initialCaption as string) || '');
-  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState } = useMentionInput({
+  const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState, mentionActive } = useMentionInput({
     value: caption,
     onChange: setCaption,
   });
@@ -583,7 +583,6 @@ export default function CreatePostScreen() {
   // to a full-width suggestion list filling all the way down to the keyboard
   // — matching the in-app @mention UX. The caption TextInput itself never
   // moves/unmounts across this toggle, so focus and cursor position survive.
-  const mentionActive = mentionTriggers.mention.keyword !== undefined;
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
