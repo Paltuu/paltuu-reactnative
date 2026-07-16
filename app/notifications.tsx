@@ -54,6 +54,17 @@ const TEAM_BROADCAST_TYPES = new Set([
 ]);
 const isTeamBroadcast = (type?: string) => TEAM_BROADCAST_TYPES.has(type ?? '');
 
+/* ── Notification types whose `image_url` is a person's avatar rather than
+   actual post/story/product media. Follower notifications reuse image_url for
+   the follower's profile photo — which already appears as the circular avatar
+   on the left — so they must NOT render a media square on the right. ── */
+const NON_MEDIA_IMAGE_TYPES = new Set(['social_new_follower']);
+
+/* ── Whether a notification carries real media to show as the 1:1 square on
+   the right (post photo, story, product/pet image, …). ── */
+const hasMediaThumbnail = (n: Notification) =>
+  !!n.image_url && !isTeamBroadcast(n.type) && !NON_MEDIA_IMAGE_TYPES.has(n.type);
+
 /* ── Strip emoji/pictographs from body copy for a clean, uniform look ── */
 const stripEmoji = (text: string) =>
   (text ?? '')
@@ -248,8 +259,8 @@ const GroupTitleLine = ({ items }: { items: Notification[] }) => {
   const first = senders[0]?.name || 'Someone';
   const second = senders[1]?.name;
   const extra = senders.length - 2;
-  // Only worth showing when there's no thumbnail to carry that context instead.
-  const preview = !items[0].image_url ? extractPreview(items[0].body) : null;
+  // Only worth showing when there's no media square to carry that context instead.
+  const preview = !hasMediaThumbnail(items[0]) ? extractPreview(items[0].body) : null;
 
   return (
     <Text className="font-body text-sm text-dark leading-5" numberOfLines={3}>
@@ -294,6 +305,8 @@ const NotificationRow = ({
   return (
     <Pressable
       onPress={() => onPress(group)}
+      onLongPress={() => onOptionsPress(latest)}
+      delayLongPress={300}
       className="flex-row items-center px-3 py-4 active:bg-gray-50"
     >
       {/* Avatar — Paltuu logo for team broadcasts; stacked for groups; square/rounded for pets & adoptions */}
@@ -308,7 +321,7 @@ const NotificationRow = ({
       </View>
 
       {/* Message Text column */}
-      <View className={`flex-1 mr-2 ${isBroadcast ? 'gap-0.5' : 'gap-1'}`}>
+      <View className={`flex-1 mr-3 ${isBroadcast ? 'gap-0.5' : 'gap-1'}`}>
         {isBroadcast ? (
           <>
             <Text className="font-headingSemi text-sm text-dark leading-[18px]" numberOfLines={2}>
@@ -331,25 +344,17 @@ const NotificationRow = ({
         <Text className="font-body text-xs text-gray-light">{formatTime(latest.created_at)}</Text>
       </View>
 
-      {/* Right Column: Photo preview OR unread dot + ellipsis */}
-      <View className="flex-col items-end gap-2">
-        {latest.image_url && latest.type !== 'system_broadcast' ? (
-          <Image
-            source={{ uri: latest.image_url }}
-            className="w-11 h-11 rounded-xl border border-gray-100"
-            contentFit="cover"
-          />
-        ) : (
-          anyUnread && <View className="w-2 h-2 rounded-full bg-primary" />
-        )}
-        <TouchableOpacity
-          onPress={() => onOptionsPress(latest)}
-          className="w-8 h-8 items-center justify-center rounded-full active:bg-gray-100"
-          hitSlop={8}
-        >
-          <Ionicons name="ellipsis-horizontal" size={16} color="#ccc" />
-        </TouchableOpacity>
-      </View>
+      {/* Right Column: 1:1 media square OR unread dot (vertically centered) */}
+      {hasMediaThumbnail(latest) ? (
+        <Image
+          source={{ uri: latest.image_url! }}
+          style={{ width: 56, height: 56, borderRadius: 16 }}
+          className="border border-gray-100 bg-gray-100"
+          contentFit="cover"
+        />
+      ) : (
+        anyUnread && <View className="w-2 h-2 rounded-full bg-primary" />
+      )}
     </Pressable>
   );
 };
