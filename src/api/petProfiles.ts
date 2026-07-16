@@ -110,8 +110,8 @@ export const petProfilesApi = {
     return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
   },
 
-  async convertPetToAdoption(petId: number | string) {
-    const { data } = await client.post(`/pet-profiles/${petId}/list-for-adoption`);
+  async convertPetToAdoption(petId: number | string, payload?: { city_id?: number }) {
+    const { data } = await client.post(`/pet-profiles/${petId}/list-for-adoption`, payload);
     return data as { success: boolean; pet_id: number };
   },
 };

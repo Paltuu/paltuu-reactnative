@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { petProfilesApi, PetProfile, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { useAuthStore } from '../../../src/stores/authStore';
+import { useLocationStore } from '../../../src/stores/locationStore';
 import PostCard from '../../../src/components/social/PostCard';
 import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
@@ -180,7 +181,11 @@ function PetProfileScreen() {
           onPress: async () => {
             try {
               setIsConverting(true);
-              const res = await petProfilesApi.convertPetToAdoption(petId);
+              const locationCityId = useLocationStore.getState().cityId;
+              const res = await petProfilesApi.convertPetToAdoption(
+                petId,
+                locationCityId ? { city_id: locationCityId } : undefined
+              );
               if (res.success) {
                 Alert.alert('Success', 'Adoption listing created!', [
                   { text: 'View Listing', onPress: () => router.push({ pathname: '/(app)/pet-details', params: { id: res.pet_id } }) },
