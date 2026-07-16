@@ -40,7 +40,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 13,
+      versionCode: 14,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -49,7 +49,7 @@ export default (): ExpoConfig => {
       edgeToEdgeEnabled: true,
       softwareKeyboardLayoutMode: 'pan',
       predictiveBackGestureEnabled: false,
-      permissions: ["android.permission.RECORD_AUDIO"],
+      permissions: ["android.permission.RECORD_AUDIO", "com.google.android.gms.permission.AD_ID"],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
     },
     // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
