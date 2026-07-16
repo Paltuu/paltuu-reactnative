@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { useSocialActions } from '../../hooks/useSocialActions';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
@@ -111,7 +111,6 @@ const AccountCard = ({
 
 export const SuggestedAccountsRail = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { toggleFollow } = useSocialActions();
 
   const { data, isLoading } = useQuery({
@@ -123,18 +122,9 @@ export const SuggestedAccountsRail = () => {
 
   const accounts = data?.accounts ?? [];
 
+  // useSocialActions optimistically flips this rail's cache (plus feed,
+  // profile, search) and rolls back on failure — no local state needed here.
   const handleFollow = (userId: number) => {
-    // Optimistically flip this rail's own cache; useSocialActions handles
-    // the request plus every other cache (feed, profile, search)
-    queryClient.setQueryData(['explore', 'suggested-accounts'], (old: any) => {
-      if (!old?.accounts) return old;
-      return {
-        ...old,
-        accounts: old.accounts.map((a: SuggestedAccount) =>
-          a.user_id === userId ? { ...a, is_following: !a.is_following } : a
-        ),
-      };
-    });
     toggleFollow(userId);
   };
 

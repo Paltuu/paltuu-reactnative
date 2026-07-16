@@ -67,9 +67,62 @@ export const useSocialActions = () => {
     onMutate: async (userId: string | number) => {
       await queryClient.cancelQueries({ queryKey: ['social-feed'] });
       await queryClient.cancelQueries({ queryKey: ['social-profile', String(userId)] });
+      await queryClient.cancelQueries({ queryKey: ['social-followers'] });
+      await queryClient.cancelQueries({ queryKey: ['social-following'] });
+      await queryClient.cancelQueries({ queryKey: ['social-search'] });
+      await queryClient.cancelQueries({ queryKey: ['explore', 'suggested-accounts'] });
 
       const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
       const previousProfile = queryClient.getQueryData(['social-profile', String(userId)]);
+      const previousFollowersEntries = queryClient.getQueriesData<any>({ queryKey: ['social-followers'] });
+      const previousFollowingEntries = queryClient.getQueriesData<any>({ queryKey: ['social-following'] });
+      const previousSearchEntries = queryClient.getQueriesData<any>({ queryKey: ['social-search'] });
+      const previousSuggested = queryClient.getQueryData(['explore', 'suggested-accounts']);
+
+      const flipInList = (list: any[]) =>
+        list.map((u) =>
+          String(u.user_id) === String(userId) ? { ...u, is_followed_by_me: !u.is_followed_by_me } : u
+        );
+
+      // Search results carry `is_following` (same field as feed posts), and
+      // the shape of `results` depends on the active search tab: an object
+      // with `.users`/`.posts` arrays for "all", or a bare array for "users"/"posts".
+      const flipIsFollowing = (list: any[]) =>
+        list.map((it) =>
+          String(it.user_id) === String(userId) && 'is_following' in it
+            ? { ...it, is_following: !it.is_following }
+            : it
+        );
+
+      queryClient.setQueriesData({ queryKey: ['social-followers'] }, (old: any) => {
+        if (!old?.followers) return old;
+        return { ...old, followers: flipInList(old.followers) };
+      });
+
+      queryClient.setQueriesData({ queryKey: ['social-following'] }, (old: any) => {
+        if (!old?.following) return old;
+        return { ...old, following: flipInList(old.following) };
+      });
+
+      queryClient.setQueriesData({ queryKey: ['social-search'] }, (old: any) => {
+        if (!old?.results) return old;
+        if (Array.isArray(old.results)) {
+          return { ...old, results: flipIsFollowing(old.results) };
+        }
+        return {
+          ...old,
+          results: {
+            ...old.results,
+            users: old.results.users ? flipIsFollowing(old.results.users) : old.results.users,
+            posts: old.results.posts ? flipIsFollowing(old.results.posts) : old.results.posts,
+          },
+        };
+      });
+
+      queryClient.setQueryData(['explore', 'suggested-accounts'], (old: any) => {
+        if (!old?.accounts) return old;
+        return { ...old, accounts: flipIsFollowing(old.accounts) };
+      });
 
       queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
         if (!old?.pages) return old;
@@ -115,7 +168,14 @@ export const useSocialActions = () => {
         };
       });
 
-      return { previousFeedEntries, previousProfile };
+      return {
+        previousFeedEntries,
+        previousProfile,
+        previousFollowersEntries,
+        previousFollowingEntries,
+        previousSearchEntries,
+        previousSuggested,
+      };
     },
     onError: (err, userId, context) => {
       context?.previousFeedEntries?.forEach(([key, data]: [any, any]) => {
@@ -123,6 +183,18 @@ export const useSocialActions = () => {
       });
       if (context?.previousProfile) {
         queryClient.setQueryData(['social-profile', String(userId)], context.previousProfile);
+      }
+      context?.previousFollowersEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      context?.previousFollowingEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      context?.previousSearchEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      if (context?.previousSuggested !== undefined) {
+        queryClient.setQueryData(['explore', 'suggested-accounts'], context.previousSuggested);
       }
     },
     onSettled: (data, err, userId) => {
