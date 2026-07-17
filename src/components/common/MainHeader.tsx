@@ -11,6 +11,11 @@ import { useUploadStore } from '../../stores/uploadStore';
 
 export { HEADER_HEIGHT };
 
+/** Height of the upload-progress banner docked under the header while a post
+ *  is uploading. Screens that offset content below the header (e.g. the feed)
+ *  add this when `isUploading` so the banner doesn't overlap the first item. */
+export const UPLOAD_BANNER_HEIGHT = 48;
+
 interface MainHeaderProps {
     /** Owned by the caller (via `useHeaderScroll()`) — kept private per screen
      * so hiding this header via scroll never leaks into another screen's header. */
@@ -88,7 +93,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({ headerTranslateY }) => {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text style={[
                                 styles.uploadText,
-                                stage === 'success' && { color: '#10B981' },
+                                stage === 'success' && { color: '#a03048' },
                                 stage === 'error' && { color: '#EF4444' }
                             ]} numberOfLines={1}>
                                 {stage === 'preparing' && 'Preparing post...'}
@@ -102,7 +107,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({ headerTranslateY }) => {
                             <View style={[
                                 styles.progressBarFill,
                                 { width: `${Math.round(progress * 100)}%` },
-                                stage === 'success' && { backgroundColor: '#10B981', width: '100%' },
+                                stage === 'success' && { backgroundColor: '#a03048', width: '100%' },
                                 stage === 'error' && { backgroundColor: '#EF4444', width: '100%' }
                             ]} />
                         </View>
@@ -180,22 +185,20 @@ const styles = StyleSheet.create({
         lineHeight: 10,
     },
     uploadProgressContainer: {
+        // Docked directly under the header, which keeps its own subtle bottom
+        // border so there's a clear grey divider between the header and this
+        // upload banner. No shadow/elevation — the border alone separates them.
         position: 'absolute',
         top: HEADER_HEIGHT,
         left: 0,
         right: 0,
-        height: 48,
+        height: UPLOAD_BANNER_HEIGHT,
         backgroundColor: '#ffffff',
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 3,
     },
     uploadThumbnail: {
         width: 32,

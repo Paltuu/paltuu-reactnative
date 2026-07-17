@@ -411,7 +411,17 @@ export default function CreatePostScreen() {
       isEditMode,
     });
 
-    router.back();
+    if (isEditMode) {
+      // Editing is a quick metadata update, not a media upload — return the
+      // user to wherever they came from rather than jumping to Feed.
+      router.back();
+      return;
+    }
+
+    // Always land on the Feed tab (not just "back") so the upload progress
+    // banner in MainHeader — which only lives on Feed/Bazaar — is guaranteed
+    // to be visible right away, regardless of where create-post was opened from.
+    router.dismissTo('/(app)/(tabs)');
   };
 
   // ── Helpers for render ────────────────────────────────────────────────────────
@@ -516,7 +526,10 @@ export default function CreatePostScreen() {
                   // No minHeight while a mention is active — the suggestion
                   // list below must start right at the end of the typed
                   // text, not after a tall empty box reserved for captions.
-                  minHeight: mentionActive ? undefined : 100,
+                  // Once media is attached, shrink the reserved caption box so
+                  // the tiles sit right under the text instead of after a tall
+                  // empty gap.
+                  minHeight: mentionActive ? undefined : mediaItems.length > 0 ? 40 : 100,
                   textAlignVertical: 'top',
                   fontFamily: 'DMSans_400Regular',
                 }}
@@ -542,9 +555,14 @@ export default function CreatePostScreen() {
               {/* ── Media grid — hidden in edit mode; media can't be changed
                     once a post exists, only the caption and pet tags can. ── */}
               {!isEditMode && mediaItems.length > 0 && (
-                <View className="flex-row flex-wrap mt-3 mx-4 rounded-2xl overflow-hidden">
+                <View
+                  className="flex-row flex-wrap mt-3"
+                  // Left-align tiles with where the caption text starts:
+                  // px-4 (16) + avatar width (40) + gap-3 (12) = 68.
+                  style={{ paddingLeft: 68, paddingRight: 16, gap: 6 }}
+                >
                   {mediaItems.map((item, i) => (
-                    <View key={`${item.uri}-${i}`} style={{ width: width / 3 - 2, height: width / 3 - 2, margin: 1 }}>
+                    <View key={`${item.uri}-${i}`} style={{ width: (width - 90) / 2, height: ((width - 90) / 2) * 1.25, borderRadius: 14, overflow: 'hidden' }}>
                       <Image source={{ uri: item.type === 'video' ? (item.thumbnailUri || item.uri) : item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
 
 

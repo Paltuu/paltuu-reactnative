@@ -8,7 +8,8 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { MainHeader, HEADER_HEIGHT } from '../../../src/components/common/MainHeader';
+import { MainHeader, HEADER_HEIGHT, UPLOAD_BANNER_HEIGHT } from '../../../src/components/common/MainHeader';
+import { useUploadStore } from '../../../src/stores/uploadStore';
 import { useHeaderScroll } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -269,7 +270,11 @@ export default function HomeScreen() {
     );
   }, [hasPicks, bannerDismissed, handleDismissBanner, router]);
 
-  const topOffset = HEADER_HEIGHT + insets.top;
+  // While a post is uploading, the header shows a docked progress banner.
+  // Add its height so the feed's first item starts below the banner instead
+  // of being overlapped by it.
+  const isUploading = useUploadStore((s) => s.isUploading);
+  const topOffset = HEADER_HEIGHT + insets.top + (isUploading ? UPLOAD_BANNER_HEIGHT : 0);
 
   // Stable renderItem — no playingPostId dep; video state is managed inside PostCard
   // via the videoPlaySubscription emitter, so the FlatList never re-renders on scroll.
