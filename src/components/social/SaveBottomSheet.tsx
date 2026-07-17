@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { BottomSheetModal, BottomSheetView, BottomSheetScrollView, BottomSheetTextInput, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,11 +19,7 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
-  // Fixed rather than computed from content — a single generous percentage
-  // comfortably fits a typical handful of collections with no data-dependent
-  // measurement to race or get wrong; the list scrolls internally if there
-  // are ever enough collections to exceed it.
-  const snapPoints = useMemo(() => ['55%'], []);
+  const { height: screenHeight } = useWindowDimensions();
 
   // 1. Fetch user's collections
   const { data: collectionsData, isLoading: loadingCollections } = useQuery({
@@ -41,13 +37,55 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
 
   // "All Posts" is the implicit default every saved post lands in already —
   // not something to file into, so it's excluded from the picker.
-  const collections = (collectionsData?.collections || []).filter((c) => !c.is_default);
+  //
+  // collection_id is coerced to a Number here because the two endpoints that
+  // feed this sheet disagree on its JSON type: GET /collections returns it as
+  // a string (node-postgres serializes `bigint` columns as strings) while
+  // GET /posts/:id/save-status returns it as a number (it's built SQL-side via
+  // json_build_object). isPostInCollection compares the two with `===`, so
+  // without this the checkbox for a just-saved post reads as unchecked the
+  // moment the real save-status refetch replaces the optimistic update —
+  // exactly the "checkmark disappears after a couple seconds" symptom.
+  const collections = (collectionsData?.collections || [])
+    .filter((c) => !c.is_default)
+    .map((c) => ({ ...c, collection_id: Number(c.collection_id) }));
   const isSavedGlobally = saveStatusData?.is_saved || false;
-  const postCollections = saveStatusData?.collections || [];
+  const postCollections = (saveStatusData?.collections || [])
+    .map((c) => ({ ...c, collection_id: Number(c.collection_id) }));
+  const isLoading = loadingCollections || loadingSaveStatus;
 
-  // Present immediately on tap — snapPoints is a fixed percentage, not
-  // content-measured, so there's no resize jump to wait out. The loading
-  // spinner below covers the brief gap while collections/save-status arrive.
+  // Instagram-style: the sheet is only as tall as it needs to be to show the
+  // collections, and grows as more are added — instead of a fixed percentage
+  // that leaves a couple of collections stranded below the fold.
+  //
+  // We drive this with an explicit computed snap point rather than the
+  // library's `enableDynamicSizing` (which is on by default in v5): dynamic
+  // sizing measures the content view, but our content nests a `flex: 1`
+  // ScrollView whose height collapses to ~0 during that measurement, so the
+  // sheet was opening at just the header + create-row height. A concrete snap
+  // point keeps `flex: 1` working normally inside a known sheet height.
+  //
+  // Heights below are the fixed row heights of this sheet's own rows (py-4 +
+  // a 40px avatar + hairline border ≈ 73). Overshooting slightly is harmless —
+  // the list just scrolls a little; the cap keeps a long list on-screen.
+  const sheetHeight = useMemo(() => {
+    const HANDLE = 24;      // grabber + its padding
+    const HEADER = 57;      // title row: py-4 + text + border
+    const CREATE_ROW = 73;  // "Create New Collection" row (or the create input)
+    const ROW = 73;         // each collection row
+    const listContentHeight = collections.length > 0
+      ? collections.length * ROW + Math.max(insets.bottom, 20)
+      : 260; // empty-state illustration + copy
+    const raw = HANDLE + HEADER + CREATE_ROW + listContentHeight;
+    // Never shorter than a comfortable minimum (so the loading spinner and a
+    // single collection both look intentional), never taller than 90%.
+    return Math.min(Math.max(raw, screenHeight * 0.4), screenHeight * 0.9);
+  }, [collections.length, insets.bottom, screenHeight]);
+
+  const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
+
+  // Present immediately on tap; the sheet then animates to `snapPoints` as the
+  // collections load and the computed height settles.
   useEffect(() => {
     if (visible && postId) {
       bottomSheetModalRef.current?.present();
@@ -68,10 +106,11 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
       setIsCreating(false);
       queryClient.invalidateQueries({ queryKey: ['social-collections'] });
       
-      // If we have a saved post, auto add to this new collection
+      // If we have a saved post, auto add to this new collection.
+      // Number() for the same string/number collection_id reason as above.
       if (postId && isSavedGlobally) {
         toggleCollectionMutation.mutate({
-          collectionId: newCollection.collection_id,
+          collectionId: Number(newCollection.collection_id),
           added: false // It's a new collection, so it hasn't been added yet
         });
       }
@@ -234,6 +273,7 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
       ref={bottomSheetModalRef}
       index={0}
       snapPoints={snapPoints}
+      enableDynamicSizing={false}
       onDismiss={onClose}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
@@ -261,7 +301,7 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
         </View>
 
         {/* Loading Indicator */}
-        {(loadingCollections || loadingSaveStatus) ? (
+        {isLoading ? (
           <View style={{ flex: 1 }} className="items-center justify-center">
             <ActivityIndicator color="#A03048" />
           </View>
@@ -308,7 +348,9 @@ export const SaveBottomSheet = ({ visible, onClose, postId }: SaveBottomSheetPro
               </View>
             )}
 
-            {/* Collections List */}
+            {/* Collections List — `flex: 1` fills the space the computed snap
+                point reserves for it, so a long list scrolls within the sheet
+                while a short one leaves the sheet compact. */}
             <BottomSheetScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) }}
