@@ -31,6 +31,7 @@ import PaltuuButton from '../src/components/ui/PaltuuButton';
 import { queryClient } from '../src/api/queryClient';
 import Toast from 'react-native-toast-message';
 import { NO_PROFILE_IMAGE } from '../src/constants/images';
+import { useUploadStore } from '../src/stores/uploadStore';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -245,9 +246,8 @@ export default function CreatePostScreen() {
   );
   const [milestone, setMilestone] = useState('');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
-  const [isPosting, setIsPosting] = useState(false);
-  const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
-  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const { startUpload, isUploading } = useUploadStore();
 
   // Track the real keyboard height so the bottom toolbar can float directly
   // above it. `softwareKeyboardLayoutMode` is 'pan' on Android, which only
@@ -400,185 +400,18 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!canPost) return;
-    setIsPosting(true);
-    setUploadStage('idle');
-    setUploadProgress(0);
 
+    startUpload({
+      caption,
+      mediaItems,
+      selectedPets,
+      postType,
+      user,
+      editId,
+      isEditMode,
+    });
 
-    try {
-      // ── Edit mode — only text/meta fields can change ──────────────────────
-      if (isEditMode) {
-        setUploadStage('finalizing');
-        await updatePost(editId, {
-          content: caption,
-          pet_profile_tags: selectedPets,
-          post_type: postType,
-        });
-        router.back();
-        return;
-      }
-
-      setUploadStage('uploading');
-      setUploadProgress(0);
-
-      const progresses = new Array(mediaItems.length).fill(0);
-      const updateOverallProgress = (idx: number, p: number) => {
-        progresses[idx] = p;
-        const avg = progresses.reduce((sum, val) => sum + val, 0) / mediaItems.length;
-        setUploadProgress(avg);
-      };
-
-      const uploadPromises = mediaItems.map(async (item, index) => {
-        if (item.type === 'video') {
-          const mime = item.mime || 'video/mp4';
-          const ext  = mime === 'video/quicktime' ? 'mov' : 'mp4';
-
-          // Step 1: Get presigned PUT URL
-          const { upload_url, video_key, raw_url } = await socialApi.getVideoUploadUrl(ext);
-
-          // Step 1.5: Upload pre-generated video thumbnail if available
-          let thumbnailRemoteUrl: string | null = null;
-          try {
-            const localThumbUri = item.thumbnailUri;
-            if (localThumbUri) {
-              console.log(`[CreatePost] Uploading pre-generated video thumbnail: ${localThumbUri}`);
-              const thumbUploadRes = await socialApi.uploadMedia([localThumbUri]);
-              thumbnailRemoteUrl = thumbUploadRes.media[0]?.url || null;
-            }
-          } catch (thumbErr) {
-            console.warn('[CreatePost] Failed to upload local video thumbnail:', thumbErr);
-          }
-
-
-          // Step 2: Upload raw video directly to S3 with progress tracking
-          await socialApi.uploadVideoToS3(upload_url, item.uri, mime, (p) => {
-            updateOverallProgress(index, p);
-          });
-
-          console.log(`[CreatePost] Parallel video upload complete: key=${video_key}`);
-
-          return {
-            media_type:    'video',
-            url:           raw_url || item.uri,
-            thumbnail_url: thumbnailRemoteUrl, // Instant thumbnail preview
-            video_status:  'pending',
-            _video_key:    video_key,
-            ordering:      index,
-          };
-
-        } else {
-          // Process image
-          const processed = await manipulateAsync(
-            item.uri,
-            [{ resize: { width: 1200 } }],
-            { compress: 0.8, format: SaveFormat.JPEG }
-          );
-          updateOverallProgress(index, 0.2); // Start image upload progress indicator
-          const uploadRes = await socialApi.uploadMedia([processed.uri]);
-          updateOverallProgress(index, 1);   // Image upload done
-          return {
-            ...uploadRes.media[0],
-            ordering: index,
-          };
-        }
-      });
-
-      const uploadedMediaResults = await Promise.all(uploadPromises);
-      // Sort results by original ordering to maintain user choice sequence
-      uploadedMediaResults.sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
-      const uploadedMedia = uploadedMediaResults.map(({ ordering, ...m }) => m);
-
-
-      // ── Stage 3: Create post + trigger MediaConvert ───────────────────────
-      setUploadStage('finalizing');
-
-      const postTypeValue =
-        uploadedMedia.some((m) => m.media_type === 'video')
-          ? 'video'
-          : caption.trim().length > 0 && uploadedMedia.length === 0
-          ? 'text'
-          : 'image';
-
-      const payload = {
-        content:   caption,
-        media:     uploadedMedia.map(({ _video_key, ...m }) => m),
-        pet_profile_tags: selectedPets,
-        post_type: postTypeValue,
-      };
-
-      console.log('[CreatePost] Sending payload to server:', JSON.stringify(payload, null, 2));
-
-      const post = await socialApi.createPost(payload);
-
-      // Kick off MediaConvert transcoding for each uploaded video.
-      // We index-match the client-side video_key list with the server-created
-      // media rows — preserving the same insertion order.
-      const videoItems = post.media?.filter((m: any) => m.media_type === 'video') ?? [];
-      const videoUploadItems = uploadedMedia.filter((m) => m._video_key); // same order as videoItems
-      for (let i = 0; i < videoItems.length; i++) {
-        const vKey   = videoUploadItems[i]?._video_key;   // index-matched — NOT .find()
-        const mId    = videoItems[i]?.media_id;
-        if (vKey && mId) {
-          try {
-            await socialApi.confirmVideoUpload(vKey, String(mId));
-          } catch (confirmErr) {
-            // Non-fatal: the post is already created. MediaConvert can be manually
-            // re-triggered later. Log but do not block the success flow.
-            console.error(`[CreatePost] confirmVideoUpload failed for video ${i}:`, confirmErr);
-          }
-        }
-      }
-
-
-      // ── Show the fresh post at the very top of the feed, instantly ────────
-      // Prepend to every cached feed variant (personalized/global) so the user
-      // lands back on Home with their post already sitting on top — no refetch,
-      // no skeleton flash. Author fields fall back to the signed-in user since
-      // the create response doesn't join them in.
-      const optimisticPost: any = {
-        ...post,
-        author_name:     post.author_name ?? user?.name,
-        author_image:    post.author_image ?? user?.profile_image_url,
-        social_username: post.social_username ?? (user as any)?.social_username ?? (user as any)?.username,
-        like_count:      post.like_count ?? 0,
-        comment_count:   post.comment_count ?? 0,
-        repost_count:    post.repost_count ?? 0,
-        is_liked:        false,
-        created_at:      post.created_at ?? new Date().toISOString(),
-      };
-      if (optimisticPost.post_id) {
-        queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
-          if (!old?.pages?.length) return old;
-          const already = old.pages.some((pg: any) =>
-            pg.posts?.some((p: any) => p.post_id === optimisticPost.post_id)
-          );
-          if (already) return old;
-          const [first, ...rest] = old.pages;
-          return {
-            ...old,
-            pages: [{ ...first, posts: [optimisticPost, ...(first.posts ?? [])] }, ...rest],
-          };
-        });
-      } else {
-        // Response didn't include a post id we can key on — fall back to a refetch
-        // so the new post still shows once Home is revealed.
-        queryClient.invalidateQueries({ queryKey: ['social-feed'] });
-      }
-
-      router.back();
-      Toast.show({
-        type: 'info',
-        text1: 'Your post is live!',
-        text2: "We're categorizing it to improve recommendations.",
-        visibilityTime: 4000,
-        position: 'bottom',
-      });
-    } catch (error: any) {
-      console.error('Create Post Error:', error);
-      Alert.alert('Error', error.message || 'Failed to create post');
-    } finally {
-      resetUploadState();
-    }
+    router.back();
   };
 
   // ── Helpers for render ────────────────────────────────────────────────────────
@@ -628,7 +461,7 @@ export default function CreatePostScreen() {
               compact
               label={isEditMode ? 'Save' : 'Post'}
               successLabel={isEditMode ? 'Saved!' : 'Posted!'}
-              loading={isPosting}
+              loading={isUploading}
               disabled={!canPost}
               onPress={handlePost}
               style={{ paddingHorizontal: 8 }}
@@ -823,31 +656,6 @@ export default function CreatePostScreen() {
         isLoading={isLoadingPetProfiles}
       />
 
-      {/* ── Media Upload Loader Overlay ──
-            Only shown while media is actively uploading. The "Finalizing Post…"
-            step no longer surfaces a full-screen loader — the header button's
-            own spinner covers it and the screen swipes straight back to Home. */}
-      {isPosting && uploadStage === 'uploading' && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
-          <View style={{ backgroundColor: '#fff', padding: 24, borderRadius: 16, width: '80%', alignItems: 'center', gap: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 }}>
-            <ActivityIndicator size="large" color="#a03048" />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>
-                Uploading Media…
-              </Text>
-              <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-                {Math.round(uploadProgress * 100)}% complete
-              </Text>
-            </View>
-            {/* Progress bar */}
-            <View style={{ width: '100%', height: 6, backgroundColor: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
-              <View
-                style={{ height: '100%', backgroundColor: '#a03048', width: `${Math.round(uploadProgress * 100)}%` }}
-              />
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
