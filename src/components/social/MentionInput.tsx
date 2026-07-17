@@ -16,7 +16,7 @@
 // `id` slot (e.g. id "pet:42" or "user:7") since the library only tracks a
 // single id per mention, not a separate type field — see lib/mentions.ts on
 // the backend, which parses this exact wire format.
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Platform
 } from 'react-native';
 import type { TextInputProps } from 'react-native';
@@ -102,61 +102,29 @@ export function useMentionInput({
 type MentionStateLike = { plainText: string; parts: Part[] };
 
 /**
- * Drop-in replacement for `<TextInput {...mentionInputProps} />` that also
- * live-highlights mentions in red WHILE TYPING on Android, matching iOS
- * (which gets this for free from the library's `children` rendering — see
- * useMentionInput above) and matching what native apps like Instagram do
- * with Android's Spannable text, which RN's TextInput has no equivalent for.
+ * Drop-in replacement for `<TextInput {...mentionInputProps} />`.
  *
- * Since `children` breaks Android's TextInput editability, we can't color
- * the real input's own text. Instead this stacks two views on Android: the
- * real `TextInput` underneath with its text made transparent (so it still
- * owns typing/cursor/keyboard/selection — nothing about editing changes),
- * and a non-interactive, styled `Text` overlay on top that mirrors the same
- * content with mention parts colored. `onScroll` keeps the overlay's
- * vertical position synced to the real input whenever it internally scrolls
- * (e.g. a maxHeight-capped composer once text overflows it).
+ * Android can't colour mentions live while typing: giving a `TextInput`
+ * styled `children` (the trick that makes iOS colour mentions for free via
+ * the library's own rendering — see `useMentionInput` above) makes the input
+ * non-editable on Android. A transparent-`TextInput`-plus-styled-`Text`-
+ * overlay workaround was attempted twice (independently, by two different
+ * people) to fake per-mention colour while still allowing editing, and both
+ * attempts produced doubled/misaligned text on real Android devices —
+ * Android doesn't guarantee a `Text` and a `TextInput` resolve to identical
+ * font metrics even given identical style props, so the two layers drift
+ * apart. Do not re-attempt that technique without first prototyping a real
+ * fix for the metric mismatch and confirming it on-device; a genuine fix
+ * needs a native Android view backed by a real Spannable `EditText` (what
+ * Instagram itself uses), not another JS-side overlay. Until then, Android
+ * shows plain, correctly-editable text with no inline mention colour; iOS
+ * still gets colour for free via the library's own `children` rendering.
  */
 export const MentionInputField = React.forwardRef<TextInput, TextInputProps & {
     textInputProps: any;
     mentionState: MentionStateLike;
-}>(({ textInputProps, mentionState, style, ...rest }, ref) => {
-    const [scrollY, setScrollY] = useState(0);
-
-    if (Platform.OS !== 'android') {
-        return <TextInput ref={ref} {...textInputProps} {...rest} style={style} />;
-    }
-
-    return (
-        <View style={{ position: 'relative' }}>
-            <TextInput
-                ref={ref}
-                {...textInputProps}
-                {...rest}
-                style={[style, { color: 'transparent' }]}
-                onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
-                scrollEventThrottle={16}
-            />
-            <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-                <Text style={[style, { transform: [{ translateY: -scrollY }] }]}>
-                    {mentionState.parts.map((part, index) => (
-                        <Text
-                            key={index}
-                            style={
-                                part.config
-                                    ? (typeof part.config.textStyle === 'function'
-                                        ? part.config.textStyle(part.data)
-                                        : part.config.textStyle)
-                                    : undefined
-                            }
-                        >
-                            {part.text}
-                        </Text>
-                    ))}
-                </Text>
-            </View>
-        </View>
-    );
+}>(({ textInputProps, mentionState: _mentionState, style, ...rest }, ref) => {
+    return <TextInput ref={ref} {...textInputProps} {...rest} style={style} />;
 });
 MentionInputField.displayName = 'MentionInputField';
 
