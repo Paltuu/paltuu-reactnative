@@ -380,6 +380,8 @@ export const PetChip = ({ name }: { name: string }) => (
 // ─── Original Post Preview (for Reposts/Quotes) ─────────────────────────────
 interface OriginalPostPreviewProps {
   authorName?: string;
+  authorUsername?: string;
+  authorVerified?: boolean;
   authorImage?: string;
   content?: string;
   media?: SocialPostMedia[];
@@ -390,6 +392,8 @@ interface OriginalPostPreviewProps {
 
 export const OriginalPostPreview = ({
   authorName,
+  authorUsername,
+  authorVerified,
   authorImage,
   content,
   media,
@@ -407,6 +411,14 @@ export const OriginalPostPreview = ({
           style={{ width: 16, height: 16, borderRadius: 8, marginRight: 6 }}
         />
         <Text style={{ fontWeight: '700', fontSize: 13, color: '#111' }}>{authorName}</Text>
+        {!!authorVerified && (
+          <Image source={PostIcons.verified} style={{ width: 11, height: 11, marginLeft: 3 }} tintColor={COLORS.primary} />
+        )}
+        {!!authorUsername && (
+          <Text style={{ fontSize: 12, color: '#666', marginLeft: 4 }} numberOfLines={1}>
+            @{authorUsername}
+          </Text>
+        )}
         {createdAt && (
           <Text style={{ fontSize: 12, color: '#666', marginLeft: 4 }}>
             · {formatTime(createdAt || '')}
@@ -1132,6 +1144,8 @@ export const PostCard = React.memo(({
             <View style={{ marginLeft: 64, marginRight: 14, marginTop: 2 }}>
               <OriginalPostPreview
                 authorName={post.original_author_name}
+                authorUsername={post.original_social_username}
+                authorVerified={post.original_author_verified}
                 authorImage={post.original_author_image}
                 content={post.original_content}
                 media={post.original_media}
