@@ -138,6 +138,14 @@ export default (): ExpoConfig => {
       ],
       "expo-web-browser",
       [
+        "expo-media-library",
+        {
+          photosPermission: "Allow Paltuu to access your photos to save media.",
+          savePhotosPermission: "Allow Paltuu to save photos and videos to your library.",
+          isAccessMediaLocationEnabled: true,
+        },
+      ],
+      [
         "expo-notifications",
         {
           color: "#a03048",
