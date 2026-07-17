@@ -41,6 +41,9 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { ZoomableImage } from '../../src/components/common/ImageModal';
 import VideoPlayer from '../../src/components/social/VideoPlayer';
 import { getShareUrl } from '../../src/utils/share';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
+import Toast from 'react-native-toast-message';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 120;
@@ -184,6 +187,46 @@ function MediaDetailScreen() {
       Alert.alert('Error', err.message);
     }
   }, [post]);
+
+  const handleDownload = useCallback(async () => {
+    const currentMedia = mediaItems[currentIndex];
+    if (!currentMedia || currentMedia.type !== 'image') return;
+
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Paltuu needs storage permissions to download images.');
+        return;
+      }
+
+      Toast.show({
+        type: 'info',
+        text1: 'Downloading image...',
+        position: 'bottom',
+      });
+
+      const filename = currentMedia.url.split('/').pop()?.split('?')[0] || 'download.jpg';
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      const { uri } = await FileSystem.downloadAsync(currentMedia.url, fileUri);
+
+      await MediaLibrary.saveToLibraryAsync(uri);
+
+      try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      } catch (e) {
+        console.warn('Failed to delete temp file:', e);
+      }
+
+      Toast.show({
+        type: 'success',
+        text1: 'Image saved to gallery!',
+        position: 'bottom',
+      });
+    } catch (error: any) {
+      console.error('Download Error:', error);
+      Alert.alert('Download Failed', error.message || 'An error occurred while saving the image.');
+    }
+  }, [mediaItems, currentIndex]);
 
   const handleQuickRepost = useCallback(() => {
     if (!post) return;
@@ -367,6 +410,12 @@ function MediaDetailScreen() {
             <TouchableOpacity style={styles.pill} onPress={handleShare} hitSlop={6}>
               <Image source={Icons.shareUnselect} style={styles.pillIcon} contentFit="contain" tintColor="#fff" />
             </TouchableOpacity>
+
+            {mediaItems[currentIndex]?.type === 'image' && (
+              <TouchableOpacity style={styles.pill} onPress={handleDownload} hitSlop={6}>
+                <Ionicons name="download-outline" size={18} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity style={styles.replyBar} onPress={handleReplyPress} activeOpacity={0.8}>
