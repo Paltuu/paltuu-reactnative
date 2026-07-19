@@ -63,6 +63,19 @@ export function CityPickerField({ placeholder, value, options, onSelect, icon }:
         ref={sheetRef}
         index={0}
         snapPoints={snapPoints}
+        // v5 defaults this to true, which measures content to size the sheet —
+        // but a flex:1 BottomSheetFlatList can't be measured that way, so it
+        // falls back to expanding past our fixed snapPoints (and past the top
+        // safe area) instead of respecting them, and the list never settles
+        // into its own scrollable region.
+        enableDynamicSizing={false}
+        // Without an explicit topInset the sheet doesn't know where the status
+        // bar/notch actually ends, so keyboardBehavior="interactive" (default)
+        // grows the sheet to stay above the keyboard right past that boundary
+        // once the search input is focused.
+        topInset={insets.top}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
         onDismiss={handleDismiss}
         backdropComponent={renderBackdrop}
         enablePanDownToClose
@@ -89,6 +102,7 @@ export function CityPickerField({ placeholder, value, options, onSelect, icon }:
           </View>
 
           <BottomSheetFlatList
+            style={{ flex: 1 }}
             data={filtered}
             keyExtractor={(item) => item.value}
             keyboardShouldPersistTaps="handled"
