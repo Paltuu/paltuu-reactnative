@@ -55,6 +55,16 @@ export default function CommentThreadScreen() {
   const sortBy: SortBy = 'top'; // comments always sort by Top
   const keyboardVisible = keyboardHeight > 0;
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  // The mention library only tracks cursor position via the TextInput's own
+  // onSelectionChange, so right after handleReply prefills text (e.g.
+  // "@AuthorName ") programmatically, its internal selection state is still
+  // whatever it was left at from earlier and can land inside the fresh text,
+  // spuriously reporting `mentionActive: true` before the user has typed
+  // anything. That flips the composer into its full-height "picking a
+  // mention" layout the instant Reply is tapped. Suppress mentionActive-
+  // driven layout for a brief window after a programmatic prefill; a real
+  // keystroke's onSelectionChange fixes the underlying state well within it.
+  const [suppressMentionLayout, setSuppressMentionLayout] = useState(false);
 
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -174,7 +184,7 @@ export default function CommentThreadScreen() {
     },
   });
 
-  const mentionActive = draft.mentionActive;
+  const mentionActive = draft.mentionActive && !suppressMentionLayout;
 
   const openComposer = useCallback(() => {
     setReplyingTo(null);
@@ -184,11 +194,18 @@ export default function CommentThreadScreen() {
 
   const collapseComposer = useCallback(() => {
     Keyboard.dismiss();
-    setComposerExpanded(false);
-  }, []);
+    // Only fall back to the static placeholder (Phase 1) when there's
+    // nothing in progress — otherwise this would unmount the real
+    // TextInput and visually wipe out whatever the user just typed, even
+    // though the underlying draft state is untouched.
+    if (!draft.text && draft.media.length === 0 && !replyingTo) {
+      setComposerExpanded(false);
+    }
+  }, [draft.text, draft.media, replyingTo]);
 
   const handleReply = useCallback((comment: FlatComment) => {
     setReplyingTo(comment);
+    setSuppressMentionLayout(true);
     if (comment.social_username) {
       draft.insertMention({ type: 'user', id: comment.user_id, name: comment.social_username });
     } else {
@@ -196,6 +213,7 @@ export default function CommentThreadScreen() {
     }
     setComposerExpanded(true);
     setTimeout(() => inputRef.current?.focus(), 60);
+    setTimeout(() => setSuppressMentionLayout(false), 400);
   }, [draft]);
 
   const handleExpand = useCallback((cid: string) => {
@@ -368,10 +386,17 @@ export default function CommentThreadScreen() {
       {/* ── Phase 2: floating composer ── */}
       {composerExpanded && (
         <>
-          <Pressable
-            onPress={collapseComposer}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
-          />
+          {/* Transparent tap-catcher to dismiss the keyboard. Only active
+              while the keyboard is actually up — once it's down there's
+              nothing left to dismiss, and leaving it mounted would block
+              scrolling/tapping the comment list behind a composer that's
+              now just sitting at the bottom with a draft in progress. */}
+          {keyboardVisible && (
+            <Pressable
+              onPress={collapseComposer}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
+            />
+          )}
 
           <View style={{
             position: 'absolute', left: 0, right: 0,
