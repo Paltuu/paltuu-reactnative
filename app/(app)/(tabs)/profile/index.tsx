@@ -17,6 +17,7 @@ import {
   ScrollView,
   RefreshControl,
   BackHandler,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -126,6 +127,7 @@ const TAB_CONFIG = [
 ] as const;
 
 type TabKey = typeof TAB_CONFIG[number]['key'];
+const TAB_KEYS = TAB_CONFIG.map((t) => t.key);
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -148,6 +150,39 @@ export default function ProfileScreen() {
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const listRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
+
+  // Swiping between the Posts/Pets sub-tabs — kept in a ref so the
+  // PanResponder (created once) always reads the current tab instead of
+  // whatever it was on first render.
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  const goToAdjacentTab = useCallback((direction: 1 | -1) => {
+    const idx = TAB_KEYS.indexOf(activeTabRef.current);
+    const nextIdx = idx + direction;
+    if (nextIdx >= 0 && nextIdx < TAB_KEYS.length) {
+      setActiveTab(TAB_KEYS[nextIdx]);
+    }
+  }, []);
+
+  // Only captures a clearly horizontal drag (well past vertical-scroll
+  // territory) so it doesn't fight the list's own vertical scrolling or the
+  // outer bottom-tab-bar's own swipe-between-screens gesture.
+  const tabSwipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_evt, gestureState) => {
+        const { dx, dy } = gestureState;
+        return Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 2.5;
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dx <= -60) {
+          goToAdjacentTab(1); // swipe left → next tab
+        } else if (gestureState.dx >= 60) {
+          goToAdjacentTab(-1); // swipe right → previous tab
+        }
+      },
+    })
+  ).current;
 
   const userId = user?.id;
 
@@ -223,6 +258,14 @@ export default function ProfileScreen() {
       setIsRefreshing(false);
     }
   }, [queryClient, userId]);
+
+  // The FlatList is no longer force-remounted on tab switch (that was what
+  // caused the avatar/icons in the header to flicker — see ListHeader below),
+  // so reset scroll position ourselves instead of getting it for free from a
+  // fresh mount.
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [activeTab]);
 
   // Instagram-style re-tap: if the profile is scrolled down, scroll to top;
   // if it's already at the top, refresh the profile data instead.
@@ -402,6 +445,12 @@ export default function ProfileScreen() {
   const currentImageUri = selectedLocalAsset?.uri ||
     (imageModal === 'profile' ? profile?.profile_image_url : profile?.cover_photo_url);
 
+  // Rendered below as `ListHeaderComponent={ListHeader()}` — an element, not
+  // this function itself. Passing the function directly would hand FlatList
+  // a brand-new component "type" every render (a fresh arrow function each
+  // time), which makes React tear down and remount the whole header —
+  // avatar image included — instead of just re-rendering it, flickering the
+  // avatar/icons on every render (most visibly on tab switch).
   const ListHeader = () => (
     <View style={s.headerWrapper}>
       {/* Top action bar */}
@@ -564,64 +613,65 @@ export default function ProfileScreen() {
 
   return (
     <View style={s.screen}>
-      <FlatList
-        ref={listRef}
-        key={activeTab}
-        data={tabData[activeTab]}
-        keyExtractor={(item, idx) =>
-          activeTab === 'Pets'
-            ? `pet-${item.pet_profile_id ?? idx}`
-            : (item.post_id ?? item.id ?? idx).toString()
-        }
-        renderItem={renderItem}
-        ListHeaderComponent={ListHeader}
-        showsVerticalScrollIndicator={false}
-        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={[DS.primary]}
-            tintColor={DS.primary}
-          />
-        }
-        ListEmptyComponent={
-          <View style={s.emptyState}>
-            {isTabLoading ? (
-              <ActivityIndicator size="small" color={DS.primary} />
-            ) : activeTab === 'Pets' ? (
-              <View style={{ width: '100%' }}>
-                <View style={{ paddingHorizontal: 8 }}>
-                  <PetIdCard isPlaceholder />
-                  <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
+      <View style={{ flex: 1 }} {...tabSwipeResponder.panHandlers}>
+        <FlatList
+          ref={listRef}
+          data={tabData[activeTab]}
+          keyExtractor={(item, idx) =>
+            activeTab === 'Pets'
+              ? `pet-${item.pet_profile_id ?? idx}`
+              : (item.post_id ?? item.id ?? idx).toString()
+          }
+          renderItem={renderItem}
+          ListHeaderComponent={ListHeader()}
+          showsVerticalScrollIndicator={false}
+          onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[DS.primary]}
+              tintColor={DS.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={s.emptyState}>
+              {isTabLoading ? (
+                <ActivityIndicator size="small" color={DS.primary} />
+              ) : activeTab === 'Pets' ? (
+                <View style={{ width: '100%' }}>
+                  <View style={{ paddingHorizontal: 8 }}>
+                    <PetIdCard isPlaceholder />
+                    <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
+                  </View>
+                  {/* Same marginHorizontal/border/full-width treatment as the
+                      "Add Another Pet" button in the has-pets state, so the
+                      button sits in the same place in both states. */}
+                  <TouchableOpacity
+                    onPress={() => router.push('/(app)/pet-profile/create')}
+                    style={s.addPetBtn}
+                  >
+                    <ExpoImage
+                      source={require('../../../../assets/icons/plus-solid.svg')}
+                      style={{ width: 14, height: 14 }}
+                      contentFit="contain"
+                      tintColor={DS.primary}
+                    />
+                    <Text style={s.addPetBtnText}>Add Your Pet</Text>
+                  </TouchableOpacity>
                 </View>
-                {/* Same marginHorizontal/border/full-width treatment as the
-                    "Add Another Pet" button in the has-pets state, so the
-                    button sits in the same place in both states. */}
-                <TouchableOpacity
-                  onPress={() => router.push('/(app)/pet-profile/create')}
-                  style={s.addPetBtn}
-                >
-                  <ExpoImage
-                    source={require('../../../../assets/icons/plus-solid.svg')}
-                    style={{ width: 14, height: 14 }}
-                    contentFit="contain"
-                    tintColor={DS.primary}
-                  />
-                  <Text style={s.addPetBtnText}>Add Your Pet</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 40, height: 40 }} contentFit="contain" tintColor={DS.gray100} />
-                <Text style={s.emptyText}>Nothing here yet</Text>
-              </>
-            )}
-          </View>
-        }
-      />
+              ) : (
+                <>
+                  <ExpoImage source={Icons.pawLikeUnselect} style={{ width: 40, height: 40 }} contentFit="contain" tintColor={DS.gray100} />
+                  <Text style={s.emptyText}>Nothing here yet</Text>
+                </>
+              )}
+            </View>
+          }
+        />
+      </View>
 
       {/* ── Side drawer menu ────────────────────────────────────────────────── */}
       <Modal
