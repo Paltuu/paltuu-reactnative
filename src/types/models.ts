@@ -7,6 +7,7 @@ export interface Clinic {
   logo_url: string;
   operating_hours: string;
   is_paltuu_partner: boolean;
+  is_verified?: boolean;
   google_maps_link?: string;
   discount_details?: string;
   category?: string | null;

@@ -56,9 +56,7 @@ function PetCareScreen() {
   const queryParams = {
     search: debouncedSearch || undefined,
     city: selectedCity || undefined,
-    // The "Verified only" toggle historically filtered on is_paltuu_partner
-    // (the RN Clinic model has no is_verified field) — map it to `partner`.
-    partner: verifiedOnly || undefined,
+    verified: verifiedOnly || undefined,
     sort: nearby ? ('distance' as const) : undefined,
     lat: nearby ? latitude! : undefined,
     lng: nearby ? longitude! : undefined,

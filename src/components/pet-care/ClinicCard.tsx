@@ -52,7 +52,7 @@ export const ClinicCard = ({ clinic, onPress, distanceKm }: ClinicCardProps) => 
           <Text style={styles.name} numberOfLines={1}>
             {clinic.name}
           </Text>
-          {clinic.is_paltuu_partner && (
+          {clinic.is_verified && (
             <View style={styles.verifiedPill}>
               <MaterialIcons name="verified" size={11} color={PRIMARY} />
               <Text style={styles.verifiedText}>Verified</Text>
