@@ -83,20 +83,26 @@ function PetDetailsScreen() {
     }
   };
 
+  // The listing's own `contact_number` (required when the listing was
+  // created) is what the guardian actually meant to be reached on for this
+  // pet — `owner_phone` is just their account profile number, which can be
+  // empty (e.g. Google/Apple sign-in with no phone ever added).
   const handleCallGuardian = () => {
-    if (!pet?.owner_phone) {
+    const phone = pet?.contact_number || pet?.owner_phone;
+    if (!phone) {
       Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
       return;
     }
-    Linking.openURL(`tel:${pet.owner_phone}`);
+    Linking.openURL(`tel:${phone}`);
   };
 
   const handleMessageGuardian = () => {
-    if (!pet?.owner_phone) {
+    const phone = pet?.contact_number || pet?.owner_phone;
+    if (!phone) {
       Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
       return;
     }
-    let p = String(pet.owner_phone).trim().replace(/[^\d+]/g, '');
+    let p = String(phone).trim().replace(/[^\d+]/g, '');
     if (p.startsWith('0')) p = '92' + p.slice(1);
     // wa.me is a universal link (works with or without the WhatsApp app
     // installed, no iOS LSApplicationQueriesSchemes entry needed), unlike
