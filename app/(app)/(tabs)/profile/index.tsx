@@ -592,23 +592,25 @@ export default function ProfileScreen() {
             {isTabLoading ? (
               <ActivityIndicator size="small" color={DS.primary} />
             ) : activeTab === 'Pets' ? (
-              <View style={{ width: '100%', paddingHorizontal: 8 }}>
-                <PetIdCard isPlaceholder />
-                <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
+              <View style={{ width: '100%' }}>
+                <View style={{ paddingHorizontal: 8 }}>
+                  <PetIdCard isPlaceholder />
+                  <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
+                </View>
+                {/* Same marginHorizontal/border/full-width treatment as the
+                    "Add Another Pet" button in the has-pets state, so the
+                    button sits in the same place in both states. */}
                 <TouchableOpacity
                   onPress={() => router.push('/(app)/pet-profile/create')}
-                  style={{
-                    backgroundColor: DS.primary,
-                    paddingHorizontal: 20,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    marginTop: 16,
-                    alignSelf: 'center',
-                  }}
+                  style={s.addPetBtn}
                 >
-                  <Text style={{ color: '#fff', fontFamily: 'Montserrat_600SemiBold', fontSize: 13 }}>
-                    Add Your Pet
-                  </Text>
+                  <ExpoImage
+                    source={require('../../../../assets/icons/plus-solid.svg')}
+                    style={{ width: 14, height: 14 }}
+                    contentFit="contain"
+                    tintColor={DS.primary}
+                  />
+                  <Text style={s.addPetBtnText}>Add Your Pet</Text>
                 </TouchableOpacity>
               </View>
             ) : (
