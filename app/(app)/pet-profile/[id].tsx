@@ -94,7 +94,6 @@ function PetProfileScreen() {
   const [nameWidth, setNameWidth] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
   const pagerRef = useRef<ScrollView>(null);
-  const [pageHeights, setPageHeights] = useState<Record<Tab, number>>({ posts: 0, gallery: 0, about: 0 });
   // Tab bar taps and pager swipes both drive `activeTab` — this guards against
   // the tap-triggered scrollTo's own onMomentumScrollEnd firing setActiveTab
   // again with a stale index while the animation is still in flight.
@@ -391,10 +390,14 @@ function PetProfileScreen() {
 
         {/* ── TAB CONTENT — swipeable pager, all three tabs mounted side by
               side so a finger swipe can carry you between them; the tab bar
-              above drives the same pager via goToTab(). Each page reports its
-              own natural height via onLayout so the pager (and the outer
-              vertical ScrollView it sits in) sizes to whichever tab is active
-              instead of clipping/leaving a gap. ── */}
+              above drives the same pager via goToTab(). No explicit height is
+              set on the row: a horizontal ScrollView with alignItems:
+              'flex-start' sizes itself to its tallest child, same as any
+              other flexbox row, so it's stable even while post images are
+              still loading — measuring each page's height live and feeding
+              it back as the container's height (an earlier approach here)
+              made the pager visibly grow in increments as async content
+              settled, reading like something sliding up to cover the page. ── */}
         <ScrollView
           ref={pagerRef}
           horizontal
@@ -406,16 +409,10 @@ function PetProfileScreen() {
             const index = Math.round(e.nativeEvent.contentOffset.x / width);
             setActiveTab(TABS[index] ?? TABS[0]);
           }}
-          style={{ height: Math.max(pageHeights[activeTab], 1) }}
+          contentContainerStyle={{ alignItems: 'flex-start' }}
         >
         {/* POSTS TAB */}
-        <View
-          style={{ width, marginTop: 8 }}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            setPageHeights((prev) => (prev.posts === h ? prev : { ...prev, posts: h }));
-          }}
-        >
+        <View style={{ width, marginTop: 8 }}>
             {posts.length > 0 ? (
               <FlatList
                 data={posts}
@@ -445,13 +442,7 @@ function PetProfileScreen() {
           </View>
 
         {/* GALLERY TAB */}
-        <View
-          style={[s.galleryGrid, { width }]}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            setPageHeights((prev) => (prev.gallery === h ? prev : { ...prev, gallery: h }));
-          }}
-        >
+        <View style={[s.galleryGrid, { width }]}>
             {photos.length > 0 ? (
               photos.map((photo) => (
                 <TouchableOpacity key={photo.photo_id} style={s.galleryCell} onPress={() => setSelectedPhoto(photo)} activeOpacity={0.85}>
@@ -471,19 +462,15 @@ function PetProfileScreen() {
               <View style={[s.emptyState, { width }]}>
                 <Ionicons name="images-outline" size={48} color="#E5E7EB" />
                 <Text style={s.emptyTitle}>No photos yet</Text>
-                <Text style={s.emptySub}>Add photos from the gallery manager.</Text>
+                <Text style={s.emptySub}>
+                  {isOwner ? 'Add photos from the gallery manager.' : `${profile.name} doesn't have any photos yet.`}
+                </Text>
               </View>
             )}
           </View>
 
         {/* ABOUT TAB — nothing but the ID card itself. */}
-        <View
-          style={[s.aboutContainer, { width }]}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            setPageHeights((prev) => (prev.about === h ? prev : { ...prev, about: h }));
-          }}
-        >
+        <View style={[s.aboutContainer, { width }]}>
             <PetIdCard
               pet={{
                 pet_profile_id: profile.pet_profile_id,
