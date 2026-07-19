@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import {
   BottomSheetModal,
-  BottomSheetView,
   BottomSheetFlatList,
   BottomSheetTextInput,
   BottomSheetBackdrop,
@@ -82,7 +81,7 @@ export function CityPickerField({ placeholder, value, options, onSelect, icon }:
         backgroundStyle={{ backgroundColor: '#FFFFFF', borderRadius: 24 }}
         handleIndicatorStyle={{ backgroundColor: '#E5E7EB', width: 40 }}
       >
-        <BottomSheetView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.sheetTitle}>{placeholder}</Text>
 
           <View style={styles.searchRow}>
@@ -128,7 +127,7 @@ export function CityPickerField({ placeholder, value, options, onSelect, icon }:
               </View>
             }
           />
-        </BottomSheetView>
+        </View>
       </BottomSheetModal>
     </>
   );
