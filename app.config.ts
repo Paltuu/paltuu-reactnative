@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.5",
+    version: "1.0.6",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -40,7 +40,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 14,
+      versionCode: 15,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -68,8 +68,13 @@ export default (): ExpoConfig => {
     updates: {
       url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     },
+    // "fingerprint" hashes the actual native dependencies/config (not a
+    // hand-set version number), so an update auto-detects when a native
+    // module was added and is refused to phones running a binary that
+    // doesn't have it — instead of crashing them, like the appVersion
+    // policy did when expo-media-library shipped without a version bump.
     runtimeVersion: {
-      policy: "appVersion",
+      policy: "fingerprint",
     },
     extra: {
       router: {},
@@ -103,7 +108,14 @@ export default (): ExpoConfig => {
           },
           android: {
             image: "./assets/splash-logo-white.png",
-            imageWidth: 220,
+            // Android 12+ masks the system splash icon to a centered circle
+            // (~66% of the 288dp canvas is the safe zone). Our wide "paltuu"
+            // wordmark at 220 filled ~76% of the width, so the leading "p" and
+            // trailing "u"/paw fell outside the circle and got clipped. 170dp
+            // keeps the whole lockup inside the safe circle. iOS has no mask, so
+            // it stays at 220 above. For a larger-looking splash, a squarer
+            // lockup (paw over "Paltuu") would fill the circle better.
+            imageWidth: 170,
             resizeMode: "contain",
             backgroundColor: "#a03048",
             dark: {

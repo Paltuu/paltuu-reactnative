@@ -93,7 +93,19 @@ function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
         styles.bar,
         {
           height: (Platform.OS === 'ios' ? 52 : 56) + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 8,
+          // Reserve the FULL bottom inset so the icons clear the device's native
+          // navigation bar and stay centered in the visible band above it. The
+          // old formula subtracted 10 here, which pulled the icons down into the
+          // system-nav zone on Android (cramped, sitting low rather than
+          // centered). iOS keeps the tighter home-indicator spacing it had.
+          paddingBottom:
+            Platform.OS === 'android'
+              ? insets.bottom > 0
+                ? insets.bottom
+                : 8
+              : insets.bottom > 0
+                ? Math.max(insets.bottom - 10, 5)
+                : 8,
         },
       ]}
     >
@@ -145,8 +157,12 @@ export default function TabsLayout() {
         // continuously-dragged gesture, unaffected by this flag) — tapping a
         // bottom tab bar icon calls navigation.navigate under the hood, which
         // would otherwise still play the same pager slide animation, making
-        // icon taps look like a swipe. Disabling it here only removes that
-        // programmatic-jump animation.
+        // icon taps look like a swipe. On Android this also avoids ViewPager2
+        // animating through intermediate pages on a multi-tab jump (e.g.
+        // Profile→Home, index 3→0), which flashed Pets/Search; iOS's pager
+        // doesn't render those intermediate pages so it never flashed there.
+        // This only disables the programmatic transition — swipe gestures are
+        // native/gesture-driven, so swiping still shows the incoming page.
         animationEnabled: false,
         // Lazy-load tabs (like the old bottom-tabs setup) but preload the
         // immediate neighbour so it's already rendered and visible as you swipe.

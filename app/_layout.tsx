@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SplashScreen } from 'expo-router';
@@ -88,6 +89,27 @@ export default function RootLayout() {
   // 1. Initial Hydration
   useEffect(() => {
     hydrate();
+  }, []);
+
+  // 1a. Android nav-bar button color. Under edge-to-edge (edgeToEdgeEnabled),
+  // Expo's enableEdgeToEdge() defaults the nav bar to LIGHT (white) icons and
+  // overrides the theme's windowLightNavigationBar, so on our white screens the
+  // 3-button icons vanish and the system pairs them with a dark contrast scrim
+  // (the grey strip). setButtonStyleAsync is the one setter that still works in
+  // edge-to-edge; 'dark' = dark icons for our light UI. The app is light-only
+  // (userInterfaceStyle: "light"), so this holds app-wide.
+  //
+  // Loaded lazily inside try/catch on purpose: expo-navigation-bar is a NATIVE
+  // module that isn't in older binaries this JS may be OTA-updated onto, where
+  // `requireNativeModule('ExpoNavigationBar')` throws at import. The guard makes
+  // it a no-op there (nav bar just stays as-is) and it activates once a build
+  // that bundles the native module ships.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    try {
+      const NavigationBar = require('expo-navigation-bar');
+      NavigationBar.setButtonStyleAsync('dark').catch(() => {});
+    } catch {}
   }, []);
 
   // 1b. Ask for location permission up front, then resolve nearest city

@@ -17,7 +17,7 @@
 // single id per mention, not a separate type field — see lib/mentions.ts on
 // the backend, which parses this exact wire format.
 import React, { useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Platform
+import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet
 } from 'react-native';
 import type { TextInputProps } from 'react-native';
 import { Image } from 'expo-image';
@@ -69,22 +69,24 @@ export function useMentionInput({
         triggersConfig,
     });
 
-    // On Android, TextInput with `children` (used by the library for styled
-    // mention rendering) becomes non-editable. Strip children and drive
-    // `value` ourselves instead — but with `mentionState.plainText`, NOT the
-    // raw encoded `value`. `children` on iOS is built from the same
-    // `mentionState.parts[].text` that makes up `plainText` (each mention
-    // part renders as its decoded "@name", not the wire-format token — see
-    // getTriggerPlainString in the library), so plainText is exactly what iOS
-    // visually shows there. It's also exactly what `onChangeText`
-    // (handleTextChange) expects to diff incoming text against before
-    // re-encoding — feeding it the raw encoded value instead showed the raw
-    // `{@}[name](type:id)` token in the box and corrupted the mention into
-    // plain text on the next edit.
-    const { children: _mentionChildren, ...textInputPropsBase } = textInputProps as any;
-    const safeTextInputProps = Platform.OS === 'android'
-        ? { ...textInputPropsBase, value: mentionState.plainText }
-        : textInputProps;
+    // Historically, Android had to strip the library's styled `children` (the
+    // Text spans that colour mentions) because an old-architecture (Paper)
+    // TextInput became non-editable when given `children` — so Android drove a
+    // plain `mentionState.plainText` value and lost the inline red colouring
+    // that iOS gets for free.
+    //
+    // This app now runs the New Architecture (Fabric, `newArchEnabled: true`),
+    // whose Android TextInput reworks that behaviour, so we pass the library's
+    // `textInputProps` (children included) straight through on BOTH platforms
+    // and let Android colour mentions live exactly like iOS.
+    //
+    // IF a Fabric Android build turns out to still go non-editable with
+    // children, revert to the previous platform split:
+    //   const { children: _c, ...base } = textInputProps as any;
+    //   const safeTextInputProps = Platform.OS === 'android'
+    //     ? { ...base, value: mentionState.plainText } : textInputProps;
+    // (drives plain text on Android — editable but uncoloured while typing).
+    const safeTextInputProps = textInputProps;
 
     const keyword = triggers.mention.keyword;
 
@@ -104,21 +106,16 @@ type MentionStateLike = { plainText: string; parts: Part[] };
 /**
  * Drop-in replacement for `<TextInput {...mentionInputProps} />`.
  *
- * Android can't colour mentions live while typing: giving a `TextInput`
- * styled `children` (the trick that makes iOS colour mentions for free via
- * the library's own rendering — see `useMentionInput` above) makes the input
- * non-editable on Android. A transparent-`TextInput`-plus-styled-`Text`-
- * overlay workaround was attempted twice (independently, by two different
- * people) to fake per-mention colour while still allowing editing, and both
- * attempts produced doubled/misaligned text on real Android devices —
- * Android doesn't guarantee a `Text` and a `TextInput` resolve to identical
- * font metrics even given identical style props, so the two layers drift
- * apart. Do not re-attempt that technique without first prototyping a real
- * fix for the metric mismatch and confirming it on-device; a genuine fix
- * needs a native Android view backed by a real Spannable `EditText` (what
- * Instagram itself uses), not another JS-side overlay. Until then, Android
- * shows plain, correctly-editable text with no inline mention colour; iOS
- * still gets colour for free via the library's own `children` rendering.
+ * Mention colouring while typing now comes entirely from the library's own
+ * styled `children`, which `useMentionInput` passes through on both platforms
+ * (see the New Architecture note there). No overlay or transparent-input trick
+ * is involved — an earlier JS overlay approach (transparent TextInput under a
+ * styled Text layer) was tried twice and produced doubled/misaligned text on
+ * real Android devices because a `Text` and a `TextInput` don't resolve to
+ * identical font metrics; don't reintroduce that. If Fabric Android turns out
+ * not to support styled children in an editable TextInput after all, the
+ * fallback is the platform split documented in `useMentionInput`, not an
+ * overlay.
  */
 export const MentionInputField = React.forwardRef<TextInput, TextInputProps & {
     textInputProps: any;
