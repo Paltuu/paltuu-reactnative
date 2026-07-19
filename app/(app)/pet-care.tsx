@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
 const H_PAD = 20;
+const PAGE_SIZE = 20;
 
 type SortMode = 'default' | 'nearby';
 
@@ -34,6 +35,8 @@ function PetCareScreen() {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const listRef = useRef<any>(null);
 
   const { data: clinics, isLoading, refetch } = useQuery({
     queryKey: ['clinics'],
@@ -107,6 +110,21 @@ function PetCareScreen() {
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinics, search, selectedCity, verifiedOnly, sortMode, hasLocation, latitude, longitude]);
+
+  // Any filter/search change (including clearing one) re-derives an entirely
+  // different result set, so a scroll position from before no longer means
+  // anything for it — snap back to the top instead of leaving the list
+  // sitting at whatever offset it was at for the previous results. Also
+  // re-page from the start rather than keeping whatever page depth the old
+  // filtered list had scrolled to.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, selectedCity, verifiedOnly, sortMode]);
+
+  const paged = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
 
   const resolvingLoc = locStatus === 'resolving';
 
@@ -240,7 +258,8 @@ function PetCareScreen() {
       </View>
 
       <FlashList
-        data={filtered}
+        ref={listRef}
+        data={paged}
         keyExtractor={(item) => String(item.clinic_id)}
         renderItem={({ item }) => (
           <View style={{ paddingHorizontal: H_PAD }}>
@@ -257,6 +276,13 @@ function PetCareScreen() {
           </View>
         )}
         ListHeaderComponent={renderHeader()}
+        onEndReached={() => { if (hasMore) setVisibleCount((v) => v + PAGE_SIZE); }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={hasMore ? (
+          <View style={{ paddingVertical: 24 }}>
+            <ActivityIndicator size="small" color={PRIMARY} />
+          </View>
+        ) : null}
         onRefresh={refetch}
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}
@@ -350,7 +376,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cityChipActive: { backgroundColor: DARK, borderColor: DARK },
+  cityChipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   cityChipText: { fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: '#555' },
   cityChipTextActive: { color: '#FFF' },
 
