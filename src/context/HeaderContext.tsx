@@ -14,8 +14,10 @@ interface HeaderContextValue {
     setLoading: (v: boolean) => void;
     onPlusPress: () => void;
     onHeartPress: () => void;
+    onLogoPress: () => void;
     setOnPlusPress: (fn: () => void) => void;
     setOnHeartPress: (fn: () => void) => void;
+    setOnLogoPress: (fn: () => void) => void;
 }
 
 const HeaderContext = createContext<HeaderContextValue | null>(null);
@@ -25,21 +27,26 @@ export function HeaderProvider({ children }: { children: ReactNode }) {
 
     const plusRef = useRef<() => void>(() => {});
     const heartRef = useRef<() => void>(() => {});
+    const logoRef = useRef<() => void>(() => {});
 
     const setLoading = useCallback((v: boolean) => setIsLoading(v), []);
     const setOnPlusPress = useCallback((fn: () => void) => { plusRef.current = fn; }, []);
     const setOnHeartPress = useCallback((fn: () => void) => { heartRef.current = fn; }, []);
+    const setOnLogoPress = useCallback((fn: () => void) => { logoRef.current = fn; }, []);
     const onPlusPress = useCallback(() => plusRef.current(), []);
     const onHeartPress = useCallback(() => heartRef.current(), []);
+    const onLogoPress = useCallback(() => logoRef.current(), []);
 
     const contextValue = useMemo(() => ({
         isLoading,
         setLoading,
         onPlusPress,
         onHeartPress,
+        onLogoPress,
         setOnPlusPress,
         setOnHeartPress,
-    }), [isLoading, setLoading, onPlusPress, onHeartPress, setOnPlusPress, setOnHeartPress]);
+        setOnLogoPress,
+    }), [isLoading, setLoading, onPlusPress, onHeartPress, onLogoPress, setOnPlusPress, setOnHeartPress, setOnLogoPress]);
 
     return (
         <HeaderContext.Provider value={contextValue}>

@@ -46,6 +46,11 @@ function ApplyAdoptScreen() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  // ScrollView only compresses under the keyboard, it doesn't auto-scroll to
+  // reveal a focused field — for fields near the bottom of a step (address,
+  // other pets), nudge the scroll to the end so the keyboard doesn't cover them.
+  const scrollToEnd = () => scrollRef.current?.scrollToEnd({ animated: true });
 
   const [formData, setFormData] = useState({
     adopter_name: user?.name || '',
@@ -175,6 +180,7 @@ function ApplyAdoptScreen() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
@@ -221,6 +227,7 @@ function ApplyAdoptScreen() {
                   placeholderTextColor="#B0B7C3"
                   multiline
                   textAlignVertical="top"
+                  onFocus={scrollToEnd}
                 />
               </View>
             </View>
@@ -267,6 +274,7 @@ function ApplyAdoptScreen() {
                   placeholderTextColor="#B0B7C3"
                   multiline
                   textAlignVertical="top"
+                  onFocus={scrollToEnd}
                 />
               </View>
             </View>

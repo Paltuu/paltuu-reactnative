@@ -323,7 +323,8 @@ function AdoptScreen() {
             <Text className="font-headingSemi text-dark mb-3">Breed</Text>
             <TextInput
               placeholder="Enter breed..."
-              className="bg-gray-50 p-4 rounded-xl border border-gray-100 font-body text-sm mb-6"
+              placeholderTextColor="#9CA3AF"
+              className="bg-gray-50 p-4 rounded-xl border border-gray-100 font-body text-sm text-dark mb-6"
               value={filters.breed}
               onChangeText={(text) => applyFilter({ breed: text })}
             />
@@ -377,7 +378,8 @@ function AdoptScreen() {
                   <Ionicons name="search-outline" size={18} color="#999" />
                   <TextInput
                     placeholder="Search city..."
-                    className="flex-1 ml-3 font-body text-sm"
+                    placeholderTextColor="#9CA3AF"
+                    className="flex-1 ml-3 font-body text-sm text-dark"
                     value={citySearch}
                     onChangeText={setCitySearch}
                   />

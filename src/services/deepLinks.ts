@@ -52,7 +52,7 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
       '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,
       '/adoptions':   (p) => `/(app)/adopt/${p[1]}`,
-      '/lost-found':  (p) => `/(app)/lost-found/${p[1]}`,
+      '/lost-found':  ()  => `/(app)/create-lost-found`,
       '/bazaar/cart': ()  => `/(app)/cart`,
       '/bazaar':      ()  => `/(app)/marketplace`,
       '/vet-panel':   ()  => `/(app)/vet-panel`,

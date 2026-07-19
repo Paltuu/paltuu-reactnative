@@ -336,8 +336,8 @@ function PetProfileScreen() {
         </View>
 
         {/* ── ADOPTION / STATUS BANNERS ── */}
-        {/* Rehome prompt hidden for now — uncomment to re-enable.
-        {isOwner && !profile.is_listed_for_adoption && (
+        {/* Rehome prompt hidden for now — re-enable by removing `false &&`. */}
+        {false && isOwner && !profile.is_listed_for_adoption && (
           <View style={s.rehomeBanner}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={s.rehomeBannerTitle}>Looking to rehome?</Text>
@@ -350,7 +350,6 @@ function PetProfileScreen() {
             </TouchableOpacity>
           </View>
         )}
-        */}
 
         {profile.is_listed_for_adoption && profile.adoption_listing_id && (
           <TouchableOpacity

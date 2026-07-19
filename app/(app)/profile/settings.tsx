@@ -13,7 +13,6 @@ function SettingsScreen() {
 
   const [notifications, setNotifications] = React.useState(true);
   const [emailUpdates, setEmailUpdates] = React.useState(false);
-  const [darkTheme, setDarkTheme] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDeleteAccount = () => {
@@ -98,7 +97,7 @@ function SettingsScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
+          <View className="flex-row items-center justify-between p-4">
             <View className="flex-row items-center">
               <Ionicons name="mail-outline" size={20} color="#374151" />
               <Text className="font-body text-gray-700 ml-3">Email Updates</Text>
@@ -106,18 +105,6 @@ function SettingsScreen() {
             <Switch
               value={emailUpdates}
               onValueChange={setEmailUpdates}
-              trackColor={{ true: '#A03048', false: '#E5E7EB' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          <View className="flex-row items-center justify-between p-4">
-            <View className="flex-row items-center">
-              <Ionicons name="moon-outline" size={20} color="#374151" />
-              <Text className="font-body text-gray-700 ml-3">Dark Theme</Text>
-            </View>
-            <Switch
-              value={darkTheme}
-              onValueChange={setDarkTheme}
               trackColor={{ true: '#A03048', false: '#E5E7EB' }}
               thumbColor="#FFFFFF"
             />

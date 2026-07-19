@@ -10,7 +10,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { MainHeader, HEADER_HEIGHT, UPLOAD_BANNER_HEIGHT } from '../../../src/components/common/MainHeader';
 import { useUploadStore } from '../../../src/stores/uploadStore';
-import { useHeaderScroll } from '../../../src/context/HeaderContext';
+import { useHeaderScroll, useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { socialApi, SocialPost } from '../../../src/api/social';
@@ -128,6 +128,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { headerTranslateY, handleScrollY, handleScrollEnd } = useHeaderScroll();
+  const { setOnLogoPress } = useHeaderContext();
   const authReady = useAuthReady();
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -226,6 +227,13 @@ export default function HomeScreen() {
       }
     });
   }, [handleRefresh]);
+
+  // Tapping the header logo always scrolls back to the top of the feed.
+  useEffect(() => {
+    setOnLogoPress(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  }, [setOnLogoPress]);
 
   const posts = useMemo(() => {
     return data?.pages.flatMap(p => p.posts) ?? [];

@@ -18,6 +18,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petProfilesApi, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 3; // 3 columns with padding
@@ -32,6 +33,8 @@ function PetGalleryManagerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
+  const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
+  const [pendingCaption, setPendingCaption] = useState('');
 
   useEffect(() => {
     fetchPhotos();
@@ -50,7 +53,9 @@ function PetGalleryManagerScreen() {
     }
   };
 
-  const pickAndUploadPhoto = async () => {
+  // Step 1: pick the image and hand it to the polaroid confirm modal, where
+  // the owner can add a caption before it's actually uploaded.
+  const pickPhoto = async () => {
     if (photos.length >= 20) {
       return Alert.alert('Limit Reached', 'You can upload up to 20 gallery photos per pet profile.');
     }
@@ -68,22 +73,35 @@ function PetGalleryManagerScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setIsUploading(true);
-        const fileUri = result.assets[0].uri;
         const processed = await manipulateAsync(
-          fileUri,
+          result.assets[0].uri,
           [{ resize: { width: 1200 } }],
           { compress: 0.8, format: SaveFormat.JPEG }
         );
-        const uploadRes = await socialApi.uploadMedia([processed.uri]);
-        if (uploadRes.media && uploadRes.media.length > 0) {
-          const photoUrl = uploadRes.media[0].url;
-          await petProfilesApi.uploadPetPhoto(petId, photoUrl);
-          await fetchPhotos();
-          Alert.alert('Uploaded', 'Photo added to pet gallery!');
-        } else {
-          Alert.alert('Error', 'Failed to upload image to server.');
-        }
+        setPendingCaption('');
+        setPendingPhotoUri(processed.uri);
+      }
+    } catch (error) {
+      console.error('Pick Photo Error:', error);
+      Alert.alert('Error', 'Failed to load the selected photo.');
+    }
+  };
+
+  // Step 2: upload the picked image together with whatever caption was
+  // typed onto the polaroid.
+  const confirmUploadPhoto = async () => {
+    if (!pendingPhotoUri) return;
+    try {
+      setIsUploading(true);
+      const uploadRes = await socialApi.uploadMedia([pendingPhotoUri]);
+      if (uploadRes.media && uploadRes.media.length > 0) {
+        const photoUrl = uploadRes.media[0].url;
+        await petProfilesApi.uploadPetPhoto(petId, photoUrl, pendingCaption.trim() || undefined);
+        setPendingPhotoUri(null);
+        setPendingCaption('');
+        await fetchPhotos();
+      } else {
+        Alert.alert('Error', 'Failed to upload image to server.');
       }
     } catch (error) {
       console.error('Upload Photo Error:', error);
@@ -138,7 +156,7 @@ function PetGalleryManagerScreen() {
           <Ionicons name="chevron-back" size={24} color="#111111" />
         </TouchableOpacity>
         <Text className="text-xl font-heading text-dark">Photo Gallery</Text>
-        <TouchableOpacity onPress={pickAndUploadPhoto} disabled={isUploading || isLoading} className="p-1">
+        <TouchableOpacity onPress={pickPhoto} disabled={isUploading || isLoading} className="p-1">
           {isUploading ? (
             <ActivityIndicator size="small" color="#a03048" />
           ) : (
@@ -185,7 +203,7 @@ function PetGalleryManagerScreen() {
         />
       )}
 
-      {/* Detail / Action Sheet Modal */}
+      {/* Detail / Action Sheet Modal — photo shown as a polaroid print */}
       {selectedPhoto && (
         <Modal visible={!!selectedPhoto} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
           <TouchableOpacity
@@ -193,23 +211,17 @@ function PetGalleryManagerScreen() {
             activeOpacity={1}
             onPress={() => setSelectedPhoto(null)}
           >
-            <View className="w-full bg-surface rounded-2xl overflow-hidden max-w-md">
-              <View className="aspect-square w-full relative bg-black">
-                <Image
-                  source={{ uri: selectedPhoto.photo_url }}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="contain"
-                  onError={(e) => console.log('[Gallery] Modal image error:', selectedPhoto.photo_url, e.error)}
-                />
-                <TouchableOpacity
-                  onPress={() => setSelectedPhoto(null)}
-                  className="absolute top-4 right-4 bg-black/40 rounded-full p-2"
-                >
-                  <Ionicons name="close" size={20} color="#ffffff" />
-                </TouchableOpacity>
-              </View>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
+              <TouchableOpacity
+                onPress={() => setSelectedPhoto(null)}
+                className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
+              >
+                <Ionicons name="close" size={18} color="#ffffff" />
+              </TouchableOpacity>
 
-              <View className="p-4 gap-3">
+              <PolaroidCard uri={selectedPhoto.photo_url} caption={selectedPhoto.caption} />
+
+              <View className="gap-3 mt-4">
                 <TouchableOpacity
                   onPress={() => setAsAvatar(selectedPhoto.photo_url)}
                   className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl"
@@ -226,7 +238,52 @@ function PetGalleryManagerScreen() {
                   <Text className="text-red-500 font-headingSemi text-base">Delete Photo</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* Add-photo confirm Modal — picked image previewed as a polaroid with
+          an editable caption before it's actually uploaded. */}
+      {pendingPhotoUri && (
+        <Modal visible={!!pendingPhotoUri} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
+          <TouchableOpacity
+            className="flex-1 bg-black/80 justify-center items-center p-5"
+            activeOpacity={1}
+            onPress={() => !isUploading && setPendingPhotoUri(null)}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
+              <TouchableOpacity
+                onPress={() => setPendingPhotoUri(null)}
+                disabled={isUploading}
+                className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
+              >
+                <Ionicons name="close" size={18} color="#ffffff" />
+              </TouchableOpacity>
+
+              <PolaroidCard
+                uri={pendingPhotoUri}
+                caption={pendingCaption}
+                editable
+                onCaptionChange={setPendingCaption}
+                placeholder="Write a caption..."
+              />
+
+              <TouchableOpacity
+                onPress={confirmUploadPhoto}
+                disabled={isUploading}
+                className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl mt-4"
+              >
+                {isUploading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={20} color="#ffffff" />
+                    <Text className="text-white font-headingSemi text-base">Add to Gallery</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
       )}

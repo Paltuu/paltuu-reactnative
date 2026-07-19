@@ -256,7 +256,7 @@ function PetCareScreen() {
             />
           </View>
         )}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         onRefresh={refetch}
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}

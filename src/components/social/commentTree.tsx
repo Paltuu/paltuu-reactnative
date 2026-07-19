@@ -142,10 +142,20 @@ export const subtreeAvatars = (descendants: Comment[], max = 3): ReplyAvatar[] =
  * next time the page is opened / the comment set changes.
  */
 export const buildOrderRank = (comments: any[], _sortBy: SortBy): Map<string, number> => {
-  // "Top": most-liked first, newest breaking ties.
+  // "Top": most-interactions first (likes + replies), oldest breaking ties.
+  // Oldest-first on a tie is what puts a brand-new comment (0 interactions,
+  // the newest timestamp in the zero-interaction group, which is itself the
+  // lowest-scoring group) at the very bottom of the list.
+  const replyCount = new Map<string, number>();
+  comments.forEach((c) => {
+    if (c.parent_comment_id == null) return;
+    const key = String(c.parent_comment_id);
+    replyCount.set(key, (replyCount.get(key) || 0) + 1);
+  });
+  const score = (c: any) => (c.like_count || 0) + (replyCount.get(String(c.comment_id)) || 0);
   const cmp = (a: any, b: any) =>
-    (b.like_count || 0) - (a.like_count || 0) ||
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    score(b) - score(a) ||
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   const rank = new Map<string, number>();
   [...comments].sort(cmp).forEach((c, i) => rank.set(String(c.comment_id), i));
   return rank;

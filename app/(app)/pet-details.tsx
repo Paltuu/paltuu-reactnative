@@ -98,7 +98,10 @@ function PetDetailsScreen() {
     }
     let p = String(pet.owner_phone).trim().replace(/[^\d+]/g, '');
     if (p.startsWith('0')) p = '92' + p.slice(1);
-    Linking.openURL(`whatsapp://send?phone=${p}`);
+    // wa.me is a universal link (works with or without the WhatsApp app
+    // installed, no iOS LSApplicationQueriesSchemes entry needed), unlike
+    // the whatsapp:// app scheme which silently fails to open otherwise.
+    Linking.openURL(`https://wa.me/${p}`);
   };
 
   const handleToggleSave = async () => {
@@ -214,7 +217,7 @@ function PetDetailsScreen() {
               </View>
               <View style={s.sellerActions}>
                 <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7} onPress={handleMessageGuardian}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={18} color="#111827" />
+                  <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7} onPress={handleCallGuardian}>
                   <Ionicons name="call-outline" size={18} color="#111827" />

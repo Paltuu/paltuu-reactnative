@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
+import { CityPickerField } from '../../src/components/pets/CityPickerField';
 import { DateField } from '../../src/components/pets/DateField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
@@ -264,7 +265,7 @@ function CreateLostFoundScreen() {
 
           {/* ── City ── */}
           {key === 'city' && (
-            <PickerField
+            <CityPickerField
               placeholder="Select a city"
               value={formData.cityId}
               options={cityOptions}
@@ -302,8 +303,6 @@ function CreateLostFoundScreen() {
                 keyboardType="number-pad"
                 maxLength={11}
                 autoFocus
-                returnKeyType="next"
-                onSubmitEditing={handleNext}
               />
             </View>
           )}
@@ -338,7 +337,7 @@ function CreateLostFoundScreen() {
                     style={styles.imgRemove}
                     onPress={() => setImages(images.filter((_, idx) => idx !== i))}
                   >
-                    <Ionicons name="close-circle" size={22} color="#FF4B4B" />
+                    <Ionicons name="close" size={12} color="#fff" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -471,10 +470,14 @@ const styles = StyleSheet.create({
   img: { width: 96, height: 96, borderRadius: 16 },
   imgRemove: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#fff',
-    borderRadius: 11,
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imgAdd: {
     width: 96,

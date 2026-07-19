@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { petsApi, PetFilters } from '../api/pets';
-import { lostFoundApi } from '../api/lost-found';
 import client from '../api/client';
 
 interface PetState {
@@ -13,7 +12,6 @@ interface PetState {
   myListings: any[];
   adoptionRequests: any[];
   myApplications: any[];
-  lostFoundPosts: any[];
 
   // Actions
   fetchPets: (filters?: PetFilters) => Promise<void>;
@@ -26,7 +24,6 @@ interface PetState {
   fetchAdoptionRequests: () => Promise<void>;
   fetchMyApplications: () => Promise<void>;
   updateApplicationStatus: (applicationId: number, type: 'adoption' | 'foster', status: 'approved' | 'rejected') => Promise<void>;
-  fetchLostFoundPosts: () => Promise<void>;
 
   // Selection
   selectedPet: any | null;
@@ -45,7 +42,6 @@ export const usePetStore = create<PetState>((set, get) => ({
   myListings: [],
   adoptionRequests: [],
   myApplications: [],
-  lostFoundPosts: [],
   isLoading: false,
   error: null,
   filters: {
@@ -281,16 +277,6 @@ export const usePetStore = create<PetState>((set, get) => ({
       set({ myApplications: list, isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch my applications', isLoading: false });
-    }
-  },
-
-  fetchLostFoundPosts: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await lostFoundApi.getPosts();
-      set({ lostFoundPosts: response || [], isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch lost & found posts', isLoading: false });
     }
   },
 }));

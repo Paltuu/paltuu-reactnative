@@ -506,22 +506,6 @@ export const socialApi = {
     };
   },
 
-  async getLostFoundNearby(limit: number = 10) {
-    const { data } = await client.get(`/explore/lost-found-nearby?limit=${limit}`);
-    return data as {
-      city: string | null;
-      posts: {
-        post_id: number;
-        post_type: 'lost' | 'found';
-        pet_description: string;
-        location: string | null;
-        city: string | null;
-        date: string | null;
-        main_image: string | null;
-      }[];
-    };
-  },
-
   async getVetsNearby(coords: { lat: number; lng: number } | null, limit: number = 10) {
     const params = new URLSearchParams({ limit: String(limit) });
     if (coords) {

@@ -167,10 +167,12 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#111',
+    flexShrink: 0,
   },
   authorUsername: {
     fontSize: 13,
     color: '#666',
+    flexShrink: 1,
   },
   authorNameWrap: {
     flex: 1,
@@ -370,11 +372,11 @@ const AuthorBlock = React.memo(({
 });
 
 // ─── Pet chip ────────────────────────────────────────────────────────────────
-export const PetChip = ({ name }: { name: string }) => (
-  <View style={s.petChip}>
+export const PetChip = ({ name, onPress }: { name: string; onPress?: () => void }) => (
+  <TouchableOpacity style={s.petChip} onPress={onPress} disabled={!onPress} hitSlop={6}>
     <Ionicons name="paw" size={9} color="#A03048" />
     <Text style={s.petChipText}>{name}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
 // ─── Original Post Preview (for Reposts/Quotes) ─────────────────────────────
@@ -724,6 +726,13 @@ export const PostCard = React.memo(({
     () => (post.tagged_pets ?? []).map((p) => p.name).join(', '),
     [post.tagged_pets],
   );
+
+  // Tapping the pet tag opens the (first) tagged pet's profile.
+  const handlePetTagPress = useCallback(() => {
+    const petId = post.tagged_pets?.[0]?.pet_profile_id;
+    if (petId == null) return;
+    router.push({ pathname: '/(app)/pet-profile/[id]', params: { id: petId } });
+  }, [router, post.tagged_pets]);
 
   // ── Repost display model ──────────────────────────────────────────────
   // Quote repost = repost WITH a caption → reads like a normal post with the
@@ -1113,7 +1122,7 @@ export const PostCard = React.memo(({
               media the pet is labelled with a subtle tag right under it instead. */}
           {!!petTagLabel && !isPlainRepost && !bodyMedia?.length && (
             <View style={s.petChipRow}>
-              <PetChip name={petTagLabel} />
+              <PetChip name={petTagLabel} onPress={handlePetTagPress} />
             </View>
           )}
 
@@ -1183,7 +1192,7 @@ export const PostCard = React.memo(({
 
           {/* ── Pet tag: sits right under the media to signal the pet in the picture ── */}
           {!!petTagLabel && !isPlainRepost && bodyMedia?.length > 0 && (
-            <View style={s.petTag}>
+            <TouchableOpacity style={s.petTag} onPress={handlePetTagPress} hitSlop={6}>
               <Image
                 source={PostIcons.pawTag}
                 style={{ width: 14, height: 14 }}
@@ -1191,7 +1200,7 @@ export const PostCard = React.memo(({
                 tintColor="#9CA3AF"
               />
               <Text style={s.petTagText}>{petTagLabel}</Text>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* ── Action bar ── */}

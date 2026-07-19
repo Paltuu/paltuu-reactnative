@@ -10,7 +10,6 @@ import { TrendingRail } from './TrendingRail';
 import { MediaGrid, GRID_ITEM_SIZE, GRID_MARGIN, GRID_GAP } from './MediaGrid';
 import { RecentAdoptionsRail } from './RecentAdoptionsRail';
 import { SuggestedAccountsRail } from './SuggestedAccountsRail';
-import { LostFoundNearbyRail } from './LostFoundNearbyRail';
 import { VetsNearbyRail } from './VetsNearbyRail';
 
 const DARK = '#1A1A2E';
@@ -23,7 +22,7 @@ const MEDIA_PREVIEW_COUNT = 6;
 // virtualized — every rail mounts and paints in one go the instant the tab
 // opens, right as the user is likely to start scrolling. Each rail also
 // fires its own independent query (discovery, suggested accounts, vets
-// nearby, lost&found), so without staggering, several network responses land
+// nearby), so without staggering, several network responses land
 // in a tight cluster and each triggers a re-render/reflow of this whole
 // unvirtualized block. Revealing sections a beat apart spreads both the
 // initial mount/paint cost and the query-driven re-renders over ~1s instead
@@ -32,8 +31,7 @@ const SECTION_TRENDING = 0;
 const SECTION_MEDIA = 1;
 const SECTION_ADOPTIONS = 2;
 const SECTION_SUGGESTED = 3;
-const SECTION_LOSTFOUND = 4;
-const SECTION_VETS = 5;
+const SECTION_VETS = 4;
 const TOTAL_SECTIONS = SECTION_VETS + 1;
 const INITIAL_VISIBLE_SECTIONS = 2; // Trending + Media share the discovery query — free to show together
 const REVEAL_STEP_MS = 120;
@@ -101,8 +99,6 @@ export const ExploreSections = () => {
       {visibleSections > SECTION_ADOPTIONS && <RecentAdoptionsRail />}
 
       {visibleSections > SECTION_SUGGESTED && <SuggestedAccountsRail />}
-
-      {visibleSections > SECTION_LOSTFOUND && <LostFoundNearbyRail />}
 
       {visibleSections > SECTION_VETS && <VetsNearbyRail />}
 

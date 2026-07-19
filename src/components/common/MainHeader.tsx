@@ -24,7 +24,7 @@ interface MainHeaderProps {
 
 export const MainHeader: React.FC<MainHeaderProps> = ({ headerTranslateY }) => {
     const insets = useSafeAreaInsets();
-    const { isLoading, onPlusPress, onHeartPress } = useHeaderContext();
+    const { isLoading, onPlusPress, onHeartPress, onLogoPress } = useHeaderContext();
     const authReady = useAuthReady();
     const { isUploading, progress, stage, thumbnailUri } = useUploadStore();
 
@@ -52,13 +52,13 @@ export const MainHeader: React.FC<MainHeaderProps> = ({ headerTranslateY }) => {
                     />
                 </TouchableOpacity>
 
-                <View style={styles.logoContainer}>
+                <TouchableOpacity style={styles.logoContainer} activeOpacity={0.8} onPress={onLogoPress}>
                     <Image
                         source={require('../../../assets/paltuu_bilkul_tight.svg')}
                         style={styles.logo}
                         contentFit="contain"
                     />
-                </View>
+                </TouchableOpacity>
 
                 <TouchableOpacity style={styles.iconButton} onPress={onHeartPress}>
                     <View style={{ position: 'relative' }}>

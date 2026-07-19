@@ -141,6 +141,13 @@ export default function TabsLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         swipeEnabled: true,
+        // Only animate the slide transition for an actual finger swipe (a
+        // continuously-dragged gesture, unaffected by this flag) — tapping a
+        // bottom tab bar icon calls navigation.navigate under the hood, which
+        // would otherwise still play the same pager slide animation, making
+        // icon taps look like a swipe. Disabling it here only removes that
+        // programmatic-jump animation.
+        animationEnabled: false,
         // Lazy-load tabs (like the old bottom-tabs setup) but preload the
         // immediate neighbour so it's already rendered and visible as you swipe.
         lazy: true,
