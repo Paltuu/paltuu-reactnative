@@ -11,7 +11,7 @@ import {
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getClinics } from '../../src/api/clinics';
 import { ClinicCard } from '../../src/components/pet-care/ClinicCard';
@@ -32,16 +32,11 @@ function PetCareScreen() {
   const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('default');
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const listRef = useRef<any>(null);
-
-  const { data: clinics, isLoading, refetch } = useQuery({
-    queryKey: ['clinics'],
-    queryFn: getClinics,
-  });
 
   const {
     latitude,
@@ -50,13 +45,45 @@ function PetCareScreen() {
     resolveCity,
   } = useLocationStore();
   const hasLocation = latitude != null && longitude != null;
+  const nearby = sortMode === 'nearby' && hasLocation;
 
-  // Cities present in the dataset — drives the city selector chips.
-  const cities = useMemo(() => {
-    const set = new Set<string>();
-    (clinics ?? []).forEach((c) => c.city && set.add(c.city));
-    return Array.from(set).sort();
-  }, [clinics]);
+  // Debounce free-text search so we don't hit the API on every keystroke
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const queryParams = {
+    search: debouncedSearch || undefined,
+    city: selectedCity || undefined,
+    // The "Verified only" toggle historically filtered on is_paltuu_partner
+    // (the RN Clinic model has no is_verified field) — map it to `partner`.
+    partner: verifiedOnly || undefined,
+    sort: nearby ? ('distance' as const) : undefined,
+    lat: nearby ? latitude! : undefined,
+    lng: nearby ? longitude! : undefined,
+  };
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['clinics', queryParams],
+    queryFn: ({ pageParam }) => getClinics({ ...queryParams, page: pageParam, limit: PAGE_SIZE }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.pagination.hasMore ? allPages.length + 1 : undefined,
+  });
+
+  const clinics = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
+  const total = data?.pages[0]?.pagination.total ?? 0;
+
+  // City list comes from the backend (unaffected by the current page/filters).
+  const cities = data?.pages[0]?.cities ?? [];
 
   const isFiltering =
     !!search || !!selectedCity || verifiedOnly || sortMode === 'nearby';
@@ -85,46 +112,15 @@ function PetCareScreen() {
     return haversineDistanceKm(latitude!, longitude!, lat, lng);
   };
 
-  const filtered = useMemo(() => {
-    let list = (clinics ?? []).filter((c) => {
-      const q = search.trim().toLowerCase();
-      const matchesQuery =
-        !q ||
-        c.name?.toLowerCase().includes(q) ||
-        c.address?.toLowerCase().includes(q) ||
-        c.city?.toLowerCase().includes(q);
-      const matchesCity = !selectedCity || c.city === selectedCity;
-      const matchesVerified = !verifiedOnly || c.is_paltuu_partner;
-      return matchesQuery && matchesCity && matchesVerified;
-    });
-
-    if (sortMode === 'nearby' && hasLocation) {
-      list = [...list].sort((a, b) => {
-        const da = distanceOf(a);
-        const db = distanceOf(b);
-        if (da == null) return 1;
-        if (db == null) return -1;
-        return da - db;
-      });
-    }
-    return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clinics, search, selectedCity, verifiedOnly, sortMode, hasLocation, latitude, longitude]);
-
-  // Any filter/search change (including clearing one) re-derives an entirely
+  // Filtering, sorting, and pagination are now all done server-side — the
+  // backend returns clinics already matching search/city/verified/distance.
+  // Any filter change (including clearing one) re-derives an entirely
   // different result set, so a scroll position from before no longer means
   // anything for it — snap back to the top instead of leaving the list
-  // sitting at whatever offset it was at for the previous results. Also
-  // re-page from the start rather than keeping whatever page depth the old
-  // filtered list had scrolled to.
+  // sitting at whatever offset it was at for the previous results.
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, selectedCity, verifiedOnly, sortMode]);
-
-  const paged = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const hasMore = visibleCount < filtered.length;
+  }, [debouncedSearch, selectedCity, verifiedOnly, sortMode]);
 
   const resolvingLoc = locStatus === 'resolving';
 
@@ -233,7 +229,7 @@ function PetCareScreen() {
 
       <View style={styles.resultRow}>
         <Text style={styles.resultCount}>
-          {filtered.length} {filtered.length === 1 ? 'clinic' : 'clinics'}
+          {total} {total === 1 ? 'clinic' : 'clinics'}
         </Text>
         {sortMode === 'nearby' && hasLocation && (
           <Text style={styles.sortedBy}>Sorted by distance</Text>
@@ -259,7 +255,7 @@ function PetCareScreen() {
 
       <FlashList
         ref={listRef}
-        data={paged}
+        data={clinics}
         keyExtractor={(item) => String(item.clinic_id)}
         renderItem={({ item }) => (
           <View style={{ paddingHorizontal: H_PAD }}>
@@ -276,9 +272,9 @@ function PetCareScreen() {
           </View>
         )}
         ListHeaderComponent={renderHeader()}
-        onEndReached={() => { if (hasMore) setVisibleCount((v) => v + PAGE_SIZE); }}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={hasMore ? (
+        ListFooterComponent={isFetchingNextPage ? (
           <View style={{ paddingVertical: 24 }}>
             <ActivityIndicator size="small" color={PRIMARY} />
           </View>

@@ -1,8 +1,35 @@
 import client from './client';
 import { Clinic, ClinicDetails } from '../types/models';
 
-export const getClinics = async (): Promise<Clinic[]> => {
-  const response = await client.get('/clinics');
+export interface ClinicQueryParams {
+  page?: number;
+  limit?: number;
+  city?: string;
+  category?: string;
+  search?: string;
+  verified?: boolean;
+  partner?: boolean;
+  sort?: 'rating' | 'distance';
+  lat?: number;
+  lng?: number;
+}
+
+export interface ClinicPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface ClinicsResponse {
+  data: Clinic[];
+  pagination: ClinicPagination;
+  cities: string[];
+}
+
+export const getClinics = async (params: ClinicQueryParams = {}): Promise<ClinicsResponse> => {
+  const response = await client.get('/clinics', { params });
   return response.data;
 };
 
