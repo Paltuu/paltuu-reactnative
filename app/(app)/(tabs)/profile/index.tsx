@@ -146,6 +146,8 @@ export default function ProfileScreen() {
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
+  const listRef = useRef<FlatList>(null);
+  const scrollYRef = useRef(0);
 
   const userId = user?.id;
 
@@ -222,10 +224,15 @@ export default function ProfileScreen() {
     }
   }, [queryClient, userId]);
 
-  // Re-tapping the Profile tab while already on it refreshes the profile data.
+  // Instagram-style re-tap: if the profile is scrolled down, scroll to top;
+  // if it's already at the top, refresh the profile data instead.
   useEffect(() => {
     return subscribeToTabPress('profile', () => {
-      handleRefresh();
+      if (scrollYRef.current > 40) {
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      } else {
+        handleRefresh();
+      }
     });
   }, [handleRefresh]);
 
@@ -558,6 +565,7 @@ export default function ProfileScreen() {
   return (
     <View style={s.screen}>
       <FlatList
+        ref={listRef}
         key={activeTab}
         data={tabData[activeTab]}
         keyExtractor={(item, idx) =>
@@ -568,6 +576,8 @@ export default function ProfileScreen() {
         renderItem={renderItem}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl

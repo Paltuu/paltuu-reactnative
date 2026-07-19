@@ -24,6 +24,7 @@ import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useShallow } from 'zustand/react/shallow';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { useKeyboardVisible } from '../../src/hooks/useKeyboardVisible';
 
 /* ───────────────────────────────────────────────
    Step configuration — one question per step, mirroring
@@ -45,6 +46,7 @@ const TOTAL_STEPS = STEPS.length;
 function CreateLostFoundScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const user = useAuthStore((state) => state.user);
   const { cities, categories, fetchMetadata, createLostFoundPost, isLoading } = usePetStore(
     useShallow((state) => ({
@@ -195,7 +197,7 @@ function CreateLostFoundScreen() {
             approved, it'll appear in the Lost & Found feed for the community to see.
           </Text>
         </View>
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
         </View>
       </SafeAreaView>
@@ -352,7 +354,7 @@ function CreateLostFoundScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? 'Submit Report' : 'Next'}
             successLabel={isLast ? 'Report submitted!' : undefined}

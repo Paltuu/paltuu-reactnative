@@ -23,6 +23,7 @@ import { usePetStore } from '../../src/stores/petStore';
 import { petApi } from '../../src/api/pets';
 import { useShallow } from 'zustand/react/shallow';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { useKeyboardVisible } from '../../src/hooks/useKeyboardVisible';
 
 const PET_TAGS = [
   { tag_id: 1, tag_name: 'Playful', tag_category: 'personality' },
@@ -71,6 +72,7 @@ const TOTAL_STEPS = STEPS.length;
 function CreatePetScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const isEditMode = !!editId;
   const { cities, categories, fetchMetadata, createPet, updatePet, isLoading } = usePetStore(
@@ -297,7 +299,7 @@ function CreatePetScreen() {
               : "Thanks for opening your heart! Your pet is now with our team for a quick review. Once it's approved, the listing goes live in the adoption feed for adopters to discover."}
           </Text>
         </View>
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton
             label={isEditMode ? 'Back to Listings' : 'Back to Pets'}
             onPress={() => router.replace(isEditMode ? '/(app)/my-listings' : '/(app)/pets')}
@@ -545,7 +547,7 @@ function CreatePetScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? (isEditMode ? 'Save Changes' : 'Post Pet for Adoption') : 'Next'}
             successLabel={isLast ? (isEditMode ? 'Saved!' : 'Pet posted!') : undefined}

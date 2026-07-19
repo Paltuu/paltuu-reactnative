@@ -15,11 +15,12 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
-import { PickerField } from '../../src/components/pets/PickerField';
+import { CityPickerField } from '../../src/components/pets/CityPickerField';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { petApi } from '../../src/api/pets';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { useKeyboardVisible } from '../../src/hooks/useKeyboardVisible';
 
 /* One question per step, mirroring the create-pet / create-lost-found flows. */
 const STEPS = [
@@ -38,6 +39,7 @@ const TOTAL_STEPS = STEPS.length;
 function ApplyAdoptScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { pet_id, pet_name } = useLocalSearchParams<{ pet_id?: string; pet_name?: string }>();
   const cities = usePetStore((state) => state.cities);
   const fetchMetadata = usePetStore((state) => state.fetchMetadata);
@@ -167,7 +169,7 @@ function ApplyAdoptScreen() {
             application and reach out if it's a match.
           </Text>
         </View>
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/adopt')} radius={26} />
         </View>
       </SafeAreaView>
@@ -209,7 +211,7 @@ function ApplyAdoptScreen() {
             <View style={{ gap: 16 }}>
               <View>
                 <Text style={styles.label}>City *</Text>
-                <PickerField
+                <CityPickerField
                   placeholder="Select a city"
                   value={formData.city_id}
                   options={cityOptions}
@@ -373,7 +375,7 @@ function ApplyAdoptScreen() {
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
           <PaltuuButton
             label={isLast ? 'Submit Application' : 'Next'}
             successLabel={isLast ? 'Application sent!' : undefined}
