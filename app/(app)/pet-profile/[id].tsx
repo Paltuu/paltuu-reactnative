@@ -11,12 +11,14 @@ import {
   StyleSheet,
   RefreshControl,
   Modal,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getShareUrl } from '../../../src/utils/share';
 import { petProfilesApi, PetProfile, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useLocationStore } from '../../../src/stores/locationStore';
@@ -25,6 +27,7 @@ import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
+import { ActionSheetModal } from '../../../src/components/ui/bottom-sheet/ActionSheetModal';
 import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
@@ -93,6 +96,7 @@ function PetProfileScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('posts');
   const [nameWidth, setNameWidth] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
+  const [showOptionsSheet, setShowOptionsSheet] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
   // Tab bar taps and pager swipes both drive `activeTab` — this guards against
   // the tap-triggered scrollTo's own onMomentumScrollEnd firing setActiveTab
@@ -183,6 +187,38 @@ function PetProfileScreen() {
     }
   };
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: getShareUrl(`pet-profile/${petId}`),
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+    }
+  };
+
+  const handleDeletePet = () => {
+    Alert.alert(
+      'Remove Pet',
+      `Are you sure you want to remove ${profile?.name || 'this pet'}? This will permanently delete their profile, gallery, and posts tags. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await petProfilesApi.deletePetProfile(petId);
+              router.replace('/(app)/profile');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.error || 'Failed to remove pet.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleListForAdoption = () => {
     Alert.alert(
       'List for Adoption',
@@ -255,6 +291,15 @@ function PetProfileScreen() {
           <TouchableOpacity onPress={goBack} style={s.menuBtn}>
             <Ionicons name="chevron-back" size={24} color="#000000" />
           </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={handleShare} style={s.menuBtn}>
+            <Ionicons name="share-social-outline" size={22} color="#000000" />
+          </TouchableOpacity>
+          {isOwner && (
+            <TouchableOpacity onPress={() => setShowOptionsSheet(true)} style={s.menuBtn}>
+              <Ionicons name="menu" size={22} color="#000000" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Avatar (square, rounded — the one intentional shape difference from a person profile) ── */}
@@ -510,6 +555,25 @@ function PetProfileScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Owner-only floating options menu, opened from the hamburger icon */}
+      <ActionSheetModal visible={showOptionsSheet} onClose={() => setShowOptionsSheet(false)}>
+        {(dismiss) => (
+          <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 }}>
+            <TouchableOpacity
+              onPress={() => {
+                dismiss();
+                handleDeletePet();
+              }}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16 }}
+            >
+              <Ionicons name="trash-outline" size={22} color="#DC2626" />
+              <Text style={{ fontSize: 16, fontFamily: 'DMSans_700Bold', color: '#DC2626' }}>Delete Pet</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ActionSheetModal>
     </View>
   );
 }

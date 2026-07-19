@@ -134,20 +134,6 @@ function PetGalleryManagerScreen() {
     ]);
   };
 
-  const setAsAvatar = async (photoUrl: string) => {
-    try {
-      setIsLoading(true);
-      await petProfilesApi.setPetAvatar(petId, photoUrl);
-      setSelectedPhoto(null);
-      Alert.alert('Success', 'Profile avatar updated!');
-    } catch (error) {
-      console.error('Set Avatar Error:', error);
-      Alert.alert('Error', 'Failed to update avatar.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <View className="flex-1 bg-bg" style={{ paddingTop: insets.top }}>
       {/* Header */}
@@ -221,15 +207,7 @@ function PetGalleryManagerScreen() {
 
               <PolaroidCard uri={selectedPhoto.photo_url} caption={selectedPhoto.caption} />
 
-              <View className="gap-3 mt-4">
-                <TouchableOpacity
-                  onPress={() => setAsAvatar(selectedPhoto.photo_url)}
-                  className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl"
-                >
-                  <Ionicons name="person-circle-outline" size={20} color="#ffffff" />
-                  <Text className="text-white font-headingSemi text-base">Make Profile Picture</Text>
-                </TouchableOpacity>
-
+              <View className="mt-4">
                 <TouchableOpacity
                   onPress={() => deletePhoto(selectedPhoto.photo_id)}
                   className="bg-red-50 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-red-100"
@@ -277,10 +255,7 @@ function PetGalleryManagerScreen() {
                 {isUploading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <>
-                    <Ionicons name="cloud-upload-outline" size={20} color="#ffffff" />
-                    <Text className="text-white font-headingSemi text-base">Add to Gallery</Text>
-                  </>
+                  <Text className="text-white font-headingSemi text-base">Add to Gallery</Text>
                 )}
               </TouchableOpacity>
             </TouchableOpacity>

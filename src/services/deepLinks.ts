@@ -49,6 +49,7 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/post':        (p) => `/post/${p[1]}`,
       '/profile':     (p) => `/(app)/profile/${p[1]}`,
       '/pet-details': (p, u) => `/pet-details?id=${u?.searchParams.get('petId') || u?.searchParams.get('id') || p[1] || ''}`,
+      '/pet-profile': (p) => `/(app)/pet-profile/${p[1]}`,
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
       '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,
       '/adoptions':   (p) => `/(app)/adopt/${p[1]}`,
