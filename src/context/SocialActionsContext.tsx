@@ -11,6 +11,8 @@ export interface SocialActionsContextValue {
   toggleFollow: (userId: string | number) => void;
   deletePost: (postId: string | number) => void;
   updatePost: (postId: string | number, payload: any) => Promise<any>;
+  hidePost: (postId: string | number) => Promise<any>;
+  unhidePost: (postId: string | number) => Promise<any>;
   repost: (
     postId: string,
     isReposted: boolean,
@@ -118,6 +120,19 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
     },
   });
 
+  const hideMutation = useMutation({
+    mutationFn: (postId: string | number) => socialApi.hidePost(postId),
+    onError: () => {
+      import('react-native-toast-message').then((mod) => {
+        mod.default.show({ type: 'error', text1: 'Could not hide post' });
+      });
+    },
+  });
+
+  const unhideMutation = useMutation({
+    mutationFn: (postId: string | number) => socialApi.unhidePost(postId),
+  });
+
   const blockMutation = useMutation({
     mutationFn: (userId: number) => socialApi.blockUser(userId),
     onSuccess: (_, userId) => {
@@ -152,6 +167,8 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
     toggleFollow,
     deletePost,
     updatePost,
+    hidePost: (postId) => hideMutation.mutateAsync(postId),
+    unhidePost: (postId) => unhideMutation.mutateAsync(postId),
     repost: (postId, isReposted, quote, extras) =>
       repostMutation.mutateAsync({ postId, isReposted, quote, extras }),
     confirmBlock: (userId, authorName) => {
@@ -165,7 +182,7 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
       );
     },
     hasCustomCollections,
-  }), [toggleLike, toggleSave, toggleFollow, deletePost, updatePost, repostMutation, blockMutation, hasCustomCollections]);
+  }), [toggleLike, toggleSave, toggleFollow, deletePost, updatePost, hideMutation, unhideMutation, repostMutation, blockMutation, hasCustomCollections]);
 
   return (
     <SocialActionsContext.Provider value={value}>

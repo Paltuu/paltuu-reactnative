@@ -445,6 +445,16 @@ export const socialApi = {
     return data;
   },
 
+  async hidePost(postId: string | number) {
+    const { data } = await client.post(`/posts/${postId}/hide`);
+    return data as { hidden: boolean };
+  },
+
+  async unhidePost(postId: string | number) {
+    const { data } = await client.delete(`/posts/${postId}/hide`);
+    return data as { hidden: boolean };
+  },
+
   async blockUser(userId: string | number) {
     const { data } = await client.post(`/users/${userId}/block`);
     return data as { blocked: boolean };

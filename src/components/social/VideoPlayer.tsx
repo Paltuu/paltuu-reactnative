@@ -1,15 +1,16 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Text,
-  PanResponder,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated';
 import { getCachedVideoUri } from '../../utils/videoCache';
 
 
@@ -69,8 +70,6 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [playCount, setPlayCount] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [isSeeking, setIsSeeking] = useState(false);
-  const [seekRatio, setSeekRatio] = useState(0);
 
   const player = useVideoPlayer(resolvedUri, (p) => {
     p.loop = true;
@@ -172,33 +171,53 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
     }
   }, [player, isPlaying]);
 
-  // Draggable seeker for the fullscreen viewer. While dragging, the thumb
-  // follows the touch directly (not the player's own progress, which would
-  // otherwise fight the gesture); on release it seeks the player and lets
-  // `timeUpdate` take back over.
-  const seekResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => fullscreen,
-      onMoveShouldSetPanResponder: () => fullscreen,
-      onPanResponderGrant: (evt) => {
-        setIsSeeking(true);
-        setSeekRatio(Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1));
-      },
-      onPanResponderMove: (evt) => {
-        setSeekRatio(Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1));
-      },
-      onPanResponderRelease: (evt) => {
-        const ratio = Math.min(Math.max(evt.nativeEvent.locationX / width, 0), 1);
-        if (player.duration > 0) {
-          player.currentTime = ratio * player.duration;
-        }
-        setIsSeeking(false);
-      },
-      onPanResponderTerminate: () => setIsSeeking(false),
-    })
-  ).current;
+  // Draggable seeker for the fullscreen viewer. `progressSV` drives the
+  // thumb/fill purely on the UI thread via Reanimated — a legacy
+  // `PanResponder` was used here before, but nested inside this screen's
+  // `GestureHandlerRootView` (needed for pinch-zoom/swipe-to-dismiss), RNGH's
+  // native recognizers intercept touches before the JS-thread responder
+  // system ever sees them on iOS, so the old seeker never received a single
+  // touch there. Per-move `setState` was also the reason dragging felt laggy
+  // on Android: it re-rendered the whole player on every touch-move. Neither
+  // issue applies to a `Gesture.Pan`, which composes correctly with sibling
+  // RNGH/PagerView gestures the same way `ZoomableImage`'s pan/pinch already
+  // does elsewhere on this same screen, and only touches JS state once, on
+  // release, to seek the player.
+  const progressSV = useSharedValue(0);
+  const isSeekingSV = useSharedValue(false);
 
-  const displayedProgress = isSeeking ? seekRatio : progress;
+  // Mirror the player's own progress into the shared value while the user
+  // isn't actively dragging — writing a shared value from JS doesn't
+  // trigger a re-render, so this stays cheap even at `timeUpdate`'s 4x/sec.
+  useEffect(() => {
+    if (!isSeekingSV.value) progressSV.value = progress;
+  }, [progress]);
+
+  const seekToRatio = useCallback((ratio: number) => {
+    if (player.duration > 0) {
+      player.currentTime = ratio * player.duration;
+    }
+  }, [player]);
+
+  const seekPan = Gesture.Pan()
+    .minDistance(0)
+    .onBegin((e) => {
+      isSeekingSV.value = true;
+      progressSV.value = Math.min(Math.max(e.x / width, 0), 1);
+    })
+    .onUpdate((e) => {
+      progressSV.value = Math.min(Math.max(e.x / width, 0), 1);
+    })
+    .onEnd((e) => {
+      const ratio = Math.min(Math.max(e.x / width, 0), 1);
+      runOnJS(seekToRatio)(ratio);
+    })
+    .onFinalize(() => {
+      isSeekingSV.value = false;
+    });
+
+  const fillAnimatedStyle = useAnimatedStyle(() => ({ width: `${progressSV.value * 100}%` }));
+  const thumbAnimatedStyle = useAnimatedStyle(() => ({ left: `${progressSV.value * 100}%` }));
 
   if (isProcessing) {
     return (
@@ -246,12 +265,14 @@ const InnerVideoPlayer: React.FC<InnerVideoPlayerProps> = ({
       {fullscreen && (
         // Hit area is taller than the visible track so the thumb is easy to
         // grab; the track itself stays a thin line, centered inside it.
-        <View style={s.seekerHitArea} {...seekResponder.panHandlers}>
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${displayedProgress * 100}%` }]} />
-            <View style={[s.progressThumb, { left: `${displayedProgress * 100}%` }]} />
+        <GestureDetector gesture={seekPan}>
+          <View style={s.seekerHitArea}>
+            <View style={s.progressTrack}>
+              <Animated.View style={[s.progressFill, fillAnimatedStyle]} />
+              <Animated.View style={[s.progressThumb, thumbAnimatedStyle]} />
+            </View>
           </View>
-        </View>
+        </GestureDetector>
       )}
 
       {isBuffering && (

@@ -881,6 +881,12 @@ export const PostCard = React.memo(({
 
   const handleHide = () => {
     setIsHidden(true);
+    actions?.hidePost(post.post_id).catch(() => setIsHidden(false));
+  };
+
+  const handleUnhide = () => {
+    setIsHidden(false);
+    actions?.unhidePost(post.post_id).catch(() => {});
   };
 
   const handleQuickRepost = useCallback(() => {
@@ -1073,7 +1079,7 @@ export const PostCard = React.memo(({
         ]}
       >
         <Text style={{ color: '#666', fontSize: 14, fontWeight: '500' }}>Post hidden</Text>
-        <TouchableOpacity onPress={() => setIsHidden(false)} hitSlop={8}>
+        <TouchableOpacity onPress={handleUnhide} hitSlop={8}>
           <Text style={{ color: '#A03048', fontSize: 14, fontWeight: '700' }}>Undo</Text>
         </TouchableOpacity>
       </View>
