@@ -57,7 +57,9 @@ function ApplyAdoptScreen() {
   const [formData, setFormData] = useState({
     adopter_name: user?.name || '',
     city_id: '',
-    contact_number: (user?.phone_number || '').replace(/^\+?92/, ''),
+    // Always require the applicant to type this in manually — the profile
+    // number may not be the best number to reach them for this adoption.
+    contact_number: '',
     adopter_address: '',
     age_of_youngest_child: '',
     other_pets_details: '',

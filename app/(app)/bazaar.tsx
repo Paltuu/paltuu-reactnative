@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity,
   ActivityIndicator, TextInput, ScrollView,
@@ -11,7 +11,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { MainHeader, HEADER_HEIGHT } from '../../src/components/common/MainHeader';
 import { ProductCard } from '../../src/components/bazaar/ProductCard';
 import { useRouter } from 'expo-router';
-import { useHeaderScroll } from '../../src/context/HeaderContext';
+import { useHeaderScroll, useHeaderContext } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
@@ -113,10 +113,19 @@ function BazaarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { headerTranslateY, scrollHandler } = useHeaderScroll();
+  const { setOnLogoPress } = useHeaderContext();
+  const scrollRef = useRef<Animated.ScrollView>(null);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isDowntime] = useState(false); // Mobile active for testing
   const [refreshing, setRefreshing] = useState(false);
+
+  // Tapping the header logo always scrolls back to the top of the page.
+  useEffect(() => {
+    setOnLogoPress(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    });
+  }, [setOnLogoPress]);
 
   const handleSearch = () => {
     if (search.trim()) {
@@ -156,6 +165,7 @@ function BazaarScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <Animated.ScrollView
+        ref={scrollRef}
         onScroll={scrollHandler}
         style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{

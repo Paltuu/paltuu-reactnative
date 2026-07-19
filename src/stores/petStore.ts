@@ -1,6 +1,19 @@
 import { create } from 'zustand';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petsApi, PetFilters } from '../api/pets';
 import client from '../api/client';
+
+// Camera-roll photos (esp. HEIC/high-res JPEG) routinely exceed the API's
+// request-size limit — resize + re-encode before upload, same as the social
+// post flow in uploadStore.ts.
+const compressImage = async (uri: string) => {
+  const result = await manipulateAsync(
+    uri,
+    [{ resize: { width: 1200 } }],
+    { compress: 0.8, format: SaveFormat.JPEG }
+  );
+  return result.uri;
+};
 
 interface PetState {
   pets: any[];
@@ -118,13 +131,15 @@ export const usePetStore = create<PetState>((set, get) => ({
 
       if (images && images.length > 0) {
         const formData = new FormData();
-        images.forEach((image, index) => {
+        for (let index = 0; index < images.length; index++) {
+          const image = images[index];
+          const uri = await compressImage(image.uri);
           formData.append('files', {
-            uri: image.uri,
-            type: image.type || 'image/jpeg',
+            uri,
+            type: 'image/jpeg',
             name: image.name || `pet_image_${index}.jpg`,
           } as any);
-        });
+        }
         formData.append('pet_id', petId.toString());
 
         // We need an upload endpoint for images in the mobile API
@@ -151,13 +166,15 @@ export const usePetStore = create<PetState>((set, get) => ({
 
       if (newLocalImages.length > 0) {
         const formData = new FormData();
-        newLocalImages.forEach((image, index) => {
+        for (let index = 0; index < newLocalImages.length; index++) {
+          const image = newLocalImages[index];
+          const uri = await compressImage(image.uri);
           formData.append('files', {
-            uri: image.uri,
-            type: image.type || 'image/jpeg',
+            uri,
+            type: 'image/jpeg',
             name: image.name || `pet_image_${index}.jpg`,
           } as any);
-        });
+        }
         const uploadRes = await client.post('/upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -190,13 +207,15 @@ export const usePetStore = create<PetState>((set, get) => ({
 
       if (images && images.length > 0) {
         const formData = new FormData();
-        images.forEach((image, index) => {
+        for (let index = 0; index < images.length; index++) {
+          const image = images[index];
+          const uri = await compressImage(image.uri);
           formData.append('files', {
-            uri: image.uri,
-            type: image.type || 'image/jpeg',
+            uri,
+            type: 'image/jpeg',
             name: image.name || `post_image_${index}.jpg`,
           } as any);
-        });
+        }
         formData.append('post_id', postId.toString());
 
         await petsApi.uploadLostFoundImages(postId, formData);
