@@ -43,6 +43,10 @@ yarn-error.*
 /ios
 /android
 
+# local simulator build output
+*.app/
+build-ios-simulator.tar.gz
+
 .env
 .cursor
 

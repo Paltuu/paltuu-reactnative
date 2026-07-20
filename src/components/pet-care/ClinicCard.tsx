@@ -38,6 +38,7 @@ export const ClinicCard = ({ clinic, onPress, distanceKm }: ClinicCardProps) => 
             style={styles.logo}
             contentFit="cover"
             transition={250}
+            recyclingKey={clinic.logo_url}
           />
         ) : (
           <View style={[styles.logo, styles.logoFallback]}>

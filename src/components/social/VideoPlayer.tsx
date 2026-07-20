@@ -341,6 +341,7 @@ export const VideoThumbnail: React.FC<{
           source={{ uri: thumbnailUri }}
           style={{ width, height, position: 'absolute' }}
           contentFit="cover"
+          recyclingKey={thumbnailUri}
         />
       ) : (
         // Premium textured dark background for missing thumbnails

@@ -12,14 +12,12 @@ interface PostOptionsBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   isOwnPost: boolean;
-  isFollowing: boolean;
   isSaved: boolean;
   onSave: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onReport: () => void;
   onBlock: () => void;
-  onUnfollow: () => void;
   onHide: () => void;
 }
 
@@ -59,14 +57,12 @@ export const PostOptionsBottomSheet = ({
   visible,
   onClose,
   isOwnPost,
-  isFollowing,
   isSaved,
   onSave,
   onEdit,
   onDelete,
   onReport,
   onBlock,
-  onUnfollow,
   onHide,
 }: PostOptionsBottomSheetProps) => {
   return (
@@ -100,9 +96,6 @@ export const PostOptionsBottomSheet = ({
             ) : (
               <>
                 <OptionRow icon="flag-outline" label="Report" onPress={run(onReport)} />
-                {isFollowing && (
-                  <OptionRow icon="person-remove-outline" label="Unfollow" onPress={run(onUnfollow)} />
-                )}
                 <OptionRow icon="eye-off-outline" label="Hide" onPress={run(onHide)} />
                 <OptionRow
                   icon="ban-outline"

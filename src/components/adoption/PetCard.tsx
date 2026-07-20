@@ -40,6 +40,7 @@ export const PetCard = ({ pet, onPress }: PetCardProps) => {
             style={styles.image}
             contentFit="cover"
             transition={300}
+            recyclingKey={pet.main_image || String(pet.pet_id)}
           />
           {pet.listing_type === 'rescue' && (
             <View style={styles.badge}>

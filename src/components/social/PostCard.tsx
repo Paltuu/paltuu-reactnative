@@ -335,6 +335,7 @@ const AuthorBlock = React.memo(({
             source={uri ? { uri } : NO_PROFILE_IMAGE}
             style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
             contentFit="cover"
+            recyclingKey={uri || 'no-avatar'}
           />
         </TouchableOpacity>
         {/* Follow button — temporarily disabled
@@ -442,6 +443,7 @@ export const OriginalPostPreview = ({
             source={{ uri: media[0].thumbnail_url || media[0].url }}
             style={{ width: '100%', height: 160 }}
             contentFit="cover"
+            recyclingKey={media[0].thumbnail_url || media[0].url}
           />
           {media[0].media_type === 'video' && (
             <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
@@ -509,6 +511,7 @@ const MediaBlock = React.memo(({
           style={{ width: CAROUSEL_CARD_W, height: carouselImgH, borderRadius: 14 }}
           contentFit="cover"
           transition={200}
+          recyclingKey={item.url}
         />
       </TouchableOpacity>
     );
@@ -572,6 +575,7 @@ const MediaBlock = React.memo(({
           style={{ width: SINGLE_IMG_W, height: singleImgH, borderRadius: 14 }}
           contentFit="cover"
           transition={200}
+          recyclingKey={firstItem.url}
         />
       </TouchableOpacity>
     );
@@ -1022,14 +1026,12 @@ export const PostCard = React.memo(({
   }, [onComment, router, queryClient, post, isPlainRepost, interactionPostId, likeState.count]);
   const handleMenuPress = useCallback(() => modals?.showOptionsSheet({
     isOwnPost,
-    isFollowing: !!post.is_following,
     isSaved: saved,
     onSave: handleSave,
     onEdit: handleEdit,
     onDelete: handleDelete,
     onReport: () => modals?.showReportSheet(interactionPostId),
     onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
-    onUnfollow: () => actions?.toggleFollow(post.user_id),
     onHide: handleHide,
   }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved, handleSave, interactionPostId]);
   const handleAvatarPress = useCallback(() => {

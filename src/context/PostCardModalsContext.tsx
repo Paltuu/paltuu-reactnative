@@ -15,14 +15,12 @@ import { PostOptionsBottomSheet } from '../components/social/PostOptionsBottomSh
 
 export interface OptionsConfig {
   isOwnPost: boolean;
-  isFollowing: boolean;
   isSaved: boolean;
   onSave: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onReport: () => void;
   onBlock: () => void;
-  onUnfollow: () => void;
   onHide: () => void;
 }
 
@@ -140,14 +138,12 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
             visible={activeModal === 'options'}
             onClose={closeAll}
             isOwnPost={optionsConfig.isOwnPost}
-            isFollowing={optionsConfig.isFollowing}
             isSaved={optionsConfig.isSaved}
             onSave={optionsConfig.onSave}
             onEdit={optionsConfig.onEdit}
             onDelete={optionsConfig.onDelete}
             onReport={optionsConfig.onReport}
             onBlock={optionsConfig.onBlock}
-            onUnfollow={optionsConfig.onUnfollow}
             onHide={optionsConfig.onHide}
           />
         )}

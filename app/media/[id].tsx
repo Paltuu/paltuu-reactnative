@@ -260,7 +260,6 @@ function MediaDetailScreen() {
     if (!post) return;
     modals?.showOptionsSheet({
       isOwnPost,
-      isFollowing: !!post.is_following,
       isSaved: saved,
       onSave: handleSave,
       onEdit: () =>
@@ -287,7 +286,6 @@ function MediaDetailScreen() {
       },
       onReport: () => modals?.showReportSheet(post.post_id),
       onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
-      onUnfollow: () => actions?.toggleFollow(post.user_id),
       onHide: () => router.back(),
     });
   }, [modals, post, isOwnPost, saved, handleSave, actions, router]);
