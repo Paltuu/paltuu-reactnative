@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import * as WebBrowser from 'expo-web-browser';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
@@ -29,6 +30,16 @@ function AboutScreen() {
           </View>
           <Text className="font-heading text-2xl text-dark mb-1">Paltuu</Text>
           <Text className="font-body text-gray-400 text-sm">Version {appVersion}</Text>
+        </View>
+
+        {/* Temporary OTA delivery diagnostic */}
+        <View className="bg-gray-50 rounded-2xl mb-8 border border-gray-100 p-4">
+          <Text className="font-body text-gray-400 text-xs">Native build version: {Constants.nativeBuildVersion || 'n/a'}</Text>
+          <Text className="font-body text-gray-400 text-xs">Runtime version: {Updates.runtimeVersion || 'n/a'}</Text>
+          <Text className="font-body text-gray-400 text-xs">Channel: {Updates.channel || 'n/a'}</Text>
+          <Text className="font-body text-gray-400 text-xs">Update ID: {Updates.updateId || 'embedded (no OTA applied)'}</Text>
+          <Text className="font-body text-gray-400 text-xs">Update created: {Updates.createdAt ? Updates.createdAt.toISOString() : 'n/a'}</Text>
+          <Text className="font-body text-gray-400 text-xs">Is embedded launch: {String(Updates.isEmbeddedLaunch)}</Text>
         </View>
 
         {/* Links */}
