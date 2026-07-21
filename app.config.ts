@@ -51,6 +51,17 @@ export default (): ExpoConfig => {
       predictiveBackGestureEnabled: false,
       permissions: ["android.permission.RECORD_AUDIO", "com.google.android.gms.permission.AD_ID"],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
+      // ⚠️ TEMPORARY PIN — DELETE THIS BEFORE/WHEN MAKING THE NEXT ANDROID
+      // NATIVE BUILD. This hardcodes the exact fingerprint already baked
+      // into the live production AAB (build-1784459805759.aab), because
+      // `eas update`'s dynamic fingerprint computation kept drifting from
+      // it (see project memory: paltuu_rn_android_fingerprint_ota_gotcha).
+      // The top-level runtimeVersion below is already back to
+      // policy: "appVersion" — once this override is deleted, the NEXT
+      // native build will correctly use appVersion again. Don't forget to
+      // bump `version` above for that build, and don't carry this pin
+      // forward into it.
+      runtimeVersion: "e8333b52d1bd2676a926b9d65b5eef64d8dc6838",
     },
     // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
     // the 3-button nav bar by default (`enforceContrast`) so its buttons stay
