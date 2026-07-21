@@ -68,13 +68,15 @@ export default (): ExpoConfig => {
     updates: {
       url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
     },
-    // "fingerprint" hashes the actual native dependencies/config (not a
-    // hand-set version number), so an update auto-detects when a native
-    // module was added and is refused to phones running a binary that
-    // doesn't have it — instead of crashing them, like the appVersion
-    // policy did when expo-media-library shipped without a version bump.
+    // Back to "appVersion": simple, reliable string match on `version`
+    // above. Bump `version` whenever a native module is added/changed so
+    // OTA updates don't reach a binary that lacks it (this is what
+    // crashed Android before — expo-media-library shipped without a
+    // version bump). "fingerprint" policy was tried and reverted: its
+    // computed hash was too sensitive to incidental repo drift to
+    // reliably match the live production binary.
     runtimeVersion: {
-      policy: "fingerprint",
+      policy: "appVersion",
     },
     extra: {
       router: {},
