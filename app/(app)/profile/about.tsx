@@ -34,6 +34,7 @@ function AboutScreen() {
 
         {/* Temporary OTA delivery diagnostic */}
         <View className="bg-gray-50 rounded-2xl mb-8 border border-gray-100 p-4">
+          <Text className="font-body text-gray-400 text-xs">Diagnostic build: 2</Text>
           <Text className="font-body text-gray-400 text-xs">Native build version: {Constants.nativeBuildVersion || 'n/a'}</Text>
           <Text className="font-body text-gray-400 text-xs">Runtime version: {Updates.runtimeVersion || 'n/a'}</Text>
           <Text className="font-body text-gray-400 text-xs">Channel: {Updates.channel || 'n/a'}</Text>
