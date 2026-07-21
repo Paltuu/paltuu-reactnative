@@ -51,6 +51,13 @@ export default (): ExpoConfig => {
       predictiveBackGestureEnabled: false,
       permissions: ["android.permission.RECORD_AUDIO", "com.google.android.gms.permission.AD_ID"],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
+      // TEMPORARY: pinned to the fingerprint actually embedded in the
+      // live 1.0.6 AAB (build-1784459805759.aab), which diverged from
+      // what `eas update`'s dynamic fingerprint computation produces in
+      // this checkout (stray local /ios folder + no /android folder
+      // skew the hash). Revert to inheriting the top-level "fingerprint"
+      // policy once a fresh, reproducibly-built Android binary is live.
+      runtimeVersion: "e8333b52d1bd2676a926b9d65b5eef64d8dc6838",
     },
     // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
     // the 3-button nav bar by default (`enforceContrast`) so its buttons stay
