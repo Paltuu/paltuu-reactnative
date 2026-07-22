@@ -161,6 +161,19 @@ function AdoptScreen() {
             Find your new best friend
           </Text>
         </View>
+
+        <TouchableOpacity
+          onPress={() => setIsFilterVisible(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.filterIconButton}
+        >
+          <Ionicons name="options-outline" size={20} color="#a03048" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleAddPetClick} style={styles.addListingButton}>
+          <Ionicons name="add" size={18} color="#FFFFFF" />
+          <Text style={styles.addListingText}>Add Listing</Text>
+        </TouchableOpacity>
       </View>
 
       {showSkeleton ? (
@@ -171,7 +184,7 @@ function AdoptScreen() {
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
-            paddingBottom: 120,
+            paddingBottom: 32,
             paddingTop: 16,
           }}
         >
@@ -198,7 +211,7 @@ function AdoptScreen() {
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
-            paddingBottom: 120,
+            paddingBottom: 32,
             paddingTop: 16
           }}
           onRefresh={refetch}
@@ -223,63 +236,6 @@ function AdoptScreen() {
           }
         />
       )}
-
-      {/* Floating Buttons */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: insets.bottom + 24,
-          left: 20,
-          right: 20,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-        pointerEvents="box-none"
-      >
-        {/* Filters Button (Left) */}
-        <TouchableOpacity
-          onPress={() => setIsFilterVisible(true)}
-          style={{
-            backgroundColor: '#FFFFFF',
-            paddingHorizontal: 20,
-            paddingVertical: 12,
-            borderRadius: 20,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1.5,
-            borderColor: '#a03048',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 6,
-          }}
-        >
-          <Ionicons name="options-outline" size={20} color="#a03048" />
-          <Text style={{ marginLeft: 8, color: '#a03048', fontWeight: '700', fontSize: 13 }}>Filters</Text>
-        </TouchableOpacity>
-
-        {/* Add Pet Floating Action Button (Right) */}
-        <TouchableOpacity
-          onPress={handleAddPetClick}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: '#a03048',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 6,
-          }}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
 
       {/* --- Filters Modal --- */}
       <Modal
@@ -417,12 +373,41 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: H_PAD,
     paddingBottom: 16,
     backgroundColor: '#FAFAFB',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  filterIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#a03048',
+  },
+  addListingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#a03048',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  addListingText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+    marginLeft: 4,
   },
 });
 
