@@ -169,8 +169,7 @@ export default function SearchScreen() {
         vets: results.vets || [],
       };
     }
-    if (activeTab === 'posts') return { ...emptyResults, posts: results || [] };
-    return { ...emptyResults, users: results || [] };
+    return { ...emptyResults, [activeTab]: results || [] };
   }, [searchData, activeTab]);
 
   // ─── Search results list (typed state only — idle state is the explore list)
@@ -198,36 +197,36 @@ export default function SearchScreen() {
       );
     }
 
-    if (activeTab === 'all' && searchResults.pets.length > 0) {
-      items.push({ type: 'section_header', title: 'Pets', _key: 'hdr-pets' });
+    if ((activeTab === 'all' || activeTab === 'pets') && searchResults.pets.length > 0) {
+      if (activeTab === 'all') items.push({ type: 'section_header', title: 'Pets', _key: 'hdr-pets' });
       searchResults.pets.forEach((p: any) =>
         items.push({ ...p, type: 'pet_item', _key: `pet-${p.pet_id}` })
       );
     }
 
-    if (activeTab === 'all' && searchResults.adoptions.length > 0) {
-      items.push({ type: 'section_header', title: 'Adoptions', _key: 'hdr-adoptions' });
+    if ((activeTab === 'all' || activeTab === 'adoptions') && searchResults.adoptions.length > 0) {
+      if (activeTab === 'all') items.push({ type: 'section_header', title: 'Adoptions', _key: 'hdr-adoptions' });
       searchResults.adoptions.forEach((a: any) =>
         items.push({ ...a, type: 'adoption_item', _key: `adopt-${a.listing_id}` })
       );
     }
 
-    if (activeTab === 'all' && searchResults.lost_found.length > 0) {
-      items.push({ type: 'section_header', title: 'Lost & Found', _key: 'hdr-lostfound' });
+    if ((activeTab === 'all' || activeTab === 'lost_found') && searchResults.lost_found.length > 0) {
+      if (activeTab === 'all') items.push({ type: 'section_header', title: 'Lost & Found', _key: 'hdr-lostfound' });
       searchResults.lost_found.forEach((l: any) =>
         items.push({ ...l, type: 'lost_found_item', _key: `lf-${l.report_id}` })
       );
     }
 
-    if (activeTab === 'all' && searchResults.hashtags.length > 0) {
-      items.push({ type: 'section_header', title: 'Hashtags', _key: 'hdr-hashtags' });
+    if ((activeTab === 'all' || activeTab === 'hashtags') && searchResults.hashtags.length > 0) {
+      if (activeTab === 'all') items.push({ type: 'section_header', title: 'Hashtags', _key: 'hdr-hashtags' });
       searchResults.hashtags.forEach((h: any) =>
         items.push({ ...h, type: 'hashtag_item', _key: `tag-${h.hashtag_id}` })
       );
     }
 
-    if (activeTab === 'all' && searchResults.vets.length > 0) {
-      items.push({ type: 'section_header', title: 'Vets & Clinics', _key: 'hdr-vets' });
+    if ((activeTab === 'all' || activeTab === 'vets') && searchResults.vets.length > 0) {
+      if (activeTab === 'all') items.push({ type: 'section_header', title: 'Vets & Clinics', _key: 'hdr-vets' });
       searchResults.vets.forEach((v: any) =>
         items.push({ ...v, type: 'vet_item', _key: `vet-${v.provider_id}` })
       );

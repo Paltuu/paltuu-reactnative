@@ -9,6 +9,7 @@ import {
   Dimensions,
   Modal,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -24,6 +25,41 @@ import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 3; // 3 columns with padding
+
+// KeyboardAvoidingView's "height" behavior doesn't reliably shift content
+// inside a `flex: 1` view nested in a Modal on Android — the keyboard just
+// covers it instead. Tracking the keyboard height manually and applying it
+// as bottom padding sidesteps that; iOS keeps using the "padding" behavior,
+// which already works fine there.
+const useAndroidKeyboardHeight = () => {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+};
+
+const KeyboardSafeCenter = ({ children }: { children: React.ReactNode }) => {
+  const androidKeyboardHeight = useAndroidKeyboardHeight();
+  if (Platform.OS === 'ios') {
+    return (
+      <KeyboardAvoidingView className="flex-1 justify-center items-center" behavior="padding">
+        {children}
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <View className="flex-1 justify-center items-center" style={{ paddingBottom: androidKeyboardHeight }}>
+      {children}
+    </View>
+  );
+};
 
 function PetGalleryManagerScreen() {
   const router = useRouter();
@@ -229,10 +265,7 @@ function PetGalleryManagerScreen() {
             activeOpacity={1}
             onPress={() => !isEditingCaption && setSelectedPhoto(null)}
           >
-            <KeyboardAvoidingView
-              className="flex-1 justify-center items-center"
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
+            <KeyboardSafeCenter>
               <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
                 <TouchableOpacity
                   onPress={() => setSelectedPhoto(null)}
@@ -293,7 +326,7 @@ function PetGalleryManagerScreen() {
                   </View>
                 )}
               </TouchableOpacity>
-            </KeyboardAvoidingView>
+            </KeyboardSafeCenter>
           </TouchableOpacity>
         </Modal>
       )}
@@ -307,10 +340,7 @@ function PetGalleryManagerScreen() {
             activeOpacity={1}
             onPress={() => !isUploading && setPendingPhotoUri(null)}
           >
-            <KeyboardAvoidingView
-              className="flex-1 justify-center items-center"
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
+            <KeyboardSafeCenter>
               <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
                 <TouchableOpacity
                   onPress={() => setPendingPhotoUri(null)}
@@ -340,7 +370,7 @@ function PetGalleryManagerScreen() {
                   )}
                 </TouchableOpacity>
               </TouchableOpacity>
-            </KeyboardAvoidingView>
+            </KeyboardSafeCenter>
           </TouchableOpacity>
         </Modal>
       )}

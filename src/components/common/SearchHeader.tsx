@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HEADER_HEIGHT } from '../../context/HeaderContext';
 import { SearchBar } from './SearchBar';
 
-export type SearchTab = 'all' | 'posts' | 'users';
+export type SearchTab = 'all' | 'posts' | 'users' | 'pets' | 'adoptions' | 'lost_found' | 'hashtags' | 'vets';
 
 const TABS: { key: SearchTab; title: string }[] = [
   { key: 'all', title: 'All' },
   { key: 'posts', title: 'Posts' },
   { key: 'users', title: 'People' },
+  { key: 'pets', title: 'Pets' },
+  { key: 'adoptions', title: 'Adoptions' },
+  { key: 'lost_found', title: 'Lost & Found' },
+  { key: 'hashtags', title: 'Hashtags' },
+  { key: 'vets', title: 'Vets' },
 ];
 
 interface SearchHeaderProps {
@@ -84,7 +89,11 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       </View>
 
       {showTabs && (
-        <View className="flex-row border-b-[0.5px] border-[#EEE] px-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-row border-b-[0.5px] border-[#EEE] px-2"
+        >
           {TABS.map((tab) => (
             <TabItem
               key={tab.key}
@@ -93,7 +102,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               onPress={() => onTabChange(tab.key)}
             />
           ))}
-        </View>
+        </ScrollView>
       )}
     </Animated.View>
   );

@@ -37,6 +37,18 @@ export default (): ExpoConfig => {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
+      // ⚠️ TEMPORARY PIN — DELETE THIS BEFORE/WHEN MAKING THE NEXT iOS
+      // NATIVE BUILD. The live App Store v1.0.6 build (542222fe, commit
+      // 8c0438f) was compiled while runtimeVersion.policy was still
+      // "fingerprint" and embeds this exact hash. The top-level policy
+      // below is "appVersion", so without this override OTA updates get
+      // published under runtime "1.0.6" and silently never reach that
+      // binary (same gotcha as the Android pin above — see project
+      // memory: paltuu_rn_android_fingerprint_ota_gotcha). Once deleted,
+      // the NEXT native iOS build will correctly use appVersion. Don't
+      // forget to bump `version` for that build, and don't carry this
+      // pin forward into it.
+      runtimeVersion: "30e3a569c38046bac1a4f7fec677614f4b9fd636",
     },
     android: {
       package: packageName,

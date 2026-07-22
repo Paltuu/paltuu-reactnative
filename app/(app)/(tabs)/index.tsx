@@ -4,7 +4,7 @@ const CustomFlashList = FlashList as any;
 import {
   View, Text, TouchableOpacity,
   RefreshControl, Dimensions, Pressable, ActivityIndicator,
-  Modal, Image,
+  Modal,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -28,8 +28,6 @@ import { useAuthReady } from '../../../src/hooks/useAuthReady';
 // Re-exported for existing importers that referenced it from this screen.
 export { QuickProfileModal };
 
-const MOCK_CAT_IMAGE_URI = Image.resolveAssetSource(require('../../../assets/cat.jpeg')).uri;
-
 export const MOCK_POSTS: SocialPost[] = [
   {
     post_id: 'mock_2',
@@ -49,7 +47,7 @@ export const MOCK_POSTS: SocialPost[] = [
         media_id: 'media_mock_2',
         post_id: 'mock_2',
         media_type: 'image',
-        url: MOCK_CAT_IMAGE_URI,
+        url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=800',
         ordering: 0,
       }
     ],

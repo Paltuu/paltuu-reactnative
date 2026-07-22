@@ -109,7 +109,7 @@ export interface MentionSuggestionUser {
 }
 
 export const socialApi = {
-  async search(query: string, type: 'all' | 'posts' | 'users' = 'all') {
+  async search(query: string, type: 'all' | 'posts' | 'users' | 'pets' | 'adoptions' | 'lost_found' | 'hashtags' | 'vets' = 'all') {
     const { data } = await client.get(`/explore/search?q=${encodeURIComponent(query)}&type=${type}`);
     return data as { results: any };
   },
