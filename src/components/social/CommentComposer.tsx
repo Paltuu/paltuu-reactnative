@@ -1,24 +1,39 @@
-// Shared comment-composer pieces used by both the full-screen comment screen
-// (app/comment/[id].tsx) and the inline phase-2 composer on the post detail
-// screen (app/post/[id].tsx). Keeps media-picking, pet tagging and the submit
-// + cache-update logic in one place so the two surfaces stay in sync.
+// Shared comment-composer logic used by the full-screen comment screen
+// (app/comment/[id].tsx), the inline phase-2 composer on the post detail screen
+// (app/post/[id].tsx) and the re-rooted thread screen (app/thread/[id].tsx).
+// Keeps media, pet tagging and the submit + cache-update logic in one place so
+// the three surfaces stay in sync.
+//
+// Media follows the same rule as every other composer: previews are local and
+// instant, uploads start at pick time (useMediaDraft), and Post never blocks.
+// Since these screens stay put rather than navigating to a feed with a progress
+// banner, the "don't block" half is served by an optimistic comment row that
+// appears in the thread immediately and solidifies when the server replies.
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { petProfilesApi } from '../../api/petProfiles';
 import { useAuthStore } from '../../stores/authStore';
-import { useMentionInput, MentionSuggestionDropdown, appendMention } from './MentionInput';
+import { useMediaDraft } from '../../hooks/useMediaDraft';
+import { confirmVideos } from '../../hooks/useMediaDraft';
+import {
+  commentsQueryKey,
+  insertCommentInPages,
+  removeCommentInPages,
+  updateCommentInPages,
+} from '../../hooks/useComments';
+import { useMentionInput, appendMention } from './MentionInput';
 
-const PRIMARY = '#a03048';
+export { ComposerMediaGrid, ComposerToolbar } from './ComposerMediaGrid';
+export type { DraftMedia } from '../../hooks/useMediaDraft';
 
-export type DraftMedia = { uri: string; type: 'image' };
+const MAX_COMMENT_MEDIA = 4;
 
-/* ── Draft hook: state + media picking + pet tagging + submit ── */
+let tempCounter = 0;
+const nextTempId = () => `temp-${Date.now().toString(36)}-${tempCounter++}`;
+
+/* ── Draft hook: state + media + pet tagging + optimistic submit ── */
 export const useCommentDraft = ({
   postId,
   parentId,
@@ -32,9 +47,9 @@ export const useCommentDraft = ({
   const queryClient = useQueryClient();
 
   const [text, setText] = useState('');
-  const [media, setMedia] = useState<DraftMedia[]>([]);
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
+  const media = useMediaDraft({ maxItems: MAX_COMMENT_MEDIA, allowVideo: false });
 
   const { triggers: mentionTriggers, textInputProps: mentionInputProps, mentionState, mentionActive } = useMentionInput({
     value: text,
@@ -55,104 +70,131 @@ export const useCommentDraft = ({
     }
   }, [user?.id]);
 
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your photos to attach media.');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        selectionLimit: 4,
-      });
-      if (!result.canceled && result.assets) {
-        const items: DraftMedia[] = result.assets.map((a) => ({ uri: a.uri, type: 'image' }));
-        setMedia((prev) => [...prev, ...items].slice(0, 4));
-      }
-    } catch (e) {
-      Alert.alert('Error', 'Could not pick an image.');
-    }
-  };
-
-  const pickCamera = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your camera.');
-        return;
-      }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-      if (!result.canceled && result.assets?.length) {
-        setMedia((prev) => [...prev, { uri: result.assets[0].uri, type: 'image' as const }].slice(0, 4));
-      }
-    } catch (e: any) {
-      if (e.message?.includes('Camera not available')) {
-        Alert.alert('Camera Unavailable', 'The camera is not available on this device.');
-      } else {
-        Alert.alert('Error', 'Could not open the camera.');
-      }
-    }
-  };
-
-  const removeMedia = (index: number) => setMedia((prev) => prev.filter((_, i) => i !== index));
   const togglePet = (id: number) =>
     setSelectedPets((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
 
-  const mutation = useMutation({
-    // parentIdArg lets the post-detail screen reply to a specific comment while
-    // reusing this same upload/submit pipeline; falls back to the hook's parentId.
-    mutationFn: async (parentIdArg?: string) => {
-      // Upload any attached images first.
-      let uploadedMedia: any[] = [];
-      if (media.length) {
-        for (const item of media) {
-          const processed = await manipulateAsync(item.uri, [{ resize: { width: 1200 } }], {
-            compress: 0.8,
-            format: SaveFormat.JPEG,
-          });
-          const res = await socialApi.uploadMedia([processed.uri]);
-          uploadedMedia.push(...res.media);
-        }
-      }
-      return socialApi.postComment(postId, text.trim(), parentIdArg ?? parentId, {
-        media: uploadedMedia,
-        petProfileTags: selectedPets,
-      });
-    },
-    onSuccess: () => {
-      setText('');
-      setMedia([]);
-      setSelectedPets([]);
+  const bumpCommentCount = (delta: number) => {
+    queryClient.setQueryData(['post', postId], (old: any) =>
+      old ? { ...old, is_commented: delta > 0 || old.is_commented, comment_count: Math.max(0, (old.comment_count || 0) + delta) } : old
+    );
+    queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
+      if (!old?.pages) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          posts: page.posts.map((p: any) =>
+            String(p.post_id) === String(postId)
+              ? {
+                  ...p,
+                  is_commented: delta > 0 || p.is_commented,
+                  comment_count: Math.max(0, (p.comment_count || 0) + delta),
+                }
+              : p
+          ),
+        })),
+      };
+    });
+  };
 
-      // Reflect the new comment immediately across caches.
-      queryClient.setQueryData(['post', postId], (old: any) =>
-        old ? { ...old, is_commented: true, comment_count: (old.comment_count || 0) + 1 } : old
-      );
-      queryClient.setQueriesData({ queryKey: ['social-feed'] }, (old: any) => {
-        if (!old?.pages) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            posts: page.posts.map((p: any) =>
-              String(p.post_id) === String(postId)
-                ? { ...p, is_commented: true, comment_count: (p.comment_count || 0) + 1 }
-                : p
-            ),
-          })),
-        };
-      });
-      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
-      queryClient.invalidateQueries({ queryKey: ['post', postId] });
-      onPosted?.();
-    },
-    onError: (err: any) => {
-      Alert.alert('Error', err?.message || 'Could not post your comment.');
-    },
-  });
+  /** Depth of a would-be reply — one below its parent, or 0 at the root. */
+  const depthForParent = (parentCommentId?: string) => {
+    if (!parentCommentId) return 0;
+    const cache: any = queryClient.getQueryData(commentsQueryKey(postId));
+    for (const page of cache?.pages ?? []) {
+      for (const c of page.comments ?? []) {
+        if (String(c.comment_id) === String(parentCommentId)) return (c.depth ?? 0) + 1;
+      }
+    }
+    return 1;
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Post the draft. Returns synchronously: the thread gets a pending row and the
+   * composer clears on the same tick, then the upload tail + API call finish in
+   * the background. `parentIdOverride` lets post/[id] and thread/[id] reply to a
+   * specific comment through this same pipeline.
+   */
+  const submit = (parentIdOverride?: string) => {
+    const body = text.trim();
+    if (!body && media.count === 0) return;
+
+    const effectiveParentId = parentIdOverride ?? parentId;
+    const tempId = nextTempId();
+
+    // Snapshot the local previews before clearing, so the pending row shows the
+    // same images the user just saw in the composer.
+    const localMedia = media.items.map((item, i) => ({
+      media_type: item.type,
+      url: item.uri,
+      thumbnail_url: item.thumbnailUri ?? null,
+      ordering: i,
+    }));
+
+    // Releases the tiles for reuse but keeps their uploads running.
+    const settleMedia = media.detach();
+
+    const optimistic = {
+      comment_id: tempId,
+      user_id: user?.id,
+      author_name: user?.name ?? 'You',
+      author_image: user?.profile_image_url ?? null,
+      social_username: (user as any)?.social_username ?? (user as any)?.username ?? null,
+      content: body,
+      created_at: new Date().toISOString(),
+      like_count: 0,
+      is_liked: false,
+      depth: depthForParent(effectiveParentId),
+      parent_comment_id: effectiveParentId ?? null,
+      media: localMedia,
+      _pending: true,
+    };
+
+    queryClient.setQueryData(commentsQueryKey(postId), (old: any) =>
+      insertCommentInPages(old, optimistic)
+    );
+    bumpCommentCount(1);
+
+    setText('');
+    setSelectedPets([]);
+    setIsSubmitting(true);
+    onPosted?.();
+
+    const petTags = selectedPets;
+    (async () => {
+      try {
+        const settled = await settleMedia();
+        const res = await socialApi.postComment(postId, body, effectiveParentId, {
+          media: settled.media,
+          petProfileTags: petTags,
+        });
+        const created = res?.comment ?? res;
+        await confirmVideos(created?.media ?? [], settled.videoKeys);
+
+        // Swap the pending row for the real one in place, so the comment doesn't
+        // visibly jump position as it confirms.
+        queryClient.setQueryData(commentsQueryKey(postId), (old: any) =>
+          created?.comment_id
+            ? updateCommentInPages(old, tempId, () => ({ ...optimistic, ...created, _pending: false }))
+            : removeCommentInPages(old, tempId)
+        );
+        queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+        queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      } catch (err: any) {
+        console.error('[useCommentDraft] Failed to post comment:', err);
+        // Roll the optimistic row back rather than leaving a ghost in the thread.
+        queryClient.setQueryData(commentsQueryKey(postId), (old: any) =>
+          removeCommentInPages(old, tempId)
+        );
+        bumpCommentCount(-1);
+        Alert.alert('Comment not posted', err?.message || 'Could not post your comment.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
+  };
 
   return {
     text,
@@ -162,79 +204,18 @@ export const useCommentDraft = ({
     mentionInputProps,
     mentionState,
     mentionActive,
-    media,
-    pickImage,
-    pickCamera,
-    removeMedia,
+    media: media.items,
+    pickImage: media.pickFromLibrary,
+    pickCamera: media.pickFromCamera,
+    removeMedia: media.remove,
+    retryMedia: media.retry,
     selectedPets,
     togglePet,
     petProfiles,
-    submit: (parentIdOverride?: string) => mutation.mutate(parentIdOverride),
-    isSubmitting: mutation.isPending,
-    canSubmit: (text.trim().length > 0 || media.length > 0) && !mutation.isPending,
+    submit,
+    isSubmitting,
+    // Never gated on upload state — anything still in flight is awaited by the
+    // background tail after the pending row is already on screen.
+    canSubmit: text.trim().length > 0 || media.count > 0,
   };
 };
-
-/* ── Attached-image preview grid ── */
-export const ComposerMediaGrid = ({
-  media,
-  onRemove,
-}: {
-  media: DraftMedia[];
-  onRemove: (index: number) => void;
-}) => {
-  if (!media.length) return null;
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-      {media.map((item, i) => (
-        <View key={`${item.uri}-${i}`} style={{ width: 76, height: 76, borderRadius: 12, overflow: 'hidden' }}>
-          <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-          <TouchableOpacity
-            onPress={() => onRemove(i)}
-            style={{
-              position: 'absolute', top: 4, right: 4,
-              backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
-              width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="close" size={12} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      ))}
-    </View>
-  );
-};
-
-/* ── Icon toolbar — gallery + camera + pet tagging only ── */
-export const ComposerToolbar = ({
-  onImage,
-  onCamera,
-  onPet,
-  count,
-  maxCount = 4,
-}: {
-  onImage: () => void;
-  onCamera: () => void;
-  onPet?: () => void;
-  count: number;
-  maxCount?: number;
-}) => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 22 }}>
-    <TouchableOpacity onPress={onImage} hitSlop={8}>
-      <Ionicons name="image-outline" size={23} color={PRIMARY} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={onCamera} hitSlop={8}>
-      <Ionicons name="camera-outline" size={23} color={PRIMARY} />
-    </TouchableOpacity>
-    {onPet && (
-      <TouchableOpacity onPress={onPet} hitSlop={8}>
-        <Ionicons name="paw-outline" size={22} color={PRIMARY} />
-      </TouchableOpacity>
-    )}
-    {count > 0 && (
-      <View style={{ marginLeft: 'auto', backgroundColor: '#F3F4F6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-        <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '600' }}>{count}/{maxCount}</Text>
-      </View>
-    )}
-  </View>
-);

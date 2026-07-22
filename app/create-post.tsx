@@ -9,47 +9,22 @@ import {
   Keyboard,
   Platform,
   Dimensions,
-  Alert,
-  StyleSheet,
-  ActivityIndicator,
   InteractionManager,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../src/stores/authStore';
-import { socialApi } from '../src/api/social';
 import { petProfilesApi } from '../src/api/petProfiles';
-import { useSocialActions } from '../src/hooks/useSocialActions';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
 import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
+import { ComposerMediaGrid } from '../src/components/social/ComposerMediaGrid';
+import { useMediaDraft } from '../src/hooks/useMediaDraft';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
-import { queryClient } from '../src/api/queryClient';
-import Toast from 'react-native-toast-message';
 import { NO_PROFILE_IMAGE } from '../src/constants/images';
 import { useUploadStore } from '../src/stores/uploadStore';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-type UploadStage = 'idle' | 'uploading' | 'finalizing';
-
-/**
- * Unified media item — replaces the old parallel-array approach
- * (mediaTypes: Record<number, 'image'|'video'> and videoMimeTypes: Record<number, string>)
- * which could develop stale indices after item removal.
- */
-type MediaItem = {
-  uri: string;
-  type: 'image' | 'video';
-  /** MIME type, only relevant for videos (e.g. 'video/mp4', 'video/quicktime') */
-  mime?: string;
-  /** Extracted local video thumbnail URI for preview */
-  thumbnailUri?: string;
-};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -233,11 +208,12 @@ export default function CreatePostScreen() {
   const [isLoadingPetProfiles, setIsLoadingPetProfiles] = useState(true);
 
   /**
-   * Single unified array replacing the old `media: string[]` + `mediaTypes: Record<number, ...>`
-   * + `videoMimeTypes: Record<number, ...>` triple, which was prone to stale-index bugs
-   * when items were removed from the middle of the list.
+   * Owns the attached media and its upload lifecycle. Tiles render from the
+   * local URI immediately; the cloud upload starts on pick and runs in the
+   * background while the caption is being written, so Post rarely has to wait
+   * for anything.
    */
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const mediaDraft = useMediaDraft({ maxItems: 10, allowVideo: true });
 
   const [selectedPets, setSelectedPets] = useState<number[]>(
     params.initialPetProfileIds
@@ -247,7 +223,7 @@ export default function CreatePostScreen() {
   const [milestone, setMilestone] = useState('');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
 
-  const { startUpload, isUploading } = useUploadStore();
+  const enqueueUpload = useUploadStore((s) => s.enqueue);
 
   // Track the real keyboard height so the bottom toolbar can float directly
   // above it. `softwareKeyboardLayoutMode` is 'pan' on Android, which only
@@ -291,96 +267,7 @@ export default function CreatePostScreen() {
   // In edit mode there's no media picker to fall back on (see below), so an
   // image-only post with no caption must still be re-savable after just
   // toggling a pet tag — the post itself already has content.
-  const canPost = isEditMode || caption.trim().length > 0 || mediaItems.length > 0;
-
-  // ── Media pickers ────────────────────────────────────────────────────────────
-
-  const pickMedia = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your photos and videos to upload media.');
-        return;
-      }
-
-      if (mediaItems.length >= 10) {
-        Alert.alert('Limit Reached', 'You can add up to 10 media items per post.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
-
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        selectionLimit: 10 - mediaItems.length,
-        allowsEditing: false,
-        videoMaxDuration: 120,
-      });
-
-      if (!result.canceled && result.assets) {
-        const newItems: MediaItem[] = await Promise.all(
-          result.assets.map(async (a) => {
-            if (a.type === 'video') {
-              const ext = (a.uri.split('.').pop() || 'mp4').toLowerCase();
-              const mime = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
-
-              // Pre-generate a thumbnail preview for the grid
-              let thumbnailUri: string | undefined = undefined;
-              try {
-                const VideoThumbnails = require('expo-video-thumbnails');
-                const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
-                thumbnailUri = uri;
-              } catch (e) {
-                console.warn('[CreatePost] Failed to pre-generate preview thumbnail:', e);
-              }
-
-              return { uri: a.uri, type: 'video' as const, mime, thumbnailUri };
-            }
-            return { uri: a.uri, type: 'image' as const };
-          })
-        );
-        setMediaItems((prev) => [...prev, ...newItems].slice(0, 10));
-      }
-
-    } catch (error: any) {
-      console.error('Pick Media Error:', error);
-      Alert.alert('Error', 'An error occurred while picking media. Please try again.');
-    }
-  };
-
-  const pickCamera = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setMediaItems((prev) =>
-          [...prev, { uri: result.assets[0].uri, type: 'image' as const }].slice(0, 10)
-        );
-      }
-    } catch (error: any) {
-      console.error('Pick Camera Error:', error);
-      if (error.message?.includes('Camera not available')) {
-        Alert.alert('Camera Unavailable', 'The camera is not available on this device (e.g. Simulator).');
-      } else {
-        Alert.alert('Error', 'An error occurred while opening the camera.');
-      }
-    }
-  };
-
-  const removeMedia = (index: number) => {
-    // Safe removal — filtering by index never leaves stale keys in a separate Record<>
-    setMediaItems((prev) => prev.filter((_, i) => i !== index));
-  };
+  const canPost = isEditMode || caption.trim().length > 0 || mediaDraft.count > 0;
 
   // ── Other helpers ────────────────────────────────────────────────────────────
 
@@ -388,35 +275,37 @@ export default function CreatePostScreen() {
     setSelectedPets((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   };
 
-  const resetUploadState = () => {
-    setIsPosting(false);
-    setUploadStage('idle');
-    setUploadProgress(0);
-  };
-
-  const { updatePost } = useSocialActions();
-
   // ── Post handler ─────────────────────────────────────────────────────────────
 
-  const handlePost = async () => {
+  // Never waits on the network. Media has been uploading since it was picked;
+  // whatever is left finishes inside the background job while this screen is
+  // already gone.
+  const handlePost = () => {
     if (!canPost) return;
 
-    startUpload({
-      caption,
-      mediaItems,
-      selectedPets,
-      postType,
-      user,
-      editId,
-      isEditMode,
-    });
-
     if (isEditMode) {
+      enqueueUpload({
+        kind: 'edit',
+        editId,
+        caption,
+        selectedPets,
+        postType,
+      });
       // Editing is a quick metadata update, not a media upload — return the
       // user to wherever they came from rather than jumping to Feed.
       router.back();
       return;
     }
+
+    enqueueUpload({
+      kind: 'post',
+      caption,
+      selectedPets,
+      postType,
+      user,
+      settle: mediaDraft.settle,
+      thumbnailUri: mediaDraft.items[0]?.thumbnailUri || mediaDraft.items[0]?.uri || null,
+    });
 
     // Always land on the Feed tab (not just "back") so the upload progress
     // banner in MainHeader — which only lives on Feed/Bazaar — is guaranteed
@@ -467,11 +356,12 @@ export default function CreatePostScreen() {
 
           {/* Post / Save — compact PaltuuButton, right-aligned in header */}
           <View style={{ marginLeft: 'auto' }}>
+            {/* No `loading` state: pressing this hands the work to the
+                background queue and leaves the screen on the same tick, so
+                there is never a spinner here to see. */}
             <PaltuuButton
               compact
               label={isEditMode ? 'Save' : 'Post'}
-              successLabel={isEditMode ? 'Saved!' : 'Posted!'}
-              loading={isUploading}
               disabled={!canPost}
               onPress={handlePost}
               style={{ paddingHorizontal: 8 }}
@@ -529,7 +419,7 @@ export default function CreatePostScreen() {
                   // Once media is attached, shrink the reserved caption box so
                   // the tiles sit right under the text instead of after a tall
                   // empty gap.
-                  minHeight: mentionActive ? undefined : mediaItems.length > 0 ? 40 : 100,
+                  minHeight: mentionActive ? undefined : mediaDraft.count > 0 ? 40 : 100,
                   textAlignVertical: 'top',
                   fontFamily: 'DMSans_400Regular',
                 }}
@@ -554,39 +444,17 @@ export default function CreatePostScreen() {
 
               {/* ── Media grid — hidden in edit mode; media can't be changed
                     once a post exists, only the caption and pet tags can. ── */}
-              {!isEditMode && mediaItems.length > 0 && (
-                <View
-                  className="flex-row flex-wrap mt-3"
+              {!isEditMode && (
+                <ComposerMediaGrid
+                  media={mediaDraft.items}
+                  onRemove={mediaDraft.remove}
+                  onRetry={mediaDraft.retry}
+                  tileWidth={(width - 90) / 2}
+                  heightRatio={1.25}
                   // Left-align tiles with where the caption text starts:
                   // px-4 (16) + avatar width (40) + gap-3 (12) = 68.
-                  style={{ paddingLeft: 68, paddingRight: 16, gap: 6 }}
-                >
-                  {mediaItems.map((item, i) => (
-                    <View key={`${item.uri}-${i}`} style={{ width: (width - 90) / 2, height: ((width - 90) / 2) * 1.25, borderRadius: 14, overflow: 'hidden' }}>
-                      <Image source={{ uri: item.type === 'video' ? (item.thumbnailUri || item.uri) : item.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-
-
-                      {/* Video badge */}
-                      {item.type === 'video' && (
-                        <View style={{
-                          position: 'absolute', bottom: 4, left: 4,
-                          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
-                          paddingHorizontal: 4, paddingVertical: 2,
-                          flexDirection: 'row', alignItems: 'center', gap: 2,
-                        }}>
-                          <Ionicons name="videocam" size={10} color="#fff" />
-                        </View>
-                      )}
-
-                      <TouchableOpacity
-                        onPress={() => removeMedia(i)}
-                        className="absolute top-1.5 right-1.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
-                      >
-                        <Ionicons name="close" size={12} color="#fff" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                  style={{ paddingLeft: 68, paddingRight: 16, gap: 6, marginTop: 12 }}
+                />
               )}
 
               {/* ── Tagged pets (tagging is triggered from the toolbar paw button) ── */}
@@ -641,11 +509,11 @@ export default function CreatePostScreen() {
           <View className="flex-row items-center gap-5">
             {!isEditMode && (
               <>
-                <TouchableOpacity onPress={pickMedia} hitSlop={8}>
+                <TouchableOpacity onPress={mediaDraft.pickFromLibrary} hitSlop={8}>
                   <Ionicons name="image-outline" size={24} color="#a03048" />
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={pickCamera} hitSlop={8}>
+                <TouchableOpacity onPress={mediaDraft.pickFromCamera} hitSlop={8}>
                   <Ionicons name="camera-outline" size={24} color="#a03048" />
                 </TouchableOpacity>
               </>
@@ -655,9 +523,9 @@ export default function CreatePostScreen() {
               <Ionicons name="paw-outline" size={24} color="#a03048" />
             </TouchableOpacity>
 
-            {!isEditMode && mediaItems.length > 0 && (
+            {!isEditMode && mediaDraft.count > 0 && (
               <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">
-                <Text className="font-body text-xs text-gray-500">{mediaItems.length}/10</Text>
+                <Text className="font-body text-xs text-gray-500">{mediaDraft.count}/10</Text>
               </View>
             )}
           </View>

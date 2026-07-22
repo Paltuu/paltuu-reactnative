@@ -201,7 +201,7 @@ export default function CommentComposerScreen() {
                 </View>
               ) : (
                 <View style={{ paddingHorizontal: 16, marginLeft: 52 }}>
-                  <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
+                  <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} onRetry={draft.retryMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}
                     selectedPets={draft.selectedPets}

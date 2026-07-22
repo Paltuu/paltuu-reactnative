@@ -536,7 +536,7 @@ export default function PostDetailScreen() {
                 </View>
               ) : (
                 <View style={{ paddingHorizontal: 12, marginLeft: 42 }}>
-                  <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} />
+                  <ComposerMediaGrid media={draft.media} onRemove={draft.removeMedia} onRetry={draft.retryMedia} />
                   <SelectedPetsRow
                     petProfiles={draft.petProfiles}
                     selectedPets={draft.selectedPets}

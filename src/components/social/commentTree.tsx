@@ -53,6 +53,10 @@ export interface Comment {
   parent_comment_id: string | null;
   media?: CommentMedia[];
   replies: Comment[];
+  /** Optimistically inserted by the composer and not yet confirmed by the
+   *  server. Its media URLs are still local file:// paths and its comment_id is
+   *  a temp string, so its actions are inert until it solidifies. */
+  _pending?: boolean;
 }
 
 export interface ReplyAvatar {
@@ -434,7 +438,11 @@ export const CommentRow = ({
   currentUserId?: number | string | null;
 }) => {
   const depth = Math.min(item.depth, MAX_INLINE_DEPTH + 1);
-  const isOwnComment = currentUserId != null && String(item.user_id) === String(currentUserId);
+  // A pending row has no server id yet, so liking / replying / deleting / opening
+  // its thread would all address a comment that doesn't exist. Show it, don't
+  // let it be acted on — it resolves within a moment.
+  const pending = !!item._pending;
+  const isOwnComment = !pending && currentUserId != null && String(item.user_id) === String(currentUserId);
 
   const handleLongPress = () => {
     if (!isOwnComment || !onDelete) return;
@@ -480,6 +488,7 @@ export const CommentRow = ({
     []
   );
   const handleRowPress = () => {
+    if (pending) return;
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       // Double tap → like only (never unlike, never navigate).
@@ -530,7 +539,11 @@ export const CommentRow = ({
       onPress={handleRowPress}
       onLongPress={isOwnComment ? handleLongPress : undefined}
       delayLongPress={400}
-      style={{ position: 'relative', backgroundColor: BG, paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent }}
+      style={{
+        position: 'relative', backgroundColor: BG,
+        paddingVertical: 10, paddingHorizontal: 16, paddingLeft: indent,
+        opacity: pending ? 0.55 : 1,
+      }}
     >
       <ThreadLines {...threadProps} />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -552,7 +565,9 @@ export const CommentRow = ({
                 <Text style={{ fontSize: 12, color: '#9CA3AF' }} numberOfLines={1}>@{item.social_username}</Text>
               )}
             </TouchableOpacity>
-            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>• {formatTime(item.created_at)}</Text>
+            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+              {pending ? 'Posting…' : `• ${formatTime(item.created_at)}`}
+            </Text>
           </View>
 
           <MentionText content={item.content} textStyle={{ fontSize: 14, color: '#262626', lineHeight: 18 }} />
@@ -560,11 +575,11 @@ export const CommentRow = ({
           <CommentMediaGrid media={item.media} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
-            <TouchableOpacity onPress={() => onReply(item)} hitSlop={8}>
+            <TouchableOpacity onPress={() => onReply(item)} hitSlop={8} disabled={pending}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: '#8E8E8E' }}>Reply</Text>
             </TouchableOpacity>
 
-            {item.replies?.length > 0 && item.depth < MAX_INLINE_DEPTH && (
+            {!pending && item.replies?.length > 0 && item.depth < MAX_INLINE_DEPTH && (
               <TouchableOpacity onPress={() => onExpand(item.comment_id)} hitSlop={8}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#8E8E8E' }}>Hide</Text>
               </TouchableOpacity>
@@ -574,6 +589,7 @@ export const CommentRow = ({
 
         <TouchableOpacity
           onPress={() => onToggleLike(item.comment_id)}
+          disabled={pending}
           style={{ alignItems: 'center', justifyContent: 'center', padding: 6, minWidth: 28 }}
           hitSlop={8}
         >

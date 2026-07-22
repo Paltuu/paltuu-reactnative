@@ -63,6 +63,34 @@ export function useCommentsQuery(postId: string | number | null, enabled = true)
 
 /* ── Cache helpers for the paginated (pages[]) shape ── */
 
+/**
+ * Prepend a comment to the first loaded page. Used to show a just-submitted
+ * comment in the thread instantly, before the server has confirmed it — the
+ * composer dismisses on the same tick rather than holding a spinner. A no-op if
+ * no page is loaded yet (nothing is on screen to insert into).
+ */
+export function insertCommentInPages(old: any, comment: any) {
+  if (!old?.pages?.length) return old;
+  const [first, ...rest] = old.pages;
+  return {
+    ...old,
+    pages: [{ ...first, comments: [comment, ...(first.comments ?? [])] }, ...rest],
+  };
+}
+
+/** Drop a single comment across all loaded pages (used to roll back a failed
+ *  optimistic insert, or to swap a temp row out for the confirmed one). */
+export function removeCommentInPages(old: any, commentId: string | number) {
+  if (!old?.pages) return old;
+  return {
+    ...old,
+    pages: old.pages.map((page: CommentsPage) => ({
+      ...page,
+      comments: page.comments.filter((c: any) => String(c.comment_id) !== String(commentId)),
+    })),
+  };
+}
+
 /** Map an updater over the one matching comment across every loaded page. */
 export function updateCommentInPages(
   old: any,
