@@ -30,6 +30,46 @@ import { useAuthReady } from '../../../src/hooks/useAuthReady';
 
 const CustomFlashList = FlashList as any;
 
+const SearchResultRow = ({ image, icon, title, subtitle, badge, onPress }: {
+  image?: string | null;
+  icon?: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  onPress?: () => void;
+}) => {
+  const Wrapper: any = onPress ? TouchableOpacity : View;
+  return (
+    <Wrapper
+      {...(onPress ? { onPress } : {})}
+      style={{
+        flexDirection: 'row', alignItems: 'center', padding: 16,
+        borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0', backgroundColor: '#FFF',
+      }}
+    >
+      {icon ? (
+        <View style={{
+          width: 44, height: 44, borderRadius: 10, backgroundColor: '#F3F4F6', marginRight: 12,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name={icon} size={20} color="#A03048" />
+        </View>
+      ) : (
+        <Image
+          source={image ? { uri: image } : NO_PROFILE_IMAGE}
+          style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: '#F3F4F6', marginRight: 12 }}
+          contentFit="cover"
+        />
+      )}
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: '#111' }} numberOfLines={1}>{title}</Text>
+        {!!subtitle && <Text style={{ color: '#666', fontSize: 13 }} numberOfLines={1}>{subtitle}</Text>}
+      </View>
+      {!!badge && <Text style={{ fontSize: 12, color: '#999', fontWeight: '600', marginLeft: 8 }}>{badge}</Text>}
+    </Wrapper>
+  );
+};
+
 const PostCompactItem = ({ post, onPress }: { post: SocialPost; onPress: () => void }) => (
   <TouchableOpacity
     onPress={onPress}
@@ -111,12 +151,26 @@ export default function SearchScreen() {
     enabled: !!debouncedQuery,
   });
 
+  const emptyResults = {
+    users: [], posts: [], pets: [], adoptions: [], lost_found: [], hashtags: [], vets: [],
+  };
+
   const searchResults = useMemo(() => {
-    if (!searchData) return { users: [], posts: [] };
+    if (!searchData) return emptyResults;
     const results = searchData.results;
-    if (activeTab === 'all') return { users: results.users || [], posts: results.posts || [] };
-    if (activeTab === 'posts') return { users: [], posts: results || [] };
-    return { users: results || [], posts: [] };
+    if (activeTab === 'all') {
+      return {
+        users: results.users || [],
+        posts: results.posts || [],
+        pets: results.pets || [],
+        adoptions: results.adoptions || [],
+        lost_found: results.lost_found || [],
+        hashtags: results.hashtags || [],
+        vets: results.vets || [],
+      };
+    }
+    if (activeTab === 'posts') return { ...emptyResults, posts: results || [] };
+    return { ...emptyResults, users: results || [] };
   }, [searchData, activeTab]);
 
   // ─── Search results list (typed state only — idle state is the explore list)
@@ -141,6 +195,41 @@ export default function SearchScreen() {
       );
       chunkArray(mediaPosts.slice(0, 6), 3).forEach((chunk, i) =>
         items.push({ type: 'post_grid_row', posts: chunk, _key: `grid-${i}` })
+      );
+    }
+
+    if (activeTab === 'all' && searchResults.pets.length > 0) {
+      items.push({ type: 'section_header', title: 'Pets', _key: 'hdr-pets' });
+      searchResults.pets.forEach((p: any) =>
+        items.push({ ...p, type: 'pet_item', _key: `pet-${p.pet_id}` })
+      );
+    }
+
+    if (activeTab === 'all' && searchResults.adoptions.length > 0) {
+      items.push({ type: 'section_header', title: 'Adoptions', _key: 'hdr-adoptions' });
+      searchResults.adoptions.forEach((a: any) =>
+        items.push({ ...a, type: 'adoption_item', _key: `adopt-${a.listing_id}` })
+      );
+    }
+
+    if (activeTab === 'all' && searchResults.lost_found.length > 0) {
+      items.push({ type: 'section_header', title: 'Lost & Found', _key: 'hdr-lostfound' });
+      searchResults.lost_found.forEach((l: any) =>
+        items.push({ ...l, type: 'lost_found_item', _key: `lf-${l.report_id}` })
+      );
+    }
+
+    if (activeTab === 'all' && searchResults.hashtags.length > 0) {
+      items.push({ type: 'section_header', title: 'Hashtags', _key: 'hdr-hashtags' });
+      searchResults.hashtags.forEach((h: any) =>
+        items.push({ ...h, type: 'hashtag_item', _key: `tag-${h.hashtag_id}` })
+      );
+    }
+
+    if (activeTab === 'all' && searchResults.vets.length > 0) {
+      items.push({ type: 'section_header', title: 'Vets & Clinics', _key: 'hdr-vets' });
+      searchResults.vets.forEach((v: any) =>
+        items.push({ ...v, type: 'vet_item', _key: `vet-${v.provider_id}` })
       );
     }
 
@@ -199,6 +288,57 @@ export default function SearchScreen() {
         <PostCompactItem
           post={item}
           onPress={() => router.push(`/post/${item.post_id}`)}
+        />
+      );
+    }
+    if (item.type === 'pet_item') {
+      return (
+        <SearchResultRow
+          image={item.image_url}
+          title={item.pet_name}
+          subtitle={[item.breed, item.owner_name && `Owned by ${item.owner_name}`].filter(Boolean).join(' · ')}
+          onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.pet_id } })}
+        />
+      );
+    }
+    if (item.type === 'adoption_item') {
+      return (
+        <SearchResultRow
+          image={item.image_url}
+          title={item.pet_name}
+          subtitle={[item.breed, item.location].filter(Boolean).join(' · ')}
+          badge={item.status}
+          onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: item.listing_id } })}
+        />
+      );
+    }
+    if (item.type === 'lost_found_item') {
+      return (
+        <SearchResultRow
+          image={item.image_url}
+          title={item.pet_name || 'Lost & Found Report'}
+          subtitle={[item.report_type, item.area].filter(Boolean).join(' · ')}
+        />
+      );
+    }
+    if (item.type === 'hashtag_item') {
+      return (
+        <SearchResultRow
+          icon="pricetag"
+          title={`#${item.tag}`}
+          subtitle={`${item.post_count} posts`}
+          onPress={() => router.push({ pathname: '/(app)/hashtag/[tag]', params: { tag: item.tag } })}
+        />
+      );
+    }
+    if (item.type === 'vet_item') {
+      return (
+        <SearchResultRow
+          image={item.image_url}
+          title={item.name}
+          subtitle={item.location}
+          badge={item.rating ? `★ ${Number(item.rating).toFixed(1)}` : undefined}
+          onPress={() => router.push({ pathname: '/(app)/clinic/[id]', params: { id: String(item.provider_id) } })}
         />
       );
     }

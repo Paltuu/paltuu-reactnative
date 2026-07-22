@@ -35,6 +35,9 @@ function PetGalleryManagerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
+  const [isEditingCaption, setIsEditingCaption] = useState(false);
+  const [editedCaption, setEditedCaption] = useState('');
+  const [isSavingCaption, setIsSavingCaption] = useState(false);
   const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
   const [pendingCaption, setPendingCaption] = useState('');
 
@@ -113,6 +116,22 @@ function PetGalleryManagerScreen() {
     }
   };
 
+  const saveCaption = async () => {
+    if (!selectedPhoto) return;
+    try {
+      setIsSavingCaption(true);
+      const updated = await petProfilesApi.updatePetPhotoCaption(petId, selectedPhoto.photo_id, editedCaption.trim());
+      setPhotos((prev) => prev.map((p) => (p.photo_id === updated.photo_id ? updated : p)));
+      setSelectedPhoto(updated);
+      setIsEditingCaption(false);
+    } catch (error) {
+      console.error('Update Caption Error:', error);
+      Alert.alert('Error', 'Failed to update caption.');
+    } finally {
+      setIsSavingCaption(false);
+    }
+  };
+
   const deletePhoto = async (photoId: number) => {
     Alert.alert('Delete Photo', 'Are you sure you want to delete this photo from the gallery?', [
       { text: 'Cancel', style: 'cancel' },
@@ -167,7 +186,11 @@ function PetGalleryManagerScreen() {
           columnWrapperStyle={{ gap: 8 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => setSelectedPhoto(item)}
+              onPress={() => {
+                setSelectedPhoto(item);
+                setEditedCaption(item.caption ?? '');
+                setIsEditingCaption(false);
+              }}
               className="mb-2 relative rounded-2xl overflow-hidden border border-gray-100 bg-surface"
               style={{ width: COLUMN_WIDTH, height: COLUMN_WIDTH }}
             >
@@ -193,32 +216,84 @@ function PetGalleryManagerScreen() {
 
       {/* Detail / Action Sheet Modal — photo shown as a polaroid print */}
       {selectedPhoto && (
-        <Modal visible={!!selectedPhoto} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
+        <Modal
+          visible={!!selectedPhoto}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          navigationBarTranslucent
+          onRequestClose={() => setSelectedPhoto(null)}
+        >
           <TouchableOpacity
-            className="flex-1 bg-black/80 justify-center items-center p-5"
+            className="flex-1 bg-black/80 p-5"
             activeOpacity={1}
-            onPress={() => setSelectedPhoto(null)}
+            onPress={() => !isEditingCaption && setSelectedPhoto(null)}
           >
-            <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
-              <TouchableOpacity
-                onPress={() => setSelectedPhoto(null)}
-                className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
-              >
-                <Ionicons name="close" size={18} color="#ffffff" />
-              </TouchableOpacity>
-
-              <PolaroidCard uri={selectedPhoto.photo_url} caption={selectedPhoto.caption} />
-
-              <View className="mt-4">
+            <KeyboardAvoidingView
+              className="flex-1 justify-center items-center"
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
                 <TouchableOpacity
-                  onPress={() => deletePhoto(selectedPhoto.photo_id)}
-                  className="bg-red-50 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-red-100"
+                  onPress={() => setSelectedPhoto(null)}
+                  disabled={isSavingCaption}
+                  className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
                 >
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  <Text className="text-red-500 font-headingSemi text-base">Delete Photo</Text>
+                  <Ionicons name="close" size={18} color="#ffffff" />
                 </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
+
+                <PolaroidCard
+                  uri={selectedPhoto.photo_url}
+                  caption={isEditingCaption ? editedCaption : selectedPhoto.caption}
+                  editable={isEditingCaption}
+                  onCaptionChange={setEditedCaption}
+                  placeholder="Write a caption..."
+                />
+
+                {isEditingCaption ? (
+                  <View className="flex-row gap-2 mt-4">
+                    <TouchableOpacity
+                      onPress={() => {
+                        setIsEditingCaption(false);
+                        setEditedCaption(selectedPhoto.caption ?? '');
+                      }}
+                      disabled={isSavingCaption}
+                      className="flex-1 bg-gray-100 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200"
+                    >
+                      <Text className="text-gray-600 font-headingSemi text-base">Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={saveCaption}
+                      disabled={isSavingCaption}
+                      className="flex-1 bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl"
+                    >
+                      {isSavingCaption ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-headingSemi text-base">Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View className="flex-row gap-2 mt-4">
+                    <TouchableOpacity
+                      onPress={() => setIsEditingCaption(true)}
+                      className="flex-1 bg-gray-100 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200"
+                    >
+                      <Ionicons name="create-outline" size={18} color="#374151" />
+                      <Text className="text-gray-700 font-headingSemi text-base">Edit Caption</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => deletePhoto(selectedPhoto.photo_id)}
+                      className="flex-1 bg-red-50 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-red-100"
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      <Text className="text-red-500 font-headingSemi text-base">Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
           </TouchableOpacity>
         </Modal>
       )}

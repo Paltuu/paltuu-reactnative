@@ -99,6 +99,11 @@ export const petProfilesApi = {
     return data as { success: boolean };
   },
 
+  async updatePetPhotoCaption(petId: number | string, photoId: number | string, caption: string) {
+    const { data } = await client.patch(`/pet-profiles/${petId}/photos/${photoId}`, { caption });
+    return data as PetProfilePhoto;
+  },
+
   async setPetAvatar(petId: number | string, avatarUrl: string) {
     const { data } = await client.patch(`/pet-profiles/${petId}/avatar`, { avatar_url: avatarUrl });
     return data as PetProfile;
