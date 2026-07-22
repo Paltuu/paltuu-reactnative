@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -226,39 +228,44 @@ function PetGalleryManagerScreen() {
       {pendingPhotoUri && (
         <Modal visible={!!pendingPhotoUri} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
           <TouchableOpacity
-            className="flex-1 bg-black/80 justify-center items-center p-5"
+            className="flex-1 bg-black/80 p-5"
             activeOpacity={1}
             onPress={() => !isUploading && setPendingPhotoUri(null)}
           >
-            <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
-              <TouchableOpacity
-                onPress={() => setPendingPhotoUri(null)}
-                disabled={isUploading}
-                className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
-              >
-                <Ionicons name="close" size={18} color="#ffffff" />
-              </TouchableOpacity>
+            <KeyboardAvoidingView
+              className="flex-1 justify-center items-center"
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={() => {}} className="w-full max-w-xs" style={{ position: 'relative' }}>
+                <TouchableOpacity
+                  onPress={() => setPendingPhotoUri(null)}
+                  disabled={isUploading}
+                  className="absolute -top-11 right-0 bg-white/15 rounded-full p-1.5 z-10"
+                >
+                  <Ionicons name="close" size={18} color="#ffffff" />
+                </TouchableOpacity>
 
-              <PolaroidCard
-                uri={pendingPhotoUri}
-                caption={pendingCaption}
-                editable
-                onCaptionChange={setPendingCaption}
-                placeholder="Write a caption..."
-              />
+                <PolaroidCard
+                  uri={pendingPhotoUri}
+                  caption={pendingCaption}
+                  editable
+                  onCaptionChange={setPendingCaption}
+                  placeholder="Write a caption..."
+                />
 
-              <TouchableOpacity
-                onPress={confirmUploadPhoto}
-                disabled={isUploading}
-                className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl mt-4"
-              >
-                {isUploading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text className="text-white font-headingSemi text-base">Add to Gallery</Text>
-                )}
+                <TouchableOpacity
+                  onPress={confirmUploadPhoto}
+                  disabled={isUploading}
+                  className="bg-primary flex-row items-center justify-center gap-2 py-3.5 rounded-xl mt-4"
+                >
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text className="text-white font-headingSemi text-base">Add to Gallery</Text>
+                  )}
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
+            </KeyboardAvoidingView>
           </TouchableOpacity>
         </Modal>
       )}
