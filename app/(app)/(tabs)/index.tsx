@@ -253,18 +253,20 @@ export default function HomeScreen() {
     />
   ), [router]);
 
-  if ((isLoadingInterests || isLoadingFeed) && !posts.length) {
-    return (
-      <View className="flex-1 bg-white" style={{ paddingTop: topOffset }}>
+  // Header must stay mounted while the feed loads, so the skeleton swaps in for
+  // the list only — an early return here would unmount MainHeader and make the
+  // header pop in late on a cold start.
+  const showSkeleton = (isLoadingInterests || isLoadingFeed) && !posts.length;
+
+  return (
+    <View className="flex-1 bg-white">
+      {showSkeleton ? (
+      <View className="flex-1" style={{ paddingTop: topOffset }}>
         {Array.from({ length: 4 }).map((_, i) => (
           <PostCardSkeleton key={i} />
         ))}
       </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-white">
+      ) : (
       <GestureDetector gesture={openComposeGesture}>
       <CustomFlashList
         ref={listRef}
@@ -297,6 +299,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
       </GestureDetector>
+      )}
       {/* Rendered inside the home page (not the parent layout) so the pager
           carries the header along with the feed during a tab swipe. */}
       <MainHeader headerTranslateY={headerTranslateY} />
