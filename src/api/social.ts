@@ -25,7 +25,7 @@ export interface SocialProfile {
 export interface SocialPostMedia {
   media_id: string;
   post_id: string;
-  media_type: 'image' | 'video';
+  media_type: 'image' | 'video' | 'gif';
   url: string;
   thumbnail_url?: string;
   ordering: number;

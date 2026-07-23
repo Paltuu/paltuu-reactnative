@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAuthStore } from '../src/stores/authStore';
 import { petProfilesApi } from '../src/api/petProfiles';
 import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
+import { GifPickerSheet } from '../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../src/components/social/ComposerMediaGrid';
 import { useMediaDraft } from '../src/hooks/useMediaDraft';
@@ -222,6 +223,7 @@ export default function CreatePostScreen() {
   );
   const [milestone, setMilestone] = useState('');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   const enqueueUpload = useUploadStore((s) => s.enqueue);
 
@@ -516,6 +518,13 @@ export default function CreatePostScreen() {
                 <TouchableOpacity onPress={mediaDraft.pickFromCamera} hitSlop={8}>
                   <Ionicons name="camera-outline" size={24} color="#a03048" />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => { Keyboard.dismiss(); setGifSheetVisible(true); }}
+                  hitSlop={8}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#a03048', letterSpacing: 0.2 }}>GIF</Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -540,6 +549,12 @@ export default function CreatePostScreen() {
         onToggle={togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
         isLoading={isLoadingPetProfiles}
+      />
+
+      <GifPickerSheet
+        visible={gifSheetVisible}
+        onClose={() => setGifSheetVisible(false)}
+        onSelect={(gif) => mediaDraft.addGif(gif)}
       />
 
     </View>

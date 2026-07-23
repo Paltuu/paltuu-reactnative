@@ -189,7 +189,7 @@ export const useCommentDraft = ({
           removeCommentInPages(old, tempId)
         );
         bumpCommentCount(-1);
-        Alert.alert('Comment not posted', err?.message || 'Could not post your comment.');
+        Alert.alert('Comment not posted', err?.response?.data?.error || err?.message || 'Could not post your comment.');
       } finally {
         setIsSubmitting(false);
       }
@@ -207,6 +207,7 @@ export const useCommentDraft = ({
     media: media.items,
     pickImage: media.pickFromLibrary,
     pickCamera: media.pickFromCamera,
+    addGif: media.addGif,
     removeMedia: media.remove,
     retryMedia: media.retry,
     selectedPets,

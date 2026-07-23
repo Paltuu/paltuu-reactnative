@@ -32,7 +32,7 @@ const PostIcons = {
 
 /* ── Types ── */
 export interface CommentMedia {
-  media_type: 'image' | 'video';
+  media_type: 'image' | 'video' | 'gif';
   url: string;
   thumbnail_url: string | null;
   ordering: number;
@@ -331,13 +331,22 @@ export const CommentMediaGrid = ({ media }: { media?: CommentMedia[] }) => {
           style={{ width: 96, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: '#F3F4F6' }}
         >
           <Image
-            source={{ uri: m.thumbnail_url || m.url }}
+            source={{ uri: m.media_type === 'gif' ? m.url : (m.thumbnail_url || m.url) }}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
           />
           {m.media_type === 'video' && (
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="play-circle" size={30} color="rgba(255,255,255,0.9)" />
+            </View>
+          )}
+          {m.media_type === 'gif' && (
+            <View style={{
+              position: 'absolute', bottom: 6, left: 6,
+              backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 4,
+              paddingHorizontal: 5, paddingVertical: 2,
+            }}>
+              <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>GIF</Text>
             </View>
           )}
         </TouchableOpacity>

@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { OriginalPostPreview } from '../../src/components/social/PostCard';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionInputField, MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../../src/components/social/ComposerMediaGrid';
 import { useMediaDraft } from '../../src/hooks/useMediaDraft';
@@ -58,6 +59,7 @@ export default function QuoteComposerScreen() {
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   // Preview of the quoted post, read once on mount — set synchronously by
   // PostCard before this screen is pushed.
@@ -234,6 +236,9 @@ export default function QuoteComposerScreen() {
           <TouchableOpacity onPress={mediaDraft.pickFromCamera} hitSlop={8}>
             <Ionicons name="camera-outline" size={24} color={PRIMARY} />
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => { Keyboard.dismiss(); setGifSheetVisible(true); }} hitSlop={8}>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: PRIMARY, letterSpacing: 0.2 }}>GIF</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => { Keyboard.dismiss(); setPetSheetVisible(true); }} hitSlop={8}>
             <Ionicons name="paw-outline" size={24} color={PRIMARY} />
           </TouchableOpacity>
@@ -252,6 +257,12 @@ export default function QuoteComposerScreen() {
         selectedPets={selectedPets}
         onToggle={togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
+
+      <GifPickerSheet
+        visible={gifSheetVisible}
+        onClose={() => setGifSheetVisible(false)}
+        onSelect={(gif) => mediaDraft.addGif(gif)}
       />
     </View>
   );

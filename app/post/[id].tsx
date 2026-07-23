@@ -32,6 +32,7 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import {
   BG, PRIMARY,
@@ -58,6 +59,7 @@ export default function PostDetailScreen() {
   const sortBy: SortBy = 'top'; // comments always sort by Top
   const keyboardVisible = keyboardHeight > 0;
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   // Auto-play the video in the detail screen when opened, and pause on close
   useEffect(() => {
@@ -555,6 +557,7 @@ export default function PostDetailScreen() {
                   <ComposerToolbar
                     onImage={draft.pickImage}
                     onCamera={draft.pickCamera}
+                    onGif={() => setGifSheetVisible(true)}
                     onPet={() => setPetSheetVisible(true)}
                     count={draft.media.length}
                   />
@@ -594,6 +597,12 @@ export default function PostDetailScreen() {
         selectedPets={draft.selectedPets}
         onToggle={draft.togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
+
+      <GifPickerSheet
+        visible={gifSheetVisible}
+        onClose={() => setGifSheetVisible(false)}
+        onSelect={(gif) => draft.addGif(gif)}
       />
     </View>
     </PostCardModalsProvider>

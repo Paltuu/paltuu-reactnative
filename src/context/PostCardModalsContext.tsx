@@ -32,7 +32,7 @@ export interface RepostConfig {
 
 export interface MediaItem {
   url: string;
-  type?: 'image' | 'video';
+  type?: 'image' | 'video' | 'gif';
   thumbnail_url?: string;
 }
 

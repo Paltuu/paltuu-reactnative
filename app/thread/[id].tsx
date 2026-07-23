@@ -29,6 +29,7 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import {
   BG, PRIMARY,
@@ -55,6 +56,7 @@ export default function CommentThreadScreen() {
   const sortBy: SortBy = 'top'; // comments always sort by Top
   const keyboardVisible = keyboardHeight > 0;
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const [gifSheetVisible, setGifSheetVisible] = useState(false);
   // The mention library only tracks cursor position via the TextInput's own
   // onSelectionChange, so right after handleReply prefills text (e.g.
   // "@AuthorName ") programmatically, its internal selection state is still
@@ -492,6 +494,7 @@ export default function CommentThreadScreen() {
                   <ComposerToolbar
                     onImage={draft.pickImage}
                     onCamera={draft.pickCamera}
+                    onGif={() => setGifSheetVisible(true)}
                     onPet={() => setPetSheetVisible(true)}
                     count={draft.media.length}
                   />
@@ -531,6 +534,12 @@ export default function CommentThreadScreen() {
         selectedPets={draft.selectedPets}
         onToggle={draft.togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
+
+      <GifPickerSheet
+        visible={gifSheetVisible}
+        onClose={() => setGifSheetVisible(false)}
+        onSelect={(gif) => draft.addGif(gif)}
       />
     </View>
     </PostCardModalsProvider>

@@ -29,7 +29,7 @@ import VideoPlayer from '../social/VideoPlayer';
 
 interface MediaItem {
   url: string;
-  type?: 'image' | 'video';
+  type?: 'image' | 'video' | 'gif';
   thumbnail_url?: string;
 }
 

@@ -20,6 +20,7 @@ import {
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
@@ -53,6 +54,7 @@ export default function CommentComposerScreen() {
   });
 
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   // While the user is typing/selecting a mention, the post-being-replied-to
   // context and bottom toolbar hide so the full-width suggestion list can
@@ -238,6 +240,7 @@ export default function CommentComposerScreen() {
           <ComposerToolbar
             onImage={draft.pickImage}
             onCamera={draft.pickCamera}
+            onGif={() => { Keyboard.dismiss(); setGifSheetVisible(true); }}
             onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
             count={draft.media.length}
           />
@@ -251,6 +254,12 @@ export default function CommentComposerScreen() {
         selectedPets={draft.selectedPets}
         onToggle={draft.togglePet}
         onAddPet={() => { setPetSheetVisible(false); router.push('/(app)/pet-profile/create'); }}
+      />
+
+      <GifPickerSheet
+        visible={gifSheetVisible}
+        onClose={() => setGifSheetVisible(false)}
+        onSelect={(gif) => draft.addGif(gif)}
       />
     </View>
   );

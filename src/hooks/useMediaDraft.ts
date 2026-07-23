@@ -16,6 +16,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { socialApi } from '../api/social';
+import type { GifItem } from '../api/klipy';
 
 export type DraftMediaStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -24,7 +25,7 @@ export interface DraftMedia {
    *  be removed from the middle of the list while their upload is still in flight. */
   id: string;
   uri: string;
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'gif';
   /** Only set for videos (e.g. 'video/mp4', 'video/quicktime'). */
   mime?: string;
   /** Locally extracted video poster frame, filled in shortly after the tile appears. */
@@ -163,6 +164,16 @@ export function useMediaDraft({ maxItems = 10, allowVideo = true }: UseMediaDraf
         };
         results.current.set(item.id, { remote, videoKey: video_key });
         patch(item.id, { status: 'uploaded', progress: 1, videoKey: video_key, remote });
+      } else if (item.type === 'gif') {
+        // CDN GIFs are already "uploaded" — should never reach here, but if a
+        // retry somehow fires, just re-materialize the remote payload.
+        const remote = item.remote ?? {
+          media_type: 'gif',
+          url: item.uri,
+          thumbnail_url: item.thumbnailUri || item.uri,
+        };
+        results.current.set(item.id, { remote });
+        patch(item.id, { status: 'uploaded', progress: 1, remote });
       } else {
         const processed = await manipulateAsync(item.uri, [{ resize: { width: 1200 } }], {
           compress: 0.8,
@@ -265,6 +276,36 @@ export function useMediaDraft({ maxItems = 10, allowVideo = true }: UseMediaDraf
     }
   }, [maxItems, addAssets]);
 
+  /**
+   * Attach a Klipy CDN GIF — no upload. The tile renders from the CDN URL and
+   * the remote payload is ready for settle() immediately.
+   */
+  const addGif = useCallback((gif: GifItem) => {
+    if (itemsRef.current.length >= maxItems) {
+      Alert.alert('Limit Reached', `You can add up to ${maxItems} media items.`);
+      return;
+    }
+    const id = nextId();
+    const remote = {
+      media_type: 'gif',
+      url: gif.url,
+      thumbnail_url: gif.previewUrl,
+      width: gif.width || undefined,
+      height: gif.height || undefined,
+    };
+    const item: DraftMedia = {
+      id,
+      uri: gif.url,
+      type: 'gif',
+      thumbnailUri: gif.previewUrl,
+      status: 'uploaded',
+      progress: 1,
+      remote,
+    };
+    results.current.set(id, { remote });
+    commit((prev) => [...prev, item]);
+  }, [maxItems, commit]);
+
   const remove = useCallback((id: string) => {
     inFlight.current.delete(id);
     results.current.delete(id);
@@ -349,6 +390,9 @@ export function useMediaDraft({ maxItems = 10, allowVideo = true }: UseMediaDraf
     count: items.length,
     pickFromLibrary,
     pickFromCamera,
+    addGif,
+    /** @deprecated Use addGif */
+    addGiphy: addGif,
     addAssets,
     remove,
     retry,

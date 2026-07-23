@@ -104,6 +104,18 @@ export const ComposerMediaGrid = ({
               </View>
             )}
 
+            {item.type === 'gif' && !failed && (
+              <View
+                style={{
+                  position: 'absolute', bottom: 6, left: 4,
+                  backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4,
+                  paddingHorizontal: 5, paddingVertical: 2,
+                }}
+              >
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#fff' }}>GIF</Text>
+              </View>
+            )}
+
             <TouchableOpacity
               onPress={() => onRemove(item.id)}
               hitSlop={6}
@@ -122,16 +134,18 @@ export const ComposerMediaGrid = ({
   );
 };
 
-/* ── Icon toolbar — gallery + camera + pet tagging ── */
+/* ── Icon toolbar — gallery + camera + gif + pet tagging ── */
 export const ComposerToolbar = ({
   onImage,
   onCamera,
+  onGif,
   onPet,
   count,
   maxCount = 4,
 }: {
   onImage: () => void;
   onCamera: () => void;
+  onGif?: () => void;
   onPet?: () => void;
   count: number;
   maxCount?: number;
@@ -143,6 +157,11 @@ export const ComposerToolbar = ({
     <TouchableOpacity onPress={onCamera} hitSlop={8}>
       <Ionicons name="camera-outline" size={23} color={PRIMARY} />
     </TouchableOpacity>
+    {onGif && (
+      <TouchableOpacity onPress={onGif} hitSlop={8}>
+        <Text style={{ fontSize: 12, fontWeight: '800', color: PRIMARY, letterSpacing: 0.2 }}>GIF</Text>
+      </TouchableOpacity>
+    )}
     {onPet && (
       <TouchableOpacity onPress={onPet} hitSlop={8}>
         <Ionicons name="paw-outline" size={22} color={PRIMARY} />

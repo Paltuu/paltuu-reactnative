@@ -95,7 +95,7 @@ function MediaDetailScreen() {
     () =>
       mediaSource.map((m: any) => ({
         url: m.media_type === 'video' ? (m.hls_url || m.url) : m.url,
-        type: m.media_type as 'image' | 'video',
+        type: m.media_type as 'image' | 'video' | 'gif',
         thumbnail_url: m.thumbnail_url,
       })),
     [mediaSource]
