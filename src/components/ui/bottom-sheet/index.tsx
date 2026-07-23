@@ -519,28 +519,46 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
       [enableScroll, onScroll],
     );
 
+    // FlatList / SectionList call onScroll as a normal JS function. Reanimated's
+    // useAnimatedScrollHandler returns a worklet handler object that only works
+    // when passed directly to Animated.ScrollView — calling it throws
+    // "is not a function (it is Object)". Sync scrollY from the JS event instead.
+    const syncListScroll = useCallback((event: any) => {
+      const y = event?.nativeEvent?.contentOffset?.y;
+      if (typeof y === "number") {
+        scrollY.value = y;
+      }
+    }, [scrollY]);
+
+    const enhanceScrollableList = useCallback(
+      (listElement: ReactElement, key?: string | number) => {
+        const { onScroll: _ignoreAnimatedOnScroll, ...listScrollProps } = scrollProps;
+        return cloneElement(listElement, {
+          ...(key !== undefined ? { key } : {}),
+          ...listScrollProps,
+          contentContainerStyle: [
+            (listElement.props as any).contentContainerStyle,
+            { paddingBottom: bottomInset },
+          ],
+          onScroll: (event: any) => {
+            syncListScroll(event);
+            (listElement.props as any).onScroll?.(event);
+          },
+        } as any);
+      },
+      [scrollProps, bottomInset, syncListScroll],
+    );
+
     const renderContent = useCallback(() => {
       const childArray = Children.toArray(children);
 
       if (childArray.length === 1 && isScrollableList(childArray[0])) {
         const listElement = childArray[0] as ReactElement;
 
-        const enhancedList = cloneElement(listElement, {
-          ...scrollProps,
-          contentContainerStyle: [
-            (listElement.props as any).contentContainerStyle,
-            { paddingBottom: bottomInset },
-          ],
-          onScroll: (event: any) => {
-            (scrollProps.onScroll as any)?.(event);
-            (listElement.props as any).onScroll?.(event);
-          },
-        } as any);
-
         return (
           <GestureDetector gesture={simultaneousGesture}>
             <Animated.View style={styles.scrollableWrapper}>
-              {enhancedList}
+              {enhanceScrollableList(listElement)}
             </Animated.View>
           </GestureDetector>
         );
@@ -552,18 +570,10 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
         const enhancedChildren = childArray.map((child, index) => {
           if (isScrollableList(child)) {
             const listElement = child as ReactElement;
-            return cloneElement(listElement, {
-              key: (listElement.key as string) || index,
-              ...scrollProps,
-              contentContainerStyle: [
-                (listElement.props as any).contentContainerStyle,
-                { paddingBottom: bottomInset },
-              ],
-              onScroll: (event: any) => {
-                (scrollProps.onScroll as any)?.(event);
-                (listElement.props as any).onScroll?.(event);
-              },
-            } as any);
+            return enhanceScrollableList(
+              listElement,
+              (listElement.key as string) || index,
+            );
           }
           return child;
         });
@@ -597,7 +607,7 @@ const BottomSheetComponent = forwardRef<BottomSheetMethods, BottomSheetProps>(
       );
     }, [
       children,
-      scrollProps,
+      enhanceScrollableList,
       simultaneousGesture,
       scrollViewRef,
       contentContainerStyle,
