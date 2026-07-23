@@ -27,11 +27,13 @@ import { StatusBar } from 'expo-status-bar';
 import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
+import * as Updates from 'expo-updates';
 import { NotificationProvider } from '../src/context/NotificationContext';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { toastConfig } from '../src/components/common/toastConfig';
+import { storage } from '../src/utils/storage';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
@@ -193,6 +195,28 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError, isLoading]);
+
+  // 5. OTA landing confirmation — Updates.updateId is only set once an OTA
+  // bundle is actually running (null on the embedded/dev bundle). Comparing
+  // against the last-seen id and toasting on change gives a visible signal,
+  // on both platforms, that a published update really reached this device —
+  // without having to dig through Profile > About.
+  useEffect(() => {
+    const currentUpdateId = Updates.updateId;
+    if (!currentUpdateId) return;
+    (async () => {
+      const lastSeen = await storage.getLastSeenOtaUpdateId();
+      if (lastSeen === currentUpdateId) return;
+      await storage.setLastSeenOtaUpdateId(currentUpdateId);
+      if (lastSeen) {
+        Toast.show({
+          type: 'success',
+          text1: 'App updated',
+          text2: `${Platform.OS === 'ios' ? 'iOS' : 'Android'} · ${currentUpdateId.slice(0, 8)}`,
+        });
+      }
+    })();
+  }, []);
 
   const appReady = (fontsLoaded || !!fontError) && !isLoading;
 

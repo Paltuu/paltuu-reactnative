@@ -106,8 +106,9 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
         <View style={{ flex: 1 }}>
           <Text style={styles.nearbyTitle}>Pets Near You</Text>
           <Text style={styles.nearbySub}>
-            Recently listed
-            {cityName && !usingFallback ? ` in ${cityName}` : ' near you'}
+            {usingFallback
+              ? 'Popular listings right now'
+              : `Recently listed${cityName ? ` in ${cityName}` : ' near you'}`}
           </Text>
         </View>
         <Ionicons name="arrow-forward" size={16} color={ROSE} />

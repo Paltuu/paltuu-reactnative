@@ -101,6 +101,8 @@ export default function SearchScreen() {
   const queryClient = useQueryClient();
   // create-post <-> home <-> pets <-> search <-> profile
   const { headerTranslateY, scrollHandler, handleScrollY, handleScrollEnd } = useHeaderScroll();
+  const exploreListRef = useRef<any>(null);
+  const exploreScrollYRef = useRef(0);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
@@ -395,11 +397,15 @@ export default function SearchScreen() {
     }
   }, [queryClient]);
 
-  // Re-tapping the Search tab while already on it refreshes whichever view is active.
+  // Instagram-style re-tap: if the explore feed is scrolled down, jump straight
+  // back to the top; only refresh once it's already there. (Search results
+  // list has no scroll-to-top — a re-tap there just re-runs the query.)
   useEffect(() => {
     return subscribeToTabPress('search', () => {
       if (debouncedQuery) {
         refetchSearch();
+      } else if (exploreScrollYRef.current > 40) {
+        exploreListRef.current?.scrollToOffset({ offset: 0, animated: false });
       } else {
         handleExploreRefresh();
       }
@@ -444,12 +450,16 @@ export default function SearchScreen() {
         />
       ) : (
         <CustomFlashList
+          ref={exploreListRef}
           data={forYouPosts}
           renderItem={renderFeedItem}
           keyExtractor={(item: SocialPost) => item.post_id}
           getItemType={getPostItemType}
           estimatedItemSize={350}
-          onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+          onScroll={(e: any) => {
+            exploreScrollYRef.current = e.nativeEvent.contentOffset.y;
+            handleScrollY(e.nativeEvent.contentOffset.y);
+          }}
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
           scrollEventThrottle={16}

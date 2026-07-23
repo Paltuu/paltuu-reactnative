@@ -17,7 +17,6 @@ import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { getShareUrl } from '../../../src/utils/share';
 import { petProfilesApi, PetProfile, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -32,10 +31,11 @@ import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProf
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
 const { width } = Dimensions.get('window');
-// Grid has 2px of container padding on each side plus a 2px gap between the
-// 3 columns (2 gaps total) — subtract both before dividing, or the 3rd
-// column overflows the row and wraps down to a 2-per-row layout.
-const GALLERY_COL_SIZE = (width - 2 * 2 - 2 * 2) / 3;
+// Polaroid grid: 14px container padding on each side plus a 14px gap
+// between the 2 columns — subtract both before halving, or the 2nd
+// column overflows the row.
+const GALLERY_GUTTER = 14;
+const GALLERY_COL_SIZE = (width - GALLERY_GUTTER * 3) / 2;
 const AVATAR_SIZE = 88;
 // Gap between the (screen-centered) pet name and the Edit pill to its right.
 const NAME_EDIT_GAP = 15;
@@ -491,11 +491,11 @@ function PetProfileScreen() {
             {photos.length > 0 ? (
               photos.map((photo) => (
                 <TouchableOpacity key={photo.photo_id} style={s.galleryCell} onPress={() => setSelectedPhoto(photo)} activeOpacity={0.85}>
-                  <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                  <View style={s.galleryPhotoWrap}>
+                    <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                  </View>
                   {photo.caption ? (
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.55)']} style={s.captionGradient}>
-                      <Text style={s.captionText} numberOfLines={1}>{photo.caption}</Text>
-                    </LinearGradient>
+                    <Text style={s.captionText} numberOfLines={1}>{photo.caption}</Text>
                   ) : null}
                 </TouchableOpacity>
               ))
@@ -801,17 +801,29 @@ const s = StyleSheet.create({
   galleryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 2,
-    padding: 2,
-    marginTop: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: GALLERY_GUTTER,
+    paddingTop: GALLERY_GUTTER,
   },
   galleryCell: {
     width: GALLERY_COL_SIZE,
-    height: GALLERY_COL_SIZE,
+    marginBottom: GALLERY_GUTTER,
+    backgroundColor: '#FFFFFF',
+    padding: 8,
+    paddingBottom: 14,
+    borderRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  galleryPhotoWrap: {
+    width: '100%',
+    aspectRatio: 1,
     backgroundColor: '#F3F4F6',
     overflow: 'hidden',
-    borderRadius: 4,
-    position: 'relative',
+    borderRadius: 2,
   },
   galleryFab: {
     position: 'absolute',
@@ -847,15 +859,13 @@ const s = StyleSheet.create({
     borderRadius: 16,
     padding: 6,
   },
-  captionGradient: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    padding: 6,
-  },
   captionText: {
-    fontSize: 10,
-    fontFamily: 'Montserrat_500Medium',
-    color: '#FFFFFF',
+    fontFamily: 'CheeseMilky',
+    fontSize: 13,
+    color: '#111111',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 2,
   },
 
   // ── ABOUT ──

@@ -149,6 +149,18 @@ export default function HomeScreen() {
     [router],
   );
 
+  // On Android, wrapping the list in a bare GestureDetector makes RNGH's pan
+  // recognizer own the touch stream while it decides activate/fail, which
+  // starves the FlashList's native RefreshControl of the touch-move events
+  // its pull-down drag animation needs — the refresh still fires, but instantly,
+  // with no visible drag. Composing it with Gesture.Native() tells RNGH to run
+  // the underlying scroll view's native gesture (incl. RefreshControl's
+  // nested-scroll drag) simultaneously instead of gating it on this one's outcome.
+  const composedGesture = useMemo(
+    () => Gesture.Simultaneous(openComposeGesture, Gesture.Native()),
+    [openComposeGesture],
+  );
+
   const {
     data, fetchNextPage, hasNextPage,
     isFetchingNextPage, isLoading: isLoadingFeed, refetch,
@@ -270,7 +282,7 @@ export default function HomeScreen() {
         ))}
       </View>
       ) : (
-      <GestureDetector gesture={openComposeGesture}>
+      <GestureDetector gesture={composedGesture}>
       <CustomFlashList
         ref={listRef}
         style={{ flex: 1 }}

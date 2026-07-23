@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { NativeModules } from 'react-native';
 import { petApi } from '../api/pets';
 import { findNearestCity } from '../utils/geo';
 
@@ -24,13 +23,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   resolveCity: async () => {
     if (get().status === 'resolving') return;
     set({ status: 'resolving' });
-
-    // ExpoLocation native module is absent in Expo Go — bail before loading expo-location's JS
-    if (!NativeModules.ExpoLocation) {
-      if (__DEV__) console.log('[Paltuu] ExpoLocation native module not available (Expo Go?), skipping location');
-      set({ status: 'error' });
-      return;
-    }
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires

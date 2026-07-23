@@ -44,9 +44,11 @@ async function performTokenRefresh(): Promise<{ accessToken: string; refreshToke
       throw err;
     }
 
-    const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`, {
-      refreshToken,
-    });
+    const response = await axios.post(
+      `${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`,
+      { refreshToken },
+      { timeout: 10000 }
+    );
 
     const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
     await useAuthStore.getState().updateAccessToken(newAccessToken, newRefreshToken);

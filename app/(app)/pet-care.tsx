@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   FlatList,
+  Alert,
+  Linking,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -98,8 +100,19 @@ function PetCareScreen() {
       setSortMode('default');
       return;
     }
+    if (locStatus === 'denied') {
+      Alert.alert(
+        'Location access needed',
+        'Enable location access for Paltuu in Settings to find clinics near you.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
     if (!hasLocation) await resolveCity();
-    setSortMode('nearby');
+    if (useLocationStore.getState().latitude != null) setSortMode('nearby');
   };
 
   const distanceOf = (c: any): number | null => {

@@ -598,7 +598,7 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {activeTab === 'Pets' && (tabData.Pets?.length ?? 0) > 0 && (
+      {activeTab === 'Pets' && (
         <TouchableOpacity
           onPress={() => router.push('/(app)/pet-profile/create')}
           style={s.addPetBtn}
@@ -609,7 +609,9 @@ export default function ProfileScreen() {
             contentFit="contain"
             tintColor={DS.primary}
           />
-          <Text style={s.addPetBtnText}>Add Another Pet</Text>
+          <Text style={s.addPetBtnText}>
+            {(tabData.Pets?.length ?? 0) > 0 ? 'Add Another Pet' : 'Add Your Pet'}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -649,7 +651,7 @@ export default function ProfileScreen() {
             />
           }
           ListEmptyComponent={
-            <View style={s.emptyState}>
+            <View style={activeTab === 'Pets' && !isTabLoading ? s.emptyStatePets : s.emptyState}>
               {isTabLoading ? (
                 <ActivityIndicator size="small" color={DS.primary} />
               ) : activeTab === 'Pets' ? (
@@ -658,21 +660,6 @@ export default function ProfileScreen() {
                     <PetIdCard isPlaceholder />
                     <Text style={s.placeholderCardCaption}>This could be your pet.</Text>
                   </View>
-                  {/* Same marginHorizontal/border/full-width treatment as the
-                      "Add Another Pet" button in the has-pets state, so the
-                      button sits in the same place in both states. */}
-                  <TouchableOpacity
-                    onPress={() => router.push('/(app)/pet-profile/create')}
-                    style={s.addPetBtn}
-                  >
-                    <ExpoImage
-                      source={require('../../../../assets/icons/plus-solid.svg')}
-                      style={{ width: 14, height: 14 }}
-                      contentFit="contain"
-                      tintColor={DS.primary}
-                    />
-                    <Text style={s.addPetBtnText}>Add Your Pet</Text>
-                  </TouchableOpacity>
                 </View>
               ) : (
                 <>
@@ -1093,6 +1080,11 @@ const s = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
+    gap: 12,
+  },
+  emptyStatePets: {
+    alignItems: 'center',
+    paddingTop: 4,
     gap: 12,
   },
   emptyText: {

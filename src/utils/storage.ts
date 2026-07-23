@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   WELCOME_MASCOT_SEEN: 'welcome_mascot_seen',
   PET_HUB_MASCOT_SEEN: 'pet_hub_mascot_seen',
   PROFILE_INTRO_MASCOT_SEEN: 'profile_intro_mascot_seen',
+  LAST_SEEN_OTA_UPDATE_ID: 'last_seen_ota_update_id',
 };
 
 // expo-secure-store is not supported on web; fall back to localStorage
@@ -96,6 +97,12 @@ export const storage = {
   async isProfileIntroMascotSeen(): Promise<boolean> {
     const val = await store.getItem(STORAGE_KEYS.PROFILE_INTRO_MASCOT_SEEN);
     return val === '1';
+  },
+  async getLastSeenOtaUpdateId(): Promise<string | null> {
+    return store.getItem(STORAGE_KEYS.LAST_SEEN_OTA_UPDATE_ID);
+  },
+  async setLastSeenOtaUpdateId(id: string) {
+    await store.setItem(STORAGE_KEYS.LAST_SEEN_OTA_UPDATE_ID, id);
   },
 };
 
