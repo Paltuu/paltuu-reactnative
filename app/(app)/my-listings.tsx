@@ -27,7 +27,7 @@ const ERROR = '#C0392B';
 
 const LOCATION_ICON = require('../../assets/icons/location-pin-alt-1-svgrepo-com.svg');
 const PAW_ICON = require('../../assets/icons/paw-like-select.svg');
-const PLACEHOLDER = require('../../assets/dog-placeholder.png');
+const PLACEHOLDER = require('../../assets/dog-placeholder.webp');
 
 const H_PAD = 16;
 

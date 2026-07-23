@@ -235,7 +235,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.illustrationZone}>
           <Image
-            source={require('../../assets/login-journey/login-page.png')}
+            source={require('../../assets/login-journey/login-page.webp')}
             style={styles.illustrationImg}
             contentFit="contain"
           />

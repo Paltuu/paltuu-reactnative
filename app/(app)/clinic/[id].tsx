@@ -170,7 +170,7 @@ function ClinicDetailsScreen() {
             {rating != null && (
               <View style={styles.ratingBlock}>
                 <Image
-                  source={require('../../../assets/google-reviews.png')}
+                  source={require('../../../assets/google-reviews.webp')}
                   style={styles.googleLogo}
                   contentFit="contain"
                 />

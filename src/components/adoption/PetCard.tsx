@@ -9,7 +9,7 @@ const MUTED = '#6B7280';
 
 const LOCATION_ICON = require('../../../assets/icons/location-pin-alt-1-svgrepo-com.svg');
 const PAW_ICON = require('../../../assets/icons/paw-like-select.svg');
-const PLACEHOLDER = require('../../../assets/dog-placeholder.png');
+const PLACEHOLDER = require('../../../assets/dog-placeholder.webp');
 
 const formatAge = (ageMonths: number | null | undefined): string => {
   if (ageMonths === null || ageMonths === undefined || ageMonths < 0) return '';

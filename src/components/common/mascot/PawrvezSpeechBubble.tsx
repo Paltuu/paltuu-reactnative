@@ -15,17 +15,17 @@ import { Image } from 'expo-image';
 import { COLORS } from '../../../constants/colors';
 import { FONTS } from '../../../constants/typography';
 
-const mouthClosedIcon = require('../../../../assets/pixel/pawrvez-pixel-mouth-closed.png');
-const mouthOpenIcon = require('../../../../assets/pixel/pawrvez-pixel-mouthopen.png');
+const mouthClosedIcon = require('../../../../assets/pixel/pawrvez-pixel-mouth-closed.webp');
+const mouthOpenIcon = require('../../../../assets/pixel/pawrvez-pixel-mouthopen.webp');
 
 // Three pre-drawn bubble heights (1/2/3 lines). All share the SAME border art
 // and native width, so they scale uniformly by width and are never stretched to
 // a line count they weren't drawn for. Messages are guaranteed ≤ 3 lines.
 const ART_NATIVE_WIDTH = 4317;
 const bubbleAssets = [
-  { source: require('../../../../assets/pixel/bubble1.png'), height: 875 },
-  { source: require('../../../../assets/pixel/bubble2.png'), height: 1215 },
-  { source: require('../../../../assets/pixel/bubble3.png'), height: 1543 },
+  { source: require('../../../../assets/pixel/bubble1.webp'), height: 875 },
+  { source: require('../../../../assets/pixel/bubble2.webp'), height: 1215 },
+  { source: require('../../../../assets/pixel/bubble3.webp'), height: 1543 },
 ];
 
 // Interior (white text area) insets measured from the bubble art, in NATIVE px

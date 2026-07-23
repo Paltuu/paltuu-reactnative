@@ -129,7 +129,7 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
               <View key={pet.pet_id} style={styles.nearbyCircle}>
                 <Image
                   source={
-                    getPetImage(pet) ? { uri: getPetImage(pet) } : require('../../../assets/dog-placeholder.png')
+                    getPetImage(pet) ? { uri: getPetImage(pet) } : require('../../../assets/dog-placeholder.webp')
                   }
                   style={styles.nearbyCircleImg}
                   contentFit="cover"
@@ -229,7 +229,7 @@ export default function PetsHubScreen() {
           </View>
           <View style={styles.heroIllustrationSpace}>
             <Image
-              source={require('../../../assets/pets-hub/huugging.png')}
+              source={require('../../../assets/pets-hub/huugging.webp')}
               style={styles.heroIllustrationImg}
               contentFit="contain"
             />
@@ -259,7 +259,7 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../../assets/pets-hub/doctor.png')}
+                source={require('../../../assets/pets-hub/doctor.webp')}
                 style={styles.clinicIllustrationImg}
                 contentFit="contain"
               />
@@ -279,7 +279,7 @@ export default function PetsHubScreen() {
           >
             <View style={styles.squareIllustration}>
               <Image
-                source={require('../../../assets/pets-hub/playing.png')}
+                source={require('../../../assets/pets-hub/playing.webp')}
                 style={styles.squareIllustrationImg}
                 contentFit="contain"
               />
@@ -302,7 +302,7 @@ export default function PetsHubScreen() {
           style={styles.lostFoundStrip}
         >
           <Image
-            source={require('../../../assets/pets-hub/sad.png')}
+            source={require('../../../assets/pets-hub/sad.webp')}
             style={styles.lostFoundImg}
             contentFit="contain"
           />
