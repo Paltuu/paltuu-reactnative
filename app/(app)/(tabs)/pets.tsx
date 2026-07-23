@@ -20,6 +20,8 @@ import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
+import { PawrvezDialog } from '../../../src/components/common/mascot';
+import { storage } from '../../../src/utils/storage';
 
 const H_PAD = 20;
 const ROSE = '#A03048';
@@ -149,6 +151,17 @@ export default function PetsHubScreen() {
   const isFocused = useIsFocused();
   const user = useAuthStore((state) => state.user);
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
+
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
+
+  // First-visit tip introducing what Pet Hub is for. Shown once ever.
+  useEffect(() => {
+    (async () => {
+      if (await storage.isPetHubMascotSeen()) return;
+      await storage.markPetHubMascotSeen();
+      setShowMascotDialog(true);
+    })();
+  }, []);
 
   const { cityId, cityName } = useLocationStore();
   const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched, refetch: refetchCityPets } = useQuery({
@@ -317,6 +330,14 @@ export default function PetsHubScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <PawrvezDialog
+        visible={showMascotDialog}
+        text="This is Pet Hub! Find pets looking for a home, list your own pet up for adoption, or track down trusted vets and grooming spots nearby."
+        onDismiss={() => setShowMascotDialog(false)}
+        actionLabel="Got it"
+        onAction={() => setShowMascotDialog(false)}
+      />
     </View>
   );
 }

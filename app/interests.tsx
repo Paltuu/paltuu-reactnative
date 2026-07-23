@@ -199,7 +199,7 @@ export default function InterestsScreen() {
 
       <PawrvezDialog
         visible={showMascotDialog}
-        text="Help us find the right pets and posts for you"
+        text="Tell us what you're into so we can shape your feed around it."
         onDismiss={() => setShowMascotDialog(false)}
         actionLabel="Got it"
         onAction={() => setShowMascotDialog(false)}

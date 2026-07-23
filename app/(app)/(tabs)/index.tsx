@@ -157,11 +157,14 @@ export default function HomeScreen() {
     queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
-    // Wait for the interests check so forYouMode is resolved before the first
-    // fetch — otherwise this fires once for 'global', then again a beat later
-    // for 'personalized' once interests load, causing a double fetch + a
-    // loading-skeleton flash right after the feed first paints.
-    enabled: authReady && !isLoadingInterests && !USE_MOCK_POSTS_FOR_SCREENSHOTS,
+    // Fires in parallel with the interests check (no longer gated on
+    // isLoadingInterests) so cold start doesn't pay two sequential round
+    // trips. hasPicks defaults to false while interests are loading, so the
+    // common case (new/beta users with no picks yet) fetches 'global' mode
+    // immediately and correctly; existing users with established picks pay a
+    // rare second fetch once interests resolve to hasPicks: true and the
+    // queryKey flips to 'personalized'.
+    enabled: authReady && !USE_MOCK_POSTS_FOR_SCREENSHOTS,
   });
 
   const [refreshing, setRefreshing] = useState(false);

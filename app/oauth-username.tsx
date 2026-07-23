@@ -74,7 +74,7 @@ export default function OAuthUsernameScreen() {
 
       <PawrvezDialog
         visible={showMascotDialog}
-        text="Pick something fun — this is how the community will know you"
+        text="This is the name you'll be known by around here — don't worry, you can always come back and change it later."
         onDismiss={() => setShowMascotDialog(false)}
         actionLabel="Got it"
         onAction={() => setShowMascotDialog(false)}

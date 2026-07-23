@@ -24,10 +24,10 @@ const BUILD_VERSION = Constants.nativeBuildVersion ?? '';
 // Pawrvez greets the user, then delivers what used to be the onboarding slides
 // as a sequence of dialogs. Shown once, right after a fresh install.
 const INTRO_DIALOGS = [
-  "Hey, I'm Pawrvez! So happy you're here. Let's find your new best friend together!",
-  'Every pet deserves a home — thousands across Pakistan are still waiting for theirs.',
-  'Find a vet you can trust: discover clinics and read reviews, all in one place.',
-  "You found your people — welcome to Pakistan's largest pet community!",
+  "Hey, I'm Pawrvez! Thanks so much for jumping in to help us test the app before it goes out into the world — it genuinely means a lot to have you here.",
+  "Quick heads up: this is our beta, so you might hit a rough edge or two. If you spot a bug or have feedback, just message one of the admins directly — no need to look anything up, you know where to find us.",
+  'Every pet deserves a home, and that\'s what all of this is for — thousands across Pakistan are still waiting for theirs.',
+  "Alright, let's get you set up. Welcome to Pakistan's largest pet community — glad you're testing it with us!",
 ];
 
 export default function WelcomeScreen() {

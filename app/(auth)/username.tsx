@@ -15,7 +15,7 @@ import { UsernameField, UsernameFieldState } from '../../src/components/auth/Use
 import { PawrvezDialog } from '../../src/components/common/mascot';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
-const MASCOT_TIP = 'Pick something fun — this is how the community will know you';
+const MASCOT_TIP = "This is the name you'll be known by around here — don't worry, you can always come back and change it later.";
 
 export default function UsernameScreen() {
   const { name, email, password } = useLocalSearchParams<{

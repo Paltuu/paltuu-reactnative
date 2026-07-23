@@ -36,6 +36,8 @@ import { ProfileScreenSkeleton } from '../../../../src/components/common/Profile
 import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
 import { getShareUrl } from '../../../../src/utils/share';
 import { COLORS } from '../../../../src/constants/colors';
+import { PawrvezDialog } from '../../../../src/components/common/mascot';
+import { storage } from '../../../../src/utils/storage';
 
 const VerifiedIcon = require('../../../../assets/icons/verified-check-svgrepo-com.svg');
 
@@ -146,6 +148,16 @@ export default function ProfileScreen() {
   const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
+  const [showMascotDialog, setShowMascotDialog] = useState(false);
+
+  // First-visit tip introducing the profile page. Shown once ever.
+  useEffect(() => {
+    (async () => {
+      if (await storage.isProfileIntroMascotSeen()) return;
+      await storage.markProfileIntroMascotSeen();
+      setShowMascotDialog(true);
+    })();
+  }, []);
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const listRef = useRef<FlatList>(null);
@@ -880,6 +892,14 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
+
+      <PawrvezDialog
+        visible={showMascotDialog}
+        text="This is your profile. If you're a pet parent, don't forget to add your pet under the paw tab down below — that's how they get their own space here."
+        onDismiss={() => setShowMascotDialog(false)}
+        actionLabel="Got it"
+        onAction={() => setShowMascotDialog(false)}
+      />
     </View>
   );
 }
