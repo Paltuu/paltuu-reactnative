@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.6",
+    version: "1.0.7",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -37,22 +37,10 @@ export default (): ExpoConfig => {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
-      // ⚠️ TEMPORARY PIN — DELETE THIS BEFORE/WHEN MAKING THE NEXT iOS
-      // NATIVE BUILD. The live App Store v1.0.6 build (542222fe, commit
-      // 8c0438f) was compiled while runtimeVersion.policy was still
-      // "fingerprint" and embeds this exact hash. The top-level policy
-      // below is "appVersion", so without this override OTA updates get
-      // published under runtime "1.0.6" and silently never reach that
-      // binary (same gotcha as the Android pin above — see project
-      // memory: paltuu_rn_android_fingerprint_ota_gotcha). Once deleted,
-      // the NEXT native iOS build will correctly use appVersion. Don't
-      // forget to bump `version` for that build, and don't carry this
-      // pin forward into it.
-      runtimeVersion: "30e3a569c38046bac1a4f7fec677614f4b9fd636",
     },
     android: {
       package: packageName,
-      versionCode: 15,
+      versionCode: 16,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -63,17 +51,6 @@ export default (): ExpoConfig => {
       predictiveBackGestureEnabled: false,
       permissions: ["android.permission.RECORD_AUDIO", "com.google.android.gms.permission.AD_ID"],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
-      // ⚠️ TEMPORARY PIN — DELETE THIS BEFORE/WHEN MAKING THE NEXT ANDROID
-      // NATIVE BUILD. This hardcodes the exact fingerprint already baked
-      // into the live production AAB (build-1784459805759.aab), because
-      // `eas update`'s dynamic fingerprint computation kept drifting from
-      // it (see project memory: paltuu_rn_android_fingerprint_ota_gotcha).
-      // The top-level runtimeVersion below is already back to
-      // policy: "appVersion" — once this override is deleted, the NEXT
-      // native build will correctly use appVersion again. Don't forget to
-      // bump `version` above for that build, and don't carry this pin
-      // forward into it.
-      runtimeVersion: "e8333b52d1bd2676a926b9d65b5eef64d8dc6838",
     },
     // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
     // the 3-button nav bar by default (`enforceContrast`) so its buttons stay
