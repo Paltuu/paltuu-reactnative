@@ -134,10 +134,12 @@ client.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return client(originalRequest);
     } catch (refreshError) {
-      const { isLoading, logout } = useAuthStore.getState();
       // Only wipe the session when refresh genuinely failed — not on network blips.
-      if (!isLoading && isAuthFailure(refreshError)) {
-        await logout();
+      // (Deliberately not gated on isLoading: a token that's already expired at
+      // cold-start fails refresh during hydrate()'s own fetchProfile() call, and
+      // skipping logout there left isAuthenticated stuck true with a dead token.)
+      if (isAuthFailure(refreshError)) {
+        await useAuthStore.getState().logout();
       }
       return Promise.reject(refreshError);
     }
