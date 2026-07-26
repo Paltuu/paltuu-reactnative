@@ -7,6 +7,10 @@ import { ActionSheetModal } from '../ui/bottom-sheet/ActionSheetModal';
 const bookmarkSelectIcon = require('../../../assets/icons/bookmark-select.svg');
 const bookmarkUnselectIcon = require('../../../assets/icons/bookmark-unselect.svg');
 const writePostIcon = require('../../../assets/icons/write-post-solid.svg');
+const hideIcon = require('../../../assets/icons/hide-solid.svg');
+const blockIcon = require('../../../assets/icons/block-solid.svg');
+const flagIcon = require('../../../assets/icons/flag-solid.svg');
+const trashIcon = require('../../../assets/icons/trash-solid.svg');
 
 interface PostOptionsBottomSheetProps {
   visible: boolean;
@@ -86,7 +90,8 @@ export const PostOptionsBottomSheet = ({
               <>
                 <OptionRow customIcon={writePostIcon} label="Edit Post" onPress={run(onEdit)} />
                 <OptionRow
-                  icon="trash-outline"
+                  customIcon={trashIcon}
+                  customIconTint="#DC2626"
                   label="Delete Post"
                   onPress={run(onDelete)}
                   destructive
@@ -95,10 +100,11 @@ export const PostOptionsBottomSheet = ({
               </>
             ) : (
               <>
-                <OptionRow icon="flag-outline" label="Report" onPress={run(onReport)} />
-                <OptionRow icon="eye-off-outline" label="Hide" onPress={run(onHide)} />
+                <OptionRow customIcon={flagIcon} customIconTint="#111" label="Report" onPress={run(onReport)} />
+                <OptionRow customIcon={hideIcon} customIconTint="#111" label="Hide" onPress={run(onHide)} />
                 <OptionRow
-                  icon="ban-outline"
+                  customIcon={blockIcon}
+                  customIconTint="#DC2626"
                   label="Block User"
                   onPress={run(onBlock)}
                   destructive

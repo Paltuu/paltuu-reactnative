@@ -28,6 +28,7 @@ const PostIcons = {
   bookmarkSelect: require('../../../assets/icons/bookmark-select.svg'),
   bookmarkUnselect: require('../../../assets/icons/bookmark-unselect.svg'),
   verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
+  dayOne: require('../../../assets/icons/day1-badge.svg'),
   pawTag: require('../../../assets/icons/paw-like-unselect.svg'),
 };
 import { useQueryClient } from '@tanstack/react-query';
@@ -185,6 +186,10 @@ const s = StyleSheet.create({
     width: 13,
     height: 13,
   },
+  dayOneIcon: {
+    width: 13,
+    height: 13,
+  },
   timeAgo: {
     fontSize: 13,
     color: '#9CA3AF',
@@ -309,6 +314,7 @@ const AuthorBlock = React.memo(({
   name,
   username,
   verified,
+  dayOne,
   uri,
   timeAgo,
   edited,
@@ -319,6 +325,7 @@ const AuthorBlock = React.memo(({
   name: string;
   username?: string;
   verified?: boolean;
+  dayOne?: boolean;
   uri?: string | null;
   timeAgo: string;
   edited?: boolean;
@@ -359,6 +366,9 @@ const AuthorBlock = React.memo(({
             {!!verified && (
               <Image source={PostIcons.verified} style={s.verifiedIcon} tintColor={COLORS.primary} />
             )}
+            {!!dayOne && (
+              <Image source={PostIcons.dayOne} style={s.dayOneIcon} tintColor={COLORS.primary} />
+            )}
             {!!username && <Text style={s.authorUsername} numberOfLines={1}>@{username}</Text>}
           </TouchableOpacity>
           {!!edited && <Text style={s.timeAgo}>Edited · </Text>}
@@ -385,6 +395,7 @@ interface OriginalPostPreviewProps {
   authorName?: string;
   authorUsername?: string;
   authorVerified?: boolean;
+  authorDayOne?: boolean;
   authorImage?: string;
   content?: string;
   media?: SocialPostMedia[];
@@ -397,6 +408,7 @@ export const OriginalPostPreview = ({
   authorName,
   authorUsername,
   authorVerified,
+  authorDayOne,
   authorImage,
   content,
   media,
@@ -416,6 +428,9 @@ export const OriginalPostPreview = ({
         <Text style={{ fontWeight: '700', fontSize: 13, color: '#111' }}>{authorName}</Text>
         {!!authorVerified && (
           <Image source={PostIcons.verified} style={{ width: 11, height: 11, marginLeft: 3 }} tintColor={COLORS.primary} />
+        )}
+        {!!authorDayOne && (
+          <Image source={PostIcons.dayOne} style={{ width: 11, height: 11, marginLeft: 3 }} tintColor={COLORS.primary} />
         )}
         {!!authorUsername && (
           <Text style={{ fontSize: 12, color: '#666', marginLeft: 4 }} numberOfLines={1}>
@@ -768,6 +783,9 @@ export const PostCard = React.memo(({
   const displayVerified = isPlainRepost
     ? (post.original_author_verified ?? post.original_post?.author_verified)
     : post.author_verified;
+  const displayDayOne = isPlainRepost
+    ? (post.original_author_founding_club ?? post.original_post?.author_founding_club)
+    : post.author_founding_club;
   const displayImage = isPlainRepost ? post.original_author_image : post.author_image;
   const displayUserId = isPlainRepost
     ? (post.original_user_id ?? post.original_post?.user_id ?? post.user_id)
@@ -1117,6 +1135,7 @@ export const PostCard = React.memo(({
             name={displayName}
             username={displayUsername}
             verified={displayVerified}
+            dayOne={displayDayOne}
             uri={displayImage}
             timeAgo={displayTime}
             edited={isEdited}
@@ -1163,6 +1182,7 @@ export const PostCard = React.memo(({
                 authorName={post.original_author_name}
                 authorUsername={post.original_social_username}
                 authorVerified={post.original_author_verified}
+                authorDayOne={post.original_author_founding_club}
                 authorImage={post.original_author_image}
                 content={post.original_content}
                 media={post.original_media}

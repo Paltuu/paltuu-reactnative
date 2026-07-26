@@ -24,6 +24,7 @@ import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 import { COLORS } from '../../src/constants/colors';
 
 const VERIFIED_ICON = require('../../assets/icons/verified-check-svgrepo-com.svg');
+const DAY_ONE_ICON = require('../../assets/icons/day1-badge.svg');
 
 type ListType = 'followers' | 'following';
 
@@ -117,6 +118,9 @@ function FollowListScreen() {
                 <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
                 {!!item.verified && (
                   <Image source={VERIFIED_ICON} style={styles.verifiedIcon} tintColor={COLORS.primary} />
+                )}
+                {!!item.founding_club && (
+                  <Image source={DAY_ONE_ICON} style={styles.verifiedIcon} tintColor={COLORS.primary} />
                 )}
               </View>
               <Text style={styles.userHandle} numberOfLines={1}>@{item.social_username || 'user'}</Text>

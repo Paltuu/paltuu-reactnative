@@ -18,10 +18,22 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard, { getPostItemType } from '../../../src/components/social/PostCard';
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
+import { DayOneClaimModal } from '../../../src/components/social/DayOneClaimModal';
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { storage } from '../../../src/utils/storage';
 import { useAuthReady } from '../../../src/hooks/useAuthReady';
+import { useAuthStore } from '../../../src/stores/authStore';
+import { PawrvezDialog } from '../../../src/components/common/mascot';
+
+// Shown once, the first time a new user lands on their feed (right after
+// finishing the interests/customize-feed step) — a short thank-you/welcome
+// to the beta program. Independent of the pre-login welcome.tsx mascot intro.
+const BETA_INTRO_DIALOGS = [
+  "You're in! Thanks so much for being one of our first beta testers — welcome to Paltuu.",
+  "We're still polishing things up, so you might run into a rough edge here and there. Your feedback genuinely helps us build a better home for Pakistan's pets.",
+  "Alright, enough talk — go check out your feed!",
+];
 
 // (Layout constants are now managed inside the shared PostCard)
 
@@ -93,6 +105,7 @@ export default function HomeScreen() {
   const { headerTranslateY, handleScrollY, handleScrollEnd } = useHeaderScroll();
   const { setOnLogoPress } = useHeaderContext();
   const authReady = useAuthReady();
+  const authUser = useAuthStore((state) => state.user);
 
   // App Store / Play Store screenshots: swap real feed for mock posts.
   // Flip this back to false to restore the real feed.
@@ -100,6 +113,7 @@ export default function HomeScreen() {
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(true); // start hidden to avoid flash
+  const [betaDialogIndex, setBetaDialogIndex] = useState(-1);
 
   const listRef = useRef<any>(null);
   const scrollYRef = useRef(0);
@@ -124,6 +138,16 @@ export default function HomeScreen() {
     retry: false,
     enabled: authReady,
   });
+
+  // Shares its cache key with the profile tab's own-profile query, so this
+  // is often already warm by the time the user gets here.
+  const { data: ownProfileData } = useQuery({
+    queryKey: ['social-profile', authUser?.id],
+    queryFn: () => socialApi.getProfile(authUser!.id),
+    enabled: authReady && !!authUser?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const [showDayOneClaim, setShowDayOneClaim] = useState(false);
   const hasPicks = interestsData?.has_picks ?? false;
   const forYouMode = hasPicks ? 'personalized' : 'global';
 
@@ -261,6 +285,38 @@ export default function HomeScreen() {
     return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
 
+  // First time a new user's feed has actually finished loading, greet them
+  // with the beta welcome sequence — shown once, ever.
+  useEffect(() => {
+    if (isLoadingFeed || isLoadingInterests) return;
+    (async () => {
+      if (await storage.isBetaIntroSeen()) return;
+      await storage.markBetaIntroSeen();
+      setBetaDialogIndex(0);
+    })();
+  }, [isLoadingFeed, isLoadingInterests]);
+
+  const advanceBetaDialog = useCallback(() => {
+    setBetaDialogIndex((i) => (i + 1 < BETA_INTRO_DIALOGS.length ? i + 1 : -1));
+  }, []);
+
+  // First app open after the Day One / Founders Club badge went live: thank
+  // the member and let them "claim" it. Shown once, ever, and only once the
+  // beta intro sequence (if any) has finished so the two never overlap.
+  useEffect(() => {
+    if (betaDialogIndex >= 0) return;
+    if (!ownProfileData?.profile?.founding_club) return;
+    (async () => {
+      if (await storage.isDayOneClaimSeen()) return;
+      setShowDayOneClaim(true);
+    })();
+  }, [betaDialogIndex, ownProfileData]);
+
+  const handleClaimDayOneBadge = useCallback(() => {
+    storage.markDayOneClaimSeen();
+    setShowDayOneClaim(false);
+  }, []);
+
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -390,6 +446,19 @@ export default function HomeScreen() {
         userId={selectedUserId}
         visible={selectedUserId !== null}
         onClose={() => setSelectedUserId(null)}
+      />
+
+      <PawrvezDialog
+        visible={betaDialogIndex >= 0}
+        text={BETA_INTRO_DIALOGS[betaDialogIndex] ?? ''}
+        onDismiss={() => setBetaDialogIndex(-1)}
+        actionLabel={betaDialogIndex >= BETA_INTRO_DIALOGS.length - 1 ? "Let's go" : 'Next'}
+        onAction={advanceBetaDialog}
+      />
+
+      <DayOneClaimModal
+        visible={showDayOneClaim}
+        onClaim={handleClaimDayOneBadge}
       />
     </View>
   );

@@ -38,8 +38,10 @@ import { getShareUrl } from '../../../../src/utils/share';
 import { COLORS } from '../../../../src/constants/colors';
 import { PawrvezDialog } from '../../../../src/components/common/mascot';
 import { storage } from '../../../../src/utils/storage';
+import { BadgeInfoModal } from '../../../../src/components/social/BadgeInfoModal';
 
 const VerifiedIcon = require('../../../../assets/icons/verified-check-svgrepo-com.svg');
+const DayOneIcon = require('../../../../assets/icons/day1-badge.svg');
 
 const Icons = {
   pawLikeSelect: require('../../../../assets/icons/paw-like-select.svg'),
@@ -149,6 +151,7 @@ export default function ProfileScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
   const [showMascotDialog, setShowMascotDialog] = useState(false);
+  const [showDayOneBadgeInfo, setShowDayOneBadgeInfo] = useState(false);
 
   // First-visit tip introducing the profile page. Shown once ever.
   useEffect(() => {
@@ -479,7 +482,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
             <ExpoImage
-              source={require('../../../../assets/icons/hamburger-solid.svg')}
+              source={require('../../../../assets/icons/hamburger-solid-2.svg')}
               style={{ width: 24, height: 24 }}
               contentFit="contain"
               tintColor="#000000"
@@ -515,6 +518,11 @@ export default function ProfileScreen() {
             </Text>
             {!!profile?.verified && (
               <ExpoImage source={VerifiedIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
+            )}
+            {!!profile?.founding_club && (
+              <TouchableOpacity onPress={() => setShowDayOneBadgeInfo(true)} hitSlop={8}>
+                <ExpoImage source={DayOneIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -704,6 +712,9 @@ export default function ProfileScreen() {
                       {!!profile?.verified && (
                         <ExpoImage source={VerifiedIcon} style={{ width: 12, height: 12 }} tintColor={COLORS.primary} />
                       )}
+                      {!!profile?.founding_club && (
+                        <ExpoImage source={DayOneIcon} style={{ width: 12, height: 12 }} tintColor={COLORS.primary} />
+                      )}
                     </View>
                   </View>
                   <TouchableOpacity onPress={closeMenu} hitSlop={12} style={{ padding: 4 }}>
@@ -886,6 +897,14 @@ export default function ProfileScreen() {
         onDismiss={() => setShowMascotDialog(false)}
         actionLabel="Got it"
         onAction={() => setShowMascotDialog(false)}
+      />
+
+      <BadgeInfoModal
+        visible={showDayOneBadgeInfo}
+        onClose={() => setShowDayOneBadgeInfo(false)}
+        icon={DayOneIcon}
+        title="Day 1 Legend 👑"
+        description={`${profile?.name || 'You'} has been riding with Paltuu from Day 1, shaping the future of pet care before anyone else.`}
       />
     </View>
   );

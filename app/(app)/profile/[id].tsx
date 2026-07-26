@@ -39,7 +39,9 @@ import { withFocusUnmount } from '../../../src/components/common/withFocusUnmoun
 import { COLORS } from '../../../src/constants/colors';
 
 const VerifiedIcon = require('../../../assets/icons/verified-check-svgrepo-com.svg');
+const DayOneIcon = require('../../../assets/icons/day1-badge.svg');
 import { getShareUrl } from '../../../src/utils/share';
+import { BadgeInfoModal } from '../../../src/components/social/BadgeInfoModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 96;
@@ -87,6 +89,7 @@ function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<any>('Posts');
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [showDayOneBadgeInfo, setShowDayOneBadgeInfo] = useState(false);
 
   // Rendered as a plain in-tree overlay rather than a native <Modal> (see
   // below) — preserve hardware-back-closes-viewer behavior manually.
@@ -284,6 +287,11 @@ function UserProfileScreen() {
         {!!profile?.verified && (
           <ExpoImage source={VerifiedIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
         )}
+        {!!profile?.founding_club && (
+          <TouchableOpacity onPress={() => setShowDayOneBadgeInfo(true)} hitSlop={8}>
+            <ExpoImage source={DayOneIcon} style={{ width: 14, height: 14 }} tintColor={COLORS.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={s.statsRow}>
@@ -401,6 +409,14 @@ function UserProfileScreen() {
         onClose={() => setReportSheetVisible(false)}
         targetType="user"
         targetId={userId}
+      />
+
+      <BadgeInfoModal
+        visible={showDayOneBadgeInfo}
+        onClose={() => setShowDayOneBadgeInfo(false)}
+        icon={DayOneIcon}
+        title="Day 1"
+        description={`${profile?.name || 'This user'} is a Paltuu Day 1\n, If theres anything we don't do, it's forgetting our Day 1s ;).`}
       />
     </View>
   );

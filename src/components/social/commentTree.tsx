@@ -28,6 +28,7 @@ const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
   pawUnselect: require('../../../assets/icons/paw-like-unselect.svg'),
   verified: require('../../../assets/icons/verified-check-svgrepo-com.svg'),
+  dayOne: require('../../../assets/icons/day1-badge.svg'),
 };
 
 /* ── Types ── */
@@ -45,6 +46,7 @@ export interface Comment {
   author_image: string | null;
   social_username: string | null;
   author_verified?: boolean;
+  author_founding_club?: boolean;
   content: string;
   created_at: string;
   like_count: number;
@@ -570,6 +572,9 @@ export const CommentRow = ({
               {!!item.author_verified && (
                 <Image source={PostIcons.verified} style={{ width: 12, height: 12 }} tintColor={PRIMARY} />
               )}
+              {!!item.author_founding_club && (
+                <Image source={PostIcons.dayOne} style={{ width: 12, height: 12 }} tintColor={PRIMARY} />
+              )}
               {!!item.social_username && (
                 <Text style={{ fontSize: 12, color: '#9CA3AF' }} numberOfLines={1}>@{item.social_username}</Text>
               )}
@@ -641,6 +646,9 @@ export const FocusedCommentHeader = ({
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>{comment.author_name}</Text>
           {!!comment.author_verified && (
             <Image source={PostIcons.verified} style={{ width: 14, height: 14 }} tintColor={PRIMARY} />
+          )}
+          {!!comment.author_founding_club && (
+            <Image source={PostIcons.dayOne} style={{ width: 14, height: 14 }} tintColor={PRIMARY} />
           )}
         </View>
         {!!comment.social_username && (

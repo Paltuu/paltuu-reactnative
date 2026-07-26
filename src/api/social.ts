@@ -6,6 +6,7 @@ export interface SocialProfile {
   username: string;
   social_username: string | null;
   verified?: boolean;
+  founding_club?: boolean;
   bio: string | null;
   follower_count: number;
   following_count: number;
@@ -50,6 +51,7 @@ export interface SocialPost {
   author_image?: string;
   social_username?: string;
   author_verified?: boolean;
+  author_founding_club?: boolean;
   is_liked?: boolean;
   is_reposted?: boolean;
   is_following?: boolean;
@@ -66,6 +68,7 @@ export interface SocialPost {
   original_social_username?: string;
   original_author_image?: string;
   original_author_verified?: boolean;
+  original_author_founding_club?: boolean;
   original_media?: SocialPostMedia[];
   original_post?: SocialPost;
   pet_profile_tags?: number[];

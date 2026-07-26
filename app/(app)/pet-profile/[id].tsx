@@ -30,6 +30,8 @@ import { ActionSheetModal } from '../../../src/components/ui/bottom-sheet/Action
 import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
+const hamburgerIcon = require('../../../assets/icons/hamburger-solid-2.svg');
+
 const { width } = Dimensions.get('window');
 // Polaroid grid: 14px container padding on each side plus a 14px gap
 // between the 2 columns — subtract both before halving, or the 2nd
@@ -297,7 +299,7 @@ function PetProfileScreen() {
           </TouchableOpacity>
           {isOwner && (
             <TouchableOpacity onPress={() => setShowOptionsSheet(true)} style={s.menuBtn}>
-              <Ionicons name="menu" size={22} color="#000000" />
+              <Image source={hamburgerIcon} style={{ width: 22, height: 22 }} contentFit="contain" tintColor="#000000" />
             </TouchableOpacity>
           )}
         </View>
