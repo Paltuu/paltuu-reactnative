@@ -16,6 +16,7 @@ export interface SocialProfile {
   followers_count?: number;
   posts_count?: number;
   is_following?: boolean;
+  has_pending_request?: boolean;
   is_own_profile?: boolean;
   is_private?: boolean;
   is_blocked_by_me?: boolean;
@@ -347,12 +348,12 @@ export const socialApi = {
 
   async toggleFollow(userId: string | number) {
     const { data } = await client.post(`/social/follow/${userId}`);
-    return data as { following: boolean };
+    return data as { following: boolean; status: 'accepted' | 'pending' | null };
   },
 
   async checkFollowStatus(userId: string | number) {
     const { data } = await client.get(`/social/follow/${userId}`);
-    return data as { following: boolean };
+    return data as { following: boolean; status: 'accepted' | 'pending' | null };
   },
 
   async toggleRepost(

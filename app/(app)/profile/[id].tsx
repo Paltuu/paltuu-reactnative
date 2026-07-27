@@ -27,7 +27,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import PostCardShared from '../../../src/components/social/PostCard';
-import { useSocialActions } from '../../../src/hooks/useSocialActions';
 import { ReportBottomSheet } from '../../../src/components/social/ReportBottomSheet';
 import { useMutation } from '@tanstack/react-query';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
@@ -84,7 +83,6 @@ function UserProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { toggleFollow, isFollowing: followMutationLoading } = useSocialActions();
 
   const [activeTab, setActiveTab] = useState<any>('Posts');
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
@@ -181,6 +179,51 @@ function UserProfileScreen() {
         mod.default.show({ type: 'error', text1: 'Could not unblock user' });
       });
     }
+  });
+
+  // Tri-state follow button (Follow / Request to Follow → Requested / Following).
+  // Bypasses the shared useSocialActions.toggleFollow, which just blindly flips
+  // is_following — wrong here since a private target should optimistically go
+  // to "pending", not "following".
+  const followMutation = useMutation({
+    mutationFn: () => socialApi.toggleFollow(userId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['social-profile', userId] });
+      const previousProfile = queryClient.getQueryData(['social-profile', userId]);
+
+      queryClient.setQueryData(['social-profile', userId], (old: any) => {
+        if (!old?.profile) return old;
+        const p = old.profile;
+
+        if (p.is_following) {
+          // Unfollow
+          return { ...old, profile: { ...p, is_following: false, follower_count: Math.max(0, p.follower_count - 1) } };
+        }
+        if (p.has_pending_request) {
+          // Cancel my pending request
+          return { ...old, profile: { ...p, has_pending_request: false } };
+        }
+        if (p.is_private) {
+          // Send a request — not a real follow yet
+          return { ...old, profile: { ...p, has_pending_request: true } };
+        }
+        // Public account — follow immediately
+        return { ...old, profile: { ...p, is_following: true, follower_count: p.follower_count + 1 } };
+      });
+
+      return { previousProfile };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousProfile) {
+        queryClient.setQueryData(['social-profile', userId], context.previousProfile);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+      queryClient.invalidateQueries({ queryKey: ['social-followers'] });
+      queryClient.invalidateQueries({ queryKey: ['social-following'] });
+      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+    },
   });
 
   const handleUnblock = () => {
@@ -332,12 +375,26 @@ function UserProfileScreen() {
           </TouchableOpacity>
         ) : !isBlockingMe ? (
           <TouchableOpacity
-            style={[s.btnPrimary, profile?.is_following && s.btnSecondary]}
-            onPress={() => toggleFollow(userId)}
-            disabled={followMutationLoading}
+            style={[
+              s.btnPrimary,
+              (profile?.is_following || profile?.has_pending_request) && s.btnSecondary,
+            ]}
+            onPress={() => followMutation.mutate()}
+            disabled={followMutation.isPending}
           >
-            <Text style={[s.btnPrimaryText, profile?.is_following && s.btnSecondaryText]}>
-              {profile?.is_following ? 'Following' : 'Follow'}
+            <Text
+              style={[
+                s.btnPrimaryText,
+                (profile?.is_following || profile?.has_pending_request) && s.btnSecondaryText,
+              ]}
+            >
+              {profile?.is_following
+                ? 'Following'
+                : profile?.has_pending_request
+                  ? 'Requested'
+                  : profile?.is_private
+                    ? 'Request to Follow'
+                    : 'Follow'}
             </Text>
           </TouchableOpacity>
         ) : null}
