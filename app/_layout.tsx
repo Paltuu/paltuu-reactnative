@@ -262,6 +262,11 @@ export default function RootLayout() {
                   name="notifications"
                   options={{ animation: 'slide_from_right', gestureEnabled: true }}
                 />
+                {/* Follow requests: same slide-in as Notifications, one level deeper */}
+                <Stack.Screen
+                  name="follow-requests"
+                  options={{ animation: 'slide_from_right', gestureEnabled: true }}
+                />
                 {/* Create post: slides in from the left; a right-to-left swipe
                     anywhere on the page slides it back out to Home (mirrors the
                     left-to-right swipe that opens it). fullScreenGestureEnabled

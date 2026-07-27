@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { notificationsApi, Notification } from '../src/api/notifications';
+import { socialApi, FollowRequest } from '../src/api/social';
 import { handleDeepLink } from '../src/services/deepLinks';
 import { useAuthStore } from '../src/stores/authStore';
 import { NO_PROFILE_IMAGE, PALTUU_LOGO } from '../src/constants/images';
@@ -243,6 +244,64 @@ const StackedAvatars = ({ items, square }: { items: Notification[]; square: bool
   );
 };
 
+/* ── Follow requests preview row — pinned above the dated sections, mirrors
+   a normal notification row (avatar / text / chevron) rather than a separate
+   banner style, so it reads as part of the same list. Only rendered when
+   there's at least one pending request. ── */
+const FollowRequestsRow = ({
+  requests,
+  total,
+  onPress,
+}: {
+  requests: FollowRequest[];
+  total: number;
+  onPress: () => void;
+}) => {
+  if (total === 0) return null;
+
+  const first = requests[0];
+  const others = total - 1;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center px-3 py-4 active:bg-gray-50"
+    >
+      <View style={{ width: 48, height: 48 }} className="mr-3.5">
+        {requests.slice(0, 2).map((r, i) => (
+          <Image
+            key={r.user_id}
+            source={r.profile_image_url ? { uri: r.profile_image_url } : NO_PROFILE_IMAGE}
+            style={{
+              position: 'absolute',
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              top: i === 0 ? 0 : 10,
+              left: i === 0 ? 0 : 10,
+              zIndex: 2 - i,
+              borderWidth: 2,
+              borderColor: '#fff',
+              backgroundColor: '#eee',
+            }}
+            contentFit="cover"
+          />
+        ))}
+      </View>
+
+      <View className="flex-1 mr-3 gap-1">
+        <Text className="font-headingSemi text-sm text-dark">Follow requests</Text>
+        <Text className="font-body text-sm text-gray-light" numberOfLines={1}>
+          {first ? `@${first.social_username || first.name}` : ''}
+          {others > 0 ? ` + ${others} other${others > 1 ? 's' : ''}` : ''}
+        </Text>
+      </View>
+
+      <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+    </Pressable>
+  );
+};
+
 /* ── Pull the quoted post/comment preview the backend already embeds in a
    single notification's body (e.g. `commented: "hello world"`) so collapsed
    groups can show the same context instead of a bare "commented on your
@@ -441,6 +500,14 @@ export default function NotificationsScreen() {
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   });
 
+  // Small preview of pending follow requests for the top row (avatars + total)
+  const { data: followRequestsData } = useQuery({
+    queryKey: ['follow-requests-preview'],
+    queryFn: () => socialApi.getFollowRequests({ limit: 2 }),
+    staleTime: 60 * 1000,
+    enabled: isAuthenticated,
+  });
+
   // Query actual live unread count
   const { data: unreadData } = useQuery({
     queryKey: ['unread-count'],
@@ -636,6 +703,18 @@ export default function NotificationsScreen() {
             </View>
           )}
           ItemSeparatorComponent={() => <View className="h-[0.5px] bg-gray-100 ml-[72px]" />}
+          ListHeaderComponent={
+            followRequestsData && followRequestsData.total > 0 ? (
+              <>
+                <FollowRequestsRow
+                  requests={followRequestsData.requests}
+                  total={followRequestsData.total}
+                  onPress={() => router.push('/follow-requests')}
+                />
+                <View className="h-[0.5px] bg-gray-100 ml-[72px]" />
+              </>
+            ) : null
+          }
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}

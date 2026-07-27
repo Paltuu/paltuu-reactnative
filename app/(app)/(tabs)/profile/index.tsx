@@ -899,12 +899,12 @@ export default function ProfileScreen() {
         onAction={() => setShowMascotDialog(false)}
       />
 
-      <BadgeInfoModal
+     <BadgeInfoModal
         visible={showDayOneBadgeInfo}
         onClose={() => setShowDayOneBadgeInfo(false)}
         icon={DayOneIcon}
-        title="Day 1 Legend 👑"
-        description={`${profile?.name || 'You'} has been riding with Paltuu from Day 1, shaping the future of pet care before anyone else.`}
+        title="Day 1"
+        description={`${profile?.name || 'This user'} is a Paltuu Day 1\n If theres anything we don't do, it's forgetting our Day 1s ;).`}
       />
     </View>
   );

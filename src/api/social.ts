@@ -23,6 +23,17 @@ export interface SocialProfile {
   is_private_locked?: boolean;
 }
 
+export interface FollowRequest {
+  follow_id: string | number;
+  requested_at: string;
+  user_id: number;
+  name: string;
+  profile_image_url: string | null;
+  social_username: string | null;
+  verified?: boolean;
+  founding_club?: boolean;
+}
+
 export interface SocialPostMedia {
   media_id: string;
   post_id: string;
@@ -390,6 +401,33 @@ export const socialApi = {
   async removeFollower(userId: string | number, followerId: string | number) {
     const { data } = await client.delete(`/social/users/${userId}/followers?followerId=${followerId}`);
     return data;
+  },
+
+  async getFollowRequests(params?: { cursor?: string; limit?: number }) {
+    const { data } = await client.get('/social/follow-requests', {
+      params: { limit: params?.limit ?? 20, ...(params?.cursor ? { cursor: params.cursor } : {}) },
+    });
+    return data as {
+      requests: FollowRequest[];
+      total: number;
+      next_cursor: string | null;
+      has_more: boolean;
+    };
+  },
+
+  async getFollowRequestsCount() {
+    const { data } = await client.get('/social/follow-requests/count');
+    return data as { total: number };
+  },
+
+  async acceptFollowRequest(followId: string | number) {
+    const { data } = await client.post(`/social/follow-requests/${followId}`, { action: 'accept' });
+    return data as { status: 'accepted' };
+  },
+
+  async rejectFollowRequest(followId: string | number) {
+    const { data } = await client.post(`/social/follow-requests/${followId}`, { action: 'reject' });
+    return data as { status: 'rejected' };
   },
 
   async getCollections() {
