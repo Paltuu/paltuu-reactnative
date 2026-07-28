@@ -48,7 +48,48 @@ export interface SocialPostMedia {
   duration_seconds?: number;
 }
 
+// Non-post cards injected into the feed (adoption listings / lost & found
+// reports) mixed in alongside regular posts — see Step 6-9 of the feed-mix
+// spec. `feed_item_type` is the discriminator every feed array item carries;
+// regular posts are tagged 'post' by the backend for consistency.
+export interface AdoptionFeedItem {
+  feed_item_type: 'adoption_listing';
+  id: number;
+  pet_name: string;
+  pet_breed: string | null;
+  sex: string | null;
+  age_months: number | null;
+  listing_type: string;
+  price: number | null;
+  city_id: number;
+  city: string;
+  image_url: string | null;
+}
+
+export interface LostFoundFeedItem {
+  feed_item_type: 'lost_found';
+  id: number;
+  post_type: 'lost' | 'found';
+  pet_description: string;
+  location: string;
+  contact_info: string;
+  date: string;
+  city_id: number;
+  city: string;
+  image_url: string | null;
+}
+
+export interface LostFoundDetail extends LostFoundFeedItem {
+  post_id: number;
+  user_id: number;
+  user_name: string;
+  user_profile_image: string | null;
+  category: string;
+  images: string[];
+}
+
 export interface SocialPost {
+  feed_item_type?: 'post';
   post_id: string;
   user_id: number;
   content: string;
@@ -109,7 +150,7 @@ export interface SurfacedComment {
   is_liked: boolean;
 }
 
-export type FeedItem = SocialPost | SurfacedComment;
+export type FeedItem = SocialPost | AdoptionFeedItem | LostFoundFeedItem | SurfacedComment;
 
 export interface SocialPet {
   pet_id: number;
@@ -602,5 +643,12 @@ export const socialApi = {
         distance_km: number | null;
       }[];
     };
+  },
+};
+
+export const lostFoundApi = {
+  async getById(postId: string | number) {
+    const { data } = await client.get(`/lost-and-found/${postId}`);
+    return data as LostFoundDetail;
   },
 };

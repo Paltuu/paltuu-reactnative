@@ -13,10 +13,12 @@ import { useUploadStore } from '../../../src/stores/uploadStore';
 import { useHeaderScroll, useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { socialApi, SocialPost } from '../../../src/api/social';
+import { socialApi, SocialPost, FeedItem } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../../src/components/social/PostCard';
 import { SurfacedCommentCard } from '../../../src/components/social/SurfacedCommentCard';
+import AdoptionFeedCard from '../../../src/components/social/AdoptionFeedCard';
+import LostFoundFeedCard from '../../../src/components/social/LostFoundFeedCard';
 import { getFeedItemType, feedItemKey } from '../../../src/components/social/feedItemType';
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
@@ -282,7 +284,7 @@ export default function HomeScreen() {
     });
   }, [setOnLogoPress]);
 
-  const posts = useMemo(() => {
+  const posts = useMemo((): FeedItem[] => {
     if (USE_MOCK_POSTS_FOR_SCREENSHOTS) return MOCK_POSTS;
     return data?.pages.flatMap(p => p.posts) ?? [];
   }, [data]);
@@ -366,17 +368,37 @@ export default function HomeScreen() {
 
   // Stable renderItem — no playingPostId dep; video state is managed inside PostCard
   // via the videoPlaySubscription emitter, so the FlatList never re-renders on scroll.
-  const renderFeedItem = useCallback(({ item }: { item: any }) => (
-    item.item_type === 'surfaced_comment' ? (
-      <SurfacedCommentCard item={item} />
-    ) : (
+  // Adoption/lost-found cards injected into the feed (see lib/feedInjection.ts on
+  // the backend) are a pure "discover and tap through" surface — no likes/comments/
+  // saves, just navigation to the existing detail screens.
+  const renderFeedItem = useCallback(({ item }: { item: FeedItem }) => {
+    if ((item as any).item_type === 'surfaced_comment') {
+      return <SurfacedCommentCard item={item as any} />;
+    }
+    if ((item as any).feed_item_type === 'adoption_listing') {
+      return (
+        <AdoptionFeedCard
+          item={item as any}
+          onPress={() => router.push({ pathname: '/(app)/pet-details', params: { id: (item as any).id } })}
+        />
+      );
+    }
+    if ((item as any).feed_item_type === 'lost_found') {
+      return (
+        <LostFoundFeedCard
+          item={item as any}
+          onPress={() => router.push({ pathname: '/(app)/lost-found/[id]', params: { id: (item as any).id } })}
+        />
+      );
+    }
+    return (
       <PostCard
-        post={item}
-        onPress={() => router.push(`/post/${item.post_id}`)}
+        post={item as any}
+        onPress={() => router.push(`/post/${(item as any).post_id}`)}
         onPlusPress={(uid) => setSelectedUserId(uid)}
       />
-    )
-  ), [router]);
+    );
+  }, [router]);
 
   // Grows with pullDistance as part of the scrollable content (not an
   // overlay), so it naturally pushes the rest of the list down while
