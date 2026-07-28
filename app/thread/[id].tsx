@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
 import { triggerLikeHaptic } from '../../src/utils/haptics';
@@ -41,7 +41,7 @@ import { LoadingDots } from '../../src/components/ui/LoadingDots';
 
 /* ─────────────────── Comment thread screen ─────────────────── */
 export default function CommentThreadScreen() {
-  const { id, postId } = useLocalSearchParams<{ id: string; postId: string }>();
+  const { id, postId, viaSurfaced } = useLocalSearchParams<{ id: string; postId: string; viaSurfaced?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -85,14 +85,48 @@ export default function CommentThreadScreen() {
     return () => { showSub.remove(); hideSub.remove(); };
   }, [insets.bottom]);
 
-  /* ── Query (shared with the post page's comment list) ── */
-  const commentsKey = commentsQueryKey(postId);
+  // Only relevant when arriving via a surfaced-comment feed card (a popular
+  // reply on a PRIVATE post — see SurfacedCommentCard). Checks whether the
+  // viewer actually has full access to the post (e.g. they also happen to
+  // follow its author) — if so, nothing special renders below, the normal
+  // shared-cache path just works. isError means the backend's private-post
+  // gate rejected it (see posts/[id]/route.ts), in which case only this one
+  // comment's own thread is fetchable, via ?rootOnly=.
+  const isViaSurfaced = viaSurfaced === 'true';
+  const { isError: postLocked, isLoading: isCheckingAccess } = useQuery({
+    queryKey: ['thread-post-access', postId],
+    queryFn: () => socialApi.getPostById(postId as string),
+    enabled: isViaSurfaced && !!postId,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const useScopedFetch = isViaSurfaced && postLocked;
+  // Hold off the normal (shared) comments fetch until we know it's safe to
+  // run — attempting it while the post is actually locked would just 404.
+  const normalFetchEnabled = !isViaSurfaced || (!isCheckingAccess && !postLocked);
+
+  /* ── Query (shared with the post page's comment list) — bypassed for the
+     narrow surfaced-comment deep link when the post is locked, which fetches
+     only that one thread's subtree instead (the full-post query would 404). ── */
+  const commentsKey = useScopedFetch ? (['comments-scoped', postId, id] as const) : commentsQueryKey(postId);
   const {
-    comments,
-    isLoading: commentsLoading,
+    comments: normalComments,
+    isLoading: normalCommentsLoading,
     isFetchingNextPage,
-    loadMore,
-  } = useCommentsQuery(postId);
+    loadMore: normalLoadMore,
+  } = useCommentsQuery(postId, normalFetchEnabled);
+
+  const scopedQuery = useQuery({
+    queryKey: ['comments-scoped', postId, id],
+    queryFn: () => socialApi.getComments(postId as string, null, { rootOnly: id as string }),
+    enabled: useScopedFetch && !!postId && !!id,
+  });
+
+  const comments = useScopedFetch ? (scopedQuery.data?.comments ?? []) : normalComments;
+  const commentsLoading = isViaSurfaced
+    ? (isCheckingAccess || (postLocked ? scopedQuery.isLoading : normalCommentsLoading))
+    : normalCommentsLoading;
+  const loadMore = useScopedFetch ? () => {} : normalLoadMore;
 
   // Frozen sort order (see commentTree.buildOrderRank): only re-snapshots when
   // the comment set changes — likes never reorder the list.
@@ -299,6 +333,22 @@ export default function CommentThreadScreen() {
     </View>
   );
 
+  /* ── Locked-post banner — shown above the thread when this is a surfaced-
+     comment deep link into a private post the viewer can't otherwise see.
+     Mirrors the framing of "you're unable to view this post" placeholders:
+     the post itself stays hidden, but the one thread the feed already
+     surfaced (because the viewer follows its author) renders normally. ── */
+  const LockedPostBanner = postLocked ? (
+    <View style={{
+      backgroundColor: '#F9FAFB', borderRadius: 12, marginHorizontal: 12, marginTop: 12, marginBottom: 4,
+      padding: 14,
+    }}>
+      <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 19 }}>
+        You can't view this post because its owner limits who can see it.
+      </Text>
+    </View>
+  ) : null;
+
   /* ── Loading / Not found ── */
   if (commentsLoading && !focused) {
     return (
@@ -337,6 +387,7 @@ export default function CommentThreadScreen() {
         data={listData}
         renderItem={renderItem}
         keyExtractor={item => item.key}
+        ListHeaderComponent={LockedPostBanner}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 72 + insets.bottom, backgroundColor: BG }}

@@ -87,6 +87,30 @@ export interface SocialPost {
   tagged_pets?: { pet_profile_id: number; name: string; avatar_url: string | null; species: string }[];
 }
 
+// A popular reply on a PRIVATE account's post, surfaced as its own feed card
+// to a viewer who follows the commenter but not the (private) post author.
+// Deliberately carries no post content/media/author — post_id exists only so
+// the card can deep-link into the thread (see app/thread/[id].tsx).
+export interface SurfacedComment {
+  item_type: 'surfaced_comment';
+  comment_id: string;
+  post_id: string;
+  commenter: {
+    user_id: number;
+    name: string;
+    social_username: string | null;
+    profile_image_url: string | null;
+    verified: boolean;
+  };
+  content: string;
+  like_count: number;
+  reply_count: number;
+  created_at: string;
+  is_liked: boolean;
+}
+
+export type FeedItem = SocialPost | SurfacedComment;
+
 export interface SocialPet {
   pet_id: number;
   pet_name: string;
@@ -137,7 +161,7 @@ export const socialApi = {
   async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' | 'personalized' = 'following') {
     const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
-    return data as { posts: SocialPost[]; next_cursor: string | null; has_more: boolean };
+    return data as { posts: FeedItem[]; next_cursor: string | null; has_more: boolean };
   },
 
   async getInterests() {
@@ -183,9 +207,9 @@ export const socialApi = {
     return data as { pets: SocialPet[] };
   },
 
-  async getComments(postId: string | number, cursor?: string | null) {
+  async getComments(postId: string | number, cursor?: string | null, opts?: { rootOnly?: string | number }) {
     const { data } = await client.get(`/social/posts/${postId}/comments`, {
-      params: cursor ? { cursor } : undefined,
+      params: { ...(cursor ? { cursor } : {}), ...(opts?.rootOnly ? { rootOnly: opts.rootOnly } : {}) },
     });
     return data as { comments: any[]; has_more: boolean; next_cursor: string | null };
   },

@@ -15,7 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { socialApi, SocialPost } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import PostCard, { getPostItemType } from '../../../src/components/social/PostCard';
+import PostCard from '../../../src/components/social/PostCard';
+import { SurfacedCommentCard } from '../../../src/components/social/SurfacedCommentCard';
+import { getFeedItemType, feedItemKey } from '../../../src/components/social/feedItemType';
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
 import { DayOneClaimModal } from '../../../src/components/social/DayOneClaimModal';
@@ -365,11 +367,15 @@ export default function HomeScreen() {
   // Stable renderItem — no playingPostId dep; video state is managed inside PostCard
   // via the videoPlaySubscription emitter, so the FlatList never re-renders on scroll.
   const renderFeedItem = useCallback(({ item }: { item: any }) => (
-    <PostCard
-      post={item}
-      onPress={() => router.push(`/post/${item.post_id}`)}
-      onPlusPress={(uid) => setSelectedUserId(uid)}
-    />
+    item.item_type === 'surfaced_comment' ? (
+      <SurfacedCommentCard item={item} />
+    ) : (
+      <PostCard
+        post={item}
+        onPress={() => router.push(`/post/${item.post_id}`)}
+        onPlusPress={(uid) => setSelectedUserId(uid)}
+      />
+    )
   ), [router]);
 
   // Grows with pullDistance as part of the scrollable content (not an
@@ -411,8 +417,8 @@ export default function HomeScreen() {
         style={{ flex: 1 }}
         data={posts}
         renderItem={renderFeedItem}
-        keyExtractor={(item: SocialPost) => item.post_id}
-        getItemType={getPostItemType}
+        keyExtractor={feedItemKey}
+        getItemType={getFeedItemType}
         estimatedItemSize={350}
         onScroll={(e: any) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
