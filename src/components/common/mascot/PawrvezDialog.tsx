@@ -7,7 +7,18 @@ import { FONTS } from '../../../constants/typography';
 
 export interface PawrvezDialogProps {
   visible: boolean;
-  /** Message Pawrvez says, revealed letter by letter. */
+  /**
+   * Message Pawrvez says, revealed letter by letter.
+   *
+   * ── COPY BUDGET (hard limits, including spaces) ──
+   *     1 line  → ≤ 31 chars
+   *     2 lines → ≤ 59 chars
+   *     3 lines → ≤ 90 chars   ← MAX. The bubble art only goes to 3 lines;
+   *                              anything longer spills outside the border.
+   * Need to say more? Split it into multiple slides — do not squeeze.
+   * Avoid — – % & * < > { } : Pixeled has no glyph for them (use "-" for dashes).
+   * Full derivation is in PawrvezSpeechBubble.tsx.
+   */
   text: string;
   onDismiss: () => void;
   /** Label for the single CTA button. Omit to just show a "tap to continue" hint. */

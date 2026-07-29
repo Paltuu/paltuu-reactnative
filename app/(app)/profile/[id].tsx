@@ -124,7 +124,7 @@ function UserProfileScreen() {
 
   const isBlockedByMe = profile?.is_blocked_by_me;
   const isBlockingMe = profile?.is_blocking_me;
-  const isPrivateLocked = profile?.is_private_locked;
+  const isPrivateLocked = profileData?.is_private_locked;
   const isLocked = isPrivateLocked || isBlockedByMe || isBlockingMe;
   const isTabLoading = (activeTab === 'Posts' && isProfileLoading) || (activeTab === 'Pets' && isPetsLoading);
 
@@ -400,16 +400,22 @@ function UserProfileScreen() {
         ) : null}
       </View>
 
-      {!isLocked ? (
-        <View style={s.tabBar}>
-          {TAB_CONFIG.map(({ key, renderIcon }) => (
-            <TouchableOpacity key={key} style={s.tabItem} onPress={() => setActiveTab(key)} activeOpacity={0.7}>
-              {renderIcon(activeTab === key)}
-              {activeTab === key && <View style={s.tabUnderline} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : (
+      <View style={[s.tabBar, isLocked && { opacity: 0.4 }]}>
+        {TAB_CONFIG.map(({ key, renderIcon }) => (
+          <TouchableOpacity
+            key={key}
+            style={s.tabItem}
+            onPress={() => setActiveTab(key)}
+            activeOpacity={0.7}
+            disabled={isLocked}
+          >
+            {renderIcon(!isLocked && activeTab === key)}
+            {!isLocked && activeTab === key && <View style={s.tabUnderline} />}
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {isLocked && (
         <View style={{ padding: 40, alignItems: 'center' }}>
           <Ionicons name="lock-closed-outline" size={48} color={DS.gray400} />
           <Text style={{ fontSize: 18, fontWeight: '700', color: DS.dark, marginTop: 12, textAlign: 'center' }}>

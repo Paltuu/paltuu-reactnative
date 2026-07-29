@@ -217,7 +217,7 @@ export const socialApi = {
 
   async getProfile(userId: string | number) {
     const { data } = await client.get(`/social/profile/${userId}`);
-    return data as { profile: SocialProfile; posts: SocialPost[] };
+    return data as { profile: SocialProfile; posts: SocialPost[]; is_private_locked: boolean };
   },
 
   async togglePrivacy(isPrivate: boolean) {
@@ -615,10 +615,12 @@ export const socialApi = {
         profile_image_url: string | null;
         bio: string | null;
         follower_count: number;
+        is_private: boolean;
         mutual_follows: number;
         interactions_with_me: number;
         recent_engagement: number;
         is_following: boolean;
+        has_pending_request: boolean;
       }[];
     };
   },

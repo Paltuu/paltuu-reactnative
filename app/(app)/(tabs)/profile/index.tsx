@@ -133,6 +133,16 @@ const TAB_CONFIG = [
 type TabKey = typeof TAB_CONFIG[number]['key'];
 const TAB_KEYS = TAB_CONFIG.map((t) => t.key);
 
+// ─── First-visit intro ────────────────────────────────────────────────────────
+
+// One slide per bubble. Each MUST stay within the Pawrvez copy budget — 90 chars
+// max including spaces (3 lines of art, nothing catches the overflow), and no
+// em dashes: Pixeled has no glyph for them. See PawrvezDialog's `text` prop.
+const PROFILE_INTRO_DIALOGS = [
+  'This is your profile - your own corner of Paltuu.',                             // 49
+  'Pet parent? Add your pet under the paw tab below so they get their own space.', // 77
+];
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
@@ -150,7 +160,8 @@ export default function ProfileScreen() {
   const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
-  const [showMascotDialog, setShowMascotDialog] = useState(false);
+  // -1 = hidden; otherwise the index of the slide currently on screen.
+  const [introDialogIndex, setIntroDialogIndex] = useState(-1);
   const [showDayOneBadgeInfo, setShowDayOneBadgeInfo] = useState(false);
 
   // First-visit tip introducing the profile page. Shown once ever.
@@ -158,9 +169,12 @@ export default function ProfileScreen() {
     (async () => {
       if (await storage.isProfileIntroMascotSeen()) return;
       await storage.markProfileIntroMascotSeen();
-      setShowMascotDialog(true);
+      setIntroDialogIndex(0);
     })();
   }, []);
+
+  const advanceIntroDialog = () =>
+    setIntroDialogIndex((i) => (i + 1 < PROFILE_INTRO_DIALOGS.length ? i + 1 : -1));
 
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const listRef = useRef<FlatList>(null);
@@ -892,11 +906,11 @@ export default function ProfileScreen() {
       )}
 
       <PawrvezDialog
-        visible={showMascotDialog}
-        text="This is your profile. If you're a pet parent, don't forget to add your pet under the paw tab down below — that's how they get their own space here."
-        onDismiss={() => setShowMascotDialog(false)}
-        actionLabel="Got it"
-        onAction={() => setShowMascotDialog(false)}
+        visible={introDialogIndex >= 0}
+        text={PROFILE_INTRO_DIALOGS[introDialogIndex] ?? ''}
+        onDismiss={() => setIntroDialogIndex(-1)}
+        actionLabel={introDialogIndex >= PROFILE_INTRO_DIALOGS.length - 1 ? 'Got it' : 'Next'}
+        onAction={advanceIntroDialog}
       />
 
      <BadgeInfoModal

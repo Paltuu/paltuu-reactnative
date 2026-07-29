@@ -20,7 +20,8 @@ const mouthOpenIcon = require('../../../../assets/pixel/pawrvez-pixel-mouthopen.
 
 // Three pre-drawn bubble heights (1/2/3 lines). All share the SAME border art
 // and native width, so they scale uniformly by width and are never stretched to
-// a line count they weren't drawn for. Messages are guaranteed ≤ 3 lines.
+// a line count they weren't drawn for. 3 lines is the ceiling — the caller is
+// responsible for keeping copy inside it; see COPY BUDGET below.
 const ART_NATIVE_WIDTH = 4317;
 const bubbleAssets = [
   { source: require('../../../../assets/pixel/bubble1.webp'), height: 875 },
@@ -51,8 +52,54 @@ const FONT_SCALE_BASELINE_WIDTH = 340;
 const FONT_SCALE_MIN = 0.7;
 const FONT_SCALE_MAX = 1.15;
 
+// ─── COPY BUDGET — read this before writing any Pawrvez message ──────────────
+//
+//   1 line  →  ≤ 31 characters   (including spaces)
+//   2 lines →  ≤ 59 characters   (including spaces)
+//   3 lines →  ≤ 90 characters   (including spaces)  ← HARD CAP
+//
+// There are only three bubble arts (see `bubbleAssets`). Anything that wraps to
+// a 4th line is CLAMPED to the 3-line art and the overflow renders outside the
+// bubble, on top of the border. There is no scroll, no ellipsis, no autoshrink.
+// If the message needs more than 90 characters, it must be SPLIT ACROSS SLIDES,
+// not squeezed.
+//
+// Where those numbers come from — they are not a guess:
+//  • Interior text width = bubbleWidth - padLeft - padRight ≈ 0.94 × bubbleWidth - 8.
+//  • bubbleWidth = screenWidth - mascotSize - 12, and the font size is
+//    Math.round(fontSize × fontScale) — so the em budget per line stays ~29.5–32.7
+//    across every phone width. The rounding makes 375pt and 411pt the WORST cases
+//    (a rounded-up font size on a narrow bubble): 29.5 em of room per line.
+//  • Pixeled is PROPORTIONAL, not monospace. Advance widths, in em:
+//        0.4  →  space ! ' , . 1 : ; I i l |
+//        0.8  →  " ) + - / = [ \ ] ^ ` j
+//        1.0  →  most letters and digits
+//        1.2  →  # $ ? M Q T V W X Y m v w x
+//    Ordinary sentence-case English averages ~0.84 em/char, so 29.5 em ≈ 35 chars
+//    of typical text. The caps above are the conservative figures (31/59/90) that
+//    survived a fuzz over realistic copy on every width with zero overflow — the
+//    headroom absorbs word-wrap waste and w/m/M/W-heavy lines.
+//
+// NO GLYPH IN Pixeled — these render as tofu/fallback, never use them:
+//        —  –  %  &  *  <  >  {  }
+//    Use a plain hyphen "-" instead of an em dash. Curly quotes ’ “ ” DO exist.
+//
+// Rules of thumb when writing:
+//  • Count the characters. Don't eyeball it.
+//  • A long unbreakable word (URL, handle) can blow a line on its own — the
+//    wrapper breaks on spaces only.
+//  • Budget is per SLIDE, not per message. Two 80-char slides are fine; one
+//    160-char message is not.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface PawrvezSpeechBubbleProps {
-  /** Full message to type out letter by letter. */
+  /**
+   * Full message to type out letter by letter.
+   *
+   * MAX 90 CHARACTERS INCLUDING SPACES (≈31 per line, 3 lines). Longer copy
+   * overflows the bubble art — split it across slides instead. No em dashes
+   * (—): Pixeled has no glyph for them. See COPY BUDGET at the top of the file.
+   */
   text: string;
   /** Milliseconds between each revealed character. */
   typingSpeedMs?: number;
@@ -115,7 +162,9 @@ export const PawrvezSpeechBubble: React.FC<PawrvezSpeechBubbleProps> = ({
   const textStyleMerged = [styles.text, { fontSize: scaledFontSize }, textStyle];
 
   const handleMeasuredLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    // Clamp to the 3 drawn variants — messages are guaranteed ≤ 3 lines.
+    // Clamp to the 3 drawn variants. A message that measures 4+ lines still
+    // gets the 3-line art and SPILLS over the border — that is the overflow the
+    // COPY BUDGET (≤ 90 chars) exists to prevent.
     const measured = Math.min(Math.max(e.nativeEvent.lines.length, 1), bubbleAssets.length);
     setLineCount(measured);
   };

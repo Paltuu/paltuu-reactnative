@@ -10,11 +10,14 @@ const DIVIDER = '#EEEEEE';
 interface SectionHeaderProps {
   title: string;
   onSeeAll?: () => void;
+  /** The divider separates a section from the one above it — the first
+   *  section on a screen has nothing to separate from, so it opts out. */
+  showDivider?: boolean;
 }
 
-export const SectionHeader = ({ title, onSeeAll }: SectionHeaderProps) => (
+export const SectionHeader = ({ title, onSeeAll, showDivider = true }: SectionHeaderProps) => (
   <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-    <View style={{ height: 1, backgroundColor: DIVIDER, marginBottom: 16 }} />
+    {showDivider && <View style={{ height: 1, backgroundColor: DIVIDER, marginBottom: 16 }} />}
     <View
       style={{
         flexDirection: 'row',

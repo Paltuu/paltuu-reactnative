@@ -130,15 +130,25 @@ function FollowListScreen() {
           {!isMe && (
             <View style={styles.actionButtonContainer}>
               <TouchableOpacity
-                style={[styles.followButton, item.is_followed_by_me && styles.followingButton]}
+                style={[
+                  styles.followButton,
+                  (item.is_followed_by_me || item.has_pending_request) && styles.followingButton,
+                ]}
                 onPress={() => toggleFollow(item.user_id)}
               >
-                <Text style={[styles.followButtonText, item.is_followed_by_me && styles.followingButtonText]}>
+                <Text
+                  style={[
+                    styles.followButtonText,
+                    (item.is_followed_by_me || item.has_pending_request) && styles.followingButtonText,
+                  ]}
+                >
                   {item.is_followed_by_me
                     ? 'Following'
-                    : listType === 'followers' && isOwner
-                      ? 'Follow back'
-                      : 'Follow'}
+                    : item.has_pending_request
+                      ? 'Requested'
+                      : listType === 'followers' && isOwner
+                        ? 'Follow back'
+                        : 'Follow'}
                 </Text>
               </TouchableOpacity>
               {listType === 'followers' && isOwner && (

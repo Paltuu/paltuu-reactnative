@@ -53,8 +53,8 @@ export const TrendingRail = ({ keywords, isLoading }: TrendingRailProps) => {
   if (!isLoading && keywords.length === 0) return null;
 
   return (
-    <View style={{ paddingTop: 24 }}>
-      <SectionHeader title="Trending" />
+    <View style={{ paddingTop: 8 }}>
+      <SectionHeader title="Trending" showDivider={false} />
 
       {isLoading ? (
         <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10 }}>

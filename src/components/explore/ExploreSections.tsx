@@ -64,6 +64,10 @@ export const ExploreSections = () => {
   const gridPosts = mediaPosts.slice(0, MEDIA_PREVIEW_COUNT);
   const hasMoreMedia = mediaPosts.length > MEDIA_PREVIEW_COUNT;
 
+  // TrendingRail bails out when there are no keywords, which would promote
+  // Media to the top of the screen — where a divider has nothing to divide.
+  const showsTrending = isLoadingDiscovery || keywords.length > 0;
+
   return (
     <View>
       {visibleSections > SECTION_TRENDING && (
@@ -71,10 +75,11 @@ export const ExploreSections = () => {
       )}
 
       {visibleSections > SECTION_MEDIA && (isLoadingDiscovery || gridPosts.length > 0) && (
-        <View style={{ paddingTop: 24 }}>
+        <View style={{ paddingTop: showsTrending ? 24 : 8 }}>
           <SectionHeader
             title="Media"
             onSeeAll={hasMoreMedia ? () => router.push('/(app)/media-grid') : undefined}
+            showDivider={showsTrending}
           />
           {isLoadingDiscovery ? (
             <View style={{ flexDirection: 'row', marginHorizontal: GRID_MARGIN, gap: GRID_GAP }}>

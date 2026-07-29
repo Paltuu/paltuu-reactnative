@@ -194,8 +194,15 @@ export default function SearchScreen() {
       textPosts.slice(0, 5).forEach((p: SocialPost) =>
         items.push({ ...p, type: 'post_compact', _key: `pc-${p.post_id}` })
       );
-      chunkArray(mediaPosts.slice(0, 6), 3).forEach((chunk, i) =>
-        items.push({ type: 'post_grid_row', posts: chunk, _key: `grid-${i}` })
+      const gridRows = chunkArray(mediaPosts.slice(0, 6), 3);
+      gridRows.forEach((chunk, i) =>
+        items.push({
+          type: 'post_grid_row',
+          posts: chunk,
+          isFirstRow: i === 0,
+          isLastRow: i === gridRows.length - 1,
+          _key: `grid-${i}`,
+        })
       );
     }
 
@@ -345,7 +352,17 @@ export default function SearchScreen() {
     }
     if (item.type === 'post_grid_row') {
       return (
-        <View style={{ flexDirection: 'row', marginHorizontal: GRID_MARGIN, gap: GRID_GAP, marginBottom: GRID_GAP }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            marginHorizontal: GRID_MARGIN,
+            gap: GRID_GAP,
+            // Match the 12pt rhythm the compact post cards sit on (each carries
+            // marginVertical: 6) so the grid doesn't crowd the card above it.
+            marginTop: item.isFirstRow ? 6 : 0,
+            marginBottom: item.isLastRow ? 12 : GRID_GAP,
+          }}
+        >
           {item.posts.map((post: SocialPost) => (
             <PostGridItem
               key={post.post_id}

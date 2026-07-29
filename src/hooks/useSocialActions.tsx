@@ -62,6 +62,18 @@ export const useSocialActions = () => {
     },
   });
 
+  // Shared tri-state transition (Follow / Request to Follow -> Requested / Following),
+  // same rule the profile page's own local mutation uses: private + not-yet-related
+  // targets go to "pending", not straight to "following". Any cache entry lacking
+  // is_following/has_pending_request/is_private fields (e.g. feed posts) is left
+  // untouched by callers rather than guessed at.
+  const nextFollowState = (current: { is_following?: boolean; has_pending_request?: boolean; is_private?: boolean }) => {
+    if (current.is_following) return { is_following: false, has_pending_request: false, countDelta: -1 };
+    if (current.has_pending_request) return { is_following: false, has_pending_request: false, countDelta: 0 };
+    if (current.is_private) return { is_following: false, has_pending_request: true, countDelta: 0 };
+    return { is_following: true, has_pending_request: false, countDelta: 1 };
+  };
+
   const followMutation = useMutation({
     mutationFn: (userId: string | number) => socialApi.toggleFollow(userId),
     onMutate: async (userId: string | number) => {
@@ -79,20 +91,36 @@ export const useSocialActions = () => {
       const previousSearchEntries = queryClient.getQueriesData<any>({ queryKey: ['social-search'] });
       const previousSuggested = queryClient.getQueryData(['explore', 'suggested-accounts']);
 
+      // Followers/following list rows use `is_followed_by_me` (not `is_following`)
+      // as their accepted-follow field, but the same pending/private transition
+      // rule applies.
       const flipInList = (list: any[]) =>
-        list.map((u) =>
-          String(u.user_id) === String(userId) ? { ...u, is_followed_by_me: !u.is_followed_by_me } : u
-        );
+        list.map((u) => {
+          if (String(u.user_id) !== String(userId)) return u;
+          const next = nextFollowState({
+            is_following: u.is_followed_by_me,
+            has_pending_request: u.has_pending_request,
+            is_private: u.is_private,
+          });
+          return { ...u, is_followed_by_me: next.is_following, has_pending_request: next.has_pending_request };
+        });
 
-      // Search results carry `is_following` (same field as feed posts), and
-      // the shape of `results` depends on the active search tab: an object
-      // with `.users`/`.posts` arrays for "all", or a bare array for "users"/"posts".
+      // Search results and suggested-accounts both carry `is_following` (same
+      // field as feed posts), and search's `results` shape depends on the
+      // active tab: an object with `.users`/`.posts` arrays for "all", or a
+      // bare array for "users"/"posts". Rows with no `is_private` field
+      // (search doesn't return one yet) fall through nextFollowState's default
+      // branch and just follow immediately, same as before this existed.
       const flipIsFollowing = (list: any[]) =>
-        list.map((it) =>
-          String(it.user_id) === String(userId) && 'is_following' in it
-            ? { ...it, is_following: !it.is_following }
-            : it
-        );
+        list.map((it) => {
+          if (String(it.user_id) !== String(userId) || !('is_following' in it)) return it;
+          const next = nextFollowState({
+            is_following: it.is_following,
+            has_pending_request: it.has_pending_request,
+            is_private: it.is_private,
+          });
+          return { ...it, is_following: next.is_following, has_pending_request: next.has_pending_request };
+        });
 
       queryClient.setQueriesData({ queryKey: ['social-followers'] }, (old: any) => {
         if (!old?.followers) return old;
@@ -142,28 +170,28 @@ export const useSocialActions = () => {
 
       queryClient.setQueryData(['social-profile-quick', userId], (old: any) => {
         if (!old) return old;
+        const next = nextFollowState(old.profile);
         return {
           ...old,
           profile: {
             ...old.profile,
-            is_following: !old.profile.is_following,
-            follower_count: old.profile.is_following
-              ? Math.max(0, old.profile.follower_count - 1)
-              : old.profile.follower_count + 1
+            is_following: next.is_following,
+            has_pending_request: next.has_pending_request,
+            follower_count: Math.max(0, old.profile.follower_count + next.countDelta),
           }
         };
       });
 
       queryClient.setQueryData(['social-profile', String(userId)], (old: any) => {
         if (!old || !old.profile) return old;
+        const next = nextFollowState(old.profile);
         return {
           ...old,
           profile: {
             ...old.profile,
-            is_following: !old.profile.is_following,
-            follower_count: old.profile.is_following
-              ? Math.max(0, old.profile.follower_count - 1)
-              : old.profile.follower_count + 1
+            is_following: next.is_following,
+            has_pending_request: next.has_pending_request,
+            follower_count: Math.max(0, old.profile.follower_count + next.countDelta),
           }
         };
       });

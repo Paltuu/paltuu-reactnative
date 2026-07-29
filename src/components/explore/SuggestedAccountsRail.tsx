@@ -98,11 +98,17 @@ const AccountCard = ({
           borderRadius: 8,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: account.is_following ? '#F5F5F7' : PRIMARY,
+          backgroundColor: (account.is_following || account.has_pending_request) ? '#F5F5F7' : PRIMARY,
         }}
       >
-        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: account.is_following ? DARK : '#FFF' }}>
-          {account.is_following ? 'Following' : 'Follow'}
+        <Text
+          style={{
+            fontFamily: FONTS.bodyBold,
+            fontSize: 12.5,
+            color: (account.is_following || account.has_pending_request) ? DARK : '#FFF',
+          }}
+        >
+          {account.is_following ? 'Following' : account.has_pending_request ? 'Requested' : 'Follow'}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
