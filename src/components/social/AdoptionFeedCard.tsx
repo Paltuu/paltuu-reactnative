@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { AdoptionFeedItem } from '../../api/social';
 import { CARD_INNER_PAD, AVATAR_SIZE, COL_GAP } from './PostCard';
@@ -46,22 +47,31 @@ export default function AdoptionFeedCard({ item, onPress }: AdoptionFeedCardProp
   const detailParts = [item.pet_breed, age, item.city].filter(Boolean);
 
   return (
-    <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.card}>
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={onPress}
+      style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.pet_name}, up for adoption. ${detailParts.join(', ')}`}
+    >
       <View style={styles.authorRow}>
         <Image source={APP_ICON} style={styles.avatar} contentFit="cover" />
         <View style={styles.authorTextCol}>
           <View style={styles.authorNameRow}>
             <Text style={styles.name} numberOfLines={1}>Paltuu Adoptions</Text>
-            <Text style={styles.sponsored}> · Sponsored</Text>
+            <Text style={styles.sponsored} numberOfLines={1}> · Sponsored</Text>
           </View>
         </View>
       </View>
 
+      {/* Name and details are separate lines, not one run-on string: joined
+          inline, a wrap would orphan a leading "·" at the start of line two,
+          and the details would compete with the name at the same weight. */}
       <View style={styles.caption}>
-        <Text style={styles.captionText}>
-          <Text style={styles.captionName}>{item.pet_name}</Text>
-          {detailParts.length > 0 ? `  ·  ${detailParts.join(' · ')}` : ''}
-        </Text>
+        <Text style={styles.captionName} numberOfLines={2}>{item.pet_name}</Text>
+        {detailParts.length > 0 && (
+          <Text style={styles.captionMeta} numberOfLines={1}>{detailParts.join(' · ')}</Text>
+        )}
       </View>
 
       <View style={styles.mediaWrapper}>
@@ -77,7 +87,7 @@ export default function AdoptionFeedCard({ item, onPress }: AdoptionFeedCardProp
       <View style={styles.ctaRow}>
         <Image source={PAW_ICON} style={styles.ctaIcon} contentFit="contain" tintColor={PRIMARY} />
         <Text style={styles.ctaText}>View adoption listing</Text>
-        <Text style={styles.chevron}>›</Text>
+        <Ionicons name="chevron-forward" size={14} color="#C9CDD3" />
       </View>
 
       <View style={styles.separator} />
@@ -88,8 +98,11 @@ export default function AdoptionFeedCard({ item, onPress }: AdoptionFeedCardProp
 const styles = StyleSheet.create({
   card: { backgroundColor: '#FFFFFF', paddingVertical: 12 },
   authorRow: {
+    // flex-start (not center) so the name sits at the TOP of the 36px avatar
+    // row, exactly like PostCard — that's what lets the caption tuck back up
+    // into the avatar's lower half below.
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: CARD_INNER_PAD,
     gap: COL_GAP,
   },
@@ -97,15 +110,19 @@ const styles = StyleSheet.create({
   authorTextCol: { flex: 1, justifyContent: 'flex-start' },
   authorNameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { fontSize: 14, fontWeight: '700', color: DARK, flexShrink: 0 },
-  sponsored: { fontSize: 13, color: MUTED },
+  sponsored: { fontSize: 13, color: MUTED, flexShrink: 1 },
   caption: {
     marginLeft: MEDIA_LEFT_OFFSET,
     marginRight: 14,
-    marginTop: 4,
+    // Pull up so the caption starts right after the name line, ignoring the
+    // taller avatar's overhang below it (avatar 36 vs ~20 line) — mirrors
+    // PostCard.caption. Without this the caption clears the whole avatar and
+    // leaves a dead band across the card.
+    marginTop: -18,
     marginBottom: 8,
   },
-  captionText: { fontSize: 15, lineHeight: 22, color: DARK, letterSpacing: -0.4 },
-  captionName: { fontWeight: '700' },
+  captionName: { fontSize: 15, lineHeight: 22, fontWeight: '700', color: DARK, letterSpacing: -0.4 },
+  captionMeta: { fontSize: 13, lineHeight: 18, color: MUTED, letterSpacing: -0.2, marginTop: 1 },
   mediaWrapper: {
     marginLeft: MEDIA_LEFT_OFFSET,
     marginRight: -14,
@@ -124,7 +141,6 @@ const styles = StyleSheet.create({
   },
   ctaIcon: { width: 14, height: 14 },
   ctaText: { flex: 1, fontSize: 13, fontWeight: '700', color: PRIMARY },
-  chevron: { fontSize: 18, color: '#C9CDD3' },
   separator: {
     height: 1,
     backgroundColor: '#F3F4F6',
