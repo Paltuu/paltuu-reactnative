@@ -27,9 +27,14 @@ export const VetsNearbyRail = () => {
 
   const clinics = data?.clinics ?? [];
 
+  // The server only attaches distances when it actually found clinics within
+  // its "nearby" radius; the city/global fallbacks come back distance-less.
+  // Having coordinates isn't enough to claim these results are near the user.
+  const isNearby = clinics.some((c) => c.distance_km != null);
+
   return (
     <Rail
-      title={coords ? 'Vets & Clinics Near You' : 'Top Vets & Clinics'}
+      title={isNearby ? 'Vets & Clinics Near You' : 'Top Vets & Clinics'}
       isLoading={isLoading || !locationSettled}
       isEmpty={clinics.length === 0}
       onSeeAll={() => router.push('/(app)/pet-care')}
