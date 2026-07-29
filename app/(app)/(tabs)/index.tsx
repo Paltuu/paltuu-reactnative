@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { socialApi, SocialPost, FeedItem } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../../src/components/social/PostCard';
+import { carouselDragStartOffsetX } from '../../../src/utils/carouselSwipeLock';
 import { SurfacedCommentCard } from '../../../src/components/social/SurfacedCommentCard';
 import AdoptionFeedCard from '../../../src/components/social/AdoptionFeedCard';
 import LostFoundFeedCard from '../../../src/components/social/LostFoundFeedCard';
@@ -184,9 +185,19 @@ export default function HomeScreen() {
         .failOffsetY([-14, 14])
         .onEnd((event) => {
           'worklet';
+          // A carousel already scrolled past its first slide owns the
+          // rightward swipe — the user is paging back through media, not
+          // reaching for the composer.
+          if (carouselDragStartOffsetX.value > 0) return;
           if (event.translationX > 70 || event.velocityX > 600) {
             runOnJS(router.push)('/create-post');
           }
+        })
+        // Fires on touch release whether or not the pan activated, so the
+        // carousel's published offset never leaks into a later gesture.
+        .onFinalize(() => {
+          'worklet';
+          carouselDragStartOffsetX.value = 0;
         }),
     [router],
   );
