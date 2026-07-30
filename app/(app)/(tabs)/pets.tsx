@@ -24,7 +24,6 @@ import { PawrvezDialog } from '../../../src/components/common/mascot';
 import { storage } from '../../../src/utils/storage';
 
 const H_PAD = 20;
-const ROSE = '#A03048';
 const DARK = '#1A1A2E';
 const TILE_BG = '#F5F5F5';
 
@@ -111,7 +110,8 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
               : `Recently listed${cityName ? ` in ${cityName}` : ' near you'}`}
           </Text>
         </View>
-        <Ionicons name="arrow-forward" size={16} color={ROSE} />
+        {/* Same grey as the hero / lost-found tiles' sub-rows. */}
+        <Ionicons name="arrow-forward" size={16} color="#999999" />
       </View>
 
       <View style={styles.nearbyCirclesViewport}>
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   nearbySub: {
     fontFamily: FONTS.bodyBold,
     fontSize: 12,
-    color: '#555555',
+    color: '#999999',
     marginTop: 2,
   },
   nearbyCirclesViewport: {
