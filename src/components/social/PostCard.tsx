@@ -14,7 +14,6 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { subscribeToPlayingPost, setPlayingPostId } from '../../utils/videoPlaySubscription';
-import { carouselDragStartOffsetX } from '../../utils/carouselSwipeLock';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
 
 const PostIcons = {
@@ -607,12 +606,6 @@ const MediaBlock = React.memo(({
         decelerationRate="fast"
         bounces={false}
         overScrollMode="never"
-        // Tells Home's swipe-to-compose pan that this touch belongs to the
-        // carousel, so swiping back to the first slide doesn't also open the
-        // composer. See src/utils/carouselSwipeLock.ts.
-        onScrollBeginDrag={(e) => {
-          carouselDragStartOffsetX.value = e.nativeEvent.contentOffset.x;
-        }}
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: carouselImgH, overflow: 'visible' }}
       >

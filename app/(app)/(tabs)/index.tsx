@@ -16,7 +16,6 @@ import { useRouter } from 'expo-router';
 import { socialApi, SocialPost, FeedItem } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../../src/components/social/PostCard';
-import { carouselDragStartOffsetX } from '../../../src/utils/carouselSwipeLock';
 import { SurfacedCommentCard } from '../../../src/components/social/SurfacedCommentCard';
 import AdoptionFeedCard from '../../../src/components/social/AdoptionFeedCard';
 import LostFoundFeedCard from '../../../src/components/social/LostFoundFeedCard';
@@ -98,6 +97,7 @@ export const MOCK_POSTS: SocialPost[] = [
 // receive touch-move events reliably when the list is wrapped in a
 // GestureDetector (see composedGesture below), so the drag affordance is
 // hand-rolled here instead of relying on native RefreshControl.
+const PULL_ACTIVATION_SLOP = 12; // drag px before the pull gesture commits to vertical
 const PULL_DAMPING = 0.5; // physical drag px -> displayed indicator px
 const PULL_TRIGGER_DISTANCE = 55; // displayed px needed to trigger a refresh
 const PULL_MAX_DISTANCE = 90; // displayed px cap while dragging
@@ -171,37 +171,12 @@ export default function HomeScreen() {
   );
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }).current;
 
-  // Swipe left-to-right to open the composer, right-to-left to move to the
-  // Pets tab — part of the create-post <-> home <-> pets <-> search <-> profile chain.
-  // Home is the pager's first page; the pager owns the leftward swipe to Pets.
-  // We only add a rightward swipe that *triggers* opening the compose
-  // (create-post) screen — it lives outside the pager and plays its own native
-  // `slide_from_left` animation, so this gesture must NOT translate the feed
-  // itself (that caused a double-slide). Trigger only.
-  const openComposeGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-1_000_000, 24]) // rightward only; leftward stays with the pager
-        .failOffsetY([-14, 14])
-        .onEnd((event) => {
-          'worklet';
-          // A carousel already scrolled past its first slide owns the
-          // rightward swipe — the user is paging back through media, not
-          // reaching for the composer.
-          if (carouselDragStartOffsetX.value > 0) return;
-          if (event.translationX > 70 || event.velocityX > 600) {
-            runOnJS(router.push)('/create-post');
-          }
-        })
-        // Fires on touch release whether or not the pan activated, so the
-        // carousel's published offset never leaks into a later gesture.
-        .onFinalize(() => {
-          'worklet';
-          carouselDragStartOffsetX.value = 0;
-        }),
-    [router],
-  );
-
+  // Home is the pager's first page in the home <-> pets <-> search <-> profile
+  // chain, so the pager owns the horizontal swipes: right-to-left moves to
+  // Pets, and there is nothing to the left of Home. A rightward swipe used to
+  // open the composer here, but it collided with post media carousels (swiping
+  // back to a carousel's first slide pushed create-post over the feed), so the
+  // composer is now reached solely through the header's + button.
   const {
     data, fetchNextPage, hasNextPage,
     isFetchingNextPage, isLoading: isLoadingFeed, refetch,
@@ -223,8 +198,8 @@ export default function HomeScreen() {
   // Drives the indicator height directly (see composedGesture below) rather
   // than a native RefreshControl — FlashList doesn't forward touch-move
   // events to a wrapped RefreshControl reliably when the list also sits
-  // inside a GestureDetector (see openComposeGesture's comment above and
-  // https://github.com/Shopify/flash-list/issues/1744).
+  // inside a GestureDetector
+  // (https://github.com/Shopify/flash-list/issues/1744).
   const triggerRefresh = useCallback(() => {
     if (isRefreshingSV.value) return;
     isRefreshingSV.value = true;
@@ -236,16 +211,29 @@ export default function HomeScreen() {
   }, [refetch, isRefreshingSV, pullDistance]);
 
   // Tracks a downward drag while the feed is scrolled to the top and grows
-  // pullDistance accordingly; composed simultaneously with the compose-swipe
-  // gesture and Gesture.Native() so none of the three block each other.
+  // pullDistance accordingly; composed simultaneously with Gesture.Native()
+  // so the two don't block each other.
   const pullGesture = useMemo(
     () =>
       Gesture.Pan()
+        // Vertical intent only. Gesture.Simultaneous covers the gestures inside
+        // this detector, but says nothing about the tab pager *above* it — and
+        // RNGH lets a child gesture win over an ancestor's. Unconstrained, this
+        // pan activated on horizontal drags too and swallowed the swipe from
+        // Home to Pets. failOffsetX yields the touch as soon as it looks
+        // horizontal; activeOffsetY holds activation until it looks vertical,
+        // which is what gives failOffsetX a window to fire in.
+        .activeOffsetY([-PULL_ACTIVATION_SLOP, PULL_ACTIVATION_SLOP])
+        .failOffsetX([-PULL_ACTIVATION_SLOP, PULL_ACTIVATION_SLOP])
         .onUpdate((event) => {
           'worklet';
           if (isRefreshingSV.value) return;
-          if (scrollY.value <= 0 && event.translationY > 0) {
-            pullDistance.value = Math.min(event.translationY * PULL_DAMPING, PULL_MAX_DISTANCE);
+          // translationY already includes the slop the finger travelled to
+          // activate, so subtract it — otherwise the indicator pops open
+          // instead of growing from nothing.
+          const pulled = event.translationY - PULL_ACTIVATION_SLOP;
+          if (scrollY.value <= 0 && pulled > 0) {
+            pullDistance.value = Math.min(pulled * PULL_DAMPING, PULL_MAX_DISTANCE);
           } else {
             pullDistance.value = 0;
           }
@@ -272,8 +260,8 @@ export default function HomeScreen() {
   // only reads/writes shared values, it doesn't depend on native touch
   // forwarding.
   const composedGesture = useMemo(
-    () => Gesture.Simultaneous(openComposeGesture, pullGesture, Gesture.Native()),
-    [openComposeGesture, pullGesture],
+    () => Gesture.Simultaneous(pullGesture, Gesture.Native()),
+    [pullGesture],
   );
 
   // Instagram-style re-tap: if the feed is scrolled down, scroll to top;

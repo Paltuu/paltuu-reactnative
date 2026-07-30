@@ -12,6 +12,7 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync } from '../utils/registerForPushNotificationsAsync';
 import { notificationsApi } from '../api/notifications';
 import { useAuthStore } from '../stores/authStore';
+import { useBadgeSync } from '../hooks/useBadgeSync';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // Mirror the bell's unread count onto the home-screen app icon badge.
+  useBadgeSync();
 
   useEffect(() => {
     // 1. Register for Expo push token (permission + token retrieval, no auth required)

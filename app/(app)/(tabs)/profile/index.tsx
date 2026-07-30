@@ -918,7 +918,7 @@ export default function ProfileScreen() {
         onClose={() => setShowDayOneBadgeInfo(false)}
         icon={DayOneIcon}
         title="Day 1"
-        description={`${profile?.name || 'This user'} is a Paltuu Day 1\n If theres anything we don't do, it's forgetting our Day 1s ;).`}
+        description={`${profile?.name || 'This user'} is a Paltuu Day 1`}
       />
     </View>
   );
