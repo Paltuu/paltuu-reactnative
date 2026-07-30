@@ -4,15 +4,15 @@ import {
   Text,
   ActivityIndicator,
   TouchableOpacity,
-  RefreshControl
+  FlatList,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderScroll } from '../../../src/context/HeaderContext';
 import { SearchHeader, SearchTab } from '../../../src/components/common/SearchHeader';
+import { usePullToRefresh, PullToRefreshView } from '../../../src/components/common/PullToRefresh';
 import { useRouter } from 'expo-router';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../src/api/social';
@@ -100,14 +100,13 @@ export default function SearchScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   // create-post <-> home <-> pets <-> search <-> profile
-  const { headerTranslateY, scrollHandler, handleScrollY, handleScrollEnd } = useHeaderScroll();
+  const { headerTranslateY, handleScrollY, handleScrollEnd } = useHeaderScroll();
   const exploreListRef = useRef<any>(null);
   const exploreScrollYRef = useRef(0);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
   const [stickyHeaderHeight, setStickyHeaderHeight] = useState(112);
-  const [isExploreRefreshing, setIsExploreRefreshing] = useState(false);
 
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -146,7 +145,6 @@ export default function SearchScreen() {
     data: searchData,
     isLoading: isLoadingSearch,
     refetch: refetchSearch,
-    isRefetching: isRefetchingSearch,
   } = useQuery({
     queryKey: ['social-search', debouncedQuery, activeTab],
     queryFn: () => socialApi.search(debouncedQuery, activeTab),
@@ -402,17 +400,16 @@ export default function SearchScreen() {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const handleExploreRefresh = useCallback(async () => {
-    setIsExploreRefreshing(true);
-    try {
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['explore'] }),
-        queryClient.refetchQueries({ queryKey: ['social-feed', 'personalized'] }),
-      ]);
-    } finally {
-      setIsExploreRefreshing(false);
-    }
-  }, [queryClient]);
+  const handleExploreRefresh = useCallback(() => Promise.all([
+    queryClient.refetchQueries({ queryKey: ['explore'] }),
+    queryClient.refetchQueries({ queryKey: ['social-feed', 'personalized'] }),
+  ]), [queryClient]);
+
+  // Shared app-wide pull-to-refresh — same drag weight, distance and indicator
+  // size as every other screen (see PullToRefresh.tsx). The two lists never
+  // render at once, but each owns its own refresh target.
+  const searchPull = usePullToRefresh(refetchSearch);
+  const explorePull = usePullToRefresh(handleExploreRefresh);
 
   // Instagram-style re-tap: if the explore feed is scrolled down, jump straight
   // back to the top; only refresh once it's already there. (Search results
@@ -420,14 +417,14 @@ export default function SearchScreen() {
   useEffect(() => {
     return subscribeToTabPress('search', () => {
       if (debouncedQuery) {
-        refetchSearch();
+        searchPull.triggerRefresh();
       } else if (exploreScrollYRef.current > 40) {
         exploreListRef.current?.scrollToOffset({ offset: 0, animated: false });
       } else {
-        handleExploreRefresh();
+        explorePull.triggerRefresh();
       }
     });
-  }, [debouncedQuery, refetchSearch, handleExploreRefresh]);
+  }, [debouncedQuery, searchPull.triggerRefresh, explorePull.triggerRefresh]);
 
   const exploreHeader = useMemo(() => <ExploreSections />, []);
 
@@ -440,23 +437,29 @@ export default function SearchScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
       {debouncedQuery ? (
-        <Animated.FlatList
+        <PullToRefreshView pull={searchPull} indicatorTop={insets.top + stickyHeaderHeight}>
+        <FlatList
           data={searchListData}
           renderItem={renderSearchItem}
           keyExtractor={(item) => item._key || item.post_id || String(item.user_id) || Math.random().toString()}
-          onScroll={scrollHandler}
+          // Plain JS scroll callbacks (same pattern as the explore list below)
+          // rather than the worklet handler — the pull needs the offset too, and
+          // a list only gets one onScroll.
+          onScroll={(e) => {
+            searchPull.onScroll(e.nativeEvent.contentOffset.y);
+            handleScrollY(e.nativeEvent.contentOffset.y);
+          }}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
           scrollEventThrottle={16}
+          // Native overscroll would move the content on top of the pull
+          // transform, doubling the travel.
+          bounces={false}
+          overScrollMode="never"
           contentContainerStyle={{
             paddingTop: insets.top + stickyHeaderHeight,
             paddingBottom: 100,
           }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetchingSearch}
-              onRefresh={() => refetchSearch()}
-              tintColor="#A03048"
-            />
-          }
           ListFooterComponent={() =>
             isLoadingSearch ? (
               <View style={{ paddingVertical: 20 }}>
@@ -465,7 +468,9 @@ export default function SearchScreen() {
             ) : null
           }
         />
+        </PullToRefreshView>
       ) : (
+        <PullToRefreshView pull={explorePull} indicatorTop={insets.top + stickyHeaderHeight}>
         <CustomFlashList
           ref={exploreListRef}
           data={forYouPosts}
@@ -475,6 +480,7 @@ export default function SearchScreen() {
           estimatedItemSize={350}
           onScroll={(e: any) => {
             exploreScrollYRef.current = e.nativeEvent.contentOffset.y;
+            explorePull.onScroll(e.nativeEvent.contentOffset.y);
             handleScrollY(e.nativeEvent.contentOffset.y);
           }}
           onScrollEndDrag={handleScrollEnd}
@@ -491,14 +497,12 @@ export default function SearchScreen() {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isExploreRefreshing}
-              onRefresh={handleExploreRefresh}
-              tintColor="#A03048"
-            />
-          }
+          // Native overscroll would move the content on top of the pull
+          // transform, doubling the travel.
+          bounces={false}
+          overScrollMode="never"
         />
+        </PullToRefreshView>
       )}
 
       <SearchHeader

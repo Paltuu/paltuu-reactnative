@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  RefreshControl,
   Pressable,
   SectionList,
   ActivityIndicator,
@@ -15,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { usePullToRefresh, PullToRefreshView } from '../src/components/common/PullToRefresh';
 import { notificationsApi, Notification } from '../src/api/notifications';
 import { socialApi, FollowRequest } from '../src/api/social';
 import { handleDeepLink } from '../src/services/deepLinks';
@@ -488,7 +488,6 @@ export default function NotificationsScreen() {
     isLoading,
     isFetching,
     refetch,
-    isRefetching,
   } = useInfiniteQuery({
     queryKey: ['notifications'],
     queryFn: ({ pageParam }) =>
@@ -645,9 +644,9 @@ export default function NotificationsScreen() {
     bottomSheetModalRef.current?.dismiss();
   }, [selectedNotification, handlePress]);
 
-  const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  // Shared app-wide pull-to-refresh — same drag weight, distance and indicator
+  // size as every other screen (see PullToRefresh.tsx).
+  const pull = usePullToRefresh(refetch);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -684,6 +683,7 @@ export default function NotificationsScreen() {
           <NotificationSkeleton />
         </View>
       ) : (
+        <PullToRefreshView pull={pull}>
         <SectionList
           sections={sections}
           // Date headers (Today/Yesterday/…) scroll away with their section
@@ -718,9 +718,12 @@ export default function NotificationsScreen() {
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={PRIMARY} />
-          }
+          onScroll={(e) => pull.onScroll(e.nativeEvent.contentOffset.y)}
+          scrollEventThrottle={16}
+          // Native overscroll would move the content on top of the pull
+          // transform, doubling the travel.
+          bounces={false}
+          overScrollMode="never"
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
@@ -744,6 +747,7 @@ export default function NotificationsScreen() {
             </View>
           }
         />
+        </PullToRefreshView>
       )}
 
       {/* Actions Options Bottom Sheet */}

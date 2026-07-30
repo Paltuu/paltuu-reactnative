@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useHeaderScroll } from '../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PetCard } from '../../src/components/adoption/PetCard';
+import { usePullToRefresh, PullToRefreshView } from '../../src/components/common/PullToRefresh';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const H_PAD = 16;
@@ -49,7 +50,6 @@ function AdoptScreen() {
     isFetchingNextPage,
     isLoading,
     refetch,
-    isRefetching
   } = useInfiniteQuery({
     queryKey: ['pets', filters],
     queryFn: ({ pageParam = 1 }) => petApi.getAdoptionPets({
@@ -65,6 +65,10 @@ function AdoptScreen() {
       return undefined;
     },
   });
+
+  // Shared app-wide pull-to-refresh — same drag weight, distance and indicator
+  // size as every other screen (see PullToRefresh.tsx).
+  const pull = usePullToRefresh(refetch);
 
   const { data: cities } = useQuery({ queryKey: ['cities'], queryFn: petApi.getCities });
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: petApi.getCategories });
@@ -191,15 +195,19 @@ function AdoptScreen() {
           {renderSkeletonGrid()}
         </ScrollView>
       ) : (
+        <PullToRefreshView pull={pull}>
         <FlashList
           data={pets}
           renderItem={renderPetCard}
           keyExtractor={(item: any) => item.pet_id.toString()}
-          // FlashList isn't wrapped in reanimated's Animated component (see
-          // search.tsx for the same pattern), so the collapsing header is
-          // driven by plain scroll callbacks instead of the worklet-based
-          // `scrollHandler` used by the reanimated Animated.FlatList lists.
-          onScroll={(e: any) => handleScrollY(e.nativeEvent.contentOffset.y)}
+          // FlashList isn't wrapped in reanimated's Animated component, so the
+          // collapsing header is driven by plain scroll callbacks rather than
+          // the worklet-based `scrollHandler`; the pull-to-refresh gate reads
+          // the same offset.
+          onScroll={(e: any) => {
+            pull.onScroll(e.nativeEvent.contentOffset.y);
+            handleScrollY(e.nativeEvent.contentOffset.y);
+          }}
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
           scrollEventThrottle={16}
@@ -214,8 +222,10 @@ function AdoptScreen() {
             paddingBottom: 32,
             paddingTop: 16
           }}
-          onRefresh={refetch}
-          refreshing={isRefetching}
+          // Native overscroll would move the content on top of the pull
+          // transform, doubling the travel.
+          bounces={false}
+          overScrollMode="never"
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
@@ -235,6 +245,7 @@ function AdoptScreen() {
             </View>
           }
         />
+        </PullToRefreshView>
       )}
 
       {/* --- Filters Modal --- */}

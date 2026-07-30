@@ -17,6 +17,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getClinics } from '../../src/api/clinics';
 import { ClinicCard } from '../../src/components/pet-care/ClinicCard';
+import { usePullToRefresh, PullToRefreshView } from '../../src/components/common/PullToRefresh';
 import { useLocationStore } from '../../src/stores/locationStore';
 import { haversineDistanceKm } from '../../src/utils/geo';
 import { FONTS } from '../../src/constants/typography';
@@ -78,6 +79,10 @@ function PetCareScreen() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.pagination.hasMore ? allPages.length + 1 : undefined,
   });
+
+  // Shared app-wide pull-to-refresh — same drag weight, distance and indicator
+  // size as every other screen (see PullToRefresh.tsx).
+  const pull = usePullToRefresh(refetch);
 
   const clinics = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
   const total = data?.pages[0]?.pagination.total ?? 0;
@@ -264,6 +269,7 @@ function PetCareScreen() {
         </View>
       </View>
 
+      <PullToRefreshView pull={pull}>
       <FlashList
         ref={listRef}
         data={clinics}
@@ -290,9 +296,13 @@ function PetCareScreen() {
             <ActivityIndicator size="small" color={PRIMARY} />
           </View>
         ) : null}
-        onRefresh={refetch}
-        refreshing={isLoading}
         showsVerticalScrollIndicator={false}
+        onScroll={(e: any) => pull.onScroll(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
+        // Native overscroll would move the content on top of the pull
+        // transform, doubling the travel.
+        bounces={false}
+        overScrollMode="never"
         // `contentContainerStyle`'s paddingBottom only clears the nav bar once
         // scrolled all the way to the end — the list's own frame still extends
         // the full screen height, so mid-scroll rows rest right behind the
@@ -316,6 +326,7 @@ function PetCareScreen() {
           )
         }
       />
+      </PullToRefreshView>
     </View>
   );
 }

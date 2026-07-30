@@ -6,8 +6,7 @@ import {
   Dimensions, Pressable, ActivityIndicator,
   Modal,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { usePullToRefresh, PullToRefreshView } from '../../../src/components/common/PullToRefresh';
 import { MainHeader, HEADER_HEIGHT, UPLOAD_BANNER_HEIGHT } from '../../../src/components/common/MainHeader';
 import { useUploadStore } from '../../../src/stores/uploadStore';
 import { useHeaderScroll, useHeaderContext } from '../../../src/context/HeaderContext';
@@ -93,16 +92,6 @@ export const MOCK_POSTS: SocialPost[] = [
   }
 ];
 
-// Custom pull-to-refresh tuning. FlashList's native RefreshControl doesn't
-// receive touch-move events reliably when the list is wrapped in a
-// GestureDetector (see composedGesture below), so the drag affordance is
-// hand-rolled here instead of relying on native RefreshControl.
-const PULL_ACTIVATION_SLOP = 12; // drag px before the pull gesture commits to vertical
-const PULL_DAMPING = 0.5; // physical drag px -> displayed indicator px
-const PULL_TRIGGER_DISTANCE = 55; // displayed px needed to trigger a refresh
-const PULL_MAX_DISTANCE = 90; // displayed px cap while dragging
-const REFRESH_INDICATOR_HEIGHT = 56; // held height while a refresh is in flight
-
 /* ── Screen ── */
 export default function HomeScreen() {
   const router = useRouter();
@@ -122,11 +111,6 @@ export default function HomeScreen() {
 
   const listRef = useRef<any>(null);
   const scrollYRef = useRef(0);
-
-  // Drives the custom pull-to-refresh indicator (see composedGesture below).
-  const scrollY = useSharedValue(0);
-  const pullDistance = useSharedValue(0);
-  const isRefreshingSV = useSharedValue(false);
 
   // Load persisted dismiss state on mount
   useEffect(() => {
@@ -195,74 +179,9 @@ export default function HomeScreen() {
     enabled: authReady && !USE_MOCK_POSTS_FOR_SCREENSHOTS,
   });
 
-  // Drives the indicator height directly (see composedGesture below) rather
-  // than a native RefreshControl — FlashList doesn't forward touch-move
-  // events to a wrapped RefreshControl reliably when the list also sits
-  // inside a GestureDetector
-  // (https://github.com/Shopify/flash-list/issues/1744).
-  const triggerRefresh = useCallback(() => {
-    if (isRefreshingSV.value) return;
-    isRefreshingSV.value = true;
-    pullDistance.value = withTiming(REFRESH_INDICATOR_HEIGHT, { duration: 200 });
-    refetch().finally(() => {
-      isRefreshingSV.value = false;
-      pullDistance.value = withTiming(0, { duration: 200 });
-    });
-  }, [refetch, isRefreshingSV, pullDistance]);
-
-  // Tracks a downward drag while the feed is scrolled to the top and grows
-  // pullDistance accordingly; composed simultaneously with Gesture.Native()
-  // so the two don't block each other.
-  const pullGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        // Vertical intent only. Gesture.Simultaneous covers the gestures inside
-        // this detector, but says nothing about the tab pager *above* it — and
-        // RNGH lets a child gesture win over an ancestor's. Unconstrained, this
-        // pan activated on horizontal drags too and swallowed the swipe from
-        // Home to Pets. failOffsetX yields the touch as soon as it looks
-        // horizontal; activeOffsetY holds activation until it looks vertical,
-        // which is what gives failOffsetX a window to fire in.
-        .activeOffsetY([-PULL_ACTIVATION_SLOP, PULL_ACTIVATION_SLOP])
-        .failOffsetX([-PULL_ACTIVATION_SLOP, PULL_ACTIVATION_SLOP])
-        .onUpdate((event) => {
-          'worklet';
-          if (isRefreshingSV.value) return;
-          // translationY already includes the slop the finger travelled to
-          // activate, so subtract it — otherwise the indicator pops open
-          // instead of growing from nothing.
-          const pulled = event.translationY - PULL_ACTIVATION_SLOP;
-          if (scrollY.value <= 0 && pulled > 0) {
-            pullDistance.value = Math.min(pulled * PULL_DAMPING, PULL_MAX_DISTANCE);
-          } else {
-            pullDistance.value = 0;
-          }
-        })
-        .onEnd(() => {
-          'worklet';
-          if (isRefreshingSV.value) return;
-          if (pullDistance.value >= PULL_TRIGGER_DISTANCE) {
-            runOnJS(triggerRefresh)();
-          } else {
-            pullDistance.value = withTiming(0, { duration: 150 });
-          }
-        }),
-    [triggerRefresh, scrollY, pullDistance, isRefreshingSV],
-  );
-
-  // On Android, wrapping the list in a bare GestureDetector makes RNGH's pan
-  // recognizer own the touch stream while it decides activate/fail, which
-  // would starve a native RefreshControl of the touch-move events its
-  // pull-down drag animation needs. Composing with Gesture.Native() tells
-  // RNGH to run the underlying scroll view's native gesture simultaneously
-  // instead of gating it on the other gestures' outcome; pullGesture (above)
-  // is our own drag tracking and isn't subject to that starvation since it
-  // only reads/writes shared values, it doesn't depend on native touch
-  // forwarding.
-  const composedGesture = useMemo(
-    () => Gesture.Simultaneous(pullGesture, Gesture.Native()),
-    [pullGesture],
-  );
+  // Shared app-wide pull-to-refresh (drag weight, trigger distance and
+  // indicator size all live in PullToRefresh.tsx).
+  const pull = usePullToRefresh(refetch);
 
   // Instagram-style re-tap: if the feed is scrolled down, scroll to top;
   // if it's already at the top, trigger a refresh instead.
@@ -271,10 +190,10 @@ export default function HomeScreen() {
       if (scrollYRef.current > 40) {
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
       } else {
-        triggerRefresh();
+        pull.triggerRefresh();
       }
     });
-  }, [triggerRefresh]);
+  }, [pull.triggerRefresh]);
 
   // Tapping the header logo always scrolls back to the top of the feed.
   useEffect(() => {
@@ -399,25 +318,6 @@ export default function HomeScreen() {
     );
   }, [router]);
 
-  // Grows with pullDistance as part of the scrollable content (not an
-  // overlay), so it naturally pushes the rest of the list down while
-  // dragging — no transforms on the FlashList itself.
-  const pullIndicatorStyle = useAnimatedStyle(() => ({
-    height: pullDistance.value,
-  }));
-  const pullToRefreshIndicator = useMemo(() => (
-    <Animated.View style={[{ alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, pullIndicatorStyle]}>
-      <ActivityIndicator color="#a03048" />
-    </Animated.View>
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), []);
-  const combinedListHeader = useMemo(() => (
-    <>
-      {pullToRefreshIndicator}
-      {listHeader}
-    </>
-  ), [pullToRefreshIndicator, listHeader]);
-
   // Header must stay mounted while the feed loads, so the skeleton swaps in for
   // the list only — an early return here would unmount MainHeader and make the
   // header pop in late on a cold start.
@@ -432,7 +332,7 @@ export default function HomeScreen() {
         ))}
       </View>
       ) : (
-      <GestureDetector gesture={composedGesture}>
+      <PullToRefreshView pull={pull} indicatorTop={topOffset}>
       <CustomFlashList
         ref={listRef}
         style={{ flex: 1 }}
@@ -443,7 +343,7 @@ export default function HomeScreen() {
         estimatedItemSize={350}
         onScroll={(e: any) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
-          scrollY.value = e.nativeEvent.contentOffset.y;
+          pull.onScroll(e.nativeEvent.contentOffset.y);
           handleScrollY(e.nativeEvent.contentOffset.y);
         }}
         onScrollEndDrag={handleScrollEnd}
@@ -457,13 +357,13 @@ export default function HomeScreen() {
           paddingTop: topOffset + 12,
           paddingBottom: 100,
         }}
-        ListHeaderComponent={combinedListHeader}
+        ListHeaderComponent={listHeader}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         ListFooterComponent={listFooter}
         showsVerticalScrollIndicator={false}
       />
-      </GestureDetector>
+      </PullToRefreshView>
       )}
       {/* Rendered inside the home page (not the parent layout) so the pager
           carries the header along with the feed during a tab swipe. */}

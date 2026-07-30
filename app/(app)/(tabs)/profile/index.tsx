@@ -15,7 +15,6 @@ import {
   Switch,
   Alert,
   ScrollView,
-  RefreshControl,
   BackHandler,
   PanResponder,
 } from 'react-native';
@@ -33,6 +32,7 @@ import PostCardShared from '../../../../src/components/social/PostCard';
 import { Avatar } from '../../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../../src/components/pets/PetIdCard';
 import { ProfileScreenSkeleton } from '../../../../src/components/common/ProfileScreenSkeleton';
+import { usePullToRefresh, PullToRefreshView } from '../../../../src/components/common/PullToRefresh';
 import { subscribeToTabPress } from '../../../../src/utils/tabPressSubscription';
 import { getShareUrl } from '../../../../src/utils/share';
 import { COLORS } from '../../../../src/constants/colors';
@@ -158,7 +158,6 @@ export default function ProfileScreen() {
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [uploading, setUploading] = useState<'profile' | 'cover' | null>(null);
   const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [nameBlockWidth, setNameBlockWidth] = useState(0);
   // -1 = hidden; otherwise the index of the slide currently on screen.
   const [introDialogIndex, setIntroDialogIndex] = useState(-1);
@@ -279,14 +278,13 @@ export default function ProfileScreen() {
   // ── Pull-to-refresh ──────────────────────────────────────────────────────────
 
   const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
-      await queryClient.invalidateQueries({ queryKey: ['social-pets', userId] });
-    } finally {
-      setIsRefreshing(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
+    await queryClient.invalidateQueries({ queryKey: ['social-pets', userId] });
   }, [queryClient, userId]);
+
+  // Shared app-wide pull-to-refresh — same drag weight, distance and indicator
+  // size as every other screen (see PullToRefresh.tsx).
+  const pull = usePullToRefresh(handleRefresh);
 
   // The FlatList is no longer force-remounted on tab switch (that was what
   // caused the avatar/icons in the header to flicker — see ListHeader below),
@@ -303,10 +301,10 @@ export default function ProfileScreen() {
       if (scrollYRef.current > 40) {
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
       } else {
-        handleRefresh();
+        pull.triggerRefresh();
       }
     });
-  }, [handleRefresh]);
+  }, [pull.triggerRefresh]);
 
   // ── Menu animation ──────────────────────────────────────────────────────────
   const openMenu = () => {
@@ -650,6 +648,9 @@ export default function ProfileScreen() {
   return (
     <View style={s.screen}>
       <View style={{ flex: 1 }} {...tabSwipeResponder.panHandlers}>
+        {/* The spinner band starts just below the status bar — the profile's own
+            top bar scrolls with the list, so there's no fixed header to clear. */}
+        <PullToRefreshView pull={pull} indicatorTop={insets.top}>
         <FlatList
           ref={listRef}
           data={tabData[activeTab]}
@@ -661,17 +662,16 @@ export default function ProfileScreen() {
           renderItem={renderItem}
           ListHeaderComponent={ListHeader()}
           showsVerticalScrollIndicator={false}
-          onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+          onScroll={(e) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+            pull.onScroll(e.nativeEvent.contentOffset.y);
+          }}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={[DS.primary]}
-              tintColor={DS.primary}
-            />
-          }
+          // Native overscroll would move the content on top of the pull
+          // transform, doubling the travel.
+          bounces={false}
+          overScrollMode="never"
           ListEmptyComponent={
             <View style={activeTab === 'Pets' && !isTabLoading ? s.emptyStatePets : s.emptyState}>
               {isTabLoading ? (
@@ -692,6 +692,7 @@ export default function ProfileScreen() {
             </View>
           }
         />
+        </PullToRefreshView>
       </View>
 
       {/* ── Side drawer menu ────────────────────────────────────────────────── */}
