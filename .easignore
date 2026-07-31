@@ -19,6 +19,12 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Build artifacts. These are in .gitignore, but .easignore replaces
+# .gitignore entirely for the EAS upload archive, so they have to be
+# repeated here or every build uploads them (~300 MB of stale .aab/.apk).
+*.aab
+*.apk
+
 # Metro
 .metro-health-check*
 
