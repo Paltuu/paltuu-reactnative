@@ -67,8 +67,12 @@ function isAuthFailure(error: unknown): boolean {
     return true;
   }
   if (error instanceof AxiosError) {
-    const status = error.response?.status;
-    return status === 400 || status === 401 || status === 403;
+    // Any response at all (2xx excluded, so any error status: 4xx or 5xx) means the
+    // refresh server was reached and definitively could not renew the session — that's
+    // as unrecoverable as a 401 from the client's perspective, whatever the status code
+    // (e.g. a 500 from a server bug). Only a missing response (timeout / offline / DNS
+    // failure — a network blip) should be treated as non-fatal and retried later.
+    return error.response != null;
   }
   return false;
 }
