@@ -341,17 +341,6 @@ export default function HomeScreen() {
         keyExtractor={feedItemKey}
         getItemType={getFeedItemType}
         estimatedItemSize={350}
-        // FlashList v2 turns maintainVisibleContentPosition ON by default for
-        // every vertical list (minIndexForVisible: 0). That anchors the scroll
-        // offset to the first visible item and compensates whenever content
-        // *above* it changes height — which on Android reads as the list
-        // refusing to scroll at all. Home is the one feed whose header flips
-        // after mount (listHeader returns null until bannerDismissed resolves
-        // from storage, then swaps in the banner), so the anchor correction
-        // fires here and not on Explore, whose ListHeaderComponent is stable
-        // from the first frame. This screen was written against v1 semantics,
-        // where the behaviour didn't exist.
-        maintainVisibleContentPosition={{ disabled: true }}
         onScroll={(e: any) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
           pull.onScroll(e.nativeEvent.contentOffset.y);
