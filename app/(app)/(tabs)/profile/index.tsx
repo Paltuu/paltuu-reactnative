@@ -664,14 +664,8 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           onScroll={(e) => {
             scrollYRef.current = e.nativeEvent.contentOffset.y;
-            pull.onScroll(e.nativeEvent.contentOffset.y);
           }}
-          scrollEventThrottle={16}
           contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
-          // Native overscroll would move the content on top of the pull
-          // transform, doubling the travel.
-          bounces={false}
-          overScrollMode="never"
           ListEmptyComponent={
             <View style={activeTab === 'Pets' && !isTabLoading ? s.emptyStatePets : s.emptyState}>
               {isTabLoading ? (

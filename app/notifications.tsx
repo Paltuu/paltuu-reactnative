@@ -718,12 +718,6 @@ export default function NotificationsScreen() {
           style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
-          onScroll={(e) => pull.onScroll(e.nativeEvent.contentOffset.y)}
-          scrollEventThrottle={16}
-          // Native overscroll would move the content on top of the pull
-          // transform, doubling the travel.
-          bounces={false}
-          overScrollMode="never"
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

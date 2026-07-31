@@ -297,12 +297,6 @@ function PetCareScreen() {
           </View>
         ) : null}
         showsVerticalScrollIndicator={false}
-        onScroll={(e: any) => pull.onScroll(e.nativeEvent.contentOffset.y)}
-        scrollEventThrottle={16}
-        // Native overscroll would move the content on top of the pull
-        // transform, doubling the travel.
-        bounces={false}
-        overScrollMode="never"
         // `contentContainerStyle`'s paddingBottom only clears the nav bar once
         // scrolled all the way to the end — the list's own frame still extends
         // the full screen height, so mid-scroll rows rest right behind the

@@ -443,19 +443,13 @@ export default function SearchScreen() {
           renderItem={renderSearchItem}
           keyExtractor={(item) => item._key || item.post_id || String(item.user_id) || Math.random().toString()}
           // Plain JS scroll callbacks (same pattern as the explore list below)
-          // rather than the worklet handler — the pull needs the offset too, and
-          // a list only gets one onScroll.
+          // rather than the worklet handler — a list only gets one onScroll and
+          // PullToRefreshView chains its own onto this one.
           onScroll={(e) => {
-            searchPull.onScroll(e.nativeEvent.contentOffset.y);
             handleScrollY(e.nativeEvent.contentOffset.y);
           }}
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
-          scrollEventThrottle={16}
-          // Native overscroll would move the content on top of the pull
-          // transform, doubling the travel.
-          bounces={false}
-          overScrollMode="never"
           contentContainerStyle={{
             paddingTop: insets.top + stickyHeaderHeight,
             paddingBottom: 100,
@@ -480,12 +474,10 @@ export default function SearchScreen() {
           estimatedItemSize={350}
           onScroll={(e: any) => {
             exploreScrollYRef.current = e.nativeEvent.contentOffset.y;
-            explorePull.onScroll(e.nativeEvent.contentOffset.y);
             handleScrollY(e.nativeEvent.contentOffset.y);
           }}
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
-          scrollEventThrottle={16}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           contentContainerStyle={{
@@ -497,10 +489,6 @@ export default function SearchScreen() {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
           showsVerticalScrollIndicator={false}
-          // Native overscroll would move the content on top of the pull
-          // transform, doubling the travel.
-          bounces={false}
-          overScrollMode="never"
         />
         </PullToRefreshView>
       )}

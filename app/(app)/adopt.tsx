@@ -202,10 +202,8 @@ function AdoptScreen() {
           keyExtractor={(item: any) => item.pet_id.toString()}
           // FlashList isn't wrapped in reanimated's Animated component, so the
           // collapsing header is driven by plain scroll callbacks rather than
-          // the worklet-based `scrollHandler`; the pull-to-refresh gate reads
-          // the same offset.
+          // the worklet-based `scrollHandler`.
           onScroll={(e: any) => {
-            pull.onScroll(e.nativeEvent.contentOffset.y);
             handleScrollY(e.nativeEvent.contentOffset.y);
           }}
           onScrollEndDrag={handleScrollEnd}
@@ -222,10 +220,6 @@ function AdoptScreen() {
             paddingBottom: 32,
             paddingTop: 16
           }}
-          // Native overscroll would move the content on top of the pull
-          // transform, doubling the travel.
-          bounces={false}
-          overScrollMode="never"
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage();

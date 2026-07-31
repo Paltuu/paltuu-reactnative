@@ -343,16 +343,12 @@ export default function HomeScreen() {
         estimatedItemSize={350}
         onScroll={(e: any) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
-          pull.onScroll(e.nativeEvent.contentOffset.y);
           handleScrollY(e.nativeEvent.contentOffset.y);
         }}
         onScrollEndDrag={handleScrollEnd}
         onMomentumScrollEnd={handleScrollEnd}
-        scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        bounces={false}
-        overScrollMode="never"
         contentContainerStyle={{
           paddingTop: topOffset + 12,
           paddingBottom: 100,
