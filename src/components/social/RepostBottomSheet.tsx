@@ -14,6 +14,8 @@ interface RepostBottomSheetProps {
   onRepost: () => void;
   /** Open the quote composer. */
   onQuote: () => void;
+  /** Hide the "Quote Post" option — e.g. the target author is private. */
+  hideQuote?: boolean;
 }
 
 export const RepostBottomSheet = ({
@@ -22,6 +24,7 @@ export const RepostBottomSheet = ({
   isReposted,
   onRepost,
   onQuote,
+  hideQuote,
 }: RepostBottomSheetProps) => {
   return (
     <ActionSheetModal visible={visible} onClose={onClose}>
@@ -48,20 +51,22 @@ export const RepostBottomSheet = ({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={run(onQuote)}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-4 py-4"
-            >
-              <Image
-                source={writePostIcon}
-                style={{ width: 24, height: 24 }}
-                tintColor="#111111"
-              />
-              <Text className="text-base font-headingSemi text-dark">
-                Quote Post
-              </Text>
-            </TouchableOpacity>
+            {!hideQuote && (
+              <TouchableOpacity
+                onPress={run(onQuote)}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-4 py-4"
+              >
+                <Image
+                  source={writePostIcon}
+                  style={{ width: 24, height: 24 }}
+                  tintColor="#111111"
+                />
+                <Text className="text-base font-headingSemi text-dark">
+                  Quote Post
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       }}

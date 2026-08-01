@@ -28,6 +28,8 @@ export interface RepostConfig {
   isReposted: boolean;
   onRepost: () => void;
   onQuote: () => void;
+  /** Hide the "Quote Post" option — e.g. the target author is private, so a new quote would be rejected. */
+  hideQuote?: boolean;
 }
 
 export interface MediaItem {
@@ -123,6 +125,7 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
             isReposted={repostConfig.isReposted}
             onRepost={() => { closeAll(); repostConfig.onRepost(); }}
             onQuote={() => { closeAll(); repostConfig.onQuote(); }}
+            hideQuote={repostConfig.hideQuote}
           />
         )}
 

@@ -105,6 +105,7 @@ export interface SocialPost {
   social_username?: string;
   author_verified?: boolean;
   author_founding_club?: boolean;
+  author_is_private?: boolean;
   is_liked?: boolean;
   is_reposted?: boolean;
   is_following?: boolean;
@@ -122,6 +123,12 @@ export interface SocialPost {
   original_author_image?: string;
   original_author_verified?: boolean;
   original_author_founding_club?: boolean;
+  original_author_is_private?: boolean;
+  // False when the original author has since gone private (or blocked the
+  // reposter) and the viewer no longer has access — the repost row is kept
+  // (for the reposting user only) with original_* fields redacted, so the
+  // client can render a placeholder instead of losing the entry outright.
+  original_available?: boolean;
   original_media?: SocialPostMedia[];
   original_post?: SocialPost;
   pet_profile_tags?: number[];

@@ -402,6 +402,8 @@ interface OriginalPostPreviewProps {
   createdAt?: string;
   onPress?: () => void;
   onMediaPress?: (index: number) => void;
+  /** Original author went private (or blocked the reposter) since this repost was made. */
+  unavailable?: boolean;
 }
 
 export const OriginalPostPreview = ({
@@ -414,8 +416,19 @@ export const OriginalPostPreview = ({
   media,
   createdAt,
   onPress,
-  onMediaPress
+  onMediaPress,
+  unavailable,
 }: OriginalPostPreviewProps) => {
+  if (unavailable) {
+    return (
+      <View style={[s.originalPostContainer, { alignItems: 'center' }]}>
+        <Text style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>
+          This post is no longer available
+        </Text>
+      </View>
+    );
+  }
+
   if (!authorName && !content) return null;
 
   return (
@@ -627,6 +640,7 @@ const ActionBar = React.memo(({
   commentCount,
   reposted,
   repostCount,
+  repostDisabled,
   saved,
   shared,
   onLike,
@@ -642,6 +656,8 @@ const ActionBar = React.memo(({
   commentCount: number;
   reposted: boolean;
   repostCount?: number;
+  /** Target author is private and there's no existing repost to undo — dim the icon and swallow taps. */
+  repostDisabled?: boolean;
   saved: boolean;
   shared: boolean;
   onLike: () => void;
@@ -679,7 +695,12 @@ const ActionBar = React.memo(({
       </TouchableOpacity>
 
       {/* Repost */}
-      <TouchableOpacity onPress={onRepost} style={s.actionBtn} hitSlop={8}>
+      <TouchableOpacity
+        onPress={repostDisabled ? undefined : onRepost}
+        disabled={repostDisabled}
+        style={[s.actionBtn, repostDisabled && { opacity: 0.4 }]}
+        hitSlop={8}
+      >
         <Image
           source={reposted ? PostIcons.repostSelect : PostIcons.repostUnselect}
           style={{ width: 20, height: 20 }}
@@ -775,6 +796,21 @@ export const PostCard = React.memo(({
   // targeting the resolved id directly here keeps optimistic UI + cache keys
   // (e.g. comment thread, save-status) pointed at the same post everywhere.
   const interactionPostId = isPlainRepost ? (post.original_post_id ?? post.post_id) : post.post_id;
+
+  // Whether tapping "Repost" would target a private account's content: for a
+  // plain repost that's the (dereferenced) original author; for anything else
+  // (a normal post, or a quote — reposting a quote reposts the quote itself,
+  // not its nested original) it's the post's own author. Private accounts'
+  // posts can't be reposted by anyone, matching the server-side check.
+  const repostTargetIsPrivate = isPlainRepost
+    ? !!post.original_author_is_private
+    : !!post.author_is_private;
+
+  // True only once the server has told us this specific repost's original is
+  // gone (author went private, or blocked the reposter) since it was made —
+  // `undefined` (non-repost, or an older cached row) must NOT be treated as
+  // unavailable.
+  const originalUnavailable = isRepost && post.original_available === false;
 
   const displayName = isPlainRepost ? (post.original_author_name || 'User') : (post.author_name || 'User');
   const displayUsername = isPlainRepost
@@ -939,12 +975,17 @@ export const PostCard = React.memo(({
   }, [isPlainRepost, post, queryClient, router]);
 
   const handleRepostPress = useCallback(() => {
+    // Private accounts' posts can't be reposted or quoted by anyone (server
+    // enforces this too) — once an existing repost is in place, still allow
+    // opening the sheet so "Undo Repost" stays reachable, just hide "Quote".
+    if (repostTargetIsPrivate && !post.is_reposted) return;
     modals?.showRepostSheet({
       isReposted: !!post.is_reposted,
       onRepost: handleQuickRepost,
       onQuote: handleQuotePost,
+      hideQuote: repostTargetIsPrivate,
     });
-  }, [modals, post.is_reposted, handleQuickRepost, handleQuotePost]);
+  }, [modals, post.is_reposted, handleQuickRepost, handleQuotePost, repostTargetIsPrivate]);
 
   // ── Local optimistic like/save state ──────────────────────────────────
   // PostCard is rendered from several different query caches (home feed,
@@ -1128,6 +1169,18 @@ export const PostCard = React.memo(({
             </View>
           )}
 
+          {/* ── Plain repost whose original has since become unavailable (author
+               went private, or blocked the reposter) — no author/content/media
+               to show, so replace the whole body with a placeholder rather than
+               rendering a blank "User" author block. ── */}
+          {isPlainRepost && originalUnavailable ? (
+            <View style={{ marginLeft: MEDIA_LEFT_OFFSET, marginTop: 4, marginBottom: 4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#F5F5F5', borderRadius: 10 }}>
+              <Text style={{ fontSize: 14, color: '#666', fontStyle: 'italic' }}>
+                This post is no longer available
+              </Text>
+            </View>
+          ) : (
+          <>
           {/* ── Row 1: Avatar + name/username + time + menu ──
                For plain reposts this shows the ORIGINAL author so the card reads
                like a normal post under the "reposted" heading. */}
@@ -1187,6 +1240,7 @@ export const PostCard = React.memo(({
                 content={post.original_content}
                 media={post.original_media}
                 createdAt={post.created_at}
+                unavailable={originalUnavailable}
                 onPress={() => {
                   if (post.original_post_id) {
                     router.push(`/post/${post.original_post_id}`);
@@ -1217,6 +1271,8 @@ export const PostCard = React.memo(({
               />
             </View>
           )}
+          </>
+          )}
 
           {/* ── Pet tag: sits right under the media to signal the pet in the picture ── */}
           {!!petTagLabel && !isPlainRepost && bodyMedia?.length > 0 && (
@@ -1239,6 +1295,7 @@ export const PostCard = React.memo(({
             commentCount={post.comment_count}
             reposted={!!post.is_reposted}
             repostCount={post.repost_count ?? 0}
+            repostDisabled={repostTargetIsPrivate && !post.is_reposted}
             saved={saved}
             shared={!!post.is_shared}
             onLike={handleLike}
