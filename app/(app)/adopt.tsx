@@ -18,6 +18,12 @@ import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
 const H_PAD = 16;
 
+// AdoptScreen is unmounted on blur (see withFocusUnmount below), which would
+// otherwise reset `filters` state every time the user opens a listing and
+// comes back. Cache the last-applied filters at module scope so they survive
+// the unmount/remount cycle.
+let cachedFilters: PetFilters | null = null;
+
 function AdoptScreen() {
   const router = useRouter();
   const { breed: breedParam } = useLocalSearchParams<{ breed?: string }>();
@@ -25,11 +31,20 @@ function AdoptScreen() {
   const [isCityModalVisible, setIsCityModalVisible] = useState(false);
   const [citySearch, setCitySearch] = useState('');
 
-  const [filters, setFilters] = useState<PetFilters>({
-    species: undefined,
-    city: undefined,
-    breed: breedParam || '',
-  });
+  const [filters, setFiltersState] = useState<PetFilters>(
+    cachedFilters || {
+      species: undefined,
+      city: undefined,
+      breed: breedParam || '',
+    }
+  );
+  const setFilters: typeof setFiltersState = (update) => {
+    setFiltersState((prev) => {
+      const next = typeof update === 'function' ? (update as (p: PetFilters) => PetFilters)(prev) : update;
+      cachedFilters = next;
+      return next;
+    });
+  };
 
   // The screen stays mounted as a hidden tab, so re-navigation with a new
   // breed param (e.g. from Explore's Trending Breeds) must re-seed the filter
