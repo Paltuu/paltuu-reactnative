@@ -9,6 +9,7 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -74,6 +75,19 @@ function ApplyAdoptScreen() {
   useEffect(() => {
     fetchMetadata().catch(() => {});
   }, []);
+
+  // Once the application is sent, the pet-details/apply-adopt screens below
+  // this one in the stack are stale — a plain back press would walk back
+  // through them (and a duplicate `adopt` entry). Collapse straight to the
+  // existing `adopt` screen instead, same as the "Back to Pets" button.
+  useEffect(() => {
+    if (!submitted) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.dismissTo('/(app)/adopt');
+      return true;
+    });
+    return () => sub.remove();
+  }, [submitted]);
 
   const set = (patch: Partial<typeof formData>) => setFormData((prev) => ({ ...prev, ...patch }));
 
@@ -172,7 +186,7 @@ function ApplyAdoptScreen() {
           </Text>
         </View>
         <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
-          <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/adopt')} radius={26} />
+          <PaltuuButton label="Back to Pets" onPress={() => router.dismissTo('/(app)/adopt')} radius={26} />
         </View>
       </SafeAreaView>
     );

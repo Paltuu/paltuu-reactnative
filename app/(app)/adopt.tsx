@@ -158,10 +158,10 @@ function AdoptScreen() {
           <Ionicons name="chevron-back" size={26} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
+          <Text numberOfLines={1} style={{ fontSize: 26, fontWeight: '800', color: '#111', letterSpacing: -0.5 }}>
             Adopt a Pet
           </Text>
-          <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+          <Text numberOfLines={1} style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
             Find your new best friend
           </Text>
         </View>
@@ -175,8 +175,8 @@ function AdoptScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleAddPetClick} style={styles.addListingButton}>
-          <Ionicons name="add" size={18} color="#FFFFFF" />
-          <Text style={styles.addListingText}>Add Listing</Text>
+          <Ionicons name="add" size={16} color="#FFFFFF" />
+          <Text style={styles.addListingText}>Add</Text>
         </TouchableOpacity>
       </View>
 
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#a03048',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 20,
     shadowColor: '#000',
