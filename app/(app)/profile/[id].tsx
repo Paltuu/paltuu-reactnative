@@ -268,14 +268,11 @@ function UserProfileScreen() {
 
   const renderItem = ({ item }: { item: any }) => {
     if (activeTab === 'Posts') {
-      const postWithAuthor: SocialPost = {
-        ...item,
-        user_id: profile?.user_id,
-        author_name: profile?.name,
-        author_image: profile?.profile_image_url,
-        social_username: profile?.social_username || profile?.username,
-      };
-      return <PostCardShared post={postWithAuthor} onPress={() => router.push(`/post/${item.post_id}`)} />;
+      // The API returns the full author block (name, image, handle, verified,
+      // founding_club) on each post, so nothing is patched in here. It used to
+      // be, and the patch silently dropped the badge fields it didn't know to
+      // copy — which is why verified/day-one never showed on profile cards.
+      return <PostCardShared post={item as SocialPost} onPress={() => router.push(`/post/${item.post_id}`)} />;
     }
     // Only remaining tab is Pets.
     return (
