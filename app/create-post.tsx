@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAuthStore } from '../src/stores/authStore';
 import { petProfilesApi } from '../src/api/petProfiles';
-import { PetTagSheet, SelectedPetsRow } from '../src/components/social/PetTagSheet';
+import { PetTagSheet, SelectedPetsRow, PetTagHint, usePetTagHint } from '../src/components/social/PetTagSheet';
 import { GifPickerSheet } from '../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../src/components/social/ComposerMediaGrid';
@@ -223,6 +223,7 @@ export default function CreatePostScreen() {
   );
   const [milestone, setMilestone] = useState('');
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const petHint = usePetTagHint();
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   const enqueueUpload = useUploadStore((s) => s.enqueue);
@@ -528,9 +529,15 @@ export default function CreatePostScreen() {
               </>
             )}
 
-            <TouchableOpacity onPress={() => setPetSheetVisible(true)} hitSlop={8}>
-              <Ionicons name="paw-outline" size={24} color="#a03048" />
-            </TouchableOpacity>
+            <View style={{ position: 'relative' }}>
+              <TouchableOpacity
+                onPress={() => { petHint.dismiss(); setPetSheetVisible(true); }}
+                hitSlop={8}
+              >
+                <Ionicons name="paw-outline" size={24} color="#a03048" />
+              </TouchableOpacity>
+              <PetTagHint visible={petHint.visible} />
+            </View>
 
             {!isEditMode && mediaDraft.count > 0 && (
               <View className="ml-auto bg-gray-100 rounded-full px-2 py-1">

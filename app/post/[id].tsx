@@ -31,7 +31,7 @@ import {
   ComposerToolbar,
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
-import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { PetTagSheet, SelectedPetsRow, usePetTagHint } from '../../src/components/social/PetTagSheet';
 import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import {
@@ -62,6 +62,7 @@ export default function PostDetailScreen() {
   const keyboardVisible = keyboardHeight > 0;
   const [petSheetVisible, setPetSheetVisible] = useState(false);
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
+  const petHint = usePetTagHint();
 
   // Auto-play the video in the detail screen when opened, and pause on close
   useEffect(() => {
@@ -575,7 +576,8 @@ export default function PostDetailScreen() {
                     onImage={draft.pickImage}
                     onCamera={draft.pickCamera}
                     onGif={() => setGifSheetVisible(true)}
-                    onPet={() => setPetSheetVisible(true)}
+                    onPet={() => { petHint.dismiss(); setPetSheetVisible(true); }}
+                    petHintVisible={petHint.visible}
                     count={draft.media.length}
                   />
                   <TouchableOpacity

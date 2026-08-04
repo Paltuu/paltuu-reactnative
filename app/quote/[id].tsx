@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { OriginalPostPreview } from '../../src/components/social/PostCard';
-import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { PetTagSheet, SelectedPetsRow, PetTagHint, usePetTagHint } from '../../src/components/social/PetTagSheet';
 import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionInputField, MentionSuggestionDropdown } from '../../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../../src/components/social/ComposerMediaGrid';
@@ -59,6 +59,7 @@ export default function QuoteComposerScreen() {
   const [selectedPets, setSelectedPets] = useState<number[]>([]);
   const [petProfiles, setPetProfiles] = useState<any[]>([]);
   const [petSheetVisible, setPetSheetVisible] = useState(false);
+  const petHint = usePetTagHint();
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
   // Preview of the quoted post, read once on mount — set synchronously by
@@ -239,9 +240,15 @@ export default function QuoteComposerScreen() {
           <TouchableOpacity onPress={() => { Keyboard.dismiss(); setGifSheetVisible(true); }} hitSlop={8}>
             <Text style={{ fontSize: 13, fontWeight: '800', color: PRIMARY, letterSpacing: 0.2 }}>GIF</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { Keyboard.dismiss(); setPetSheetVisible(true); }} hitSlop={8}>
-            <Ionicons name="paw-outline" size={24} color={PRIMARY} />
-          </TouchableOpacity>
+          <View style={{ position: 'relative' }}>
+            <TouchableOpacity
+              onPress={() => { Keyboard.dismiss(); petHint.dismiss(); setPetSheetVisible(true); }}
+              hitSlop={8}
+            >
+              <Ionicons name="paw-outline" size={24} color={PRIMARY} />
+            </TouchableOpacity>
+            <PetTagHint visible={petHint.visible} />
+          </View>
           {mediaDraft.count > 0 && (
             <View style={{ marginLeft: 'auto', backgroundColor: '#F3F4F6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '600' }}>{mediaDraft.count}/10</Text>

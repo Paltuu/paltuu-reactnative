@@ -9,6 +9,7 @@ import { View, Text, TouchableOpacity, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { DraftMedia } from '../../hooks/useMediaDraft';
+import { PetTagHint } from './PetTagSheet';
 
 const PRIMARY = '#a03048';
 
@@ -140,6 +141,7 @@ export const ComposerToolbar = ({
   onCamera,
   onGif,
   onPet,
+  petHintVisible = false,
   count,
   maxCount = 4,
 }: {
@@ -147,6 +149,8 @@ export const ComposerToolbar = ({
   onCamera: () => void;
   onGif?: () => void;
   onPet?: () => void;
+  /** Shows the first-run "Tag your pet" callout above the paw button. */
+  petHintVisible?: boolean;
   count: number;
   maxCount?: number;
 }) => (
@@ -163,9 +167,12 @@ export const ComposerToolbar = ({
       </TouchableOpacity>
     )}
     {onPet && (
-      <TouchableOpacity onPress={onPet} hitSlop={8}>
-        <Ionicons name="paw-outline" size={22} color={PRIMARY} />
-      </TouchableOpacity>
+      <View style={{ position: 'relative' }}>
+        <TouchableOpacity onPress={onPet} hitSlop={8}>
+          <Ionicons name="paw-outline" size={22} color={PRIMARY} />
+        </TouchableOpacity>
+        <PetTagHint visible={petHintVisible} />
+      </View>
     )}
     {count > 0 && (
       <View style={{ marginLeft: 'auto', backgroundColor: '#F3F4F6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>

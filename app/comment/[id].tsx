@@ -19,7 +19,7 @@ import {
   ComposerToolbar,
   ComposerMediaGrid,
 } from '../../src/components/social/CommentComposer';
-import { PetTagSheet, SelectedPetsRow } from '../../src/components/social/PetTagSheet';
+import { PetTagSheet, SelectedPetsRow, usePetTagHint } from '../../src/components/social/PetTagSheet';
 import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
 import { MentionSuggestionDropdown, MentionInputField } from '../../src/components/social/MentionInput';
 import { MentionText } from '../../src/components/social/MentionText';
@@ -55,6 +55,7 @@ export default function CommentComposerScreen() {
 
   const [petSheetVisible, setPetSheetVisible] = useState(false);
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
+  const petHint = usePetTagHint();
 
   // While the user is typing/selecting a mention, the post-being-replied-to
   // context and bottom toolbar hide so the full-width suggestion list can
@@ -241,7 +242,8 @@ export default function CommentComposerScreen() {
             onImage={draft.pickImage}
             onCamera={draft.pickCamera}
             onGif={() => { Keyboard.dismiss(); setGifSheetVisible(true); }}
-            onPet={() => { Keyboard.dismiss(); setPetSheetVisible(true); }}
+            onPet={() => { Keyboard.dismiss(); petHint.dismiss(); setPetSheetVisible(true); }}
+            petHintVisible={petHint.visible}
             count={draft.media.length}
           />
         </View>

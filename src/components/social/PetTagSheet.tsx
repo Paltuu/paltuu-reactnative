@@ -1,20 +1,25 @@
 // A nicer pet-tagging UX shared by the post composer and the comment composers.
 // - PetTagButton: a paw pill that opens the sheet and shows how many are tagged.
+// - PetTagHint: first-run "Tag your pet" callout pointing down at the paw button.
 // - SelectedPetsRow: the tagged pets shown as removable avatar chips.
 // - PetTagSheet: a bottom sheet listing the user's pets (avatar + name + species)
 //   with multi-select checkmarks, a search box, and an "add a new pet" row.
 //   Uses the same custom BottomSheet as RepostBottomSheet / PostOptionsBottomSheet
 //   for a consistent slide-up feel (rounded sheet, drag handle, gesture dismiss).
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, FlatList, TextInput,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
+} from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '../ui/bottom-sheet';
 import type { BottomSheetMethods } from '../ui/bottom-sheet/types';
 import { Skeleton, SkeletonCircle } from '../common/Skeleton';
+import { storage } from '../../utils/storage';
 
 const PRIMARY = '#a03048';
 
@@ -57,6 +62,133 @@ export const PetTagButton = ({ count, onPress }: { count: number; onPress: () =>
     </Text>
   </TouchableOpacity>
 );
+
+/* ── First-run "Tag your pet" nudge ──
+   A small callout that floats directly above the paw button with a tail
+   pointing down at it. Shown once per install until the user actually opens
+   the tag sheet — after that they've found the feature and it stays hidden.
+
+   Usage: wrap the paw button in a relatively-positioned View and drop the
+   hint in as a sibling, so the callout anchors to the button without any
+   measurement:
+
+     const petHint = usePetTagHint();
+     ...
+     <View style={{ position: 'relative' }}>
+       <TouchableOpacity onPress={() => { petHint.dismiss(); openSheet(); }}>
+         <Ionicons name="paw-outline" ... />
+       </TouchableOpacity>
+       <PetTagHint visible={petHint.visible} />
+     </View>
+*/
+const HINT_WIDTH = 116;
+const PAW_ICON_WIDTH = 24;
+
+export function usePetTagHint() {
+  const [visible, setVisible] = useState(false);
+  const persisted = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (await storage.isPetTagHintSeen()) return;
+      if (!cancelled) setVisible(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Called when the user opens the tag sheet — they've discovered it, so the
+  // nudge retires for good.
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    if (persisted.current) return;
+    persisted.current = true;
+    storage.markPetTagHintSeen();
+  }, []);
+
+  return { visible, dismiss };
+}
+
+export const PetTagHint = ({ visible }: { visible: boolean }) => {
+  const bob = useSharedValue(0);
+
+  useEffect(() => {
+    if (!visible) return;
+    // Gentle two-beat bob to catch the eye, then rest — a continuous loop
+    // would pull focus away from the caption the whole time it's composing.
+    bob.value = withDelay(
+      600,
+      withRepeat(
+        withSequence(
+          withTiming(-3, { duration: 420 }),
+          withTiming(0, { duration: 420 }),
+        ),
+        4,
+        false,
+      ),
+    );
+  }, [visible, bob]);
+
+  const bobStyle = useAnimatedStyle(() => ({ transform: [{ translateY: bob.value }] }));
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          // Sit above the paw button, tail nearly touching it.
+          bottom: '100%',
+          marginBottom: 9,
+          width: HINT_WIDTH,
+          // Centre the callout over the icon it points at.
+          left: -(HINT_WIDTH - PAW_ICON_WIDTH) / 2,
+          alignItems: 'center',
+        },
+        bobStyle,
+      ]}
+    >
+      <View
+        style={{
+          backgroundColor: PRIMARY,
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          borderRadius: 10,
+        }}
+      >
+        {/* lineHeight + includeFontPadding pin the text box to the glyphs.
+            Without them the font's default leading (and Android's extra
+            bottom font padding) make the symmetric paddingVertical above
+            read as bottom-heavy. */}
+        <Text
+          style={{
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: '700',
+            lineHeight: 14,
+            includeFontPadding: false,
+          }}
+        >
+          Tag your pet
+        </Text>
+      </View>
+      {/* Downward tail — a rotated square tucked under the bubble reads as a
+          triangle without needing an SVG or borderWidth triangle hack. */}
+      <View
+        style={{
+          width: 10,
+          height: 10,
+          backgroundColor: PRIMARY,
+          transform: [{ rotate: '45deg' }],
+          marginTop: -5,
+          borderRadius: 2,
+        }}
+      />
+    </Animated.View>
+  );
+};
 
 /* ── Selected pets as removable avatar chips ── */
 export const SelectedPetsRow = ({

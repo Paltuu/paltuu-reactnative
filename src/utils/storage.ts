@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   PROFILE_INTRO_MASCOT_SEEN: 'profile_intro_mascot_seen',
   BETA_INTRO_SEEN: 'beta_intro_seen',
   DAY_ONE_CLAIM_SEEN: 'day_one_claim_seen',
+  PET_TAG_HINT_SEEN: 'pet_tag_hint_seen',
   LAST_SEEN_OTA_UPDATE_ID: 'last_seen_ota_update_id',
 };
 
@@ -112,6 +113,13 @@ export const storage = {
   },
   async isDayOneClaimSeen(): Promise<boolean> {
     const val = await store.getItem(STORAGE_KEYS.DAY_ONE_CLAIM_SEEN);
+    return val === '1';
+  },
+  async markPetTagHintSeen() {
+    await store.setItem(STORAGE_KEYS.PET_TAG_HINT_SEEN, '1');
+  },
+  async isPetTagHintSeen(): Promise<boolean> {
+    const val = await store.getItem(STORAGE_KEYS.PET_TAG_HINT_SEEN);
     return val === '1';
   },
   async getLastSeenOtaUpdateId(): Promise<string | null> {
