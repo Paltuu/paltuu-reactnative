@@ -41,6 +41,7 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { ZoomableImage } from '../../src/components/common/ImageModal';
 import VideoPlayer from '../../src/components/social/VideoPlayer';
 import { getShareUrl } from '../../src/utils/share';
+import { triggerLikeHaptic } from '../../src/utils/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import Toast from 'react-native-toast-message';
@@ -158,6 +159,7 @@ function MediaDetailScreen() {
 
   const handleLike = useCallback(() => {
     if (!post) return;
+    triggerLikeHaptic();
     setLikeState((prev) => ({
       liked: !prev.liked,
       count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1,

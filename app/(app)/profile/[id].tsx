@@ -35,6 +35,7 @@ import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { saveScrollPosition, getScrollPosition } from '../../../src/utils/scrollRestore';
 import { COLORS } from '../../../src/constants/colors';
 
 const VerifiedIcon = require('../../../assets/icons/verified-check-svgrepo-com.svg');
@@ -88,6 +89,7 @@ function UserProfileScreen() {
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
   const [showDayOneBadgeInfo, setShowDayOneBadgeInfo] = useState(false);
+  const listRef = useRef<FlatList>(null);
 
   // Rendered as a plain in-tree overlay rather than a native <Modal> (see
   // below) — preserve hardware-back-closes-viewer behavior manually.
@@ -116,6 +118,20 @@ function UserProfileScreen() {
   });
 
   const profile = profileData?.profile;
+
+  // This screen is unmounted on blur (see withFocusUnmount below), so its
+  // scroll position can't survive a round trip to e.g. the fullscreen media
+  // viewer or a post's detail screen the way component state normally would
+  // — it remounts from scratch and starts back at the top. Restore whatever
+  // offset was saved for this user once the fresh instance has content.
+  useEffect(() => {
+    if (!profile) return;
+    const savedY = getScrollPosition(`profile:${userId}`);
+    if (!savedY) return;
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: savedY, animated: false });
+    });
+  }, [!!profile, userId]);
 
   const tabData: any = {
     Posts: profileData?.posts || [],
@@ -431,6 +447,7 @@ function UserProfileScreen() {
   return (
     <View style={s.screen}>
       <FlatList
+        ref={listRef}
         data={tabData[activeTab]}
         keyExtractor={(item, idx) => (item.post_id ?? item.pet_id ?? item.id ?? idx).toString()}
         renderItem={renderItem}
@@ -438,6 +455,8 @@ function UserProfileScreen() {
         showsVerticalScrollIndicator={false}
         style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+        onScroll={(e) => saveScrollPosition(`profile:${userId}`, e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}
         ListEmptyComponent={
           isLocked ? null : (

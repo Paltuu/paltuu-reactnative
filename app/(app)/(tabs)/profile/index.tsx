@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../../src/stores/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -305,6 +305,19 @@ export default function ProfileScreen() {
       }
     });
   }, [pull.triggerRefresh]);
+
+  // The list can lose its scroll offset when this screen is covered and
+  // re-shown (e.g. after opening a post's fullscreen media viewer and coming
+  // back) — the underlying list briefly lays out at zero size during the
+  // screen transition and resets to the top. Restore the last known offset
+  // once focus returns.
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollYRef.current > 0) {
+        listRef.current?.scrollToOffset({ offset: scrollYRef.current, animated: false });
+      }
+    }, [])
+  );
 
   // ── Menu animation ──────────────────────────────────────────────────────────
   const openMenu = () => {

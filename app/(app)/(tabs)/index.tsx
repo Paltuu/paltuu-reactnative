@@ -11,7 +11,7 @@ import { MainHeader, HEADER_HEIGHT, UPLOAD_BANNER_HEIGHT } from '../../../src/co
 import { useUploadStore } from '../../../src/stores/uploadStore';
 import { useHeaderScroll, useHeaderContext } from '../../../src/context/HeaderContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { socialApi, SocialPost, FeedItem } from '../../../src/api/social';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import PostCard from '../../../src/components/social/PostCard';
@@ -208,6 +208,19 @@ export default function HomeScreen() {
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
     });
   }, [setOnLogoPress]);
+
+  // FlashList (like FlatList) can lose its scroll offset when this screen is
+  // covered and re-shown — e.g. after visiting the fullscreen media viewer
+  // and coming back — because the underlying list briefly gets laid out at
+  // zero size during the screen transition and resets to the top. Restore
+  // the last known offset once focus returns.
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollYRef.current > 0) {
+        listRef.current?.scrollToOffset({ offset: scrollYRef.current, animated: false });
+      }
+    }, [])
+  );
 
   const posts = useMemo((): FeedItem[] => {
     if (USE_MOCK_POSTS_FOR_SCREENSHOTS) return MOCK_POSTS;

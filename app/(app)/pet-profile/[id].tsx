@@ -29,6 +29,7 @@ import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
 import { ActionSheetModal } from '../../../src/components/ui/bottom-sheet/ActionSheetModal';
 import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { saveScrollPosition, getScrollPosition } from '../../../src/utils/scrollRestore';
 
 const hamburgerIcon = require('../../../assets/icons/hamburger-solid-2.svg');
 
@@ -80,7 +81,11 @@ const renderAgeValue = (age: string) => {
 };
 
 type Tab = 'posts' | 'gallery' | 'about';
-const TABS: Tab[] = ['posts', 'gallery', 'about'];
+// Gallery (the polaroid grid) leads — it's the more visual, browsable tab and
+// the one most owners fill in first, so it makes a better first impression
+// than an empty Posts tab. Physical page order in the pager below must match
+// this array (goToTab/onMomentumScrollEnd both index off it).
+const TABS: Tab[] = ['gallery', 'posts', 'about'];
 
 function PetProfileScreen() {
   const router = useRouter();
@@ -95,10 +100,11 @@ function PetProfileScreen() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMorePosts, setHasMorePosts] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('posts');
+  const [activeTab, setActiveTab] = useState<Tab>('gallery');
   const [nameWidth, setNameWidth] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
   const [showOptionsSheet, setShowOptionsSheet] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const pagerRef = useRef<ScrollView>(null);
   // Tab bar taps and pager swipes both drive `activeTab` — this guards against
   // the tap-triggered scrollTo's own onMomentumScrollEnd firing setActiveTab
@@ -148,6 +154,18 @@ function PetProfileScreen() {
   useEffect(() => {
     if (profile) fetchPhotos();
   }, [profile?.pet_profile_id]);
+
+  // Restore whatever scroll position this pet's page was at before it got
+  // unmounted by withFocusUnmount — once for this fresh mount, after the
+  // content has laid out.
+  useEffect(() => {
+    if (!profile) return;
+    const savedY = getScrollPosition(`pet-profile:${petId}`);
+    if (!savedY) return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: savedY, animated: false });
+    });
+  }, [!!profile, petId]);
 
   const fetchProfile = async () => {
     try {
@@ -276,9 +294,12 @@ function PetProfileScreen() {
 
       {/* ── Scrollable Body ── */}
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingBottom: 120 }}
+        onScroll={(e) => saveScrollPosition(`pet-profile:${petId}`, e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -414,7 +435,7 @@ function PetProfileScreen() {
 
         {/* ── ICON-ONLY TAB BAR (matches a person profile exactly) ── */}
         <View style={s.tabBar}>
-          {(['posts', 'gallery', 'about'] as Tab[]).map((tab) => {
+          {TABS.map((tab) => {
             const active = tab === activeTab;
             const icons: Record<Tab, any> = {
               posts: 'chatbubble-ellipses-outline',
@@ -458,6 +479,34 @@ function PetProfileScreen() {
           }}
           contentContainerStyle={{ alignItems: 'flex-start' }}
         >
+        {/* GALLERY TAB */}
+        <View style={[s.galleryGrid, { width }]}>
+            {photos.length > 0 ? (
+              photos.map((photo) => (
+                <TouchableOpacity key={photo.photo_id} style={s.galleryCell} onPress={() => setSelectedPhoto(photo)} activeOpacity={0.85}>
+                  <View style={s.galleryPhotoWrap}>
+                    <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                  </View>
+                  {photo.caption ? (
+                    <Text style={s.captionText} numberOfLines={1}>{photo.caption}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))
+            ) : isLoadingPhotos ? (
+              <View style={[s.emptyState, { width }]}>
+                <ActivityIndicator size="small" color="#a03048" />
+              </View>
+            ) : (
+              <View style={[s.emptyState, { width }]}>
+                <Ionicons name="images-outline" size={48} color="#E5E7EB" />
+                <Text style={s.emptyTitle}>No photos yet</Text>
+                <Text style={s.emptySub}>
+                  {isOwner ? 'Add photos from the gallery manager.' : `${profile.name} doesn't have any photos yet.`}
+                </Text>
+              </View>
+            )}
+          </View>
+
         {/* POSTS TAB */}
         <View style={{ width, marginTop: 8 }}>
             {posts.length > 0 ? (
@@ -488,35 +537,8 @@ function PetProfileScreen() {
             )}
           </View>
 
-        {/* GALLERY TAB */}
-        <View style={[s.galleryGrid, { width }]}>
-            {photos.length > 0 ? (
-              photos.map((photo) => (
-                <TouchableOpacity key={photo.photo_id} style={s.galleryCell} onPress={() => setSelectedPhoto(photo)} activeOpacity={0.85}>
-                  <View style={s.galleryPhotoWrap}>
-                    <Image source={{ uri: photo.photo_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
-                  </View>
-                  {photo.caption ? (
-                    <Text style={s.captionText} numberOfLines={1}>{photo.caption}</Text>
-                  ) : null}
-                </TouchableOpacity>
-              ))
-            ) : isLoadingPhotos ? (
-              <View style={[s.emptyState, { width }]}>
-                <ActivityIndicator size="small" color="#a03048" />
-              </View>
-            ) : (
-              <View style={[s.emptyState, { width }]}>
-                <Ionicons name="images-outline" size={48} color="#E5E7EB" />
-                <Text style={s.emptyTitle}>No photos yet</Text>
-                <Text style={s.emptySub}>
-                  {isOwner ? 'Add photos from the gallery manager.' : `${profile.name} doesn't have any photos yet.`}
-                </Text>
-              </View>
-            )}
-          </View>
-
-        {/* ABOUT TAB — nothing but the ID card itself. */}
+        {/* ABOUT TAB — the ID card, plus an edit entry point for the owner
+              (the card itself has no other way to reach the edit form). */}
         <View style={[s.aboutContainer, { width }]}>
             <PetIdCard
               pet={{
@@ -530,7 +552,18 @@ function PetProfileScreen() {
                 owner_name: profile.owner_name,
                 created_at: profile.created_at,
               }}
+              onPress={isOwner ? () => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } }) : undefined}
             />
+            {isOwner && (
+              <TouchableOpacity
+                style={s.aboutEditBtn}
+                onPress={() => router.push({ pathname: '/(app)/pet-profile/create', params: { editId: profile.pet_profile_id } })}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="create-outline" size={14} color="#111827" />
+                <Text style={s.aboutEditBtnText}>Edit Details</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </ScrollView>
@@ -873,6 +906,22 @@ const s = StyleSheet.create({
   // ── ABOUT ──
   aboutContainer: {
     padding: 20,
+  },
+  aboutEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#F3F4F6',
+    marginTop: 16,
+  },
+  aboutEditBtnText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 13,
+    color: '#111827',
   },
 
   // ── EMPTY + ERRORS ──

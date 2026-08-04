@@ -47,6 +47,11 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
     const routes: Record<string, (parts: string[], url?: URL) => string> = {
       '/social/post': (p) => `/post/${p[2]}`,
       '/post':        (p) => `/post/${p[1]}`,
+      // Older follow-request notifications (created before that template
+      // switched to linking straight to the requester's profile) still carry
+      // this deep link — kept so those already-delivered notifications still
+      // go somewhere instead of falling through to the catch-all below.
+      '/notifications/follow-requests': () => `/follow-requests`,
       '/profile':     (p) => `/(app)/profile/${p[1]}`,
       '/pet-details': (p, u) => `/pet-details?id=${u?.searchParams.get('petId') || u?.searchParams.get('id') || p[1] || ''}`,
       '/pet-profile': (p) => `/(app)/pet-profile/${p[1]}`,

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
@@ -21,7 +21,6 @@ import { triggerLikeHaptic } from '../../src/utils/haptics';
 import { useAuthStore } from '../../src/stores/authStore';
 import { guardedPush } from '../../src/utils/navigationGuard';
 import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
-import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import {
   useCommentDraft,
@@ -46,12 +45,26 @@ export default function CommentThreadScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const inputRef = useRef<TextInput>(null);
+  const listRef = useRef<FlatList>(null);
+  const scrollYRef = useRef(0);
   const user = useAuthStore((state) => state.user);
+
+  // The list can lose its scroll offset when this screen is covered and
+  // re-shown (e.g. after opening a reply's fullscreen media viewer and
+  // coming back) — it briefly lays out at zero size during the screen
+  // transition and resets to the top. Restore the last known offset once
+  // focus returns.
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollYRef.current > 0) {
+        listRef.current?.scrollToOffset({ offset: scrollYRef.current, animated: false });
+      }
+    }, [])
+  );
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<FlatComment | null>(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const sortBy: SortBy = 'top'; // comments always sort by Top
   const keyboardVisible = keyboardHeight > 0;
@@ -291,7 +304,6 @@ export default function CommentThreadScreen() {
             comment={focused!}
             onReply={openComposer}
             onToggleLike={() => handleToggleCommentLike(focused!.comment_id)}
-            onOpenProfile={setSelectedUserId}
             onAvatarPress={handleAvatarPress}
           />
         );
@@ -308,7 +320,6 @@ export default function CommentThreadScreen() {
             onExpand={handleExpand}
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
-            onOpenProfile={setSelectedUserId}
             onAvatarPress={handleAvatarPress}
             onDelete={handleDeleteComment}
             currentUserId={user?.id}
@@ -384,6 +395,7 @@ export default function CommentThreadScreen() {
       {Navbar}
 
       <FlatList
+        ref={listRef}
         data={listData}
         renderItem={renderItem}
         keyExtractor={item => item.key}
@@ -392,6 +404,8 @@ export default function CommentThreadScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 72 + insets.bottom, backgroundColor: BG }}
         style={{ flex: 1, backgroundColor: BG }}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
@@ -571,12 +585,6 @@ export default function CommentThreadScreen() {
           </View>
         </>
       )}
-
-      <QuickProfileModal
-        userId={selectedUserId}
-        visible={selectedUserId !== null}
-        onClose={() => setSelectedUserId(null)}
-      />
 
       <PetTagSheet
         visible={petSheetVisible}

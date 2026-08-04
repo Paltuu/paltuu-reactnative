@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../src/api/social';
 import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
@@ -49,6 +49,8 @@ export default function PostDetailScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const inputRef = useRef<TextInput>(null);
+  const listRef = useRef<FlatList>(null);
+  const scrollYRef = useRef(0);
   const user = useAuthStore((state) => state.user);
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -70,6 +72,19 @@ export default function PostDetailScreen() {
       setPlayingPostId(null);
     };
   }, [id]);
+
+  // The list can lose its scroll offset when this screen is covered and
+  // re-shown (e.g. after opening the post's fullscreen media viewer and
+  // coming back) — it briefly lays out at zero size during the screen
+  // transition and resets to the top. Restore the last known offset once
+  // focus returns.
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollYRef.current > 0) {
+        listRef.current?.scrollToOffset({ offset: scrollYRef.current, animated: false });
+      }
+    }, [])
+  );
 
   // Track keyboard height so the floating composer can stick directly above it.
   useEffect(() => {
@@ -307,7 +322,6 @@ export default function PostDetailScreen() {
             onExpand={handleExpand}
             onContinueThread={handleContinueThread}
             onOpenThread={handleContinueThread}
-            onOpenProfile={setSelectedUserId}
             onAvatarPress={handleAvatarPress}
             onDelete={handleDeleteComment}
             currentUserId={user?.id}
@@ -385,6 +399,7 @@ export default function PostDetailScreen() {
 
       {/* ── Content ── */}
       <FlatList
+        ref={listRef}
         data={listData}
         renderItem={renderItem}
         keyExtractor={item => item.key}
@@ -392,6 +407,8 @@ export default function PostDetailScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 72 + insets.bottom, backgroundColor: BG }}
         style={{ flex: 1, backgroundColor: BG }}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={

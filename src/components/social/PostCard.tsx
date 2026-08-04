@@ -15,6 +15,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { subscribeToPlayingPost, setPlayingPostId } from '../../utils/videoPlaySubscription';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
+import { triggerLikeHaptic } from '../../utils/haptics';
 
 const PostIcons = {
   pawSelect: require('../../../assets/icons/paw-like-select.svg'),
@@ -34,7 +35,7 @@ const PostIcons = {
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost, SocialPostMedia } from '../../api/social';
 import { useAuthStore } from '../../stores/authStore';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import VideoPlayer, { VideoThumbnail } from './VideoPlayer';
 import { subscribeToVideoStatus } from '../../utils/videoStatusPoller';
 import { MentionText, mentionsToPlainText } from './MentionText';
@@ -752,6 +753,7 @@ export const PostCard = React.memo(({
   onPlusPress?: (userId: number) => void;
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore(state => state.user?.id);
   const modals = usePostCardModals();
@@ -1006,6 +1008,7 @@ export const PostCard = React.memo(({
   }, [post.is_saved]);
 
   const handleLike = useCallback(() => {
+    triggerLikeHaptic();
     setLikeState(prev => ({
       liked: !prev.liked,
       count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1,
@@ -1093,23 +1096,31 @@ export const PostCard = React.memo(({
     onBlock: () => actions?.confirmBlock(post.user_id, post.author_name || ''),
     onHide: handleHide,
   }), [modals, isOwnPost, post, actions, handleEdit, handleDelete, handleHide, saved, handleSave, interactionPostId]);
+  // Tapping the avatar/nameplate of whoever the viewer is already looking at
+  // (e.g. their own posts inside their own profile grid) used to still push
+  // a fresh copy of that same profile screen on top of itself — a duplicate
+  // stack entry that read as the page "remounting". No-op instead.
   const handleAvatarPress = useCallback(() => {
     if (String(currentUserId) === String(displayUserId)) {
+      if (pathname === '/profile') return;
       router.push('/(app)/profile');
     } else {
+      if (pathname === `/profile/${displayUserId}`) return;
       router.push(`/(app)/profile/${displayUserId}`);
     }
-  }, [router, displayUserId, currentUserId]);
+  }, [router, pathname, displayUserId, currentUserId]);
   // The "{user} reposted" header names the REPOSTER (post.user_id), not the
   // original author (displayUserId) — tapping it should go to the reposter's
   // own profile, same own/other logic as the avatar.
   const handleReposterPress = useCallback(() => {
     if (String(currentUserId) === String(post.user_id)) {
+      if (pathname === '/profile') return;
       router.push('/(app)/profile');
     } else {
+      if (pathname === `/profile/${post.user_id}`) return;
       router.push(`/(app)/profile/${post.user_id}`);
     }
-  }, [router, post.user_id, currentUserId]);
+  }, [router, pathname, post.user_id, currentUserId]);
   const handleShare = useCallback(async () => {
     try {
       const result = await Share.share({
