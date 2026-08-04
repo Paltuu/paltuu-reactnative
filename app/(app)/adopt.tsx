@@ -26,7 +26,7 @@ let cachedFilters: PetFilters | null = null;
 
 function AdoptScreen() {
   const router = useRouter();
-  const { breed: breedParam } = useLocalSearchParams<{ breed?: string }>();
+  const { breed: breedParam, city: cityParam } = useLocalSearchParams<{ breed?: string; city?: string }>();
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [isCityModalVisible, setIsCityModalVisible] = useState(false);
   const [citySearch, setCitySearch] = useState('');
@@ -34,7 +34,7 @@ function AdoptScreen() {
   const [filters, setFiltersState] = useState<PetFilters>(
     cachedFilters || {
       species: undefined,
-      city: undefined,
+      city: cityParam ? (Number(cityParam) as any) : undefined,
       breed: breedParam || '',
     }
   );
@@ -53,6 +53,14 @@ function AdoptScreen() {
       setFilters((prev) => ({ ...prev, breed: breedParam }));
     }
   }, [breedParam]);
+
+  // Same for the city param — arriving from "Pets Near You" pre-selects the
+  // user's city so the grid matches what the tile was previewing.
+  useEffect(() => {
+    if (cityParam) {
+      setFilters((prev) => ({ ...prev, city: Number(cityParam) as any }));
+    }
+  }, [cityParam]);
 
   const insets = useSafeAreaInsets();
   const { handleScrollY, handleScrollEnd } = useHeaderScroll();

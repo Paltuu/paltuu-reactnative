@@ -1100,6 +1100,16 @@ export const PostCard = React.memo(({
       router.push(`/(app)/profile/${displayUserId}`);
     }
   }, [router, displayUserId, currentUserId]);
+  // The "{user} reposted" header names the REPOSTER (post.user_id), not the
+  // original author (displayUserId) — tapping it should go to the reposter's
+  // own profile, same own/other logic as the avatar.
+  const handleReposterPress = useCallback(() => {
+    if (String(currentUserId) === String(post.user_id)) {
+      router.push('/(app)/profile');
+    } else {
+      router.push(`/(app)/profile/${post.user_id}`);
+    }
+  }, [router, post.user_id, currentUserId]);
   const handleShare = useCallback(async () => {
     try {
       const result = await Share.share({
@@ -1156,7 +1166,11 @@ export const PostCard = React.memo(({
           {/* ── Reposted indicator (plain reposts only; quote reposts read like a normal post) ── */}
           {isPlainRepost && (
             // Icon sits in the avatar gutter; the text lines up with the author name (MEDIA_LEFT_OFFSET).
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: MEDIA_LEFT_OFFSET - 18, marginBottom: 4 }}>
+            <Pressable
+              onPress={(e) => { e.stopPropagation(); handleReposterPress(); }}
+              hitSlop={6}
+              style={{ flexDirection: 'row', alignItems: 'center', marginLeft: MEDIA_LEFT_OFFSET - 18, marginBottom: 4 }}
+            >
               <Image
                 source={PostIcons.repostUnselect}
                 style={{ width: 14, height: 14 }}
@@ -1166,7 +1180,7 @@ export const PostCard = React.memo(({
               <Text style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginLeft: 4 }}>
                 {String(currentUserId) === String(post.user_id) ? 'You reposted' : `${post.author_name} reposted`}
               </Text>
-            </View>
+            </Pressable>
           )}
 
           {/* ── Plain repost whose original has since become unavailable (author

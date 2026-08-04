@@ -77,14 +77,16 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
   isNearbyLoading,
   isFocused,
   cityName,
-  usingFallback,
+  hasCity,
+  isEmpty,
   onPress,
 }: {
   nearbyPages: any[][];
   isNearbyLoading: boolean;
   isFocused: boolean;
   cityName?: string | null;
-  usingFallback: boolean;
+  hasCity: boolean;
+  isEmpty: boolean;
   onPress: () => void;
 }) {
   const [nearbyPage, setNearbyPage] = useState(0);
@@ -105,9 +107,11 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
         <View style={{ flex: 1 }}>
           <Text style={styles.nearbyTitle}>Pets Near You</Text>
           <Text style={styles.nearbySub}>
-            {usingFallback
-              ? 'Popular listings right now'
-              : `Recently listed${cityName ? ` in ${cityName}` : ' near you'}`}
+            {!hasCity
+              ? 'Turn on location to see pets in your city'
+              : isEmpty
+                ? `No pets listed in ${cityName} yet`
+                : `Recently listed in ${cityName}`}
           </Text>
         </View>
         {/* Same grey as the hero / lost-found tiles' sub-rows. */}
@@ -120,6 +124,14 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
             {Array.from({ length: NEARBY_VISIBLE_COUNT }).map((_, i) => (
               <SkeletonCircle key={`skeleton-${i}`} size={56} />
             ))}
+          </View>
+        ) : isEmpty ? (
+          <View style={styles.nearbyEmpty}>
+            <Text style={styles.nearbyEmptyText}>
+              {hasCity
+                ? 'Be the first to list a pet here — tap to browse all pets.'
+                : 'We need your location to find pets listed in your city.'}
+            </Text>
           </View>
         ) : (
           <Animated.View
@@ -165,41 +177,32 @@ export default function PetsHubScreen() {
   }, []);
 
   const { cityId, cityName } = useLocationStore();
-  const { data: cityPetsData, isPending: isCityPetsPending, isFetched: isCityPetsFetched, refetch: refetchCityPets } = useQuery({
+
+  // Strictly the user's own city — no nationwide fallback. A tile headed
+  // "Pets Near You" that quietly lists pets from other cities is misleading,
+  // so an empty city renders an empty state instead (see NearbyPetsCarousel).
+  const { data: cityPetsData, isPending: isCityPetsPending, refetch: refetchCityPets } = useQuery({
     queryKey: ['nearby-pets', cityId],
     queryFn: () =>
       petApi.getAdoptionPets({
-        city: cityId ? String(cityId) : undefined,
+        city: String(cityId),
         limit: NEARBY_FETCH_LIMIT,
       }),
+    enabled: !!cityId,
   });
-  const cityPets: any[] = cityPetsData?.data ?? [];
-
-  // TODO: tentative fallback — if the user's city has no listings, just show
-  // the most recent pets nationwide rather than an empty tile. Revisit once
-  // we know what a better "no pets nearby" experience should look like
-  // (e.g. nearest neighbouring cities instead of a blanket nationwide list).
-  // Fired in parallel with the city query (not gated on its result) so an
-  // empty-city response doesn't have to wait on a second sequential
-  // round-trip before the fallback can show.
-  const { data: fallbackPetsData, isPending: isFallbackPending, refetch: refetchFallbackPets } = useQuery({
-    queryKey: ['nearby-pets-fallback'],
-    queryFn: () => petApi.getAdoptionPets({ limit: NEARBY_FETCH_LIMIT }),
-  });
+  const nearbyPets: any[] = cityPetsData?.data ?? [];
 
   // Re-tapping the Pets tab while already on it refreshes the nearby-pets data.
   useEffect(() => {
     return subscribeToTabPress('pets', () => {
       refetchCityPets();
-      refetchFallbackPets();
     });
-  }, [refetchCityPets, refetchFallbackPets]);
+  }, [refetchCityPets]);
 
-  const noCityResults = isCityPetsFetched && cityPets.length === 0 && !!cityId;
-  const isNearbyLoading = isCityPetsPending || (noCityResults && isFallbackPending);
-
-  const usingFallback = noCityResults && !!fallbackPetsData;
-  const nearbyPets: any[] = usingFallback ? fallbackPetsData?.data ?? [] : cityPets;
+  // `isPending` stays true forever while the query is disabled, so the
+  // skeleton has to be gated on actually having a city to fetch for.
+  const isNearbyLoading = !!cityId && isCityPetsPending;
+  const isNearbyEmpty = !cityId || (!isNearbyLoading && nearbyPets.length === 0);
 
   const nearbyPages = useMemo(() => {
     const pages: any[][] = [];
@@ -258,8 +261,15 @@ export default function PetsHubScreen() {
           isNearbyLoading={isNearbyLoading}
           isFocused={isFocused}
           cityName={cityName}
-          usingFallback={usingFallback}
-          onPress={() => router.push('/(app)/adopt' as any)}
+          hasCity={!!cityId}
+          isEmpty={isNearbyEmpty}
+          onPress={() =>
+            router.push(
+              cityId
+                ? ({ pathname: '/(app)/adopt', params: { city: String(cityId) } } as any)
+                : ('/(app)/adopt' as any)
+            )
+          }
         />
 
         <View style={{ height: 12 }} />
@@ -436,6 +446,15 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: '#E5E5E5',
+  },
+  nearbyEmpty: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  nearbyEmptyText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 13,
+    color: '#999999',
   },
   nearbyCircleImg: {
     width: '100%',
