@@ -15,7 +15,9 @@ import { UsernameField, UsernameFieldState } from '../../src/components/auth/Use
 import { PawrvezDialog } from '../../src/components/common/mascot';
 import { useAuthActions } from '../../src/hooks/useAuth';
 
-const MASCOT_TIP = "This is the name you'll be known by around here — don't worry, you can always come back and change it later.";
+// 90 chars max including spaces, and no em dashes (Pixeled has no glyph for
+// them) — see PawrvezDialog's `text` prop for the full copy budget.
+const MASCOT_TIP = "This is the name you'll be known by here. Don't worry, you can change it later."; // 79
 
 export default function UsernameScreen() {
   const { name, email, password } = useLocalSearchParams<{

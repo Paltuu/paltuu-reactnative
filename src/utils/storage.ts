@@ -13,6 +13,11 @@ const STORAGE_KEYS = {
   BETA_INTRO_SEEN: 'beta_intro_seen',
   DAY_ONE_CLAIM_SEEN: 'day_one_claim_seen',
   PET_TAG_HINT_SEEN: 'pet_tag_hint_seen',
+  // Both fire on the owner's own pet profile, once ever (not once per pet):
+  // the gallery tip on first open, the posts tip the first time that tab is
+  // opened. Separate keys so reaching the Posts tab later still gets its tip.
+  PET_GALLERY_MASCOT_SEEN: 'pet_gallery_mascot_seen',
+  PET_POSTS_MASCOT_SEEN: 'pet_posts_mascot_seen',
   LAST_SEEN_OTA_UPDATE_ID: 'last_seen_ota_update_id',
 };
 
@@ -120,6 +125,20 @@ export const storage = {
   },
   async isPetTagHintSeen(): Promise<boolean> {
     const val = await store.getItem(STORAGE_KEYS.PET_TAG_HINT_SEEN);
+    return val === '1';
+  },
+  async markPetGalleryMascotSeen() {
+    await store.setItem(STORAGE_KEYS.PET_GALLERY_MASCOT_SEEN, '1');
+  },
+  async isPetGalleryMascotSeen(): Promise<boolean> {
+    const val = await store.getItem(STORAGE_KEYS.PET_GALLERY_MASCOT_SEEN);
+    return val === '1';
+  },
+  async markPetPostsMascotSeen() {
+    await store.setItem(STORAGE_KEYS.PET_POSTS_MASCOT_SEEN, '1');
+  },
+  async isPetPostsMascotSeen(): Promise<boolean> {
+    const val = await store.getItem(STORAGE_KEYS.PET_POSTS_MASCOT_SEEN);
     return val === '1';
   },
   async getLastSeenOtaUpdateId(): Promise<string | null> {

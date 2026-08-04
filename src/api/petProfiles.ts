@@ -30,6 +30,10 @@ export interface PetProfilePhoto {
   caption: string | null;
   ordering: number;
   created_at: string;
+  // Optional owner-entered day the photo was taken, as YYYY-MM-DD. Distinct
+  // from created_at (when it was uploaded) — a photo of a puppy's first day
+  // home can be added years later. null when the owner didn't set one.
+  taken_on: string | null;
 }
 
 export const petProfilesApi = {
@@ -86,10 +90,16 @@ export const petProfilesApi = {
     return data as { photos: PetProfilePhoto[] };
   },
 
-  async uploadPetPhoto(petId: number | string, photoUrl: string, caption?: string) {
+  async uploadPetPhoto(
+    petId: number | string,
+    photoUrl: string,
+    caption?: string,
+    takenOn?: string | null
+  ) {
     const { data } = await client.post(`/pet-profiles/${petId}/photos`, {
       photo_url: photoUrl,
       caption: caption || null,
+      taken_on: takenOn || null,
     });
     return data as PetProfilePhoto;
   },
@@ -99,8 +109,15 @@ export const petProfilesApi = {
     return data as { success: boolean };
   },
 
-  async updatePetPhotoCaption(petId: number | string, photoId: number | string, caption: string) {
-    const { data } = await client.patch(`/pet-profiles/${petId}/photos/${photoId}`, { caption });
+  // Partial by design: only the keys present in `fields` are written, so
+  // editing the date can't wipe the caption and vice versa. Pass an explicit
+  // `null` to clear a field.
+  async updatePetPhoto(
+    petId: number | string,
+    photoId: number | string,
+    fields: { caption?: string | null; taken_on?: string | null }
+  ) {
+    const { data } = await client.patch(`/pet-profiles/${petId}/photos/${photoId}`, fields);
     return data as PetProfilePhoto;
   },
 

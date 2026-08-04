@@ -22,6 +22,7 @@ import { petProfilesApi, PetProfilePhoto } from '../../../src/api/petProfiles';
 import { socialApi } from '../../../src/api/social';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
+import { PolaroidDateField } from '../../../src/components/pets/PolaroidDateField';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 48) / 3; // 3 columns with padding
@@ -73,9 +74,11 @@ function PetGalleryManagerScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<PetProfilePhoto | null>(null);
   const [isEditingCaption, setIsEditingCaption] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
+  const [editedTakenOn, setEditedTakenOn] = useState<string | null>(null);
   const [isSavingCaption, setIsSavingCaption] = useState(false);
   const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
   const [pendingCaption, setPendingCaption] = useState('');
+  const [pendingTakenOn, setPendingTakenOn] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPhotos();
@@ -120,6 +123,7 @@ function PetGalleryManagerScreen() {
           { compress: 0.8, format: SaveFormat.JPEG }
         );
         setPendingCaption('');
+        setPendingTakenOn(null);
         setPendingPhotoUri(processed.uri);
       }
     } catch (error) {
@@ -137,9 +141,15 @@ function PetGalleryManagerScreen() {
       const uploadRes = await socialApi.uploadMedia([pendingPhotoUri]);
       if (uploadRes.media && uploadRes.media.length > 0) {
         const photoUrl = uploadRes.media[0].url;
-        await petProfilesApi.uploadPetPhoto(petId, photoUrl, pendingCaption.trim() || undefined);
+        await petProfilesApi.uploadPetPhoto(
+          petId,
+          photoUrl,
+          pendingCaption.trim() || undefined,
+          pendingTakenOn
+        );
         setPendingPhotoUri(null);
         setPendingCaption('');
+        setPendingTakenOn(null);
         await fetchPhotos();
       } else {
         Alert.alert('Error', 'Failed to upload image to server.');
@@ -152,17 +162,22 @@ function PetGalleryManagerScreen() {
     }
   };
 
+  // Saves the caption and the optional date together — they're edited in the
+  // same pass, so sending both keeps the polaroid and the server in step.
   const saveCaption = async () => {
     if (!selectedPhoto) return;
     try {
       setIsSavingCaption(true);
-      const updated = await petProfilesApi.updatePetPhotoCaption(petId, selectedPhoto.photo_id, editedCaption.trim());
+      const updated = await petProfilesApi.updatePetPhoto(petId, selectedPhoto.photo_id, {
+        caption: editedCaption.trim() || null,
+        taken_on: editedTakenOn,
+      });
       setPhotos((prev) => prev.map((p) => (p.photo_id === updated.photo_id ? updated : p)));
       setSelectedPhoto(updated);
       setIsEditingCaption(false);
     } catch (error) {
-      console.error('Update Caption Error:', error);
-      Alert.alert('Error', 'Failed to update caption.');
+      console.error('Update Photo Error:', error);
+      Alert.alert('Error', 'Failed to update photo.');
     } finally {
       setIsSavingCaption(false);
     }
@@ -225,6 +240,7 @@ function PetGalleryManagerScreen() {
               onPress={() => {
                 setSelectedPhoto(item);
                 setEditedCaption(item.caption ?? '');
+                setEditedTakenOn(item.taken_on ?? null);
                 setIsEditingCaption(false);
               }}
               className="mb-2 relative rounded-2xl overflow-hidden border border-gray-100 bg-surface"
@@ -278,10 +294,22 @@ function PetGalleryManagerScreen() {
                 <PolaroidCard
                   uri={selectedPhoto.photo_url}
                   caption={isEditingCaption ? editedCaption : selectedPhoto.caption}
+                  takenOn={isEditingCaption ? editedTakenOn : selectedPhoto.taken_on}
                   editable={isEditingCaption}
                   onCaptionChange={setEditedCaption}
                   placeholder="Write a caption..."
                 />
+
+                {isEditingCaption && (
+                  // Keyed on the photo so switching photos remounts the field
+                  // with that photo's date instead of keeping the last one's
+                  // digits (the boxes are uncontrolled after mount).
+                  <PolaroidDateField
+                    key={selectedPhoto.photo_id}
+                    value={editedTakenOn}
+                    onChange={setEditedTakenOn}
+                  />
+                )}
 
                 {isEditingCaption ? (
                   <View className="flex-row gap-2 mt-4">
@@ -289,6 +317,7 @@ function PetGalleryManagerScreen() {
                       onPress={() => {
                         setIsEditingCaption(false);
                         setEditedCaption(selectedPhoto.caption ?? '');
+                        setEditedTakenOn(selectedPhoto.taken_on ?? null);
                       }}
                       disabled={isSavingCaption}
                       className="flex-1 bg-gray-100 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200"
@@ -314,7 +343,9 @@ function PetGalleryManagerScreen() {
                       className="flex-1 bg-gray-100 flex-row items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200"
                     >
                       <Ionicons name="create-outline" size={18} color="#374151" />
-                      <Text className="text-gray-700 font-headingSemi text-base">Edit Caption</Text>
+                      {/* "Edit" not "Edit Caption" — this pass now covers the
+                          date chip as well as the caption. */}
+                      <Text className="text-gray-700 font-headingSemi text-base">Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => deletePhoto(selectedPhoto.photo_id)}
@@ -353,10 +384,13 @@ function PetGalleryManagerScreen() {
                 <PolaroidCard
                   uri={pendingPhotoUri}
                   caption={pendingCaption}
+                  takenOn={pendingTakenOn}
                   editable
                   onCaptionChange={setPendingCaption}
                   placeholder="Write a caption..."
                 />
+
+                <PolaroidDateField value={pendingTakenOn} onChange={setPendingTakenOn} />
 
                 <TouchableOpacity
                   onPress={confirmUploadPhoto}

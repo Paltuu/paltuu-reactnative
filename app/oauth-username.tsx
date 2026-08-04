@@ -15,6 +15,11 @@ import { UsernameField, UsernameFieldState } from '../src/components/auth/Userna
 import { PawrvezDialog } from '../src/components/common/mascot';
 import client from '../src/api/client';
 
+// Kept identical to the email flow's tip in (auth)/username.tsx — same step,
+// same wording. 90 chars max including spaces, no em dashes (Pixeled has no
+// glyph for them); see PawrvezDialog's `text` prop for the full copy budget.
+const MASCOT_TIP = "This is the name you'll be known by here. Don't worry, you can change it later."; // 79
+
 /**
  * Username step for brand-new Google/Apple sign-ups. Mirrors the email
  * flow's username screen (same field + mascot tip) but the account already
@@ -74,7 +79,7 @@ export default function OAuthUsernameScreen() {
 
       <PawrvezDialog
         visible={showMascotDialog}
-        text="This is the name you'll be known by around here — don't worry, you can always come back and change it later."
+        text={MASCOT_TIP}
         onDismiss={() => setShowMascotDialog(false)}
         actionLabel="Got it"
         onAction={() => setShowMascotDialog(false)}

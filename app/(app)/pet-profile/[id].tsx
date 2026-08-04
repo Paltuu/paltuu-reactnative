@@ -26,6 +26,8 @@ import { SocialPost } from '../../../src/api/social';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { PolaroidCard } from '../../../src/components/pets/PolaroidCard';
+import { PawrvezDialog } from '../../../src/components/common/mascot';
+import { storage } from '../../../src/utils/storage';
 import { ActionSheetModal } from '../../../src/components/ui/bottom-sheet/ActionSheetModal';
 import { PetProfileScreenSkeleton } from '../../../src/components/common/PetProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
@@ -87,6 +89,18 @@ type Tab = 'posts' | 'gallery' | 'about';
 // this array (goToTab/onMomentumScrollEnd both index off it).
 const TABS: Tab[] = ['gallery', 'posts', 'about'];
 
+// Owner-only first-run tips, each shown once ever rather than once per pet —
+// the lesson is about how the profile works, not about a particular animal.
+// One slide per bubble, 90 chars max including spaces and no em dashes; see
+// PawrvezDialog's `text` prop for the full copy budget.
+const GALLERY_INTRO_DIALOGS = [
+  'This is their gallery. Add photos here to keep all their milestones together.', // 77
+  'Tap the + to add a photo, a caption, and the day it happened.',                 // 61
+];
+const POSTS_INTRO_DIALOGS = [
+  'The posts you make tagging your pet will show up right here.', // 60
+];
+
 function PetProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -110,6 +124,21 @@ function PetProfileScreen() {
   // the tap-triggered scrollTo's own onMomentumScrollEnd firing setActiveTab
   // again with a stale index while the animation is still in flight.
   const isProgrammaticScroll = useRef(false);
+
+  // Mascot tips run through one shared slide queue so the gallery tip and the
+  // posts tip can never stack two modals on top of each other.
+  const [tipSlides, setTipSlides] = useState<string[]>([]);
+  const [tipIndex, setTipIndex] = useState(-1);
+  // The storage reads are async, so a second render can re-enter an effect
+  // before the first has written its "seen" flag — this latches synchronously.
+  const tipFired = useRef<Record<string, boolean>>({});
+
+  const showTip = (slides: string[]) => {
+    setTipSlides(slides);
+    setTipIndex(0);
+  };
+  const advanceTip = () =>
+    setTipIndex((i) => (i + 1 < tipSlides.length ? i + 1 : -1));
 
   const goToTab = (tab: Tab) => {
     setActiveTab(tab);
@@ -140,6 +169,32 @@ function PetProfileScreen() {
   // once (paging needs all pages present side by side), so both tabs' data
   // is fetched together up front instead of gated behind `activeTab`.
   useEffect(() => { fetchPosts(true); }, [petId]);
+
+  // First time an owner opens one of their own pet profiles, Pawrvez explains
+  // what the gallery is for. Gated on `isOwner`, which only settles once the
+  // profile has loaded — visitors never see it.
+  useEffect(() => {
+    if (!isOwner || tipFired.current.gallery) return;
+    tipFired.current.gallery = true;
+    (async () => {
+      if (await storage.isPetGalleryMascotSeen()) return;
+      await storage.markPetGalleryMascotSeen();
+      showTip(GALLERY_INTRO_DIALOGS);
+    })();
+  }, [isOwner]);
+
+  // The Posts tab gets its own tip the first time it's opened, because an
+  // empty Posts tab otherwise reads as broken rather than as "nothing tagged
+  // yet". Keyed off `activeTab` so a swipe triggers it the same as a tap.
+  useEffect(() => {
+    if (!isOwner || activeTab !== 'posts' || tipFired.current.posts) return;
+    tipFired.current.posts = true;
+    (async () => {
+      if (await storage.isPetPostsMascotSeen()) return;
+      await storage.markPetPostsMascotSeen();
+      showTip(POSTS_INTRO_DIALOGS);
+    })();
+  }, [isOwner, activeTab]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -570,6 +625,14 @@ function PetProfileScreen() {
 
       {/* Floating add-photo action — only surface while Gallery is active, so
           it doesn't compete with Posts/About, and only for the owner. */}
+      <PawrvezDialog
+        visible={tipIndex >= 0}
+        text={tipSlides[tipIndex] ?? ''}
+        onDismiss={() => setTipIndex(-1)}
+        actionLabel={tipIndex >= tipSlides.length - 1 ? 'Got it' : 'Next'}
+        onAction={advanceTip}
+      />
+
       {isOwner && activeTab === 'gallery' && (
         <TouchableOpacity
           style={[s.galleryFab, { bottom: insets.bottom + 20 }]}
@@ -583,7 +646,13 @@ function PetProfileScreen() {
       <Modal visible={!!selectedPhoto} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setSelectedPhoto(null)}>
         <TouchableOpacity style={s.polaroidBackdrop} activeOpacity={1} onPress={() => setSelectedPhoto(null)}>
           <TouchableOpacity activeOpacity={1} style={s.polaroidWrap} onPress={() => {}}>
-            {selectedPhoto && <PolaroidCard uri={selectedPhoto.photo_url} caption={selectedPhoto.caption} />}
+            {selectedPhoto && (
+              <PolaroidCard
+                uri={selectedPhoto.photo_url}
+                caption={selectedPhoto.caption}
+                takenOn={selectedPhoto.taken_on}
+              />
+            )}
             <TouchableOpacity style={s.polaroidClose} onPress={() => setSelectedPhoto(null)} hitSlop={10}>
               <Ionicons name="close" size={18} color="#FFFFFF" />
             </TouchableOpacity>
