@@ -206,8 +206,16 @@ export const socialApi = {
     return data as { pets: MentionSuggestionPet[]; users: MentionSuggestionUser[] };
   },
 
-  async getFeed(cursor: string | null = null, limit: number = 20, mode: 'global' | 'following' | 'chronological' | 'personalized' = 'following') {
-    const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}`;
+  async getFeed(
+    cursor: string | null = null,
+    limit: number = 20,
+    mode: 'global' | 'following' | 'chronological' | 'personalized' = 'following',
+    coords: { lat: number; lng: number } | null = null,
+  ) {
+    // lat/lng steer the adoption/lost-found cards interleaved into the feed
+    // (see lib/feedInjection.ts server-side) toward the device's actual
+    // location rather than the user's stored city.
+    const url = `/social/posts?limit=${limit}&mode=${mode}${cursor ? `&cursor=${cursor}` : ''}${coords ? `&lat=${coords.lat}&lng=${coords.lng}` : ''}`;
     const { data } = await client.get(url);
     return data as { posts: FeedItem[]; next_cursor: string | null; has_more: boolean };
   },

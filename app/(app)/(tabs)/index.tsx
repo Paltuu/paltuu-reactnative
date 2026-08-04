@@ -27,6 +27,7 @@ import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { storage } from '../../../src/utils/storage';
 import { useAuthReady } from '../../../src/hooks/useAuthReady';
 import { useAuthStore } from '../../../src/stores/authStore';
+import { useLocationStore } from '../../../src/stores/locationStore';
 import { PawrvezDialog } from '../../../src/components/common/mascot';
 
 // Shown once, the first time a new user lands on their feed (right after
@@ -161,12 +162,18 @@ export default function HomeScreen() {
   // open the composer here, but it collided with post media carousels (swiping
   // back to a carousel's first slide pushed create-post over the feed), so the
   // composer is now reached solely through the header's + button.
+  const latitude = useLocationStore((s) => s.latitude);
+  const longitude = useLocationStore((s) => s.longitude);
+  const coords = latitude != null && longitude != null ? { lat: latitude, lng: longitude } : null;
+
   const {
     data, fetchNextPage, hasNextPage,
     isFetchingNextPage, isLoading: isLoadingFeed, refetch,
   } = useInfiniteQuery({
-    queryKey: ['social-feed', forYouMode],
-    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode),
+    // coords in the key so the feed refetches once location resolves after
+    // mount, picking up "near you" adoption/lost-found cards from then on.
+    queryKey: ['social-feed', forYouMode, coords?.lat ?? null, coords?.lng ?? null],
+    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, forYouMode, coords),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     // Fires in parallel with the interests check (no longer gated on

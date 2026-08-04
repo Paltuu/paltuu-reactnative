@@ -27,6 +27,7 @@ import { chunkArray, PostGridItem, GRID_MARGIN, GRID_GAP } from '../../../src/co
 import { setPlayingPostId } from '../../../src/utils/videoPlaySubscription';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { useAuthReady } from '../../../src/hooks/useAuthReady';
+import { useLocationStore } from '../../../src/stores/locationStore';
 
 const CustomFlashList = FlashList as any;
 
@@ -124,6 +125,10 @@ export default function SearchScreen() {
   // ─── For You feed — the explore page's infinite tail ─────────────────────
   // Shares Home's ['social-feed', ...] key prefix so useSocialActions'
   // optimistic like/follow/save updates apply to this list too
+  const latitude = useLocationStore((s) => s.latitude);
+  const longitude = useLocationStore((s) => s.longitude);
+  const coords = latitude != null && longitude != null ? { lat: latitude, lng: longitude } : null;
+
   const {
     data: feedData,
     fetchNextPage,
@@ -131,8 +136,8 @@ export default function SearchScreen() {
     isFetchingNextPage,
     isLoading: isLoadingFeed,
   } = useInfiniteQuery({
-    queryKey: ['social-feed', 'personalized'],
-    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, 'personalized'),
+    queryKey: ['social-feed', 'personalized', coords?.lat ?? null, coords?.lng ?? null],
+    queryFn: ({ pageParam }) => socialApi.getFeed(pageParam as string | null, 20, 'personalized', coords),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     enabled: authReady,
