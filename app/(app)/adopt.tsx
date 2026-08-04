@@ -24,6 +24,14 @@ const H_PAD = 16;
 // the unmount/remount cycle.
 let cachedFilters: PetFilters | null = null;
 
+// The `city` route param is what a caller wants the city filter to BE, so it
+// needs a way to say "no city" as well as a specific one — otherwise the Pet
+// Hub hero tile ("browse everything") would inherit whatever city the Pets Near
+// You tile last cached. 'all' is that signal; anything else is a city_id.
+// The picker stores numeric city_id values, so the param is parsed back to one.
+const parseCityParam = (value: string): PetFilters['city'] =>
+  value === 'all' ? undefined : (Number(value) as any);
+
 function AdoptScreen() {
   const router = useRouter();
   const { breed: breedParam, city: cityParam } = useLocalSearchParams<{ breed?: string; city?: string }>();
@@ -31,13 +39,14 @@ function AdoptScreen() {
   const [isCityModalVisible, setIsCityModalVisible] = useState(false);
   const [citySearch, setCitySearch] = useState('');
 
-  const [filters, setFiltersState] = useState<PetFilters>(
-    cachedFilters || {
-      species: undefined,
-      city: cityParam ? (Number(cityParam) as any) : undefined,
-      breed: breedParam || '',
-    }
-  );
+  // Route params outrank the cache. Seeding them here rather than leaving it to
+  // the effects below means the first query already carries the right filters —
+  // arriving from a tile never flashes the previous city's results first.
+  const [filters, setFiltersState] = useState<PetFilters>(() => ({
+    ...(cachedFilters || { species: undefined, city: undefined, breed: '' }),
+    ...(cityParam !== undefined ? { city: parseCityParam(cityParam) } : {}),
+    ...(breedParam ? { breed: breedParam } : {}),
+  }));
   const setFilters: typeof setFiltersState = (update) => {
     setFiltersState((prev) => {
       const next = typeof update === 'function' ? (update as (p: PetFilters) => PetFilters)(prev) : update;
@@ -54,11 +63,13 @@ function AdoptScreen() {
     }
   }, [breedParam]);
 
-  // Same for the city param — arriving from "Pets Near You" pre-selects the
-  // user's city so the grid matches what the tile was previewing.
+  // Same for the city param. Note this runs on an EMPTY-STRING check, not a
+  // truthy one: 'all' has to reach setFilters to clear the city, and only a
+  // genuinely absent param (Explore's See All, returning from a listing) should
+  // leave the cached city alone.
   useEffect(() => {
-    if (cityParam) {
-      setFilters((prev) => ({ ...prev, city: Number(cityParam) as any }));
+    if (cityParam !== undefined) {
+      setFilters((prev) => ({ ...prev, city: parseCityParam(cityParam) }));
     }
   }, [cityParam]);
 

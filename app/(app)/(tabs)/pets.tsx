@@ -229,10 +229,12 @@ export default function PetsHubScreen() {
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
         <GreetingText firstName={firstName} isFocused={isFocused} />
 
-        {/* Tile 1 — Adopt a Pet (Hero) */}
+        {/* Tile 1 — Adopt a Pet (Hero). `city: 'all'` clears any city left in
+            Adopt's cached filters: this is the "browse everything" entry point,
+            so it must not inherit the city Pets Near You last set. */}
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => router.push('/(app)/adopt' as any)}
+          onPress={() => router.push({ pathname: '/(app)/adopt', params: { city: 'all' } } as any)}
           style={styles.heroTile}
         >
           <View style={styles.heroText}>
@@ -255,7 +257,10 @@ export default function PetsHubScreen() {
 
         <View style={{ height: 12 }} />
 
-        {/* Pets Near You — taller, rotating circular avatars */}
+        {/* Pets Near You — taller, rotating circular avatars. Opens Adopt with
+            the user's city pre-selected so the grid matches what the tile was
+            previewing; with no city resolved it passes 'all' rather than
+            inheriting a stale city from the cached filters. */}
         <NearbyPetsCarousel
           nearbyPages={nearbyPages}
           isNearbyLoading={isNearbyLoading}
@@ -264,11 +269,10 @@ export default function PetsHubScreen() {
           hasCity={!!cityId}
           isEmpty={isNearbyEmpty}
           onPress={() =>
-            router.push(
-              cityId
-                ? ({ pathname: '/(app)/adopt', params: { city: String(cityId) } } as any)
-                : ('/(app)/adopt' as any)
-            )
+            router.push({
+              pathname: '/(app)/adopt',
+              params: { city: cityId ? String(cityId) : 'all' },
+            } as any)
           }
         />
 
