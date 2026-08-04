@@ -36,9 +36,16 @@ function PersonalInfoScreen() {
       return;
     }
     
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    // Email validation: no leading/trailing/consecutive dots, TLD >= 2 letters.
+    // (The real guarantee of ownership still comes from server-side validation.)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    const trimmedEmail = email.trim();
+    if (
+      !emailRegex.test(trimmedEmail) ||
+      trimmedEmail.includes('..') ||
+      trimmedEmail.split('@')[0].startsWith('.') ||
+      trimmedEmail.split('@')[0].endsWith('.')
+    ) {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }

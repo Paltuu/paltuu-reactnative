@@ -53,6 +53,29 @@ function LayoutContent() {
       */}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        {/* Detail screens reached by tapping into a list/card (lost & found
+            post, trending keyword/hashtag/topic). Without an explicit
+            animation these fell back to the platform's unset default, which
+            — unlike the root stack's `post/[id]`, `notifications`, etc. —
+            inconsistently slid in/out from the left instead of the right.
+            Pin them to the same slide-from-right convention as every other
+            detail push in the app. */}
+        <Stack.Screen
+          name="lost-found/[id]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="hashtag/[tag]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="keyword/[word]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="topic/[slug]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
       </Stack>
     </View>
   );

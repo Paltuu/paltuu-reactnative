@@ -178,6 +178,12 @@ export default function ProfileScreen() {
   const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const listRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
+  // Set right before a sidebar item pushes a screen; the sidebar has to close
+  // first (it's a full-screen RN Modal, which renders above the navigator and
+  // would otherwise stay stuck on top of whatever gets pushed), but on the
+  // way back the user's mental model is "I came from the sidebar" — so reopen
+  // it once this screen regains focus instead of landing on a bare profile.
+  const reopenMenuOnFocusRef = useRef(false);
 
   // Swiping between the Posts/Pets sub-tabs — kept in a ref so the
   // PanResponder (created once) always reads the current tab instead of
@@ -195,12 +201,21 @@ export default function ProfileScreen() {
 
   // Only captures a clearly horizontal drag (well past vertical-scroll
   // territory) so it doesn't fight the list's own vertical scrolling or the
-  // outer bottom-tab-bar's own swipe-between-screens gesture.
+  // outer bottom-tab-bar's own swipe-between-screens gesture. Also only
+  // captures when the drag actually has an adjacent sub-tab to land on —
+  // e.g. swiping right while already on "Posts" (the first sub-tab) used to
+  // still get captured here and silently do nothing, which ate the gesture
+  // the outer bottom-tab pager needed to swipe back to Search. Letting it
+  // fall through at that edge lets the pager see it instead.
   const tabSwipeResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_evt, gestureState) => {
         const { dx, dy } = gestureState;
-        return Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 2.5;
+        if (!(Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 2.5)) return false;
+        const idx = TAB_KEYS.indexOf(activeTabRef.current);
+        const wouldGoNext = dx < 0; // swipe left → next sub-tab
+        const nextIdx = idx + (wouldGoNext ? 1 : -1);
+        return nextIdx >= 0 && nextIdx < TAB_KEYS.length;
       },
       onPanResponderRelease: (_evt, gestureState) => {
         if (gestureState.dx <= -60) {
@@ -339,6 +354,29 @@ export default function ProfileScreen() {
       useNativeDriver: true,
     }).start(() => setMenuVisible(false));
   };
+
+  // Every sidebar link should go through this instead of calling
+  // closeMenu()+router.push() directly, so the "reopen on back" behavior
+  // below stays in sync with what's actually navigable from the menu.
+  const navigateFromMenu = (path: string) => {
+    reopenMenuOnFocusRef.current = true;
+    closeMenu();
+    router.push(path as any);
+  };
+
+  // Reopens the sidebar when this screen regains focus after a menu-launched
+  // push (e.g. Settings) is popped, instead of leaving the user on a bare
+  // profile. Does NOT fire on first mount or on unrelated focus events
+  // (tab switches, pull-to-refresh) because the ref only gets set by
+  // navigateFromMenu immediately before the push.
+  useFocusEffect(
+    useCallback(() => {
+      if (reopenMenuOnFocusRef.current) {
+        reopenMenuOnFocusRef.current = false;
+        openMenu();
+      }
+    }, [])
+  );
 
   // ── Share profile ────────────────────────────────────────────────────────────
 
@@ -746,27 +784,27 @@ export default function ProfileScreen() {
                 <MenuItem
                   icon="settings-outline"
                   label="Settings"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/settings'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/settings')}
                 />
                 <MenuItem
                   icon="bookmark-outline"
                   label="Saved Posts"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/saved'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/saved')}
                 />
                 <MenuItem
                   icon="paw-outline"
                   label="My Adoption Listings"
-                  onPress={() => { closeMenu(); router.push('/(app)/my-listings'); }}
+                  onPress={() => navigateFromMenu('/(app)/my-listings')}
                 />
                 <MenuItem
                   icon="mail-outline"
                   label="Adoption Requests"
-                  onPress={() => { closeMenu(); router.push('/(app)/adoption-requests'); }}
+                  onPress={() => navigateFromMenu('/(app)/adoption-requests')}
                 />
                 <MenuItem
                   icon="document-text-outline"
                   label="My Applications"
-                  onPress={() => { closeMenu(); router.push('/(app)/my-applications'); }}
+                  onPress={() => navigateFromMenu('/(app)/my-applications')}
                 />
 
                 {/* Account privacy toggle */}
@@ -789,22 +827,22 @@ export default function ProfileScreen() {
                 <MenuItem
                   icon="help-circle-outline"
                   label="Help"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/help'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/help')}
                 />
                 <MenuItem
                   icon="information-circle-outline"
                   label="About"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/about'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/about')}
                 />
                 <MenuItem
                   icon="shield-outline"
                   label="Privacy Center"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/privacy'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/privacy')}
                 />
                 <MenuItem
                   icon="remove-circle-outline"
                   label="Blocked Users"
-                  onPress={() => { closeMenu(); router.push('/(app)/profile/blocked'); }}
+                  onPress={() => navigateFromMenu('/(app)/profile/blocked')}
                 />
 
                 <View style={s.menuDivider} />

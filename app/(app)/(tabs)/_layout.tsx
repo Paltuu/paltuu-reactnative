@@ -1,7 +1,7 @@
 import { withLayoutContext } from 'expo-router';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { View, Platform, TouchableOpacity, StyleSheet } from 'react-native';
+import { Animated, View, Platform, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -31,44 +31,47 @@ const TAB_PRESS_KEY: Record<string, string> = {
   'profile/index': 'profile',
 };
 
-function renderIcon(routeName: string, focused: boolean, profileImageUrl?: string | null) {
-  switch (routeName) {
-    case 'index':
-      return (
-        <Image
-          source={focused ? Icons.homeSelect : Icons.homeUnselect}
-          style={{ width: 24, height: 24 }}
-          contentFit="contain"
-        />
-      );
-    case 'pets':
-      return (
-        <Image
-          source={focused ? Icons.pawSelect : Icons.pawUnselect}
-          style={{ width: 26, height: 26 }}
-          contentFit="contain"
-        />
-      );
-    case 'search':
-      return (
-        <Image
-          source={focused ? Icons.searchSelect : Icons.searchUnselect}
-          style={{ width: 24, height: 24 }}
-          contentFit="contain"
-        />
-      );
-    case 'profile/index':
-      return (
+const ICON_PAIRS: Record<string, { select: any; unselect: any; size: number }> = {
+  index: { select: Icons.homeSelect, unselect: Icons.homeUnselect, size: 24 },
+  pets: { select: Icons.pawSelect, unselect: Icons.pawUnselect, size: 26 },
+  search: { select: Icons.searchSelect, unselect: Icons.searchUnselect, size: 24 },
+};
+
+// Driven by the pager's live `position` (a native-driven Animated value that
+// updates on the UI thread as the finger moves) instead of `state.index`
+// (which only updates once React Navigation processes the settled
+// `onPageSelected` event on the JS thread). Using `state.index` made the
+// highlighted icon visibly lag behind the page content, which the pager
+// already renders/transitions natively. Interpolating opacity off `position`
+// keeps the highlight in lockstep with the actual swipe.
+function AnimatedTabIcon({
+  routeName,
+  index,
+  position,
+  profileImageUrl,
+}: {
+  routeName: string;
+  index: number;
+  position: Animated.AnimatedInterpolation<number>;
+  profileImageUrl?: string | null;
+}) {
+  const focusedOpacity = position.interpolate({
+    inputRange: [index - 1, index, index + 1],
+    outputRange: [0, 1, 0],
+    extrapolate: 'clamp',
+  });
+
+  if (routeName === 'profile/index') {
+    return (
+      <View style={{ width: 26, height: 26 }}>
         <View
           style={{
             width: 26,
             height: 26,
             borderRadius: 13,
-            borderWidth: focused ? 2 : 1,
-            borderColor: focused ? '#a03048' : '#CCCCCC',
+            borderWidth: 1,
+            borderColor: '#CCCCCC',
             overflow: 'hidden',
-            justifyContent: 'center',
-            alignItems: 'center',
           }}
         >
           <Image
@@ -77,13 +80,37 @@ function renderIcon(routeName: string, focused: boolean, profileImageUrl?: strin
             contentFit="cover"
           />
         </View>
-      );
-    default:
-      return null;
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            borderWidth: 2,
+            borderColor: '#a03048',
+            opacity: focusedOpacity,
+          }}
+        />
+      </View>
+    );
   }
+
+  const pair = ICON_PAIRS[routeName];
+  if (!pair) return null;
+  return (
+    <View style={{ width: pair.size, height: pair.size }}>
+      <Image source={pair.unselect} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
+      <Animated.View style={{ position: 'absolute', top: 0, left: 0, opacity: focusedOpacity }}>
+        <Image source={pair.select} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
+      </Animated.View>
+    </View>
+  );
 }
 
-function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
+function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
 
@@ -138,7 +165,12 @@ function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
             style={styles.tab}
             activeOpacity={0.7}
           >
-            {renderIcon(route.name, focused, user?.profile_image_url)}
+            <AnimatedTabIcon
+              routeName={route.name}
+              index={index}
+              position={position}
+              profileImageUrl={user?.profile_image_url}
+            />
           </TouchableOpacity>
         );
       })}

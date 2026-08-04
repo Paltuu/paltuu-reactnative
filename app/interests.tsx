@@ -57,8 +57,13 @@ export default function InterestsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await client.get('/social/content-tags');
-        setCategories(res.data.categories ?? { species: [], topic: [], content_type: [], mood: [] });
+        const [tagsRes, picksRes] = await Promise.all([
+          client.get('/social/content-tags'),
+          client.get('/social/interests').catch(() => null),
+        ]);
+        setCategories(tagsRes.data.categories ?? { species: [], topic: [], content_type: [], mood: [] });
+        const existingTagIds: number[] = picksRes?.data?.tag_ids ?? [];
+        if (existingTagIds.length > 0) setSelected(new Set(existingTagIds));
       } catch {
         Alert.alert('Error', 'Could not load interests. Try again later.');
       } finally {
@@ -86,8 +91,9 @@ export default function InterestsScreen() {
     try {
       await client.post('/social/interests', { tagIds: Array.from(selected) });
       await queryClient.invalidateQueries({ queryKey: ['user-interests-check'] });
-    } catch {
+    } catch (err) {
       // Non-fatal — interests can be set later; proceed anyway
+      console.warn('Failed to save interest picks', err);
     } finally {
       setSaving(false);
       clearNewUser();
