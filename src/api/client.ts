@@ -2,8 +2,10 @@ import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { storage } from '../utils/storage';
 
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
+
 const client = axios.create({
-  baseURL: `${process.env.EXPO_PUBLIC_API_URL}/v1`,
+  baseURL: `${API_BASE_URL}/v1`,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -45,7 +47,7 @@ async function performTokenRefresh(): Promise<{ accessToken: string; refreshToke
     }
 
     const response = await axios.post(
-      `${process.env.EXPO_PUBLIC_API_URL}/v1/auth/refresh`,
+      `${API_BASE_URL}/v1/auth/refresh`,
       { refreshToken },
       { timeout: 10000 }
     );
