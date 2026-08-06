@@ -530,7 +530,14 @@ export default function ProfileScreen() {
     <View style={s.headerWrapper}>
       {/* Top action bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={s.menuBtn} onPress={() => router.push('/create-post')}>
+          <ExpoImage
+            source={require('../../../../assets/icons/plus-solid.svg')}
+            style={{ width: 24, height: 24 }}
+            contentFit="contain"
+            tintColor="#000000"
+          />
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity style={s.menuBtn} onPress={handleShareProfile}>
             <ExpoImage
