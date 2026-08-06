@@ -18,6 +18,7 @@ import {
   useCommentDraft,
   ComposerToolbar,
   ComposerMediaGrid,
+  ContentWarningBanner,
 } from '../../src/components/social/CommentComposer';
 import { PetTagSheet, SelectedPetsRow, usePetTagHint } from '../../src/components/social/PetTagSheet';
 import { GifPickerSheet } from '../../src/components/social/GifPickerSheet';
@@ -193,6 +194,7 @@ export default function CommentComposerScreen() {
                     placeholderTextColor="#9CA3AF"
                     style={{ fontSize: 17, color: '#111', minHeight: mentionActive ? undefined : 90, textAlignVertical: 'top', paddingTop: 8 }}
                   />
+                  <ContentWarningBanner text={draft.text} />
                 </View>
               </View>
 

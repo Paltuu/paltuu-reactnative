@@ -21,6 +21,7 @@ import { PetTagSheet, SelectedPetsRow, PetTagHint, usePetTagHint } from '../src/
 import { GifPickerSheet } from '../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../src/components/social/ComposerMediaGrid';
+import { ContentWarningBanner } from '../src/components/social/CommentComposer';
 import { useMediaDraft } from '../src/hooks/useMediaDraft';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
@@ -427,6 +428,7 @@ export default function CreatePostScreen() {
                   fontFamily: 'DMSans_400Regular',
                 }}
               />
+              <ContentWarningBanner text={caption} />
             </View>
           </View>
 

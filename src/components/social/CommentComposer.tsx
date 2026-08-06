@@ -9,8 +9,8 @@
 // Since these screens stay put rather than navigating to a feed with a progress
 // banner, the "don't block" half is served by an optimistic comment row that
 // appears in the thread immediately and solidifies when the server replies.
-import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Text } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { petProfilesApi } from '../../api/petProfiles';
@@ -24,9 +24,28 @@ import {
   updateCommentInPages,
 } from '../../hooks/useComments';
 import { useMentionInput, appendMention } from './MentionInput';
+import { matchBadWords } from '../../utils/moderation/badWords';
 
 export { ComposerMediaGrid, ComposerToolbar } from './ComposerMediaGrid';
 export type { DraftMedia } from '../../hooks/useMediaDraft';
+
+/**
+ * Inline nudge shown under a compose/comment input while the user types.
+ * This is a soft warning only — it never blocks submission. The server does
+ * the authoritative check and is the only thing that can actually shadow-hide
+ * content (see lib/moderation/badWords.ts in paltuu-nextjs for why).
+ */
+export const ContentWarningBanner = ({ text }: { text: string }) => {
+  const { severe, mild } = useMemo(() => matchBadWords(text), [text]);
+  if (severe.length === 0 && mild.length === 0) return null;
+  return (
+    <Text style={{ fontSize: 12, color: severe.length > 0 ? '#DC2626' : '#B45309', marginTop: 6 }}>
+      {severe.length > 0
+        ? "This looks like it may include offensive language — it can still be posted, but may be hidden from others pending review."
+        : 'This looks like it may include language some people find offensive.'}
+    </Text>
+  );
+};
 
 const MAX_COMMENT_MEDIA = 4;
 
