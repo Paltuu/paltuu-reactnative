@@ -232,7 +232,12 @@ export const socialApi = {
 
   async getProfile(userId: string | number) {
     const { data } = await client.get(`/social/profile/${userId}`);
-    return data as { profile: SocialProfile; posts: SocialPost[]; is_private_locked: boolean };
+    // `suspended`/`message` are only present when the account has been
+    // suspended (see app/api/v1/social/profile/[id]/route.ts) — every other
+    // field on this type is absent in that case, so callers must check
+    // `suspended` first (see app/(app)/profile/[id].tsx) before touching
+    // `profile`/`posts` as usual.
+    return data as { profile: SocialProfile; posts: SocialPost[]; is_private_locked: boolean; suspended?: boolean; message?: string };
   },
 
   async togglePrivacy(isPrivate: boolean) {

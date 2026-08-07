@@ -24,14 +24,22 @@ const triggersConfig: TriggersConfig<MentionTriggerName> = {
     mention: { trigger: '@' },
 };
 
+// Must match REDACTED_WORD_MARKER in paltuu-nextjs/petproj/lib/moderation/badWords.ts
+// exactly — Private-Use-Area sentinels wrapping the word a 'redacted'
+// post/comment had covered server-side (see lib/moderationRedaction.ts).
+// The real slur is never sent to the client for a redacted item; this is
+// just a marker telling us where to draw the grey chip.
+const REDACTED_MARKER = 'REDACTED';
+
 const patternsConfig: PatternsConfig = {
     // Mirrors the hashtag regex already used for tap-navigation in PostCard.tsx.
     hashtag: { pattern: /(#\w+)/g },
+    redacted: { pattern: /REDACTED/g },
 };
 
 // `getConfigsArray` isn't part of the package's public export surface, so we
 // flatten the two config objects ourselves — there's only ever one of each.
-const configs: Config[] = [triggersConfig.mention, patternsConfig.hashtag];
+const configs: Config[] = [triggersConfig.mention, patternsConfig.hashtag, patternsConfig.redacted];
 
 const stripHtml = (s: string) => (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
@@ -102,6 +110,29 @@ export function MentionText({
                             }
                         >
                             {part.text}
+                        </Text>
+                    );
+                }
+
+                // Pattern match: redacted word — a grey, non-interactive chip.
+                // The server never sends the actual slur for a 'redacted'
+                // item (see lib/moderationRedaction.ts), just this marker, so
+                // there's nothing to reveal here even if we wanted to.
+                if (part.text === REDACTED_MARKER) {
+                    return (
+                        <Text
+                            key={index}
+                            style={{
+                                backgroundColor: '#D1D5DB',
+                                color: '#6B7280',
+                                fontWeight: '600',
+                                fontSize: 12,
+                                borderRadius: 4,
+                                overflow: 'hidden',
+                                paddingHorizontal: 4,
+                            }}
+                        >
+                            {'  hidden word  '}
                         </Text>
                     );
                 }

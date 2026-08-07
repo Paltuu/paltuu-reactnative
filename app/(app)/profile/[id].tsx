@@ -444,6 +444,25 @@ function UserProfileScreen() {
 
   if (isProfileLoading) return <ProfileScreenSkeleton insetsTop={insets.top} />;
 
+  if (profileData?.suspended) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+        <TouchableOpacity style={{ padding: 16 }} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#000000" />
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <Ionicons name="ban-outline" size={48} color="#9CA3AF" />
+          <Text style={{ fontSize: 17, fontWeight: '700', color: '#111', marginTop: 16, textAlign: 'center' }}>
+            Account suspended
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+            {profileData?.message || 'This account has been suspended for violating our Community Guidelines.'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.screen}>
       <FlatList
