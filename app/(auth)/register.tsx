@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { authApi } from '../../src/api/auth';
+import { IdentityWarningBanner } from '../../src/components/moderation/IdentityWarningBanner';
 
 const STEPS = [
   {
@@ -152,6 +153,7 @@ export default function RegisterScreen() {
               onSubmitEditing={handleNext}
             />
           )}
+          {step === 0 && <IdentityWarningBanner text={name} />}
 
           {/* Email */}
           {step === 1 && (

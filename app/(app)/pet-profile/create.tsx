@@ -23,6 +23,7 @@ import { socialApi } from '../../../src/api/social';
 import CustomInput from '../../../src/components/common/CustomInput';
 import PaltuuButton from '../../../src/components/ui/PaltuuButton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { IdentityWarningBanner } from '../../../src/components/moderation/IdentityWarningBanner';
 
 const ALLOWED_SPECIES = [
   { label: 'Dog 🐶', value: 'Dog' },
@@ -312,6 +313,7 @@ function CreatePetProfileScreen() {
               placeholder="e.g. Leo"
               leftIcon="heart-outline"
             />
+            <IdentityWarningBanner text={name} />
 
             <View style={s.row}>
               <View style={{ flex: 1 }}>
@@ -366,6 +368,7 @@ function CreatePetProfileScreen() {
               maxLength={500}
               leftIcon="chatbox-ellipses-outline"
             />
+            <IdentityWarningBanner text={bio} />
           </View>
 
           {/* Save Button */}

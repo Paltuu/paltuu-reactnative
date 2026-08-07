@@ -22,6 +22,7 @@ import { socialApi } from '../../../src/api/social';
 import client from '../../../src/api/client';
 import { Avatar } from '../../../src/components/common/Avatar';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { IdentityWarningBanner } from '../../../src/components/moderation/IdentityWarningBanner';
 
 const DS = {
   primary: '#A03048',
@@ -300,6 +301,7 @@ function EditProfileScreen() {
                 returnKeyType="next"
               />
             </FieldRow>
+            <IdentityWarningBanner text={name} />
 
             <FieldRow label="Username">
               <View style={s.usernameRow}>
@@ -342,6 +344,7 @@ function EditProfileScreen() {
                 textAlignVertical="top"
               />
             </FieldRow>
+            <IdentityWarningBanner text={bio} />
             {bio.length > 0 && <Text style={s.charCount}>{bio.length}/200</Text>}
           </View>
         </ScrollView>
