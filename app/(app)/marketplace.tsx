@@ -168,8 +168,7 @@ function MarketplaceScreen() {
         renderItem={renderProduct}
         keyExtractor={(item) => item.product_id?.toString() || Math.random().toString()}
         numColumns={2}
-        style={{ marginBottom: insets.bottom }}
-        contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 8, paddingBottom: 100 + insets.bottom }}
         onEndReached={() => {
             if (meta.page < meta.totalPages && !isFetchingNextPage) {
                 fetchNextPage();

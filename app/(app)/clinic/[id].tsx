@@ -140,7 +140,6 @@ function ClinicDetailsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={{ marginBottom: insets.bottom }}
         contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
       >
         <View style={styles.body}>

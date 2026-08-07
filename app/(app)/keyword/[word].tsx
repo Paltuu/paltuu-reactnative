@@ -102,14 +102,13 @@ function KeywordFeedScreen() {
           data={posts}
           renderItem={renderItem}
           keyExtractor={(item) => (item as SocialPost).post_id}
-          style={{ marginBottom: insets.bottom }}
           {...({ estimatedItemSize: 350 } as any)}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();
           }}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 + insets.bottom }}
         />
       )}
     </View>

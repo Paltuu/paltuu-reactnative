@@ -140,11 +140,10 @@ export default function FollowRequestsScreen() {
           data={requests}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.follow_id)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
-          style={{ marginBottom: insets.bottom }}
           ListFooterComponent={
             isFetchingNextPage ? (
               <View style={{ paddingVertical: 24 }}>

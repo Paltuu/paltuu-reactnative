@@ -216,13 +216,9 @@ function AdoptScreen() {
 
       {showSkeleton ? (
         <ScrollView
-          // See the matching comment on the FlashList below — the
-          // list's own frame (not just its end-of-scroll padding) needs to
-          // stop above the edge-to-edge system nav bar.
-          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
-            paddingBottom: 32,
+            paddingBottom: 32 + insets.bottom,
             paddingTop: 16,
           }}
         >
@@ -243,15 +239,9 @@ function AdoptScreen() {
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
           scrollEventThrottle={16}
-          // `contentContainerStyle`'s paddingBottom only clears the nav bar
-          // once scrolled all the way to the end — the list's own frame still
-          // extends the full screen height, so mid-scroll rows rest right
-          // behind the (edge-to-edge, translucent) system nav bar. Shrinking
-          // the list's own style by insets.bottom keeps rows above it always.
-          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={{
             paddingHorizontal: H_PAD,
-            paddingBottom: 32,
+            paddingBottom: 32 + insets.bottom,
             paddingTop: 16
           }}
           onEndReached={() => {

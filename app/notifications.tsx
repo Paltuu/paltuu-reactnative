@@ -715,8 +715,7 @@ export default function NotificationsScreen() {
               </>
             ) : null
           }
-          style={{ marginBottom: insets.bottom }}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}

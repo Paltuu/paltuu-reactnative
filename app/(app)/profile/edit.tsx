@@ -267,8 +267,8 @@ function EditProfileScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          style={{ flex: 1, marginBottom: insets.bottom }}
-          contentContainerStyle={s.scrollContent}
+          style={{ flex: 1 }}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: 60 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

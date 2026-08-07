@@ -118,8 +118,7 @@ function SavedCollectionsScreen() {
           data={collections}
           keyExtractor={(item) => item.collection_id.toString()}
           renderItem={renderCard}
-          style={{ marginBottom: insets.bottom }}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 120 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           refreshing={isRefetching}
           onRefresh={refetch}

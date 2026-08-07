@@ -351,8 +351,7 @@ function PetProfileScreen() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        style={{ marginBottom: insets.bottom }}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
         onScroll={(e) => saveScrollPosition(`pet-profile:${petId}`, e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
         refreshControl={

@@ -232,8 +232,7 @@ function PetGalleryManagerScreen() {
           data={photos}
           keyExtractor={(item) => item.photo_id.toString()}
           numColumns={3}
-          style={{ marginBottom: insets.bottom }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 + insets.bottom }}
           columnWrapperStyle={{ gap: 8 }}
           renderItem={({ item }) => (
             <TouchableOpacity

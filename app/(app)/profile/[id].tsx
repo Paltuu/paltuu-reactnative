@@ -453,8 +453,7 @@ function UserProfileScreen() {
         renderItem={renderItem}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
-        style={{ marginBottom: insets.bottom }}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 100 }}
         onScroll={(e) => saveScrollPosition(`profile:${userId}`, e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
         ItemSeparatorComponent={() => <View style={s.postDivider} />}

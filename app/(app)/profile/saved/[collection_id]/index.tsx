@@ -82,7 +82,6 @@ function CollectionPostsScreen() {
       ) : (
         <FlatList
           data={posts}
-          style={{ marginBottom: insets.bottom }}
           renderItem={({ item }) => (
             <PostCard
               post={item}
@@ -98,7 +97,7 @@ function CollectionPostsScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 100 + insets.bottom }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}

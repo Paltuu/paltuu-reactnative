@@ -184,7 +184,7 @@ function FollowListScreen() {
               data={pageData}
               renderItem={({ item }) => renderUser(item, listType)}
               keyExtractor={(item) => item.user_id.toString()}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
@@ -251,7 +251,7 @@ function FollowListScreen() {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
-        style={{ flex: 1, marginBottom: insets.bottom }}
+        style={{ flex: 1 }}
       />
     </View>
   );

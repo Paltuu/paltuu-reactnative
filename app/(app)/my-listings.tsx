@@ -236,8 +236,7 @@ function MyListingsScreen() {
           data={myListings}
           keyExtractor={(item) => item.pet_id.toString()}
           renderItem={renderItem}
-          style={{ marginBottom: insets.bottom }}
-          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 120 + insets.bottom }}
           onRefresh={handleRefresh}
           refreshing={refreshing}
           ListEmptyComponent={
