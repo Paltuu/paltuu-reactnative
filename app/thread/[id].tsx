@@ -534,7 +534,6 @@ export default function CommentThreadScreen() {
                       multiline
                       autoFocus
                     />
-                    <ContentWarningBanner text={draft.text} />
                   </View>
                 </View>
               </View>
@@ -554,6 +553,11 @@ export default function CommentThreadScreen() {
                 </View>
               )}
 
+              {!mentionActive && (
+                <View style={{ paddingHorizontal: 12 }}>
+                  <ContentWarningBanner text={draft.text} />
+                </View>
+              )}
               {!mentionActive && (
                 <View style={{
                   flexDirection: 'row', alignItems: 'center',

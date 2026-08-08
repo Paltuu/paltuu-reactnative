@@ -7,6 +7,7 @@
 // eagerly at pick time by useMediaDraft, so a job's `settle()` has usually
 // already resolved by the time it runs; what's left is creating the post and
 // wiring the result into the feed cache.
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { socialApi } from '../api/social';
 import { queryClient } from '../api/queryClient';
@@ -165,6 +166,18 @@ export const useUploadStore = create<UploadState>((set, get) => {
     });
 
     await confirmVideos(post.media ?? [], settled.videoKeys);
+
+    // The server censors slurs rather than rejecting or hiding the post (see
+    // lib/moderation/badWords.ts). The composer is long gone by now — this job
+    // runs in the background — so the author is told via an alert rather than
+    // inline. `post` already carries the censored copy, so the optimistic row
+    // built below shows the covered wording, not the original.
+    if ((post as any)?.moderation_state === 'redacted') {
+      Alert.alert(
+        'Some words were hidden',
+        'Your post went up, but language that violates our Community Guidelines has been covered up. Repeated violations can get your account suspended.'
+      );
+    }
 
     // Show the fresh post at the top of the feed instantly rather than waiting
     // for a refetch round trip.

@@ -34,7 +34,7 @@ const REDACTED_MARKER = 'REDACTED';
 const patternsConfig: PatternsConfig = {
     // Mirrors the hashtag regex already used for tap-navigation in PostCard.tsx.
     hashtag: { pattern: /(#\w+)/g },
-    redacted: { pattern: /REDACTED/g },
+    redacted: { pattern: /(REDACTED)/g },
 };
 
 // `getConfigsArray` isn't part of the package's public export surface, so we

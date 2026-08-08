@@ -545,7 +545,6 @@ export default function PostDetailScreen() {
                       multiline
                       autoFocus
                     />
-                    <ContentWarningBanner text={draft.text} />
                   </View>
                 </View>
               </View>
@@ -569,6 +568,11 @@ export default function PostDetailScreen() {
 
               {/* Toolbar / quick-access bar + Reply — stuck to the keyboard;
                   hidden while mention suggestions are showing */}
+              {!mentionActive && (
+                <View style={{ paddingHorizontal: 12 }}>
+                  <ContentWarningBanner text={draft.text} />
+                </View>
+              )}
               {!mentionActive && (
                 <View style={{
                   flexDirection: 'row', alignItems: 'center',

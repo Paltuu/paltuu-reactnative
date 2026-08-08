@@ -428,7 +428,6 @@ export default function CreatePostScreen() {
                   fontFamily: 'DMSans_400Regular',
                 }}
               />
-              <ContentWarningBanner text={caption} />
             </View>
           </View>
 
@@ -509,6 +508,11 @@ export default function CreatePostScreen() {
             backgroundColor: '#fff',
           }}
         >
+          {/* Moderation nudge — pinned here rather than under the caption
+                input, which reserves ~100px of blank height and would leave
+                the warning floating in the middle of an empty screen. */}
+          <ContentWarningBanner text={caption} />
+
           {/* Media tools row — edit mode only allows changing the caption
                 and pet tags, so the image/camera pickers are hidden there. */}
           <View className="flex-row items-center gap-5">

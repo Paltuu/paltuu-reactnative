@@ -10,7 +10,8 @@
 // banner, the "don't block" half is served by an optimistic comment row that
 // appears in the thread immediately and solidifies when the server replies.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Text } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { socialApi } from '../../api/social';
 import { petProfilesApi } from '../../api/petProfiles';
@@ -30,20 +31,46 @@ export { ComposerMediaGrid, ComposerToolbar } from './ComposerMediaGrid';
 export type { DraftMedia } from '../../hooks/useMediaDraft';
 
 /**
- * Inline nudge shown under a compose/comment input while the user types.
- * This is a soft warning only — it never blocks submission. The server does
- * the authoritative check and is the only thing that can actually shadow-hide
- * content (see lib/moderation/badWords.ts in paltuu-nextjs for why).
+ * Compact nudge shown while composing a post/comment.
+ *
+ * Belongs pinned to the composer's bottom toolbar, NOT inline under the text
+ * input: the caption field reserves ~100px of empty height, so an inline
+ * banner ends up floating alone in the middle of a blank screen, visually
+ * attached to nothing. Anchored to the toolbar it always sits in the same
+ * predictable place, keyboard up or down.
+ *
+ * Soft warning only — it never blocks submission. The server does the
+ * authoritative check and is the only thing that can actually censor content
+ * (see lib/moderation/badWords.ts in paltuu-nextjs).
  */
 export const ContentWarningBanner = ({ text }: { text: string }) => {
   const { severe, mild } = useMemo(() => matchBadWords(text), [text]);
   if (severe.length === 0 && mild.length === 0) return null;
+  const isSevere = severe.length > 0;
   return (
-    <Text style={{ fontSize: 12, color: severe.length > 0 ? '#DC2626' : '#B45309', marginTop: 6 }}>
-      {severe.length > 0
-        ? "This looks like it may include offensive language — it can still be posted, but may be hidden from others pending review."
-        : 'This looks like it may include language some people find offensive.'}
-    </Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
+        marginBottom: 10,
+        borderRadius: 8,
+        backgroundColor: isSevere ? '#FEF2F2' : '#FFFBEB',
+      }}
+    >
+      <Ionicons
+        name={isSevere ? 'alert-circle' : 'warning-outline'}
+        size={15}
+        color={isSevere ? '#DC2626' : '#B45309'}
+      />
+      <Text style={{ flex: 1, fontSize: 12, lineHeight: 16, color: isSevere ? '#B91C1C' : '#92400E' }}>
+        {isSevere
+          ? 'Offensive language will be covered up.'
+          : 'This may read as offensive to some people.'}
+      </Text>
+    </View>
   );
 };
 
@@ -201,6 +228,18 @@ export const useCommentDraft = ({
         );
         queryClient.invalidateQueries({ queryKey: ['comments', postId] });
         queryClient.invalidateQueries({ queryKey: ['post', postId] });
+
+        // The server censors slurs rather than rejecting or hiding the comment
+        // (see lib/moderation/badWords.ts) — the reply stays in the thread so
+        // its own replies keep their parent, but the author is told plainly
+        // that part of their wording was covered. The swap above has already
+        // replaced their optimistic row with the censored copy.
+        if (created?.moderation_state === 'redacted') {
+          Alert.alert(
+            'Some words were hidden',
+            'Your reply was posted, but language that violates our Community Guidelines has been covered up. Repeated violations can get your account suspended.'
+          );
+        }
       } catch (err: any) {
         console.error('[useCommentDraft] Failed to post comment:', err);
         // Roll the optimistic row back rather than leaving a ghost in the thread.

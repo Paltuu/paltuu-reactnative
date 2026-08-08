@@ -194,7 +194,6 @@ export default function CommentComposerScreen() {
                     placeholderTextColor="#9CA3AF"
                     style={{ fontSize: 17, color: '#111', minHeight: mentionActive ? undefined : 90, textAlignVertical: 'top', paddingTop: 8 }}
                   />
-                  <ContentWarningBanner text={draft.text} />
                 </View>
               </View>
 
@@ -240,6 +239,9 @@ export default function CommentComposerScreen() {
             : (insets.bottom > 0 ? insets.bottom : 12),
           backgroundColor: '#fff',
         }}>
+          {/* Pinned here rather than under the reply input, which reserves
+              ~90px of blank height and would leave this floating alone. */}
+          <ContentWarningBanner text={draft.text} />
           <ComposerToolbar
             onImage={draft.pickImage}
             onCamera={draft.pickCamera}
