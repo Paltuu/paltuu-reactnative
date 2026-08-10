@@ -71,6 +71,11 @@ export const SEVERE_PHRASES = [
     'ullu ki aulad', 'ullu ki zat', 'lomdi ki aulad', 'lomdi ki zat',
     'bhed ki aulad', 'bhed ki zat', 'bakri ki aulad', 'bakri ki zat',
     'billi ki aulad', 'billi ki zat', 'mendhak ki aulad', 'mendhak ki zat',
+
+    // --- Racist phrases: the individual words are common vocabulary, so
+    // only the combination (invoking slavery/dehumanization rhetoric) is
+    // SEVERE, not the bare words — see the Next.js copy for rationale. ---
+    'slavery black monkey', 'black monkey slavery', 'monkey slavery',
 ];
 
 export const MILD_WORDS = [
@@ -206,6 +211,20 @@ function buildMatcher(words: string[]): RegExp | null {
 const SEVERE_RE = buildMatcher([...SEVERE_WORDS, ...SEVERE_PHRASES]);
 const MILD_RE = buildMatcher(MILD_WORDS);
 
+const LEET_SUBSTITUTIONS: Record<string, string> = {
+    '!': 'i', '1': 'i', '0': 'o', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's', '+': 't',
+};
+const LEET_RE = new RegExp(`[${Object.keys(LEET_SUBSTITUTIONS).map((c) => `\\${c}`).join('')}]`, 'g');
+
+/**
+ * Normalizes common leetspeak substitutions ("n!gga", "sl4very") to plain
+ * letters before matching — see the Next.js copy (canonical) for the full
+ * rationale. Kept in sync manually like the rest of this file.
+ */
+export function normalizeLeetspeak(text: string): string {
+    return text.replace(LEET_RE, (ch) => LEET_SUBSTITUTIONS[ch] ?? ch);
+}
+
 /**
  * Scans free text for SEVERE and MILD matches, for the composer's inline
  * warning only. Case-insensitive, whole-word. Returns deduped, lowercased
@@ -213,8 +232,9 @@ const MILD_RE = buildMatcher(MILD_WORDS);
  */
 export function matchBadWords(text: string): BadWordMatch {
     if (!text) return { severe: [], mild: [] };
-    const severe = SEVERE_RE ? Array.from(new Set((text.match(SEVERE_RE) ?? []).map((w) => w.toLowerCase()))) : [];
-    const mild = MILD_RE ? Array.from(new Set((text.match(MILD_RE) ?? []).map((w) => w.toLowerCase()))) : [];
+    const normalized = normalizeLeetspeak(text);
+    const severe = SEVERE_RE ? Array.from(new Set((normalized.match(SEVERE_RE) ?? []).map((w) => w.toLowerCase()))) : [];
+    const mild = MILD_RE ? Array.from(new Set((normalized.match(MILD_RE) ?? []).map((w) => w.toLowerCase()))) : [];
     return { severe, mild };
 }
 
