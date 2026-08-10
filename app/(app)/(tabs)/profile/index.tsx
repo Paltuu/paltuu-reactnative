@@ -3,16 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Pressable,
   Image,
   ActivityIndicator,
-  Animated,
   StyleSheet,
   Dimensions,
   FlatList,
   Share,
-  Modal,
-  Switch,
   Alert,
   ScrollView,
   BackHandler,
@@ -24,7 +20,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../../src/stores/authStore';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { socialApi, SocialPost } from '../../../../src/api/social';
 import { petProfilesApi } from '../../../../src/api/petProfiles';
 import client from '../../../../src/api/client';
@@ -49,7 +45,6 @@ const Icons = {
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MENU_WIDTH = SCREEN_WIDTH;
 const AVATAR_SIZE = 96;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -84,30 +79,6 @@ function formatDate(dateStr?: string): string {
     return 'now';
   }
 }
-
-// ─── Menu Item ────────────────────────────────────────────────────────────────
-
-const MenuItem = ({
-  icon,
-  label,
-  onPress,
-  danger = false,
-  right,
-}: {
-  icon: string;
-  label: string;
-  onPress?: () => void;
-  danger?: boolean;
-  right?: React.ReactNode;
-}) => (
-  <TouchableOpacity style={s.menuItemRow} onPress={onPress} activeOpacity={0.65}>
-    <View style={s.menuItemLeft}>
-      <Ionicons name={icon as any} size={21} color={danger ? DS.primary : DS.dark} />
-      <Text style={[s.menuItemText, danger && { color: DS.primary }]}>{label}</Text>
-    </View>
-    {right ?? <Ionicons name="chevron-forward" size={15} color={DS.gray400} />}
-  </TouchableOpacity>
-);
 
 // The Pets tab renders shared PetIdCard components (CNIC-style ID cards);
 // standard posts (including reposts, rendered inline via PostCardShared's own
@@ -147,14 +118,12 @@ const PROFILE_INTRO_DIALOGS = [
 
 export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
   // create-post <-> home <-> pets <-> search <-> profile (end of chain, no left swipe)
 
   const [activeTab, setActiveTab] = useState<TabKey>('Posts');
-  const [menuVisible, setMenuVisible] = useState(false);
   const [imageModal, setImageModal] = useState<'profile' | 'cover' | null>(null);
   const [uploading, setUploading] = useState<'profile' | 'cover' | null>(null);
   const [selectedLocalAsset, setSelectedLocalAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -175,15 +144,8 @@ export default function ProfileScreen() {
   const advanceIntroDialog = () =>
     setIntroDialogIndex((i) => (i + 1 < PROFILE_INTRO_DIALOGS.length ? i + 1 : -1));
 
-  const menuSlideX = useRef(new Animated.Value(MENU_WIDTH)).current;
   const listRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
-  // Set right before a sidebar item pushes a screen; the sidebar has to close
-  // first (it's a full-screen RN Modal, which renders above the navigator and
-  // would otherwise stay stuck on top of whatever gets pushed), but on the
-  // way back the user's mental model is "I came from the sidebar" — so reopen
-  // it once this screen regains focus instead of landing on a bare profile.
-  const reopenMenuOnFocusRef = useRef(false);
 
   // Swiping between the Posts/Pets sub-tabs — kept in a ref so the
   // PanResponder (created once) always reads the current tab instead of
@@ -251,34 +213,6 @@ export default function ProfileScreen() {
     });
   }, [userId, queryClient]);
 
-  const togglePrivacyMutation = useMutation({
-    mutationFn: (newPrivacy: boolean) => socialApi.togglePrivacy(newPrivacy),
-    onMutate: async (newPrivacy) => {
-      await queryClient.cancelQueries({ queryKey: ['social-profile', userId] });
-      const previousProfile = queryClient.getQueryData(['social-profile', userId]);
-      queryClient.setQueryData(['social-profile', userId], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          profile: {
-            ...old.profile,
-            is_private: newPrivacy,
-          }
-        };
-      });
-      return { previousProfile };
-    },
-    onError: (err, newPrivacy, context: any) => {
-      if (context?.previousProfile) {
-        queryClient.setQueryData(['social-profile', userId], context.previousProfile);
-      }
-      Alert.alert('Error', 'Failed to update privacy settings.');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-profile', userId] });
-    }
-  });
-
   const profile = profileData?.profile || (user as any);
 
   const tabData: Record<TabKey, any[]> = {
@@ -330,58 +264,6 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (scrollYRef.current > 0) {
         listRef.current?.scrollToOffset({ offset: scrollYRef.current, animated: false });
-      }
-    }, [])
-  );
-
-  // ── Menu animation ──────────────────────────────────────────────────────────
-  // `animated=false` snaps the panel straight to open with no slide/delay —
-  // used when reopening after a menu-launched push is popped, so the panel
-  // is already there on the frame the profile screen regains focus instead
-  // of visibly sliding in (which read as the screen "loading").
-  const openMenu = (animated: boolean = true) => {
-    setMenuVisible(true);
-    if (!animated) {
-      menuSlideX.setValue(0);
-      return;
-    }
-    menuSlideX.setValue(MENU_WIDTH);
-    setTimeout(() => {
-      Animated.timing(menuSlideX, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    }, 32);
-  };
-
-  const closeMenu = () => {
-    Animated.timing(menuSlideX, {
-      toValue: MENU_WIDTH,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => setMenuVisible(false));
-  };
-
-  // Every sidebar link should go through this instead of calling
-  // closeMenu()+router.push() directly, so the "reopen on back" behavior
-  // below stays in sync with what's actually navigable from the menu.
-  const navigateFromMenu = (path: string) => {
-    reopenMenuOnFocusRef.current = true;
-    closeMenu();
-    router.push(path as any);
-  };
-
-  // Reopens the sidebar when this screen regains focus after a menu-launched
-  // push (e.g. Settings) is popped, instead of leaving the user on a bare
-  // profile. Does NOT fire on first mount or on unrelated focus events
-  // (tab switches, pull-to-refresh) because the ref only gets set by
-  // navigateFromMenu immediately before the push.
-  useFocusEffect(
-    useCallback(() => {
-      if (reopenMenuOnFocusRef.current) {
-        reopenMenuOnFocusRef.current = false;
-        openMenu(false);
       }
     }, [])
   );
@@ -555,7 +437,7 @@ export default function ProfileScreen() {
               tintColor="#000000"
             />
           </TouchableOpacity>
-          <TouchableOpacity style={s.menuBtn} onPress={() => (menuVisible ? closeMenu() : openMenu())}>
+          <TouchableOpacity style={s.menuBtn} onPress={() => router.push('/(app)/profile-menu' as any)}>
             <ExpoImage
               source={require('../../../../assets/icons/hamburger-solid-2.svg')}
               style={{ width: 24, height: 24 }}
@@ -752,128 +634,6 @@ export default function ProfileScreen() {
         </PullToRefreshView>
       </View>
 
-      {/* ── Side drawer menu ────────────────────────────────────────────────── */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="none"
-        onRequestClose={closeMenu}
-        presentationStyle="overFullScreen"
-      >
-        <Pressable style={s.menuOverlay} onPress={closeMenu}>
-          <Animated.View style={[s.menuPanel, { transform: [{ translateX: menuSlideX }] }]}>
-            <Pressable onPress={() => { }} style={{ flex: 1 }}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-              >
-                {/* Header */}
-                <View style={[s.menuHeader, { paddingTop: insets.top + 20 }]}>
-                  <Avatar
-                    uri={profile?.profile_image_url}
-                    size={52}
-                  />
-                  <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={s.menuHeaderName} numberOfLines={1}>
-                      {profile?.name || 'User'}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={s.menuHeaderUsername} numberOfLines={1}>
-                        @{profile?.social_username || profile?.username || 'user'}
-                      </Text>
-                      {!!profile?.verified && (
-                        <ExpoImage source={VerifiedIcon} style={{ width: 12, height: 12 }} tintColor={COLORS.primary} />
-                      )}
-                      {!!profile?.founding_club && (
-                        <ExpoImage source={DayOneIcon} style={{ width: 12, height: 12 }} tintColor={COLORS.primary} />
-                      )}
-                    </View>
-                  </View>
-                  <TouchableOpacity onPress={closeMenu} hitSlop={12} style={{ padding: 4 }}>
-                    <Ionicons name="close" size={24} color={DS.dark} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={s.menuDivider} />
-
-                <MenuItem
-                  icon="settings-outline"
-                  label="Settings"
-                  onPress={() => navigateFromMenu('/(app)/profile/settings')}
-                />
-                <MenuItem
-                  icon="bookmark-outline"
-                  label="Saved Posts"
-                  onPress={() => navigateFromMenu('/(app)/profile/saved')}
-                />
-                <MenuItem
-                  icon="paw-outline"
-                  label="My Adoption Listings"
-                  onPress={() => navigateFromMenu('/(app)/my-listings')}
-                />
-                <MenuItem
-                  icon="mail-outline"
-                  label="Adoption Requests"
-                  onPress={() => navigateFromMenu('/(app)/adoption-requests')}
-                />
-                <MenuItem
-                  icon="document-text-outline"
-                  label="My Applications"
-                  onPress={() => navigateFromMenu('/(app)/my-applications')}
-                />
-
-                {/* Account privacy toggle */}
-                <View style={s.menuItemRow}>
-                  <View style={s.menuItemLeft}>
-                    <Ionicons name="lock-closed-outline" size={21} color={DS.dark} />
-                    <Text style={s.menuItemText}>Private Account</Text>
-                  </View>
-                  <Switch
-                    value={profile?.is_private ?? false}
-                    onValueChange={(val) => togglePrivacyMutation.mutate(val)}
-                    disabled={togglePrivacyMutation.isPending}
-                    trackColor={{ true: DS.primary, false: DS.gray100 }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-
-                <View style={s.menuDivider} />
-
-                <MenuItem
-                  icon="help-circle-outline"
-                  label="Help"
-                  onPress={() => navigateFromMenu('/(app)/profile/help')}
-                />
-                <MenuItem
-                  icon="information-circle-outline"
-                  label="About"
-                  onPress={() => navigateFromMenu('/(app)/profile/about')}
-                />
-                <MenuItem
-                  icon="shield-outline"
-                  label="Privacy Center"
-                  onPress={() => navigateFromMenu('/(app)/profile/privacy')}
-                />
-                <MenuItem
-                  icon="remove-circle-outline"
-                  label="Blocked Users"
-                  onPress={() => navigateFromMenu('/(app)/profile/blocked')}
-                />
-
-                <View style={s.menuDivider} />
-
-                <MenuItem
-                  icon="log-out-outline"
-                  label="Log Out"
-                  danger
-                  right={<View />}
-                  onPress={() => { closeMenu(); logout(); }}
-                />
-              </ScrollView>
-            </Pressable>
-          </Animated.View>
-        </Pressable>
-      </Modal>
 
       {/* ── Image viewer / uploader ─────────────────────────────────────────────
             Rendered in-tree (not via React Native's <Modal>) — Android's native
@@ -1191,66 +951,6 @@ const s = StyleSheet.create({
     marginTop: 10,
   },
 
-  // ─ Menu drawer ─
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  menuPanel: {
-    width: MENU_WIDTH,
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 0,
-    backgroundColor: DS.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: -3, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  menuHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  menuHeaderName: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 16,
-    color: DS.dark,
-  },
-  menuHeaderUsername: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 13,
-    color: DS.gray500,
-    marginTop: 2,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: DS.gray100,
-    marginVertical: 6,
-  },
-  menuItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    flex: 1,
-  },
-  menuItemText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 15,
-    color: DS.dark,
-  },
 
   // ─ Image modal ─
   imgModalBg: {

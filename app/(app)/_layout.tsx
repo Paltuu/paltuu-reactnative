@@ -76,6 +76,10 @@ function LayoutContent() {
           name="topic/[slug]"
           options={{ animation: 'slide_from_right', gestureEnabled: true }}
         />
+        <Stack.Screen
+          name="profile-menu"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
       </Stack>
     </View>
   );
