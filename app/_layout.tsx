@@ -21,6 +21,10 @@ import { useLocationStore } from '../src/stores/locationStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../src/api/queryClient';
 import { handleDeepLink } from '../src/services/deepLinks';
+// Side-effect import: patches expo-router's push/navigate to drop duplicate
+// calls fired within 800ms (rapid double-taps on icons/list rows). Must run
+// once at app start, before any screen navigates. See navigationGuard.ts.
+import '../src/utils/navigationGuard';
 import '../src/styles/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';

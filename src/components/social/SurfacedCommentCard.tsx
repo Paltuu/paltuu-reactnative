@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { Avatar } from '../common/Avatar';
 import { formatCount } from './PostCard';
 import { timeAgo as formatTime } from '../../utils/timeAgo';
-import { guardedPush } from '../../utils/navigationGuard';
 import { COLORS } from '../../constants/colors';
 import type { SurfacedComment } from '../../api/social';
 
@@ -24,7 +23,7 @@ export function SurfacedCommentCard({ item }: { item: SurfacedComment }) {
   const router = useRouter();
 
   const handlePress = useCallback(() => {
-    guardedPush(router, {
+    router.push({
       pathname: '/thread/[id]',
       params: { id: item.comment_id, postId: item.post_id, viaSurfaced: 'true' },
     });

@@ -335,9 +335,17 @@ export default function ProfileScreen() {
   );
 
   // ── Menu animation ──────────────────────────────────────────────────────────
-  const openMenu = () => {
-    menuSlideX.setValue(MENU_WIDTH);
+  // `animated=false` snaps the panel straight to open with no slide/delay —
+  // used when reopening after a menu-launched push is popped, so the panel
+  // is already there on the frame the profile screen regains focus instead
+  // of visibly sliding in (which read as the screen "loading").
+  const openMenu = (animated: boolean = true) => {
     setMenuVisible(true);
+    if (!animated) {
+      menuSlideX.setValue(0);
+      return;
+    }
+    menuSlideX.setValue(MENU_WIDTH);
     setTimeout(() => {
       Animated.timing(menuSlideX, {
         toValue: 0,
@@ -373,7 +381,7 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (reopenMenuOnFocusRef.current) {
         reopenMenuOnFocusRef.current = false;
-        openMenu();
+        openMenu(false);
       }
     }, [])
   );

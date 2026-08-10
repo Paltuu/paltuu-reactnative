@@ -19,7 +19,6 @@ import { socialApi } from '../../src/api/social';
 import { useCommentsQuery, commentsQueryKey, updateCommentInPages, removeCommentAndDescendantsInPages } from '../../src/hooks/useComments';
 import { triggerLikeHaptic } from '../../src/utils/haptics';
 import { useAuthStore } from '../../src/stores/authStore';
-import { guardedPush } from '../../src/utils/navigationGuard';
 import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkeleton';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import {
@@ -222,7 +221,7 @@ export default function CommentThreadScreen() {
   }, [router, user?.id]);
 
   const handleContinueThread = useCallback((commentId: string) => {
-    guardedPush(router, { pathname: '/thread/[id]', params: { id: commentId, postId: String(postId) } });
+    router.push({ pathname: '/thread/[id]', params: { id: commentId, postId: String(postId) } });
   }, [router, postId]);
 
   /* ── Reply draft — defaults to replying to the focused comment ── */

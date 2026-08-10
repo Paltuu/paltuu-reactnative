@@ -24,7 +24,6 @@ import { CommentRowSkeleton } from '../../src/components/social/CommentRowSkelet
 import { QuickProfileModal } from '../../src/components/social/QuickProfileModal';
 import { PostCardModalsProvider } from '../../src/context/PostCardModalsContext';
 import { setPlayingPostId } from '../../src/utils/videoPlaySubscription';
-import { guardedPush } from '../../src/utils/navigationGuard';
 
 import {
   useCommentDraft,
@@ -189,7 +188,7 @@ export default function PostDetailScreen() {
   // Past the inline-depth cap, tapping "Continue this thread" opens a focused
   // page rooted at that comment (fresh indentation budget).
   const handleContinueThread = useCallback((commentId: string) => {
-    guardedPush(router, { pathname: '/thread/[id]', params: { id: commentId, postId: String(id) } });
+    router.push({ pathname: '/thread/[id]', params: { id: commentId, postId: String(id) } });
   }, [router, id]);
 
   /* ── Reply draft (shared composer logic) ── */
