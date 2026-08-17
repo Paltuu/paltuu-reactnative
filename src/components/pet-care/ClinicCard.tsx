@@ -22,6 +22,12 @@ const formatDistance = (km: number) =>
 export const ClinicCard = ({ clinic, onPress, distanceKm }: ClinicCardProps) => {
   const rating = clinic.rating != null ? Number(clinic.rating) : null;
   const reviews = clinic.total_reviews ?? 0;
+  const isHomeVet = clinic.listing_type === 'home_vet';
+  const locationText = isHomeVet
+    ? clinic.coverage_area
+      ? `Covers ${clinic.coverage_area}`
+      : 'Coverage area not listed'
+    : clinic.address;
 
   const hasDiscount =
     !!clinic.discount_details &&
@@ -53,6 +59,10 @@ export const ClinicCard = ({ clinic, onPress, distanceKm }: ClinicCardProps) => 
           <Text style={styles.name} numberOfLines={1}>
             {clinic.name}
           </Text>
+          <View style={styles.typePill}>
+            <Ionicons name={isHomeVet ? 'home' : 'medkit'} size={10} color={PRIMARY} />
+            <Text style={styles.typePillText}>{isHomeVet ? 'Home Visit' : 'Clinic'}</Text>
+          </View>
           {clinic.is_verified && (
             <View style={styles.verifiedPill}>
               <MaterialIcons name="verified" size={11} color={PRIMARY} />
@@ -88,7 +98,7 @@ export const ClinicCard = ({ clinic, onPress, distanceKm }: ClinicCardProps) => 
         <View style={styles.addressRow}>
           <Ionicons name="location-outline" size={12} color={MUTED} style={{ marginTop: 1 }} />
           <Text style={styles.address} numberOfLines={2}>
-            {clinic.address}
+            {locationText}
           </Text>
         </View>
 
@@ -143,6 +153,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: DARK,
     flexShrink: 1,
+  },
+  typePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#F0F0F2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
+  typePillText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 9.5,
+    color: PRIMARY,
   },
   verifiedPill: {
     flexDirection: 'row',

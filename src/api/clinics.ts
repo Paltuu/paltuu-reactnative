@@ -12,6 +12,7 @@ export interface ClinicQueryParams {
   sort?: 'rating' | 'distance';
   lat?: number;
   lng?: number;
+  listing_type?: 'clinic' | 'home_vet';
 }
 
 export interface ClinicPagination {

@@ -29,6 +29,7 @@ const H_PAD = 20;
 const PAGE_SIZE = 20;
 
 type SortMode = 'default' | 'nearby';
+type ListingType = 'all' | 'clinic' | 'home_vet';
 
 function PetCareScreen() {
   const router = useRouter();
@@ -39,6 +40,7 @@ function PetCareScreen() {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [listingType, setListingType] = useState<ListingType>('all');
   const listRef = useRef<any>(null);
 
   const {
@@ -60,9 +62,14 @@ function PetCareScreen() {
     search: debouncedSearch || undefined,
     city: selectedCity || undefined,
     verified: verifiedOnly || undefined,
+    listing_type: listingType !== 'all' ? listingType : undefined,
+    // Always forward coordinates once resolved (not just in explicit "nearby"
+    // mode) so the backend's default ordering can rank by proximity band +
+    // verified status. `sort: 'distance'` is only set when the user explicitly
+    // taps "Near me", forcing a strict distance-only order.
     sort: nearby ? ('distance' as const) : undefined,
-    lat: nearby ? latitude! : undefined,
-    lng: nearby ? longitude! : undefined,
+    lat: hasLocation ? latitude! : undefined,
+    lng: hasLocation ? longitude! : undefined,
   };
 
   const {
@@ -91,13 +98,14 @@ function PetCareScreen() {
   const cities = data?.pages[0]?.cities ?? [];
 
   const isFiltering =
-    !!search || !!selectedCity || verifiedOnly || sortMode === 'nearby';
+    !!search || !!selectedCity || verifiedOnly || sortMode === 'nearby' || listingType !== 'all';
 
   const resetFilters = () => {
     setSearch('');
     setSelectedCity(null);
     setVerifiedOnly(false);
     setSortMode('default');
+    setListingType('all');
   };
 
   const handleNearMe = async () => {
@@ -136,7 +144,7 @@ function PetCareScreen() {
   // sitting at whatever offset it was at for the previous results.
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [debouncedSearch, selectedCity, verifiedOnly, sortMode]);
+  }, [debouncedSearch, selectedCity, verifiedOnly, sortMode, listingType]);
 
   const resolvingLoc = locStatus === 'resolving';
 
@@ -214,6 +222,32 @@ function PetCareScreen() {
         )}
       </View>
 
+      {/* Type selector: All / Clinics / Home Vets */}
+      <View style={styles.typeRow}>
+        {(
+          [
+            { key: 'all', label: 'All', icon: 'apps-outline' as const },
+            { key: 'clinic', label: 'Clinics', icon: 'medkit-outline' as const },
+            { key: 'home_vet', label: 'Home Vets', icon: 'home-outline' as const },
+          ] as { key: ListingType; label: string; icon: keyof typeof Ionicons.glyphMap }[]
+        ).map(({ key, label, icon }) => {
+          const active = listingType === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setListingType(key)}
+              activeOpacity={0.85}
+              style={[styles.typeChip, active && styles.toggleActive]}
+            >
+              <Ionicons name={icon} size={14} color={active ? '#FFF' : PRIMARY} />
+              <Text style={[styles.toggleText, active && styles.toggleTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* City selector */}
       {cities.length > 0 && (
         <FlatList
@@ -245,7 +279,18 @@ function PetCareScreen() {
 
       <View style={styles.resultRow}>
         <Text style={styles.resultCount}>
-          {total} {total === 1 ? 'clinic' : 'clinics'}
+          {total}{' '}
+          {listingType === 'clinic'
+            ? total === 1
+              ? 'clinic'
+              : 'clinics'
+            : listingType === 'home_vet'
+            ? total === 1
+              ? 'home vet'
+              : 'home vets'
+            : total === 1
+            ? 'result'
+            : 'results'}
         </Text>
         {sortMode === 'nearby' && hasLocation && (
           <Text style={styles.sortedBy}>Sorted by distance</Text>
@@ -362,6 +407,18 @@ const styles = StyleSheet.create({
   toggleActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   toggleText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: PRIMARY },
   toggleTextActive: { color: '#FFF' },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F0DCE1',
+  },
   resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',

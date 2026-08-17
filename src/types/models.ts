@@ -19,6 +19,8 @@ export interface Clinic {
   rating?: string | number | null;
   total_reviews?: number | null;
   vet_count?: number | null;
+  listing_type?: 'clinic' | 'home_vet';
+  coverage_area?: string | null;
 }
 
 export interface Qualification {

@@ -663,6 +663,8 @@ export const socialApi = {
         total_reviews: number | null;
         is_paltuu_partner: boolean;
         distance_km: number | null;
+        listing_type?: 'clinic' | 'home_vet';
+        coverage_area?: string | null;
       }[];
     };
   },

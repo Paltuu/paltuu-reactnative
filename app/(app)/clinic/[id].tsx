@@ -97,6 +97,12 @@ function ClinicDetailsScreen() {
   const reviews = clinic.total_reviews ?? 0;
   const phone = clinic.contact_number;
   const vets = clinic.vets ?? [];
+  const isHomeVet = clinic.listing_type === 'home_vet';
+  const locationText = isHomeVet
+    ? clinic.coverage_area
+      ? `Covers ${clinic.coverage_area}`
+      : 'Coverage area not listed'
+    : clinic.address;
 
   const handleCall = () => phone && Linking.openURL(`tel:${phone}`);
   const handleWhatsApp = () => {
@@ -173,6 +179,10 @@ function ClinicDetailsScreen() {
                 <MaterialIcons name="verified" size={18} color={PRIMARY} />
               )}
             </View>
+            <View style={styles.typeBadge}>
+              <Ionicons name={isHomeVet ? 'home' : 'medkit'} size={11} color={PRIMARY} />
+              <Text style={styles.typeBadgeText}>{isHomeVet ? 'Home Visit' : 'Clinic'}</Text>
+            </View>
 
             {rating != null && (
               <View style={styles.ratingBlock}>
@@ -236,7 +246,7 @@ function ClinicDetailsScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionLabel}>Location</Text>
             <Text style={styles.locationName}>{clinic.name}</Text>
-            <Text style={styles.address}>{clinic.address}</Text>
+            <Text style={styles.address}>{locationText}</Text>
 
             {canMap && (
               <TouchableOpacity onPress={handleMap} style={styles.mapPreview} activeOpacity={0.9}>
@@ -398,6 +408,18 @@ const styles = StyleSheet.create({
   logoFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#EAF3F0' },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 },
   clinicName: { fontFamily: FONTS.heading, fontSize: 20, color: DARK, textAlign: 'center' },
+  typeBadge: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F0F2',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginTop: 8,
+  },
+  typeBadgeText: { fontFamily: FONTS.bodyBold, fontSize: 10.5, color: PRIMARY },
 
   ratingBlock: { alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F2' },
   googleLogo: { width: 120, height: 32, marginBottom: 10 },

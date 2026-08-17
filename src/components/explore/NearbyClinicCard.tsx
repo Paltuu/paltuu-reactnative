@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { socialApi } from '../../api/social';
 import { FONTS } from '../../constants/typography';
 
@@ -17,6 +18,7 @@ export type NearbyClinic = Awaited<ReturnType<typeof socialApi.getVetsNearby>>['
 export const NearbyClinicCard = ({ clinic, onPress }: { clinic: NearbyClinic; onPress: () => void }) => {
   const rating = clinic.rating != null ? Number(clinic.rating) : null;
   const distanceKm = clinic.distance_km != null ? Number(clinic.distance_km) : null;
+  const isHomeVet = clinic.listing_type === 'home_vet';
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={{ width: CARD_WIDTH }}>
@@ -30,6 +32,26 @@ export const NearbyClinicCard = ({ clinic, onPress }: { clinic: NearbyClinic; on
         ) : (
           <View style={{ width: '100%', height: IMAGE_HEIGHT, backgroundColor: '#FCE8ED' }} />
         )}
+
+        <View
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 3,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: 'rgba(255,255,255,0.9)',
+          }}
+        >
+          <Ionicons name={isHomeVet ? 'home' : 'medkit'} size={9} color={PRIMARY} />
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, color: PRIMARY }}>
+            {isHomeVet ? 'Home Visit' : 'Clinic'}
+          </Text>
+        </View>
 
         {distanceKm != null && (
           <View
