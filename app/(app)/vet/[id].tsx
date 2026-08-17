@@ -2,19 +2,27 @@ import React from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { getVetDetails } from '../../../src/api/clinics';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getVetDetails, getVetReviewStats } from '../../../src/api/clinics';
 import { Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { ReviewsSection } from '../../../src/components/pet-care/ReviewsSection';
 
 function VetDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data: vet, isLoading, error } = useQuery({
     queryKey: ['vet', id],
     queryFn: () => getVetDetails(id as string),
+  });
+
+  const { data: reviewStats } = useQuery({
+    queryKey: ['vet-review-stats', id],
+    queryFn: () => getVetReviewStats(id as string),
+    enabled: !!id,
   });
 
   if (isLoading) {
@@ -85,7 +93,9 @@ function VetDetailsScreen() {
           
           <View className="flex-row items-center mt-3 bg-white px-4 py-1.5 rounded-full shadow-sm">
             <FontAwesome5 name="star" size={12} color="#F5A623" />
-            <Text className="text-dark font-heading text-xs ml-2">4.8 (24 Reviews)</Text>
+            <Text className="text-dark font-heading text-xs ml-2">
+              {(reviewStats?.average_rating ?? 0).toFixed(1)} ({reviewStats?.reviews_count ?? 0} Reviews)
+            </Text>
           </View>
         </View>
 
@@ -153,6 +163,21 @@ function VetDetailsScreen() {
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Reviews */}
+          <View className="mb-10">
+            <ReviewsSection
+              targetType="vet"
+              targetId={id as string}
+              averageRating={reviewStats?.average_rating ?? 0}
+              reviewsCount={reviewStats?.reviews_count ?? 0}
+              reviews={vet.reviews ?? []}
+              onReviewSubmitted={() => {
+                queryClient.invalidateQueries({ queryKey: ['vet', id] });
+                queryClient.invalidateQueries({ queryKey: ['vet-review-stats', id] });
+              }}
+            />
           </View>
         </View>
       </ScrollView>

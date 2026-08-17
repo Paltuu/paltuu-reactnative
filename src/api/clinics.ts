@@ -47,3 +47,20 @@ export const getVetDetails = async (id: string | number) => {
   const response = await client.get(`/vets/${id}`);
   return response.data;
 };
+
+export const getVetReviewStats = async (id: string | number) => {
+  const response = await client.get(`/vets/reviews-stats?vet_id=${id}`);
+  return response.data;
+};
+
+export interface ReviewSubmission {
+  target_id: string | number;
+  type: 'vet' | 'clinic';
+  rating: number;
+  comment: string;
+}
+
+export const submitReview = async (payload: ReviewSubmission) => {
+  const response = await client.post('/reviews', payload);
+  return response.data;
+};

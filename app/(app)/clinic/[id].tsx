@@ -13,11 +13,12 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-import { getClinicDetails } from '../../../src/api/clinics';
+import { getClinicDetails, getClinicReviewStats } from '../../../src/api/clinics';
 import { VetCard } from '../../../src/components/pet-care/VetCard';
 import { ClinicResources } from '../../../src/components/pet-care/ClinicResources';
+import { ReviewsSection } from '../../../src/components/pet-care/ReviewsSection';
 import { FONTS } from '../../../src/constants/typography';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 
@@ -57,11 +58,18 @@ function ClinicDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
   const { data: clinic, isLoading, error } = useQuery({
     queryKey: ['clinic', id],
     queryFn: () => getClinicDetails(id as string),
+  });
+
+  const { data: reviewStats } = useQuery({
+    queryKey: ['clinic-review-stats', id],
+    queryFn: () => getClinicReviewStats(id as string),
+    enabled: !!id,
   });
 
   if (isLoading) {
@@ -329,6 +337,19 @@ function ClinicDetailsScreen() {
               <ClinicResources />
             </>
           )}
+
+          {/* Reviews */}
+          <ReviewsSection
+            targetType="clinic"
+            targetId={id as string}
+            averageRating={reviewStats?.average_rating ?? 0}
+            reviewsCount={reviewStats?.reviews_count ?? 0}
+            reviews={clinic.reviews ?? []}
+            onReviewSubmitted={() => {
+              queryClient.invalidateQueries({ queryKey: ['clinic', id] });
+              queryClient.invalidateQueries({ queryKey: ['clinic-review-stats', id] });
+            }}
+          />
         </View>
       </ScrollView>
     </View>
