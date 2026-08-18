@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import {
   BottomSheetModal,
@@ -34,8 +35,8 @@ export const LikesBottomSheet = ({ visible, onClose, postId }: LikesBottomSheetP
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  const snapPoints = useMemo(() => ['80%'], []);
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
 
   useEffect(() => {
     if (visible && postId) {
@@ -78,6 +79,24 @@ export const LikesBottomSheet = ({ visible, onClose, postId }: LikesBottomSheetP
     () => data?.pages.flatMap((page) => page.likes) ?? [],
     [data]
   );
+
+  const sheetHeight = useMemo(() => {
+    const HANDLE = 24;
+    const HEADER = 36;
+    const SEARCH = 56;
+    const ROW = 72;
+    const BOTTOM = Math.max(insets.bottom, 16);
+    const visibleRows = isLoading || isError ? 2 : Math.max(likes.length, 1);
+    const raw = HANDLE + HEADER + SEARCH + visibleRows * ROW + BOTTOM;
+    return Math.min(raw, screenHeight * 0.8);
+  }, [isLoading, isError, likes.length, insets.bottom, screenHeight]);
+
+  const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
+
+  useEffect(() => {
+    if (!visible) return;
+    bottomSheetModalRef.current?.snapToIndex(0);
+  }, [sheetHeight, visible]);
 
   const openProfile = useCallback(
     (userId: number) => {
@@ -219,7 +238,7 @@ export const LikesBottomSheet = ({ visible, onClose, postId }: LikesBottomSheetP
             data={likes}
             renderItem={renderItem}
             keyExtractor={(item) => item.like_id}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             onEndReached={() => {
@@ -302,8 +321,8 @@ const styles = StyleSheet.create({
   followingButton: { backgroundColor: '#F3F4F6' },
   followButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   followingButtonText: { color: '#111' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { alignItems: 'center', marginTop: 80 },
+  center: { minHeight: 120, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 24 },
   emptyText: { color: '#9CA3AF', fontSize: 15 },
   retryButton: {
     marginTop: 16,
