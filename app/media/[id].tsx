@@ -378,19 +378,26 @@ function MediaDetailScreen() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.pill} onPress={handleLike} hitSlop={6}>
-              <Image
-                source={likeState.liked ? Icons.pawSelect : Icons.pawUnselect}
-                style={styles.pillIcon}
-                contentFit="contain"
-                tintColor={likeState.liked ? PRIMARY : '#fff'}
-              />
+            <View style={styles.pill}>
+              <TouchableOpacity onPress={handleLike} hitSlop={6}>
+                <Image
+                  source={likeState.liked ? Icons.pawSelect : Icons.pawUnselect}
+                  style={styles.pillIcon}
+                  contentFit="contain"
+                  tintColor={likeState.liked ? PRIMARY : '#fff'}
+                />
+              </TouchableOpacity>
               {likeState.count > 0 && (
-                <Text style={[styles.pillText, likeState.liked && { color: PRIMARY }]}>
-                  {formatCount(likeState.count)}
-                </Text>
+                <TouchableOpacity
+                  onPress={() => modals?.showLikesSheet(String(post.post_id))}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.pillText, likeState.liked && { color: PRIMARY }]}>
+                    {formatCount(likeState.count)}
+                  </Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.pill}

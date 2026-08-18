@@ -185,6 +185,19 @@ export interface ActivityListResponse {
   has_more: boolean;
 }
 
+export interface PostLiker {
+  like_id: string;
+  user_id: number;
+  name: string;
+  profile_image_url: string | null;
+  social_username?: string | null;
+  verified?: boolean;
+  founding_club?: boolean;
+  is_private?: boolean;
+  is_followed_by_me?: boolean;
+  has_pending_request?: boolean;
+}
+
 export interface SocialPet {
   pet_id: number;
   pet_name: string;
@@ -320,6 +333,18 @@ export const socialApi = {
   async toggleLike(postId: string | number) {
     const { data } = await client.post(`/social/posts/${postId}/like`);
     return data as { liked: boolean };
+  },
+
+  async getPostLikes(postId: string | number, cursor?: string, q?: string, limit: number = 30) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    if (q) params.set('q', q);
+    const { data } = await client.get(`/social/posts/${postId}/likes?${params.toString()}`);
+    return data as {
+      likes: PostLiker[];
+      next_cursor: string | null;
+      has_more: boolean;
+    };
   },
 
   async toggleCommentLike(commentId: string | number) {

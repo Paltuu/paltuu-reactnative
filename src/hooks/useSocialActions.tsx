@@ -83,6 +83,7 @@ export const useSocialActions = () => {
       await queryClient.cancelQueries({ queryKey: ['social-following'] });
       await queryClient.cancelQueries({ queryKey: ['social-search'] });
       await queryClient.cancelQueries({ queryKey: ['explore', 'suggested-accounts'] });
+      await queryClient.cancelQueries({ queryKey: ['post-likes'] });
 
       const previousFeedEntries = queryClient.getQueriesData<any>({ queryKey: ['social-feed'] });
       const previousProfile = queryClient.getQueryData(['social-profile', String(userId)]);
@@ -90,6 +91,7 @@ export const useSocialActions = () => {
       const previousFollowingEntries = queryClient.getQueriesData<any>({ queryKey: ['social-following'] });
       const previousSearchEntries = queryClient.getQueriesData<any>({ queryKey: ['social-search'] });
       const previousSuggested = queryClient.getQueryData(['explore', 'suggested-accounts']);
+      const previousPostLikesEntries = queryClient.getQueriesData<any>({ queryKey: ['post-likes'] });
 
       // Followers/following list rows use `is_followed_by_me` (not `is_following`)
       // as their accepted-follow field, but the same pending/private transition
@@ -168,6 +170,17 @@ export const useSocialActions = () => {
         };
       });
 
+      queryClient.setQueriesData({ queryKey: ['post-likes'] }, (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            likes: page.likes ? flipInList(page.likes) : page.likes,
+          })),
+        };
+      });
+
       queryClient.setQueryData(['social-profile-quick', userId], (old: any) => {
         if (!old) return old;
         const next = nextFollowState(old.profile);
@@ -203,6 +216,7 @@ export const useSocialActions = () => {
         previousFollowingEntries,
         previousSearchEntries,
         previousSuggested,
+        previousPostLikesEntries,
       };
     },
     onError: (err, userId, context) => {
@@ -224,6 +238,9 @@ export const useSocialActions = () => {
       if (context?.previousSuggested !== undefined) {
         queryClient.setQueryData(['explore', 'suggested-accounts'], context.previousSuggested);
       }
+      context?.previousPostLikesEntries?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
     },
     onSettled: (data, err, userId) => {
       queryClient.invalidateQueries({ queryKey: ['social-feed'] });
@@ -233,6 +250,7 @@ export const useSocialActions = () => {
       queryClient.invalidateQueries({ queryKey: ['social-following'] });
       queryClient.invalidateQueries({ queryKey: ['social-search'] });
       queryClient.invalidateQueries({ queryKey: ['explore', 'suggested-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['post-likes'] });
     },
   });
 

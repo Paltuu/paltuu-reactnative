@@ -645,6 +645,7 @@ const ActionBar = React.memo(({
   saved,
   shared,
   onLike,
+  onLikeCountPress,
   onComment,
   onRepost,
   onSave,
@@ -662,6 +663,7 @@ const ActionBar = React.memo(({
   saved: boolean;
   shared: boolean;
   onLike: () => void;
+  onLikeCountPress?: () => void;
   onComment: () => void;
   onRepost: () => void;
   onSave: () => void;
@@ -671,17 +673,25 @@ const ActionBar = React.memo(({
   <View style={s.actionBar}>
     {/* Left group: paw-like, comment, repost */}
     <View style={s.actionGroup}>
-      {/* Like / paw */}
-      <TouchableOpacity onPress={onLike} style={s.actionBtn} hitSlop={8}>
-        <Image
-          source={liked ? PostIcons.pawSelect : PostIcons.pawUnselect}
-          style={{ width: 20, height: 20 }}
-          contentFit="contain"
-        />
-        <Text style={[s.actionCount, s.countSlot, liked && { color: '#A03048' }]}>
-          {likeCount > 0 ? formatCount(likeCount) : ''}
-        </Text>
-      </TouchableOpacity>
+      {/* Like / paw — paw toggles like; the count opens who liked it */}
+      <View style={s.actionBtn}>
+        <TouchableOpacity onPress={onLike} hitSlop={8}>
+          <Image
+            source={liked ? PostIcons.pawSelect : PostIcons.pawUnselect}
+            style={{ width: 20, height: 20 }}
+            contentFit="contain"
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={likeCount > 0 ? onLikeCountPress : undefined}
+          disabled={likeCount <= 0 || !onLikeCountPress}
+          hitSlop={8}
+        >
+          <Text style={[s.actionCount, s.countSlot, liked && { color: '#A03048' }]}>
+            {likeCount > 0 ? formatCount(likeCount) : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Comment — icon stays unselected; only like & repost highlight */}
       <TouchableOpacity onPress={onComment} style={s.actionBtn} hitSlop={8}>
@@ -1016,6 +1026,11 @@ export const PostCard = React.memo(({
     actions?.toggleLike(interactionPostId);
   }, [actions, interactionPostId]);
 
+  const handleLikeCountPress = useCallback(() => {
+    if (likeState.count <= 0) return;
+    modals?.showLikesSheet(String(interactionPostId));
+  }, [modals, interactionPostId, likeState.count]);
+
   const saveInProgress = useRef(false);
   const handleSave = useCallback(async () => {
     if (saveInProgress.current) return;
@@ -1324,6 +1339,7 @@ export const PostCard = React.memo(({
             saved={saved}
             shared={!!post.is_shared}
             onLike={handleLike}
+            onLikeCountPress={handleLikeCountPress}
             onComment={handleCommentPress}
             onRepost={handleRepostPress}
             onSave={handleSave}

@@ -12,6 +12,7 @@ import { SaveBottomSheet } from '../components/social/SaveBottomSheet';
 import { ReportBottomSheet } from '../components/social/ReportBottomSheet';
 import { RepostBottomSheet } from '../components/social/RepostBottomSheet';
 import { PostOptionsBottomSheet } from '../components/social/PostOptionsBottomSheet';
+import { LikesBottomSheet } from '../components/social/LikesBottomSheet';
 
 export interface OptionsConfig {
   isOwnPost: boolean;
@@ -44,12 +45,13 @@ interface PostCardModalsContextValue {
   showOptionsSheet: (config: OptionsConfig) => void;
   showRepostSheet: (config: RepostConfig) => void;
   showReportSheet: (postId: string) => void;
+  showLikesSheet: (postId: string) => void;
   closeAll: () => void;
 }
 
 const PostCardModalsContext = createContext<PostCardModalsContextValue | null>(null);
 
-type ActiveModal = 'none' | 'image' | 'save' | 'options' | 'repost' | 'report';
+type ActiveModal = 'none' | 'image' | 'save' | 'options' | 'repost' | 'report' | 'likes';
 
 export function PostCardModalsProvider({ children }: { children: ReactNode }) {
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
@@ -59,6 +61,7 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
   const [optionsConfig, setOptionsConfig] = useState<OptionsConfig | null>(null);
   const [repostConfig, setRepostConfig] = useState<RepostConfig | null>(null);
   const [reportPostId, setReportPostId] = useState('');
+  const [likesPostId, setLikesPostId] = useState('');
 
   const closeAll = useCallback(() => {
     setActiveModal('none');
@@ -90,14 +93,20 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
     setActiveModal('report');
   }, []);
 
+  const showLikesSheet = useCallback((postId: string) => {
+    setLikesPostId(postId);
+    setActiveModal('likes');
+  }, []);
+
   const value = useMemo<PostCardModalsContextValue>(() => ({
     showImageViewer,
     showSaveSheet,
     showOptionsSheet,
     showRepostSheet,
     showReportSheet,
+    showLikesSheet,
     closeAll,
-  }), [showImageViewer, showSaveSheet, showOptionsSheet, showRepostSheet, showReportSheet, closeAll]);
+  }), [showImageViewer, showSaveSheet, showOptionsSheet, showRepostSheet, showReportSheet, showLikesSheet, closeAll]);
 
   return (
     <PostCardModalsContext.Provider value={value}>
@@ -134,6 +143,12 @@ export function PostCardModalsProvider({ children }: { children: ReactNode }) {
           onClose={closeAll}
           targetType="post"
           targetId={reportPostId}
+        />
+
+        <LikesBottomSheet
+          visible={activeModal === 'likes'}
+          onClose={closeAll}
+          postId={likesPostId}
         />
 
         {optionsConfig && (
