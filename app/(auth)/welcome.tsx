@@ -90,7 +90,12 @@ export default function WelcomeScreen() {
         WebBrowser.openAuthSessionAsync(authUrl, redirectUrl),
         new Promise<never>((_, reject) => {
           setTimeout(() => {
-            if (Platform.OS === 'android') WebBrowser.dismissAuthSession();
+            // dismissAuthSession/dismissBrowser are unsupported on Android and
+            // throw there — that throw must not stop the reject() below from
+            // running, or the timeout silently never fires.
+            try {
+              WebBrowser.dismissAuthSession();
+            } catch {}
             reject(new Error('Sign-in timed out. Please check your connection and try again.'));
           }, 45_000);
         }),

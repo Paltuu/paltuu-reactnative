@@ -18,4 +18,9 @@ export const COLORS = {
   },
   error: '#E53E3E',
   success: '#38A169',
+  // Darker variants for white text sitting directly on a solid fill (e.g. banners) —
+  // `error`/`success` above are tuned as accent color on a light tint background
+  // (see toastConfig.tsx) and don't have enough contrast against white on their own.
+  errorStrong: '#B91C1C',
+  successStrong: '#15803D',
 };

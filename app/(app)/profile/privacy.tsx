@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -7,10 +7,6 @@ import { withFocusUnmount } from '../../../src/components/common/withFocusUnmoun
 
 function PrivacyScreen() {
   const router = useRouter();
-
-  const [shareData, setShareData] = React.useState(true);
-  const [allowSearch, setAllowSearch] = React.useState(true);
-  const [showLocation, setShowLocation] = React.useState(false);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -34,53 +30,17 @@ function PrivacyScreen() {
           </View>
         </View>
 
-        {/* Discovery & Visibility */}
-        <Text className="font-headingSemi text-sm text-primary mb-4 uppercase tracking-wider">Discovery</Text>
+        {/* Data & Policy */}
+        <Text className="font-headingSemi text-sm text-primary mb-4 uppercase tracking-wider">Data & Policy</Text>
         <View className="bg-gray-50 rounded-2xl mb-8 border border-gray-100 overflow-hidden">
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-            <View className="flex-1 pr-4">
-              <Text className="font-body text-gray-700">Allow users to find me by email</Text>
-            </View>
-            <Switch
-              value={allowSearch}
-              onValueChange={setAllowSearch}
-              trackColor={{ true: '#A03048', false: '#E5E7EB' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          <View className="flex-row items-center justify-between p-4">
-            <View className="flex-1 pr-4">
-              <Text className="font-body text-gray-700">Show my location on profile</Text>
-            </View>
-            <Switch
-              value={showLocation}
-              onValueChange={setShowLocation}
-              trackColor={{ true: '#A03048', false: '#E5E7EB' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {/* Data & Analytics */}
-        <Text className="font-headingSemi text-sm text-primary mb-4 uppercase tracking-wider">Data & Analytics</Text>
-        <View className="bg-gray-50 rounded-2xl mb-8 border border-gray-100 overflow-hidden">
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-            <View className="flex-1 pr-4">
-              <Text className="font-body text-gray-700">Share usage data with Paltuu</Text>
-              <Text className="font-body text-xs text-gray-400 mt-1">Help us improve the app by sharing anonymous usage data.</Text>
-            </View>
-            <Switch
-              value={shareData}
-              onValueChange={setShareData}
-              trackColor={{ true: '#A03048', false: '#E5E7EB' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
-            <Text className="font-body text-gray-700">Download my data</Text>
-            <Feather name="download" size={18} color="#9CA3AF" />
+          <TouchableOpacity
+            onPress={() => router.navigate('/(app)/profile/blocked')}
+            className="flex-row items-center justify-between p-4 border-b border-gray-100"
+          >
+            <Text className="font-body text-gray-700">Blocked Users</Text>
+            <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => Linking.openURL('https://paltuu.pk/privacy-policy')}
             className="flex-row items-center justify-between p-4"
           >

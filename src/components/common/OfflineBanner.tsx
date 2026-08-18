@@ -63,12 +63,15 @@ export function OfflineBanner() {
         {
           zIndex: 99999,
           transform: [{ translateY: slideAnim }],
-          backgroundColor: isBackOnline ? COLORS.success : COLORS.error,
+          backgroundColor: isBackOnline ? COLORS.successStrong : COLORS.errorStrong,
         },
       ]}
     >
       <Ionicons name={isBackOnline ? 'wifi' : 'cloud-offline-outline'} size={16} color="#fff" />
-      <Text className="font-headingSemi text-white text-xs tracking-wide">
+      <Text
+        className="font-headingSemi text-white text-sm tracking-wide"
+        style={{ flexShrink: 1 }}
+      >
         {isBackOnline ? 'Back online' : "You're offline"}
       </Text>
     </Animated.View>
