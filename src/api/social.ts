@@ -159,6 +159,32 @@ export interface SurfacedComment {
 
 export type FeedItem = SocialPost | AdoptionFeedItem | LostFoundFeedItem | SurfacedComment;
 
+export interface ActivityActor {
+  user_id: number;
+  name: string;
+  profile_image_url: string | null;
+  social_username?: string | null;
+}
+
+export interface ActivityItem {
+  id: string;
+  kind: 'like' | 'comment' | 'tag' | 'deleted_post' | 'deleted_comment';
+  created_at: string;
+  preview_text?: string | null;
+  post_preview_text?: string | null;
+  thumbnail_url?: string | null;
+  post_id?: string | null;
+  comment_id?: string | null;
+  actor?: ActivityActor | null;
+  deep_link?: string | null;
+}
+
+export interface ActivityListResponse {
+  items: ActivityItem[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 export interface SocialPet {
   pet_id: number;
   pet_name: string;
@@ -596,6 +622,30 @@ export const socialApi = {
     const url = `/users/me/blocked?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
     const { data } = await client.get(url);
     return data as { blocked_users: any[]; next_cursor: string | null; has_more: boolean };
+  },
+
+  async getMyActivityLikes(cursor?: string, limit: number = 20) {
+    const url = `/users/me/activity/likes?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const { data } = await client.get(url);
+    return data as ActivityListResponse;
+  },
+
+  async getMyActivityComments(cursor?: string, limit: number = 20) {
+    const url = `/users/me/activity/comments?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const { data } = await client.get(url);
+    return data as ActivityListResponse;
+  },
+
+  async getMyActivityTags(cursor?: string, limit: number = 20) {
+    const url = `/users/me/activity/tags?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const { data } = await client.get(url);
+    return data as ActivityListResponse;
+  },
+
+  async getMyRecentlyDeleted(cursor?: string, limit: number = 20) {
+    const url = `/users/me/activity/recently-deleted?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const { data } = await client.get(url);
+    return data as ActivityListResponse;
   },
 
   async getExploreDiscovery() {

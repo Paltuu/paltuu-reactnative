@@ -128,6 +128,7 @@ export default function ProfileMenuScreen() {
 
         <MenuItem icon="settings-outline" label="Settings" onPress={() => navigateFromMenu('/(app)/profile/settings')} />
         <MenuItem icon="bookmark-outline" label="Saved Posts" onPress={() => navigateFromMenu('/(app)/profile/saved')} />
+        <MenuItem icon="pulse-outline" label="Activity" onPress={() => navigateFromMenu('/(app)/profile/activity')} />
         <MenuItem icon="paw-outline" label="My Adoption Listings" onPress={() => navigateFromMenu('/(app)/my-listings')} />
         <MenuItem icon="mail-outline" label="Adoption Requests" onPress={() => navigateFromMenu('/(app)/adoption-requests')} />
         <MenuItem icon="document-text-outline" label="My Applications" onPress={() => navigateFromMenu('/(app)/my-applications')} />
