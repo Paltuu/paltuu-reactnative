@@ -77,7 +77,28 @@ export default function WelcomeScreen() {
       const redirectUrl = AuthSession.makeRedirectUri({ native: `${nativeScheme}://oauth2redirect` });
       const authUrl = `${apiBaseUrl}/v1/auth/google/mobile?app_redirect=${encodeURIComponent(redirectUrl)}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+      // Android's Custom Tabs occasionally never resolve openAuthSessionAsync's
+      // promise (e.g. the tab's process gets reclaimed by the OS mid-flow),
+      // leaving the user stuck on an endless spinner with no way out. Warming
+      // up the tab first reduces how often that happens, and the timeout below
+      // force-closes the session so the user gets a retryable error instead.
+      if (Platform.OS === 'android') {
+        WebBrowser.warmUpAsync().catch(() => {});
+      }
+
+      const result = await Promise.race([
+        WebBrowser.openAuthSessionAsync(authUrl, redirectUrl),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            if (Platform.OS === 'android') WebBrowser.dismissAuthSession();
+            reject(new Error('Sign-in timed out. Please check your connection and try again.'));
+          }, 45_000);
+        }),
+      ]);
+
+      if (Platform.OS === 'android') {
+        WebBrowser.coolDownAsync().catch(() => {});
+      }
 
       if (result.type === 'success' && result.url) {
         const parsed = Linking.parse(result.url);

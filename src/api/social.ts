@@ -245,7 +245,7 @@ export const socialApi = {
     return data;
   },
 
-  async updateProfile(payload: Partial<SocialProfile & { email: string, phone_number: string }>) {
+  async updateProfile(payload: Partial<SocialProfile & { phone_number: string }>) {
     const { data } = await client.patch('/social/profile/update', payload);
     return data as { success: boolean; user: any };
   },

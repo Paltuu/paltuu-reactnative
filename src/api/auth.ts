@@ -53,4 +53,14 @@ export const authApi = {
     const { data } = await client.post('/auth/reset-password-otp', { email, otp, newPassword });
     return data;
   },
+
+  async requestEmailChangeOtp() {
+    const { data } = await client.post('/auth/request-email-change');
+    return data as { success: boolean; maskedEmail: string };
+  },
+
+  async changeEmail(otp: string, newEmail: string) {
+    const { data } = await client.post('/auth/change-email', { otp, newEmail });
+    return data as { success: boolean; user: { user_id: number; name: string; email: string } };
+  },
 };

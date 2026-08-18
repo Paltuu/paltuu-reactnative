@@ -66,17 +66,13 @@ function SettingsScreen() {
             </View>
             <Feather name="chevron-right" size={20} color="#9CA3AF" />
           </TouchableOpacity>
-          <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
+          <TouchableOpacity
+            className="flex-row items-center justify-between p-4"
+            onPress={() => router.push('/(app)/profile/security')}
+          >
             <View className="flex-row items-center">
               <Ionicons name="shield-checkmark-outline" size={20} color="#374151" />
               <Text className="font-body text-gray-700 ml-3">Security & Password</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-row items-center justify-between p-4">
-            <View className="flex-row items-center">
-              <Ionicons name="card-outline" size={20} color="#374151" />
-              <Text className="font-body text-gray-700 ml-3">Payment Methods</Text>
             </View>
             <Feather name="chevron-right" size={20} color="#9CA3AF" />
           </TouchableOpacity>
