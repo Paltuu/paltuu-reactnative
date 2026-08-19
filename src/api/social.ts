@@ -133,6 +133,11 @@ export interface SocialPost {
   original_post?: SocialPost;
   pet_profile_tags?: number[];
   tagged_pets?: { pet_profile_id: number; name: string; avatar_url: string | null; species: string }[];
+  // Only ever present when the viewer is this post's own author AND the post
+  // is shadow-hidden with a reason attached (see the Next.js repo's
+  // lib/moderationRedaction.ts) — a deliberate, narrow exception that lets
+  // the author see why their own post is invisible to everyone else.
+  shadow_hide_reason?: 'pet_sale' | null;
 }
 
 // A popular reply on a PRIVATE account's post, surfaced as its own feed card

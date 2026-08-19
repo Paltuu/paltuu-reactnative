@@ -44,6 +44,7 @@ import { COLORS } from '../../constants/colors';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
 import { getShareUrl } from '../../utils/share';
+import { BadgeInfoModal } from './BadgeInfoModal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -322,6 +323,7 @@ const AuthorBlock = React.memo(({
   onPlusPress,
   onMenuPress,
   onAvatarPress,
+  onPetSaleNoticePress,
 }: {
   name: string;
   username?: string;
@@ -333,6 +335,8 @@ const AuthorBlock = React.memo(({
   onPlusPress?: () => void;
   onMenuPress?: () => void;
   onAvatarPress?: () => void;
+  /** Only passed when this post is the viewer's own AND shadow-hidden for a reason the server surfaces. */
+  onPetSaleNoticePress?: () => void;
 }) => {
   return (
     <View style={s.authorRow}>
@@ -374,6 +378,11 @@ const AuthorBlock = React.memo(({
           </TouchableOpacity>
           {!!edited && <Text style={s.timeAgo}>Edited · </Text>}
           <Text style={s.timeAgo}>{timeAgo}</Text>
+          {!!onPetSaleNoticePress && (
+            <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onPetSaleNoticePress}>
+              <Ionicons name="warning" size={16} color="#B45309" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
           </TouchableOpacity>
@@ -925,6 +934,11 @@ export const PostCard = React.memo(({
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
   const isOwnPost = String(currentUserId) === String(post.user_id);
+  // Only ever set when this post is BOTH the viewer's own AND shadow-hidden
+  // for a reason the server is willing to surface — see SocialPost's
+  // shadow_hide_reason doc comment in src/api/social.ts.
+  const showPetSaleNotice = isOwnPost && post.shadow_hide_reason === 'pet_sale';
+  const [petSaleNoticeVisible, setPetSaleNoticeVisible] = useState(false);
 
   const handleDelete = () => {
     Alert.alert(
@@ -1235,6 +1249,7 @@ export const PostCard = React.memo(({
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
             onMenuPress={handleMenuPress}
             onAvatarPress={handleAvatarPress}
+            onPetSaleNoticePress={showPetSaleNotice ? () => setPetSaleNoticeVisible(true) : undefined}
           />
 
           {/* ── Pet chip (optional) ── */}
@@ -1348,6 +1363,15 @@ export const PostCard = React.memo(({
           />
         </Pressable>
     <View style={s.postSeparator} />
+    {showPetSaleNotice && (
+      <BadgeInfoModal
+        visible={petSaleNoticeVisible}
+        onClose={() => setPetSaleNoticeVisible(false)}
+        ionicon="warning"
+        title="Not visible to others"
+        description="Paltuu doesn't condone the sale of pets. This post is only visible to you."
+      />
+    )}
     </View>
   );
 },
