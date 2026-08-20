@@ -48,18 +48,30 @@ function AnimatedTabIcon({
   routeName,
   index,
   position,
+  focused,
   profileImageUrl,
 }: {
   routeName: string;
   index: number;
   position: Animated.AnimatedInterpolation<number>;
+  focused: boolean;
   profileImageUrl?: string | null;
 }) {
-  const focusedOpacity = position.interpolate({
+  const interpolatedOpacity = position.interpolate({
     inputRange: [index - 1, index, index + 1],
     outputRange: [0, 1, 0],
     extrapolate: 'clamp',
   });
+
+  // Tapping a tab (as opposed to swiping) makes react-native-tab-view jump the
+  // pager via `setPageWithoutAnimation` while also manually forcing `position`
+  // to the new index. On Android those native `onPageScroll` events can still
+  // land afterward and race that manual set, sometimes leaving `position`
+  // stuck at a fractional value — the icon renders half-faded forever even
+  // though the tab is genuinely focused. `state.index` (passed down as
+  // `focused`) is settled instantly and reliably by React Navigation itself,
+  // so once it says this tab is focused, trust it over the racy shared value.
+  const focusedOpacity = focused ? 1 : interpolatedOpacity;
 
   if (routeName === 'profile/index') {
     return (
@@ -169,6 +181,7 @@ function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
               routeName={route.name}
               index={index}
               position={position}
+              focused={focused}
               profileImageUrl={user?.profile_image_url}
             />
           </TouchableOpacity>
