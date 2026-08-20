@@ -150,17 +150,17 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 34,
     right: 8,
-    maxWidth: 200,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    maxWidth: 240,
+    backgroundColor: 'rgba(0,0,0,0.85)',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     zIndex: 5,
   },
   noticeTooltipText: {
     color: '#fff',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 17,
     fontWeight: '600',
   },
   cardPressed: {
@@ -525,7 +525,7 @@ const PetSaleNoticeBadge = ({ expanded, onToggle }: { expanded: boolean; onToggl
     </TouchableOpacity>
     {expanded && (
       <TouchableOpacity activeOpacity={0.9} style={s.noticeTooltip} onPress={onToggle}>
-        <Text style={s.noticeTooltipText}>Paltuu doesn't condone this</Text>
+        <Text style={s.noticeTooltipText}>Paltuu strongly opposes buying or selling pets, supporting only adoption.</Text>
       </TouchableOpacity>
     )}
   </>

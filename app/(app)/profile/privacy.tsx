@@ -41,7 +41,7 @@ function PrivacyScreen() {
             <Feather name="chevron-right" size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => Linking.openURL('https://paltuu.pk/privacy-policy')}
+            onPress={() => Linking.openURL('https://paltuu.pk/app-privacy-policy')}
             className="flex-row items-center justify-between p-4"
           >
             <Text className="font-body text-gray-700">View Privacy Policy</Text>

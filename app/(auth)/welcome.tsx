@@ -327,7 +327,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            <Text onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/privacy-policy')}>
+            <Text onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/app-privacy-policy')}>
               Privacy Policy
             </Text>
             {' · '}

@@ -53,7 +53,7 @@ function AboutScreen() {
             <Feather name="external-link" size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/privacy-policy')}
+            onPress={() => WebBrowser.openBrowserAsync('https://paltuu.pk/app-privacy-policy')}
             className="flex-row items-center justify-between p-4 border-b border-gray-100"
           >
             <Text className="font-body text-gray-700">Data Policy</Text>
