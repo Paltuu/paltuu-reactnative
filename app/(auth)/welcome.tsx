@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, DevSettings } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import * as AuthSession from 'expo-auth-session';
+import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 import Toast from 'react-native-toast-message';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -81,7 +82,9 @@ export default function WelcomeScreen() {
       // promise (e.g. the tab's process gets reclaimed by the OS mid-flow),
       // leaving the user stuck on an endless spinner with no way out. Warming
       // up the tab first reduces how often that happens, and the timeout below
-      // force-closes the session so the user gets a retryable error instead.
+      // gives up on our side so the user gets a retryable error instead. Note
+      // this can NOT force-close expo-web-browser's internal promise (Android
+      // has no dismiss API for it) — see the stuck-session recovery in catch{}.
       if (Platform.OS === 'android') {
         WebBrowser.warmUpAsync().catch(() => {});
       }
@@ -100,10 +103,6 @@ export default function WelcomeScreen() {
           }, 45_000);
         }),
       ]);
-
-      if (Platform.OS === 'android') {
-        WebBrowser.coolDownAsync().catch(() => {});
-      }
 
       if (result.type === 'success' && result.url) {
         const parsed = Linking.parse(result.url);
@@ -155,12 +154,42 @@ export default function WelcomeScreen() {
       }
     } catch (err: any) {
       console.error('[Google Sign-In] Error:', err);
+
+      // On Android, when openAuthSessionAsync's underlying browser promise never
+      // settles (the timeout above gave up on it, but expo-web-browser's own
+      // AppState/Linking listeners are still waiting), the library's module-level
+      // "one session at a time" lock is left stuck forever — every future
+      // Google Sign-In call throws this same error immediately. There's no public
+      // API to reset that lock; only reloading the JS context clears it, so do
+      // that automatically instead of leaving the user stuck until they reinstall.
+      const isStuckAndroidAuthSession =
+        Platform.OS === 'android' &&
+        (/already open, only one can be open at a time/i.test(err?.message ?? '') ||
+          /auth session is in an invalid state/i.test(err?.message ?? ''));
+
+      if (isStuckAndroidAuthSession) {
+        Toast.show({
+          type: 'error',
+          text1: 'Reconnecting sign-in...',
+          text2: 'This will just take a moment.',
+        });
+        if (__DEV__) {
+          DevSettings.reload();
+        } else {
+          await Updates.reloadAsync().catch(() => {});
+        }
+        return;
+      }
+
       Toast.show({
         type: 'error',
         text1: 'Sign In Failed',
         text2: err.message || 'An error occurred during Google Sign-In.',
       });
     } finally {
+      if (Platform.OS === 'android') {
+        WebBrowser.coolDownAsync().catch(() => {});
+      }
       setIsGoogleLoading(false);
     }
   };

@@ -11,15 +11,12 @@ export const BadgeInfoModal = ({
   visible,
   onClose,
   icon,
-  ionicon,
   title,
   description,
 }: {
   visible: boolean;
   onClose: () => void;
-  icon?: any;
-  /** Fallback when there's no dedicated image asset for this badge — an Ionicons glyph name, rendered instead of `icon`. */
-  ionicon?: React.ComponentProps<typeof Ionicons>['name'];
+  icon: any;
   title: string;
   description?: string;
 }) => {
@@ -30,11 +27,7 @@ export const BadgeInfoModal = ({
           <TouchableOpacity hitSlop={10} className="absolute top-4 right-4" onPress={onClose}>
             <Ionicons name="close" size={20} color="#9CA3AF" />
           </TouchableOpacity>
-          {icon ? (
-            <Image source={icon} style={{ width: 52, height: 52 }} tintColor="#A03048" />
-          ) : (
-            <Ionicons name={ionicon ?? 'information-circle'} size={52} color="#A03048" />
-          )}
+          <Image source={icon} style={{ width: 52, height: 52 }} tintColor="#A03048" />
           <Text className="mt-4 text-xl font-bold text-[#111] text-center tracking-tight">{title}</Text>
           {!!description && (
             <Text className="mt-3 text-sm text-gray-600 text-center leading-6 px-1">{description}</Text>

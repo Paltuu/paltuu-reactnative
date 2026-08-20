@@ -44,7 +44,6 @@ import { COLORS } from '../../constants/colors';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
 import { getShareUrl } from '../../utils/share';
-import { BadgeInfoModal } from './BadgeInfoModal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -133,6 +132,35 @@ const s = StyleSheet.create({
   processingBadgeText: {
     color: '#fff',
     fontSize: 10,
+    fontWeight: '600',
+  },
+  noticeBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  noticeTooltip: {
+    position: 'absolute',
+    top: 34,
+    right: 8,
+    maxWidth: 200,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 5,
+  },
+  noticeTooltipText: {
+    color: '#fff',
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '600',
   },
   cardPressed: {
@@ -323,7 +351,6 @@ const AuthorBlock = React.memo(({
   onPlusPress,
   onMenuPress,
   onAvatarPress,
-  onPetSaleNoticePress,
 }: {
   name: string;
   username?: string;
@@ -335,8 +362,6 @@ const AuthorBlock = React.memo(({
   onPlusPress?: () => void;
   onMenuPress?: () => void;
   onAvatarPress?: () => void;
-  /** Only passed when this post is the viewer's own AND shadow-hidden for a reason the server surfaces. */
-  onPetSaleNoticePress?: () => void;
 }) => {
   return (
     <View style={s.authorRow}>
@@ -378,11 +403,6 @@ const AuthorBlock = React.memo(({
           </TouchableOpacity>
           {!!edited && <Text style={s.timeAgo}>Edited · </Text>}
           <Text style={s.timeAgo}>{timeAgo}</Text>
-          {!!onPetSaleNoticePress && (
-            <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onPetSaleNoticePress}>
-              <Ionicons name="warning" size={16} color="#B45309" />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity hitSlop={10} style={{ marginLeft: 8 }} onPress={onMenuPress}>
             <Ionicons name="ellipsis-horizontal" size={16} color="#C4C4C4" />
           </TouchableOpacity>
@@ -495,17 +515,40 @@ export const OriginalPostPreview = ({
     </Pressable>
   );
 };
+// ─── Public "Paltuu doesn't condone this" notice, top-right of the media ────
+// Unlike the old shadow-hide approach, the post stays fully visible to
+// everyone — this is just a small badge every viewer can see and tap.
+const PetSaleNoticeBadge = ({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) => (
+  <>
+    <TouchableOpacity activeOpacity={0.8} hitSlop={8} style={s.noticeBadge} onPress={onToggle}>
+      <Ionicons name="information" size={13} color="#fff" />
+    </TouchableOpacity>
+    {expanded && (
+      <TouchableOpacity activeOpacity={0.9} style={s.noticeTooltip} onPress={onToggle}>
+        <Text style={s.noticeTooltipText}>Paltuu doesn't condone this</Text>
+      </TouchableOpacity>
+    )}
+  </>
+);
+
 // Images start at the avatar's left edge and stretch to the card's right edge.
 // The negative right margin removes the card's inner right padding so images bleed.
 const MediaBlock = React.memo(({
   media,
   onImagePress,
   isPlaying,
+  noticeReason,
 }: {
   media: SocialPostMedia[];
   onImagePress?: (index: number) => void;
   isPlaying?: boolean;
+  /** Public content notice — shown to every viewer as an "i" badge, top-right of the media. Currently only 'pet_sale'. */
+  noticeReason?: 'pet_sale' | null;
 }) => {
+  const [noticeExpanded, setNoticeExpanded] = useState(false);
+  const notice = noticeReason === 'pet_sale'
+    ? <PetSaleNoticeBadge expanded={noticeExpanded} onToggle={() => setNoticeExpanded(v => !v)} />
+    : null;
   const carouselImgH = Math.round(CAROUSEL_CARD_W * 1.05);
 
   const renderCarouselItem = useCallback(({ item, index }: { item: SocialPostMedia; index: number }) => {
@@ -580,6 +623,7 @@ const MediaBlock = React.memo(({
               isProcessing={false}
               onPress={() => onImagePress?.(0)}
             />
+            {notice}
           </View>
         );
       }
@@ -596,6 +640,7 @@ const MediaBlock = React.memo(({
             isProcessing={false}
             onPress={() => onImagePress?.(0)}
           />
+          {notice}
         </View>
       );
     }
@@ -603,19 +648,21 @@ const MediaBlock = React.memo(({
     const SINGLE_IMG_W = MEDIA_FULL_W - 24;
     const singleImgH = Math.round(SINGLE_IMG_W / 1.125);
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => onImagePress?.(0)}
-        style={s.mediaWrapper}
-      >
-        <Image
-          source={{ uri: firstItem.url }}
-          style={{ width: SINGLE_IMG_W, height: singleImgH, borderRadius: 14 }}
-          contentFit="cover"
-          transition={200}
-          recyclingKey={firstItem.url}
-        />
-      </TouchableOpacity>
+      <View style={s.mediaWrapper}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => onImagePress?.(0)}
+        >
+          <Image
+            source={{ uri: firstItem.url }}
+            style={{ width: SINGLE_IMG_W, height: singleImgH, borderRadius: 14 }}
+            contentFit="cover"
+            transition={200}
+            recyclingKey={firstItem.url}
+          />
+        </TouchableOpacity>
+        {notice}
+      </View>
     );
   }
 
@@ -638,6 +685,7 @@ const MediaBlock = React.memo(({
           </React.Fragment>
         ))}
       </ScrollView>
+      {notice}
     </View>
   );
 });
@@ -934,11 +982,6 @@ export const PostCard = React.memo(({
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
   const isOwnPost = String(currentUserId) === String(post.user_id);
-  // Only ever set when this post is BOTH the viewer's own AND shadow-hidden
-  // for a reason the server is willing to surface — see SocialPost's
-  // shadow_hide_reason doc comment in src/api/social.ts.
-  const showPetSaleNotice = isOwnPost && post.shadow_hide_reason === 'pet_sale';
-  const [petSaleNoticeVisible, setPetSaleNoticeVisible] = useState(false);
 
   const handleDelete = () => {
     Alert.alert(
@@ -1249,7 +1292,6 @@ export const PostCard = React.memo(({
             onPlusPress={showPlus ? () => onPlusPress?.(displayUserId) : undefined}
             onMenuPress={handleMenuPress}
             onAvatarPress={handleAvatarPress}
-            onPetSaleNoticePress={showPetSaleNotice ? () => setPetSaleNoticeVisible(true) : undefined}
           />
 
           {/* ── Pet chip (optional) ── */}
@@ -1279,6 +1321,7 @@ export const PostCard = React.memo(({
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
+                noticeReason={post.content_notice_reason}
               />
             </View>
           )}
@@ -1323,6 +1366,10 @@ export const PostCard = React.memo(({
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
+                // Known gap: for a plain repost, this reflects the reposting
+                // row's own (always-empty) content, not the original post's —
+                // a repost of a flagged post won't show the badge yet.
+                noticeReason={post.content_notice_reason}
               />
             </View>
           )}
@@ -1363,15 +1410,6 @@ export const PostCard = React.memo(({
           />
         </Pressable>
     <View style={s.postSeparator} />
-    {showPetSaleNotice && (
-      <BadgeInfoModal
-        visible={petSaleNoticeVisible}
-        onClose={() => setPetSaleNoticeVisible(false)}
-        ionicon="warning"
-        title="Not visible to others"
-        description="Paltuu doesn't condone the sale of pets. This post is only visible to you."
-      />
-    )}
     </View>
   );
 },
