@@ -167,11 +167,21 @@ export default function ExpressVetDispatchIndexScreen() {
                   router.push({ pathname: '/(app)/express-vet-dispatch/requests/[id]', params: { id: job.request_id } } as any)
                 }
               >
-                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[job.category] ?? 'paw'} size={16} color={PRIMARY} />
-                <Text style={styles.previewRowText} numberOfLines={1}>
-                  {job.category.replace('_', ' ')} — {job.client_name}
-                </Text>
-                <Text style={styles.previewRowMeta}>{job.status === 'completed' ? 'Done' : 'In Progress'}</Text>
+                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[job.category] ?? 'paw'} size={18} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewRowText} numberOfLines={1}>
+                    {job.category.replace('_', ' ')} — {job.client_name}
+                  </Text>
+                  <Text style={styles.previewRowSubtext} numberOfLines={1}>
+                    {job.provider_name ? `${job.provider_name} · ` : ''}{job.address_line}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <Text style={styles.previewRowMeta}>{job.status === 'completed' ? 'Done' : 'In Progress'}</Text>
+                  <Text style={styles.previewRowPrice}>
+                    PKR {(job.final_price_pkr ?? job.starting_price_pkr).toLocaleString()}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -197,11 +207,26 @@ export default function ExpressVetDispatchIndexScreen() {
                   router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any)
                 }
               >
-                <Ionicons name="person-circle-outline" size={16} color={PRIMARY} />
-                <Text style={styles.previewRowText} numberOfLines={1}>
-                  {provider.name}
-                </Text>
-                <Text style={styles.previewRowMeta}>{provider.rating != null ? `${provider.rating} ★` : '—'}</Text>
+                {provider.photo_url ? (
+                  <Image source={{ uri: provider.photo_url }} style={styles.previewAvatar} contentFit="cover" />
+                ) : (
+                  <Ionicons name="person-circle-outline" size={30} color="#C4C4CC" />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewRowText} numberOfLines={1}>
+                    {provider.name}
+                  </Text>
+                  <Text style={styles.previewRowSubtext} numberOfLines={1}>
+                    {provider.categories.map((c) => c.replace('_', ' ')).join(', ')}
+                    {provider.years_experience != null ? ` · ${provider.years_experience}y exp` : ''}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <Text style={styles.previewRowMeta}>
+                    {provider.rating != null ? `${provider.rating} ★` : 'No ratings'}
+                  </Text>
+                  <Text style={styles.previewRowSubtext}>{provider.total_reviews} review{provider.total_reviews === 1 ? '' : 's'}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -313,8 +338,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  previewRowText: { flex: 1, fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, textTransform: 'capitalize' },
+  previewRowText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, textTransform: 'capitalize' },
+  previewRowSubtext: { fontFamily: FONTS.body, fontSize: 11, color: '#8A8A94', marginTop: 2, textTransform: 'capitalize' },
   previewRowMeta: { fontFamily: FONTS.body, fontSize: 11, color: '#8A8A94' },
+  previewRowPrice: { fontFamily: FONTS.bodyBold, fontSize: 12, color: DARK },
+  previewAvatar: { width: 30, height: 30, borderRadius: 15 },
 
   row: {
     flexDirection: 'row',
