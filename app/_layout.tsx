@@ -33,6 +33,7 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import * as Updates from 'expo-updates';
 import { NotificationProvider } from '../src/context/NotificationContext';
+import { DispatcherCallProvider } from '../src/context/DispatcherCallProvider';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
@@ -247,6 +248,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
+        <DispatcherCallProvider>
           <SafeAreaProvider>
             <StatusBar style="dark" />
             <OfflineBanner />
@@ -317,6 +319,7 @@ export default function RootLayout() {
             </SocialActionsProvider>
             </BottomSheetModalProvider>
           </SafeAreaProvider>
+        </DispatcherCallProvider>
         </NotificationProvider>
         {/* Toast must be inside QueryClientProvider in case it (or its
             children) calls useQuery internally. OfflineBanner lives inside

@@ -49,7 +49,22 @@ export default (): ExpoConfig => {
       edgeToEdgeEnabled: true,
       softwareKeyboardLayoutMode: 'pan',
       predictiveBackGestureEnabled: false,
-      permissions: ["android.permission.RECORD_AUDIO", "com.google.android.gms.permission.AD_ID"],
+      permissions: [
+        "android.permission.RECORD_AUDIO",
+        "com.google.android.gms.permission.AD_ID",
+        // ── Vets at Home dispatcher ringing-call alert (react-native-callkeep) ──
+        // ⚠️ CALL_PHONE / READ_PHONE_STATE are Google Play "restricted permissions" —
+        // Play Console will require a Permissions Declaration form justifying their use
+        // (core feature = telecom/calling) before this build can be published. Confirm
+        // that's been filed before shipping a release with these present; see the
+        // handoff doc's dispatcher-alert section.
+        "android.permission.BIND_TELECOM_CONNECTION_SERVICE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.FOREGROUND_SERVICE_CAMERA",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.CALL_PHONE",
+      ],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
     },
     // Android 15+ edge-to-edge draws a translucent gray contrast scrim behind
@@ -187,6 +202,14 @@ export default (): ExpoConfig => {
             "Paltuu uses your location to show pets, vets, and shelters near you.",
         },
       ],
+      // ── Vets at Home dispatcher ringing-call alert ──
+      // Android background FCM data-message handling (see index.js) needs the native
+      // Firebase app initialized; @react-native-firebase/messaging itself autolinks and
+      // needs no plugin entry of its own.
+      "@react-native-firebase/app",
+      "./plugins/withVoipBackgroundMode",
+      "./plugins/withCallKeepAndroid",
+      "./plugins/withVoipPushAppDelegate",
     ],
   };
 };

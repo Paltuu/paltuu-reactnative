@@ -138,4 +138,11 @@ export const expressVetDispatchApi = {
     const { data } = await client.patch(`/express-vet/dispatcher/providers/${id}`, patch);
     return data;
   },
+
+  // Ringing-call push token — raw APNs VoIP token (iOS) or raw FCM token (Android), never
+  // an Expo push token. See src/services/callkeep.ts for why this is a separate channel
+  // from the normal notification token registered by NotificationContext.
+  async registerPushToken(payload: { platform: 'ios' | 'android'; voip_token?: string; fcm_token?: string }): Promise<void> {
+    await client.post('/express-vet/dispatcher/push-token', payload);
+  },
 };
