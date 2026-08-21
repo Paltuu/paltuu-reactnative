@@ -44,6 +44,13 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       return;
     }
 
+    // Rating-prompt notification: paltuu://express-vet/requests/{id}/rate — checked before the
+    // generic table below since that one's prefix match would otherwise swallow this and drop /rate.
+    if (parts[0] === 'express-vet' && parts[1] === 'requests' && parts[2] && parts[3] === 'rate') {
+      router.push({ pathname: '/(app)/express-vet/requests/[id]/rate', params: { id: parts[2] } } as any);
+      return;
+    }
+
     const routes: Record<string, (parts: string[], url?: URL) => string> = {
       '/social/post': (p) => `/post/${p[2]}`,
       '/post':        (p) => `/post/${p[1]}`,
@@ -62,6 +69,8 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/bazaar/cart': ()  => `/(app)/cart`,
       '/bazaar':      ()  => `/(app)/marketplace`,
       '/vet-panel':   ()  => `/(app)/vet-panel`,
+      '/express-vet-dispatch/requests': (p) => `/(app)/express-vet-dispatch/requests/${p[2]}`,
+      '/express-vet/requests': (p) => `/(app)/express-vet/requests/${p[2]}`,
     };
 
     const matchedKey = Object.keys(routes).find(key => combinedPath.startsWith(key));

@@ -16,6 +16,8 @@ import { useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { petApi } from '../../../src/api/pets';
+import { expressVetApi } from '../../../src/api/expressVet';
+import { EXPRESS_VET_CATEGORY_ICONS, lowestStartingPrice } from '../../../src/constants/expressVet';
 import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
@@ -158,6 +160,62 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
   );
 });
 
+// Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen) — each card
+// deep-links straight into that category's species picker, skipping the express-vet index screen.
+const VetsAtHomeCarousel = React.memo(function VetsAtHomeCarousel({
+  categories,
+  rateCards,
+  cityId,
+  onPressCategory,
+  onPressSeeAll,
+}: {
+  categories: { key: string; label: string }[];
+  rateCards: any[];
+  cityId: number | null;
+  onPressCategory: (categoryKey: string) => void;
+  onPressSeeAll: () => void;
+}) {
+  return (
+    <View style={styles.vetsAtHomeTile}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onPressSeeAll} style={styles.nearbyHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.nearbyTitle}>Vets at Home</Text>
+          <Text style={styles.nearbySub}>Home-visit vet & grooming care</Text>
+        </View>
+        <Ionicons name="arrow-forward" size={16} color="#999999" />
+      </TouchableOpacity>
+
+      <View style={styles.vetsAtHomeGrid}>
+        {categories.map((category) => {
+          const price = lowestStartingPrice(rateCards, category.key, cityId);
+          return (
+            <TouchableOpacity
+              key={category.key}
+              activeOpacity={0.9}
+              style={styles.vetsAtHomeCard}
+              onPress={() => onPressCategory(category.key)}
+            >
+              <View style={styles.vetsAtHomeCardIcon}>
+                <Ionicons
+                  name={EXPRESS_VET_CATEGORY_ICONS[category.key] ?? 'paw'}
+                  size={22}
+                  color="#A03048"
+                />
+              </View>
+              <Text style={styles.vetsAtHomeCardLabel} numberOfLines={1}>
+                {category.label}
+              </Text>
+              <Text style={styles.vetsAtHomeCardPrice} numberOfLines={1}>
+                {price != null ? `From PKR ${price.toLocaleString()}` : 'Coming soon'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+});
+
 export default function PetsHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -178,6 +236,16 @@ export default function PetsHubScreen() {
 
   const { cityId, cityName } = useLocationStore();
 
+  // Gates the Karachi-only Vets at Home layout (see §9/§10 of the handoff doc). An unresolved
+  // city or a still-loading config must fall back to the default (non-Karachi) layout below —
+  // both `cityId == null` and `isPending` naturally make `isKarachiExpressVet` false.
+  const { data: expressVetConfig } = useQuery({
+    queryKey: ['express-vet-config'],
+    queryFn: expressVetApi.getConfig,
+    staleTime: 1000 * 60 * 30,
+  });
+  const isKarachiExpressVet = !!cityId && !!expressVetConfig?.enabled_cities.city_ids.includes(cityId);
+
   // Strictly the user's own city — no nationwide fallback. A tile headed
   // "Pets Near You" that quietly lists pets from other cities is misleading,
   // so an empty city renders an empty state instead (see NearbyPetsCarousel).
@@ -188,7 +256,7 @@ export default function PetsHubScreen() {
         city: String(cityId),
         limit: NEARBY_FETCH_LIMIT,
       }),
-    enabled: !!cityId,
+    enabled: !!cityId && !isKarachiExpressVet,
   });
   const nearbyPets: any[] = cityPetsData?.data ?? [];
 
@@ -257,24 +325,42 @@ export default function PetsHubScreen() {
 
         <View style={{ height: 12 }} />
 
-        {/* Pets Near You — taller, rotating circular avatars. Opens Adopt with
-            the user's city pre-selected so the grid matches what the tile was
-            previewing; with no city resolved it passes 'all' rather than
-            inheriting a stale city from the cached filters. */}
-        <NearbyPetsCarousel
-          nearbyPages={nearbyPages}
-          isNearbyLoading={isNearbyLoading}
-          isFocused={isFocused}
-          cityName={cityName}
-          hasCity={!!cityId}
-          isEmpty={isNearbyEmpty}
-          onPress={() =>
-            router.push({
-              pathname: '/(app)/adopt',
-              params: { city: cityId ? String(cityId) : 'all' },
-            } as any)
-          }
-        />
+        {/* Karachi: Pets Near You is redundant with the hero tile's adoption entry point,
+            so it's replaced by the Vets at Home carousel — the main advertising surface
+            for that feature. Everywhere else, today's layout is untouched. */}
+        {isKarachiExpressVet ? (
+          <VetsAtHomeCarousel
+            categories={expressVetConfig?.categories ?? []}
+            rateCards={expressVetConfig?.rate_cards ?? []}
+            cityId={cityId}
+            onPressCategory={(categoryKey) =>
+              router.push({
+                pathname: '/(app)/express-vet/[category]/species',
+                params: { category: categoryKey },
+              } as any)
+            }
+            onPressSeeAll={() => router.push('/(app)/express-vet' as any)}
+          />
+        ) : (
+          // Pets Near You — taller, rotating circular avatars. Opens Adopt with
+          // the user's city pre-selected so the grid matches what the tile was
+          // previewing; with no city resolved it passes 'all' rather than
+          // inheriting a stale city from the cached filters.
+          <NearbyPetsCarousel
+            nearbyPages={nearbyPages}
+            isNearbyLoading={isNearbyLoading}
+            isFocused={isFocused}
+            cityName={cityName}
+            hasCity={!!cityId}
+            isEmpty={isNearbyEmpty}
+            onPress={() =>
+              router.push({
+                pathname: '/(app)/adopt',
+                params: { city: cityId ? String(cityId) : 'all' },
+              } as any)
+            }
+          />
+        )}
 
         <View style={{ height: 12 }} />
 
@@ -323,25 +409,37 @@ export default function PetsHubScreen() {
 
         <View style={{ height: 12 }} />
 
-        {/* Tile 3 — Lost & Found Strip */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => router.push('/(app)/create-lost-found' as any)}
-          style={styles.lostFoundStrip}
-        >
-          <Image
-            source={require('../../../assets/pets-hub/sad.webp')}
-            style={styles.lostFoundImg}
-            contentFit="contain"
-          />
-          <View style={styles.lostFoundTextCol}>
-            <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
-            <View style={styles.lostFoundSubRow}>
-              <Text style={styles.lostFoundSubText}>Report here</Text>
-              <Ionicons name="arrow-forward" size={12} color="#999999" />
+        {/* Tile 3 — Lost & Found. Karachi: demoted to the least prominent element on the
+            screen per product direction, shrunk to a slim link instead of an illustrated tile. */}
+        {isKarachiExpressVet ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/(app)/create-lost-found' as any)}
+            style={styles.lostFoundSlim}
+          >
+            <Text style={styles.lostFoundSlimText}>Lost or Found a Pet?</Text>
+            <Ionicons name="arrow-forward" size={14} color="#999999" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => router.push('/(app)/create-lost-found' as any)}
+            style={styles.lostFoundStrip}
+          >
+            <Image
+              source={require('../../../assets/pets-hub/sad.webp')}
+              style={styles.lostFoundImg}
+              contentFit="contain"
+            />
+            <View style={styles.lostFoundTextCol}>
+              <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
+              <View style={styles.lostFoundSubRow}>
+                <Text style={styles.lostFoundSubText}>Report here</Text>
+                <Ionicons name="arrow-forward" size={12} color="#999999" />
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -465,6 +563,45 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
+  // ── Vets at Home carousel (Karachi only)
+  vetsAtHomeTile: {
+    borderRadius: 20,
+    backgroundColor: TILE_BG,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  vetsAtHomeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 14,
+  },
+  vetsAtHomeCard: {
+    width: '31%',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    gap: 6,
+  },
+  vetsAtHomeCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8E9EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vetsAtHomeCardLabel: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 13,
+    color: DARK,
+  },
+  vetsAtHomeCardPrice: {
+    fontFamily: FONTS.body,
+    fontSize: 11,
+    color: '#999999',
+  },
+
   // ── Square tiles
   squareRow: {
     flexDirection: 'row',
@@ -547,5 +684,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999999',
     textAlign: 'right',
+  },
+
+  // ── Lost & Found, Karachi-demoted slim variant
+  lostFoundSlim: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  lostFoundSlimText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 13,
+    color: '#999999',
   },
 });

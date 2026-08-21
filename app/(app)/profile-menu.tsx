@@ -132,6 +132,9 @@ export default function ProfileMenuScreen() {
         <MenuItem icon="paw-outline" label="My Adoption Listings" onPress={() => navigateFromMenu('/(app)/my-listings')} />
         <MenuItem icon="mail-outline" label="Adoption Requests" onPress={() => navigateFromMenu('/(app)/adoption-requests')} />
         <MenuItem icon="document-text-outline" label="My Applications" onPress={() => navigateFromMenu('/(app)/my-applications')} />
+        {(user?.role === 'dispatcher' || user?.role === 'admin') && (
+          <MenuItem icon="car-outline" label="Dispatcher Console" onPress={() => navigateFromMenu('/(app)/express-vet-dispatch')} />
+        )}
 
         {/* Account privacy toggle */}
         <View style={s.menuItemRow}>
