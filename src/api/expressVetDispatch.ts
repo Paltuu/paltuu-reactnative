@@ -89,6 +89,11 @@ export const expressVetDispatchApi = {
     return data;
   },
 
+  async getStats(): Promise<{ in_progress: number; completed_today: number }> {
+    const { data } = await client.get('/express-vet/dispatcher/stats');
+    return data;
+  },
+
   async getRequestDetail(id: string | number): Promise<{ request: ExpressVetDispatchRequest }> {
     const { data } = await client.get(`/express-vet/dispatcher/requests/${id}`);
     return data;

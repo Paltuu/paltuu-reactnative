@@ -138,13 +138,28 @@ export default function RootLayout() {
     const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
     const onOnboardingSlides = segments[0] === 'onboarding';
 
+    // Dispatchers aren't normal users of the consumer app — they get the Dispatcher
+    // Console and nothing else (no tabs, no social feed, no Pets/adopt/marketplace).
+    // Same login/session system underneath, just a completely different landing area.
+    const isDispatcher = useAuthStore.getState().user?.role === 'dispatcher';
+    const inAppGroup = segments[0] === '(app)';
+    const onDispatchConsole = (segments as string[])[1] === 'express-vet-dispatch';
+
     if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
       // TEMP: onboarding slides are disabled — send everyone straight to welcome.
       // Re-enable by restoring: router.replace(!hasSeenOnboarding ? '/onboarding' : '/(auth)/welcome');
       router.replace('/(auth)/welcome');
     } else if (isAuthenticated && inAuthGroup) {
       const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
-      router.replace(!newUser ? '/(app)' : needsUsername ? '/oauth-username' : '/interests');
+      if (!newUser) {
+        router.replace(isDispatcher ? '/(app)/express-vet-dispatch' : '/(app)');
+      } else {
+        router.replace(needsUsername ? '/oauth-username' : '/interests');
+      }
+    } else if (isAuthenticated && isDispatcher && inAppGroup && !onDispatchConsole) {
+      // Catches deep links, notification taps, or manual navigation into any other
+      // part of the consumer app (e.g. a social post link) and bounces back.
+      router.replace('/(app)/express-vet-dispatch');
     }
   }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key, hasSeenOnboarding]);
 

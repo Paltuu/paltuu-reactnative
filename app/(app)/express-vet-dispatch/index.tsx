@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, Alert, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { expressVetDispatchApi, ExpressVetDispatchRequest } from '../../../src/api/expressVetDispatch';
+import { expressVetDispatchApi, ExpressVetDispatchRequest, ExpressVetProvider } from '../../../src/api/expressVetDispatch';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../src/constants/expressVet';
 import { getRealtimeSocket, disconnectRealtimeSocket } from '../../../src/services/realtime';
+import { useAuthStore } from '../../../src/stores/authStore';
 import { FONTS } from '../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -27,6 +28,7 @@ export default function ExpressVetDispatchIndexScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const logout = useAuthStore((s) => s.logout);
 
   const { data: dutyData } = useQuery({
     queryKey: ['express-vet-dispatch-duty'],
@@ -36,6 +38,23 @@ export default function ExpressVetDispatchIndexScreen() {
   useEffect(() => {
     if (dutyData) setIsOnDuty(dutyData.status.is_on_duty);
   }, [dutyData]);
+
+  const { data: stats } = useQuery({
+    queryKey: ['express-vet-dispatch-stats'],
+    queryFn: expressVetDispatchApi.getStats,
+  });
+
+  const { data: jobsData } = useQuery({
+    queryKey: ['express-vet-dispatch-jobs-preview'],
+    queryFn: () => expressVetDispatchApi.getJobs(),
+  });
+  const jobsPreview = (jobsData?.data ?? []).slice(0, 3);
+
+  const { data: providersData } = useQuery({
+    queryKey: ['express-vet-providers-preview'],
+    queryFn: () => expressVetDispatchApi.searchProviders({}),
+  });
+  const providersPreview = (providersData?.data ?? []).slice(0, 3);
 
   const { data, isPending } = useQuery({
     queryKey: INBOX_QUERY_KEY,
@@ -82,28 +101,111 @@ export default function ExpressVetDispatchIndexScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
+        {router.canGoBack() && (
+          // A dispatcher-role account lands here directly on login (see app/_layout.tsx) with
+          // no back history — this is their app root, so there's nothing to fall back to.
+          // Admins reach this screen from the profile menu and do have a real back stack.
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-back" size={26} color="#111827" />
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Dispatcher Console</Text>
           <Text style={styles.subtitle}>{isOnDuty ? 'On duty' : 'Off duty'}</Text>
         </View>
         <Switch value={isOnDuty} onValueChange={handleToggleDuty} trackColor={{ true: PRIMARY }} />
+        {/* Dispatcher-role accounts can't reach the normal profile menu (where logout
+            normally lives) — this is the only way out for them, so it has to live here. */}
+        <TouchableOpacity
+          onPress={() => Alert.alert('Log out?', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Log Out', style: 'destructive', onPress: () => logout() },
+          ])}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ marginLeft: 14 }}
+        >
+          <Ionicons name="log-out-outline" size={24} color="#8A8A94" />
+        </TouchableOpacity>
       </View>
 
-      <View style={[styles.navRow, { paddingHorizontal: H_PAD }]}>
-        <TouchableOpacity style={styles.navLink} onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}>
-          <Ionicons name="briefcase-outline" size={16} color={PRIMARY} />
-          <Text style={styles.navLinkText}>My Jobs</Text>
+      {/* Existing work, not new incoming requests — so this stays visible even off duty. */}
+      <View style={[styles.statsRow, { paddingHorizontal: H_PAD }]}>
+        <TouchableOpacity
+          style={styles.statCard}
+          activeOpacity={0.9}
+          onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
+        >
+          <Text style={styles.statValue}>{stats?.in_progress ?? '—'}</Text>
+          <Text style={styles.statLabel}>In Progress</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navLink} onPress={() => router.push('/(app)/express-vet-dispatch/providers' as any)}>
-          <Ionicons name="people-outline" size={16} color={PRIMARY} />
-          <Text style={styles.navLinkText}>Providers</Text>
+        <TouchableOpacity
+          style={styles.statCard}
+          activeOpacity={0.9}
+          onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
+        >
+          <Text style={styles.statValue}>{stats?.completed_today ?? '—'}</Text>
+          <Text style={styles.statLabel}>Completed Today</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={{ paddingHorizontal: H_PAD, paddingBottom: 16 }}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>My Jobs</Text>
+          <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}>
+            <Text style={styles.seeAllText}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        {jobsPreview.length === 0 ? (
+          <Text style={styles.sectionEmptyText}>No jobs yet.</Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {jobsPreview.map((job) => (
+              <TouchableOpacity
+                key={job.request_id}
+                style={styles.previewRow}
+                onPress={() =>
+                  router.push({ pathname: '/(app)/express-vet-dispatch/requests/[id]', params: { id: job.request_id } } as any)
+                }
+              >
+                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[job.category] ?? 'paw'} size={16} color={PRIMARY} />
+                <Text style={styles.previewRowText} numberOfLines={1}>
+                  {job.category.replace('_', ' ')} — {job.client_name}
+                </Text>
+                <Text style={styles.previewRowMeta}>{job.status === 'completed' ? 'Done' : 'In Progress'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={{ paddingHorizontal: H_PAD, paddingBottom: 16 }}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Providers</Text>
+          <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/providers' as any)}>
+            <Text style={styles.seeAllText}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        {providersPreview.length === 0 ? (
+          <Text style={styles.sectionEmptyText}>No providers yet — one gets added automatically the first time you assign a job.</Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {providersPreview.map((provider: ExpressVetProvider) => (
+              <TouchableOpacity
+                key={provider.provider_id}
+                style={styles.previewRow}
+                onPress={() =>
+                  router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any)
+                }
+              >
+                <Ionicons name="person-circle-outline" size={16} color={PRIMARY} />
+                <Text style={styles.previewRowText} numberOfLines={1}>
+                  {provider.name}
+                </Text>
+                <Text style={styles.previewRowMeta}>{provider.rating != null ? `${provider.rating} ★` : '—'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {!isOnDuty ? (
@@ -177,9 +279,42 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
 
-  navRow: { flexDirection: 'row', gap: 16, paddingVertical: 12 },
-  navLink: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  navLinkText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY },
+  statsRow: { flexDirection: 'row', gap: 10, paddingTop: 12, paddingBottom: 16 },
+  statCard: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    padding: 14,
+    alignItems: 'center',
+  },
+  statValue: { fontFamily: FONTS.heading, fontSize: 26, color: DARK },
+  statLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 15, color: DARK },
+  seeAllText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: PRIMARY },
+  sectionEmptyText: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
+
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  previewRowText: { flex: 1, fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, textTransform: 'capitalize' },
+  previewRowMeta: { fontFamily: FONTS.body, fontSize: 11, color: '#8A8A94' },
 
   row: {
     flexDirection: 'row',
