@@ -27,7 +27,7 @@ function resolveFields(
 export default function ExpressVetQuestionnaireScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { category, species } = useLocalSearchParams<{ category: string; species: string }>();
+  const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const setQuestionnaireAnswers = useExpressVetDraftStore((s) => s.setQuestionnaireAnswers);
 
   const { data: config, isPending } = useQuery({
@@ -58,7 +58,7 @@ export default function ExpressVetQuestionnaireScreen() {
     setQuestionnaireAnswers(answers);
     router.push({
       pathname: '/(app)/express-vet/[category]/address',
-      params: { category, species },
+      params: { category, species, sub_service },
     } as any);
   };
 

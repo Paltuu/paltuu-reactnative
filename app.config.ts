@@ -188,7 +188,6 @@ export default (): ExpoConfig => {
       // Firebase pods (AppCheckCore → GoogleUtilities/RecaptchaInterop) can be
       // integrated under static frameworks.
       "./plugins/withModularHeaders",
-      "./plugins/withDisableFirebaseSPM",
       "@react-native-google-signin/google-signin",
       [
         "expo-location",
@@ -202,7 +201,26 @@ export default (): ExpoConfig => {
       // Firebase app initialized; @react-native-firebase/messaging itself autolinks and
       // needs no plugin entry of its own. @notifee/react-native (Android alert UI) also
       // autolinks with no plugin entry needed.
-      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/app",
+        {
+          ios: {
+            // firebase-ios-sdk's Swift Package products are automatic (not
+            // `.dynamic`) libraries, so under `use_frameworks! :linkage => :static`
+            // — which expo-build-properties sets above, and which
+            // @react-native-google-signin needs (see ./plugins/withModularHeaders)
+            // — every react-native-firebase pod that resolves Firebase via SPM
+            // embeds its own copy, and those collide at link time as
+            // duplicate-symbol errors. react-native-firebase's Podfile hook detects
+            // this and fails `pod install`. Switching to dynamic linkage isn't
+            // viable here (it would break the Google Sign-In modular-headers fix),
+            // so opt out of SPM instead: this emits `$RNFirebaseDisableSPM = true`
+            // into the Podfile, falling back to CocoaPods-based Firebase
+            // integration.
+            disableSPM: true,
+          },
+        },
+      ],
       "./plugins/withVoipBackgroundMode",
       "./plugins/withVoipPushAppDelegate",
     ],

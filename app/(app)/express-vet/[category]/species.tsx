@@ -62,7 +62,10 @@ export default function ExpressVetSpeciesScreen() {
                 style={styles.row}
                 onPress={() =>
                   router.push({
-                    pathname: '/(app)/express-vet/[category]/questionnaire',
+                    pathname:
+                      category === 'grooming'
+                        ? '/(app)/express-vet/[category]/service'
+                        : '/(app)/express-vet/[category]/questionnaire',
                     params: { category, species },
                   } as any)
                 }

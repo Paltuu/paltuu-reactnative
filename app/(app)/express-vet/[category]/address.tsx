@@ -15,7 +15,7 @@ const H_PAD = 20;
 export default function ExpressVetAddressScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { category, species } = useLocalSearchParams<{ category: string; species: string }>();
+  const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const user = useAuthStore((s) => s.user);
   const { addressLine, addressLandmark, contactPhone, setAddress } = useExpressVetDraftStore();
 
@@ -46,7 +46,7 @@ export default function ExpressVetAddressScreen() {
     });
     router.push({
       pathname: '/(app)/express-vet/[category]/review-and-submit',
-      params: { category, species },
+      params: { category, species, sub_service },
     } as any);
   };
 

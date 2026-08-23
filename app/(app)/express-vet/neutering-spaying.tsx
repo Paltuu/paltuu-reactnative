@@ -6,14 +6,16 @@ import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi } from '../../../src/api/expressVet';
 import { useLocationStore } from '../../../src/stores/locationStore';
-import { EXPRESS_VET_SECTIONS, lowestStartingPriceForCategories } from '../../../src/constants/expressVet';
+import { lowestStartingPrice } from '../../../src/constants/expressVet';
 import { FONTS } from '../../../src/constants/typography';
 
+// Entry point for the "Neutering & Spaying" Pets-tab section — same two-choice pattern as
+// vet-at-home.tsx. Picking either continues into the existing species.tsx flow unchanged.
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
 const H_PAD = 20;
 
-export default function ExpressVetIndexScreen() {
+export default function NeuteringSpayingChoiceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const cityId = useLocationStore((s) => s.cityId);
@@ -23,6 +25,12 @@ export default function ExpressVetIndexScreen() {
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
   });
+
+  const neuteringPrice = lowestStartingPrice(config?.rate_cards ?? [], 'neutering', cityId);
+  const spayingPrice = lowestStartingPrice(config?.rate_cards ?? [], 'spaying', cityId);
+
+  const goTo = (category: string) =>
+    router.push({ pathname: '/(app)/express-vet/[category]/species', params: { category } } as any);
 
   return (
     <View style={styles.root}>
@@ -34,15 +42,9 @@ export default function ExpressVetIndexScreen() {
           <Ionicons name="chevron-back" size={26} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Vets at Home</Text>
-          <Text style={styles.subtitle}>Home-visit vet & grooming care in Karachi</Text>
+          <Text style={styles.title}>Neutering & Spaying</Text>
+          <Text style={styles.subtitle}>Which procedure does your pet need?</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/express-vet/requests' as any)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.myRequestsLink}>My Requests</Text>
-        </TouchableOpacity>
       </View>
 
       {isPending ? (
@@ -51,41 +53,36 @@ export default function ExpressVetIndexScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 14 }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ gap: 14 }}>
-            {EXPRESS_VET_SECTIONS.map((section) => {
-              const price = lowestStartingPriceForCategories(config?.rate_cards ?? [], section.categoryKeys, cityId);
-              return (
-                <TouchableOpacity
-                  key={section.key}
-                  activeOpacity={0.9}
-                  style={styles.card}
-                  onPress={() =>
-                    section.categoryKeys.length === 1
-                      ? router.push({
-                          pathname: '/(app)/express-vet/[category]/species',
-                          params: { category: section.categoryKeys[0] },
-                        } as any)
-                      : router.push(section.route as any)
-                  }
-                >
-                  <View style={styles.cardIcon}>
-                    <Ionicons name={section.icon} size={28} color={PRIMARY} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardLabel}>{section.label}</Text>
-                    <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
-                    <Text style={styles.cardPrice}>
-                      {price != null ? `Starting from PKR ${price.toLocaleString()}` : 'Pricing coming soon'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('neutering')}>
+            <View style={styles.cardIcon}>
+              <Ionicons name="male-outline" size={26} color={PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardLabel}>Neutering</Text>
+              <Text style={styles.cardDescription}>For male pets</Text>
+              <Text style={styles.cardPrice}>
+                {neuteringPrice != null ? `Starting from PKR ${neuteringPrice.toLocaleString()}` : 'Pricing coming soon'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+
+          <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('spaying')}>
+            <View style={styles.cardIcon}>
+              <Ionicons name="female-outline" size={26} color={PRIMARY} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardLabel}>Spaying</Text>
+              <Text style={styles.cardDescription}>For female pets</Text>
+              <Text style={styles.cardPrice}>
+                {spayingPrice != null ? `Starting from PKR ${spayingPrice.toLocaleString()}` : 'Pricing coming soon'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
         </ScrollView>
       )}
     </View>
@@ -105,9 +102,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 26, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
-  myRequestsLink: { fontFamily: FONTS.bodyBold, fontSize: 12, color: PRIMARY },
 
   card: {
     flexDirection: 'row',
@@ -129,19 +125,19 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontFamily: FONTS.bodyBold,
-    fontSize: 16,
+    fontSize: 17,
     color: DARK,
   },
-  cardSubtitle: {
+  cardDescription: {
     fontFamily: FONTS.body,
     fontSize: 12,
     color: '#8A8A94',
-    marginTop: 2,
+    marginTop: 3,
   },
   cardPrice: {
     fontFamily: FONTS.bodyBold,
-    fontSize: 12,
-    color: '#999999',
-    marginTop: 5,
+    fontSize: 13,
+    color: '#8A8A94',
+    marginTop: 6,
   },
 });

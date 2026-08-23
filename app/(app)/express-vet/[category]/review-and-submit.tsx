@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi } from '../../../../src/api/expressVet';
 import { useLocationStore } from '../../../../src/stores/locationStore';
 import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftStore';
-import { EXPRESS_VET_SPECIES_LABELS } from '../../../../src/constants/expressVet';
+import { EXPRESS_VET_SPECIES_LABELS, GROOMING_SUB_SERVICE_LABELS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
 
@@ -19,7 +19,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { category, species } = useLocalSearchParams<{ category: string; species: string }>();
+  const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const { cityId, latitude, longitude } = useLocationStore();
   const draft = useExpressVetDraftStore();
 
@@ -33,7 +33,11 @@ export default function ExpressVetReviewAndSubmitScreen() {
 
   const categoryConfig = config?.categories.find((c) => c.key === category);
   const rateCard = (config?.rate_cards ?? []).find(
-    (rc) => rc.category === category && rc.species === species && rc.city_id === cityId
+    (rc) =>
+      rc.category === category &&
+      rc.species === species &&
+      rc.city_id === cityId &&
+      (rc.sub_service ?? null) === (sub_service ?? null)
   );
 
   const submitMutation = useMutation({
@@ -41,6 +45,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
       expressVetApi.createRequest({
         category,
         species,
+        sub_service: sub_service ?? null,
         city_id: cityId!,
         questionnaire_answers: draft.questionnaireAnswers,
         address_line: draft.addressLine,
@@ -101,6 +106,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
           >
             <View style={styles.card}>
               <Row label="Service" value={categoryConfig?.label ?? category} />
+              {!!sub_service && <Row label="Package" value={GROOMING_SUB_SERVICE_LABELS[sub_service] ?? sub_service} />}
               <Row label="For" value={EXPRESS_VET_SPECIES_LABELS[species] ?? species} />
               <Row label="Address" value={draft.addressLine} />
               {!!draft.addressLandmark && <Row label="Landmark" value={draft.addressLandmark} />}

@@ -17,7 +17,7 @@ import { useAuthStore } from '../../../src/stores/authStore';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { petApi } from '../../../src/api/pets';
 import { expressVetApi } from '../../../src/api/expressVet';
-import { EXPRESS_VET_CATEGORY_ICONS, lowestStartingPrice } from '../../../src/constants/expressVet';
+import { EXPRESS_VET_SECTIONS, lowestStartingPriceForCategories } from '../../../src/constants/expressVet';
 import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
@@ -160,58 +160,57 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
   );
 });
 
-// Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen) — each card
-// deep-links straight into that category's species picker, skipping the express-vet index screen.
-const VetsAtHomeCarousel = React.memo(function VetsAtHomeCarousel({
-  categories,
+// Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen). Renders as
+// full-width, front-facing tiles rather than a small equal-width grid — the earlier 3-per-row
+// carousel (31% width each) truncated labels like "Neutering"/"Vaccination". Grouped into 4
+// sections (see EXPRESS_VET_SECTIONS) instead of 6 raw categories, and each section deep-links
+// straight into its picker/species screen, skipping the express-vet index screen.
+const VetAtHomeSections = React.memo(function VetAtHomeSections({
   rateCards,
   cityId,
-  onPressCategory,
-  onPressSeeAll,
+  onPressSection,
+  onPressMyRequests,
 }: {
-  categories: { key: string; label: string }[];
   rateCards: any[];
   cityId: number | null;
-  onPressCategory: (categoryKey: string) => void;
-  onPressSeeAll: () => void;
+  onPressSection: (section: (typeof EXPRESS_VET_SECTIONS)[number]) => void;
+  onPressMyRequests: () => void;
 }) {
   return (
-    <View style={styles.vetsAtHomeTile}>
-      <TouchableOpacity activeOpacity={0.7} onPress={onPressSeeAll} style={styles.nearbyHeaderRow}>
+    <View style={{ gap: 10 }}>
+      <View style={styles.vetAtHomeHeaderRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.nearbyTitle}>Vets at Home</Text>
-          <Text style={styles.nearbySub}>Home-visit vet & grooming care</Text>
+          <Text style={styles.nearbySub}>Home-visit vet & grooming care, in Karachi</Text>
         </View>
-        <Ionicons name="arrow-forward" size={16} color="#999999" />
-      </TouchableOpacity>
-
-      <View style={styles.vetsAtHomeGrid}>
-        {categories.map((category) => {
-          const price = lowestStartingPrice(rateCards, category.key, cityId);
-          return (
-            <TouchableOpacity
-              key={category.key}
-              activeOpacity={0.9}
-              style={styles.vetsAtHomeCard}
-              onPress={() => onPressCategory(category.key)}
-            >
-              <View style={styles.vetsAtHomeCardIcon}>
-                <Ionicons
-                  name={EXPRESS_VET_CATEGORY_ICONS[category.key] ?? 'paw'}
-                  size={22}
-                  color="#A03048"
-                />
-              </View>
-              <Text style={styles.vetsAtHomeCardLabel} numberOfLines={1}>
-                {category.label}
-              </Text>
-              <Text style={styles.vetsAtHomeCardPrice} numberOfLines={1}>
-                {price != null ? `From PKR ${price.toLocaleString()}` : 'Coming soon'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <TouchableOpacity onPress={onPressMyRequests} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.myRequestsLink}>My Requests</Text>
+        </TouchableOpacity>
       </View>
+
+      {EXPRESS_VET_SECTIONS.map((section) => {
+        const price = lowestStartingPriceForCategories(rateCards, section.categoryKeys, cityId);
+        return (
+          <TouchableOpacity
+            key={section.key}
+            activeOpacity={0.9}
+            style={[styles.sectionTile, section.featured && styles.sectionTileFeatured]}
+            onPress={() => onPressSection(section)}
+          >
+            <View style={[styles.sectionIcon, section.featured && styles.sectionIconFeatured]}>
+              <Ionicons name={section.icon} size={26} color={section.featured ? '#FFFFFF' : '#A03048'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionLabel}>{section.label}</Text>
+              <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
+              <Text style={[styles.sectionPrice, section.featured && styles.sectionPriceFeatured]}>
+                {price != null ? `Starting from PKR ${price.toLocaleString()}` : 'Pricing coming soon'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 });
@@ -290,9 +289,6 @@ export default function PetsHubScreen() {
           { paddingTop: insets.top + 16 }
         ]}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
       >
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
         <GreetingText firstName={firstName} isFocused={isFocused} />
@@ -329,17 +325,23 @@ export default function PetsHubScreen() {
             so it's replaced by the Vets at Home carousel — the main advertising surface
             for that feature. Everywhere else, today's layout is untouched. */}
         {isKarachiExpressVet ? (
-          <VetsAtHomeCarousel
-            categories={expressVetConfig?.categories ?? []}
+          <VetAtHomeSections
             rateCards={expressVetConfig?.rate_cards ?? []}
             cityId={cityId}
-            onPressCategory={(categoryKey) =>
-              router.push({
-                pathname: '/(app)/express-vet/[category]/species',
-                params: { category: categoryKey },
-              } as any)
-            }
-            onPressSeeAll={() => router.push('/(app)/express-vet' as any)}
+            onPressSection={(section) => {
+              // Vaccination/Grooming have one underlying category each — go straight to
+              // species.tsx. Vet at Home / Neutering & Spaying cover two categories, so they
+              // route to a picker screen first (see EXPRESS_VET_SECTIONS' `route` field).
+              if (section.categoryKeys.length === 1) {
+                router.push({
+                  pathname: '/(app)/express-vet/[category]/species',
+                  params: { category: section.categoryKeys[0] },
+                } as any);
+              } else {
+                router.push(section.route as any);
+              }
+            }}
+            onPressMyRequests={() => router.push('/(app)/express-vet/requests' as any)}
           />
         ) : (
           // Pets Near You — taller, rotating circular avatars. Opens Adopt with
@@ -563,43 +565,62 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // ── Vets at Home carousel (Karachi only)
-  vetsAtHomeTile: {
-    borderRadius: 20,
-    backgroundColor: TILE_BG,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  vetsAtHomeGrid: {
+  // ── Vets at Home sections (Karachi only) — full-width stacked tiles, not a small equal-width
+  // grid, so labels like "Neutering & Spaying" have room to breathe.
+  vetAtHomeHeaderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 14,
+    alignItems: 'flex-start',
+    paddingHorizontal: 2,
   },
-  vetsAtHomeCard: {
-    width: '31%',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    gap: 6,
+  myRequestsLink: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 12,
+    color: '#A03048',
+    paddingTop: 2,
   },
-  vetsAtHomeCardIcon: {
-    width: 36,
-    height: 36,
+  sectionTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     borderRadius: 18,
-    backgroundColor: '#F8E9EC',
+    backgroundColor: TILE_BG,
+    padding: 14,
+  },
+  sectionTileFeatured: {
+    backgroundColor: '#FAF0F2',
+    borderWidth: 1.5,
+    borderColor: '#A03048',
+  },
+  sectionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  vetsAtHomeCardLabel: {
+  sectionIconFeatured: {
+    backgroundColor: '#A03048',
+  },
+  sectionLabel: {
     fontFamily: FONTS.bodyBold,
-    fontSize: 13,
+    fontSize: 16,
     color: DARK,
   },
-  vetsAtHomeCardPrice: {
+  sectionSubtitle: {
     fontFamily: FONTS.body,
-    fontSize: 11,
+    fontSize: 12,
+    color: '#8A8A94',
+    marginTop: 2,
+  },
+  sectionPrice: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 12,
     color: '#999999',
+    marginTop: 5,
+  },
+  sectionPriceFeatured: {
+    color: '#A03048',
   },
 
   // ── Square tiles
