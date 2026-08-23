@@ -9,10 +9,15 @@
  *
  * ⚠️ THIS IS THE RISKIEST PLUGIN IN THIS FEATURE — unlike the Info.plist/AndroidManifest
  * plugins alongside it (typed AST edits via @expo/config-plugins, low-risk), this is a
- * best-effort STRING patch of Expo's current Swift AppDelegate template. It has not been
- * compiled/verified here. After `npx expo prebuild --clean`, open
- * `ios/<App>/AppDelegate.swift` in Xcode and confirm by hand that:
- *   1. `import PushKit` is present,
+ * best-effort STRING patch of Expo's current Swift AppDelegate template. After
+ * `npx expo prebuild --clean`, open `ios/<App>/AppDelegate.swift` in Xcode and confirm by
+ * hand that:
+ *   1. `import PushKit` and `import RNVoipPushNotification` are both present — the latter
+ *      is react-native-voip-push-notification's own CocoaPods module name (its podspec's
+ *      `s.name`), required for `RNVoipPushNotificationManager` to be visible in Swift at
+ *      all; omitting it fails with "cannot find 'RNVoipPushNotificationManager' in scope"
+ *      (caught by a real local Xcode build — the class itself compiles fine as plain
+ *      Objective-C, Swift just never saw it without this import),
  *   2. `RNVoipPushNotificationManager.voipRegistration()` is called somewhere in
  *      `application(_:didFinishLaunchingWithOptions:)`,
  *   3. the two PKPushRegistryDelegate methods below actually compile against whatever
@@ -23,7 +28,7 @@
  */
 const { withAppDelegate } = require('@expo/config-plugins');
 
-const IMPORT_MARKER = 'import PushKit';
+const IMPORT_MARKER = 'import PushKit\nimport RNVoipPushNotification';
 const DELEGATE_CONFORMANCE_MARKER = 'PKPushRegistryDelegate';
 
 const PUSHKIT_EXTENSION = `

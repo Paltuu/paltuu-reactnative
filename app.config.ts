@@ -194,6 +194,7 @@ export default (): ExpoConfig => {
       // Firebase pods (AppCheckCore → GoogleUtilities/RecaptchaInterop) can be
       // integrated under static frameworks.
       "./plugins/withModularHeaders",
+      "./plugins/withDisableFirebaseSPM",
       "@react-native-google-signin/google-signin",
       [
         "expo-location",
