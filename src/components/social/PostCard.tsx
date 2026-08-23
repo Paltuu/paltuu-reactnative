@@ -614,7 +614,7 @@ const MediaBlock = React.memo(({
 
       if (!isPlaying) {
         return (
-          <View style={s.mediaWrapper}>
+          <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
             <VideoThumbnail
               thumbnailUri={thumbUri}
               width={SINGLE_VIDEO_W}
@@ -628,7 +628,7 @@ const MediaBlock = React.memo(({
         );
       }
       return (
-        <View style={s.mediaWrapper}>
+        <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
           <VideoPlayer
             key={videoUri}
             uri={videoUri}
@@ -648,7 +648,7 @@ const MediaBlock = React.memo(({
     const SINGLE_IMG_W = MEDIA_FULL_W - 24;
     const singleImgH = Math.round(SINGLE_IMG_W / 1.125);
     return (
-      <View style={s.mediaWrapper}>
+      <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => onImagePress?.(0)}
@@ -982,6 +982,10 @@ export const PostCard = React.memo(({
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
   const isOwnPost = String(currentUserId) === String(post.user_id);
+  // MediaBlock renders its own notice badge overlaid on the media — but a
+  // text-only flagged post has no media to overlay it on, so this is the
+  // fallback: same badge, just inline instead of absolute-positioned.
+  const [textNoticeExpanded, setTextNoticeExpanded] = useState(false);
 
   const handleDelete = () => {
     Alert.alert(
@@ -1293,6 +1297,16 @@ export const PostCard = React.memo(({
             onMenuPress={handleMenuPress}
             onAvatarPress={handleAvatarPress}
           />
+
+          {/* ── Pet-sale notice, text-only fallback ──
+               MediaBlock overlays this same badge on the media itself; a
+               post with no media has no media to overlay it on, so it
+               renders inline here instead, top-right of the post body. ── */}
+          {!bodyMedia?.length && post.content_notice_reason === 'pet_sale' && (
+            <View style={{ position: 'relative', height: 30, marginLeft: MEDIA_LEFT_OFFSET, marginRight: 14, marginTop: -8, marginBottom: 2 }}>
+              <PetSaleNoticeBadge expanded={textNoticeExpanded} onToggle={() => setTextNoticeExpanded(v => !v)} />
+            </View>
+          )}
 
           {/* ── Pet chip (optional) ── */}
           {/* Pet chip above the body only when there's no media — when there is
