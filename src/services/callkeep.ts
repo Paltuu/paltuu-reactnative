@@ -3,25 +3,31 @@ import * as Crypto from 'expo-crypto';
 import { useIncomingCallStore, IncomingExpressVetCallPayload } from '../stores/incomingCallStore';
 
 /**
- * Native ringing-call UI for the Vets at Home / Express Vet dispatcher alert, via
- * react-native-callkeep (CallKit on iOS, telecom ConnectionService on Android). The OS
- * itself owns the ringing/vibration/lock-screen behavior once a call is displayed — there
- * is no ringtone-loop or "keep ringing" code to write here, that's the whole point of
- * using the real call APIs instead of a custom full-screen modal + expo-av loop.
+ * iOS-only native ringing-call UI for the Vets at Home / Express Vet dispatcher alert, via
+ * react-native-callkeep -> CallKit. The OS itself owns the ringing/vibration/lock-screen
+ * behavior once a call is displayed — there is no ringtone-loop or "keep ringing" code to
+ * write here, that's the whole point of using the real call API.
+ *
+ * Android does NOT use this file (or callkeep at all) — see
+ * src/services/androidDispatchAlert.ts, a notifee full-screen notification instead. iOS
+ * keeps CallKit because it's the only way to ring over a locked/killed screen on iOS;
+ * Android dropped it because the equivalent telecom permissions (CALL_PHONE,
+ * READ_PHONE_STATE, foreground-service camera/microphone) were Google Play "restricted"
+ * permissions for a feature that was never placing a real call.
  *
  * NOTE on app size: unlike the account/role-gated JS *screens* elsewhere in this feature,
  * react-native-callkeep and react-native-voip-push-notification are native modules that
  * get compiled into the app binary for EVERY install once added as dependencies — lazily
  * `require()`-ing the JS wrapper (done below) avoids running its setup code for non-
  * dispatcher users, but does not reduce native binary size the way lazy-loading a
- * JS-only dependency (e.g. expo-location) does. There is no way to make CallKit/
- * ConnectionService support "binary-optional" in a single build.
+ * JS-only dependency (e.g. expo-location) does. There is no way to make CallKit
+ * support "binary-optional" in a single build.
  */
 
 let isSetUp = false;
 
 export async function setupCallKeep(): Promise<void> {
-  if (isSetUp) return;
+  if (Platform.OS !== 'ios' || isSetUp) return;
   const RNCallKeep = require('react-native-callkeep').default;
 
   await RNCallKeep.setup({
@@ -30,23 +36,7 @@ export async function setupCallKeep(): Promise<void> {
       supportsVideo: false,
       includesCallsInRecents: false,
     },
-    android: {
-      alertTitle: 'Phone account permission',
-      alertDescription: 'Paltuu Dispatcher needs access to your phone accounts to show incoming job alerts as calls.',
-      cancelButton: 'Cancel',
-      okButton: 'Allow',
-      foregroundService: {
-        channelId: 'com.paltuu.app.dispatchcall',
-        channelName: 'Incoming job alerts',
-        notificationTitle: 'Listening for incoming Vets at Home requests',
-        notificationIcon: 'ic_notification',
-      },
-    },
   });
-
-  if (Platform.OS === 'android') {
-    RNCallKeep.setAvailable(true);
-  }
 
   isSetUp = true;
 }

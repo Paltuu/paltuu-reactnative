@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, Alert, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -98,6 +98,15 @@ export default function ExpressVetDispatchIndexScreen() {
     dutyMutation.mutate(value);
   };
 
+  // Android 14+ doesn't auto-grant full-screen job alerts for non-calling apps — the
+  // dispatcher may need a one-time manual toggle (see src/services/androidDispatchAlert.ts).
+  // notifee has no API to check that specific grant, so this is a standing reminder rather
+  // than a conditional prompt: cheap to show, and harmless once already enabled.
+  const openAlertSettings = () => {
+    const notifee = require('@notifee/react-native').default;
+    notifee.openNotificationSettings().catch(() => {});
+  };
+
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
@@ -127,6 +136,19 @@ export default function ExpressVetDispatchIndexScreen() {
           <Ionicons name="log-out-outline" size={24} color="#8A8A94" />
         </TouchableOpacity>
       </View>
+
+      {Platform.OS === 'android' && (
+        <TouchableOpacity
+          style={[styles.alertSettingsHint, { marginHorizontal: H_PAD }]}
+          onPress={openAlertSettings}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="notifications-outline" size={16} color={PRIMARY} />
+          <Text style={styles.alertSettingsHintText}>
+            Make sure job alerts are allowed to show over your lock screen — tap to check
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Existing work, not new incoming requests — so this stays visible even off duty. */}
       <View style={[styles.statsRow, { paddingHorizontal: H_PAD }]}>
@@ -303,6 +325,17 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+
+  alertSettingsHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FCEFF1',
+  },
+  alertSettingsHintText: { flex: 1, fontFamily: FONTS.body, fontSize: 12, color: DARK },
 
   statsRow: { flexDirection: 'row', gap: 10, paddingTop: 12, paddingBottom: 16 },
   statCard: {

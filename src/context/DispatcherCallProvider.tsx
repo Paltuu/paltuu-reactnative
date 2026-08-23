@@ -5,6 +5,12 @@ import Toast from 'react-native-toast-message';
 import { useAuthStore } from '../stores/authStore';
 import { setupCallKeep, attachCallKeepListeners, endCallKeepCall } from '../services/callkeep';
 import { setupDispatcherVoipPush } from '../services/dispatcherVoipPush';
+import {
+  displayAndroidIncomingAlert,
+  isExpressVetAlertOpenEvent,
+  parseExpressVetAlertData,
+} from '../services/androidDispatchAlert';
+import { useIncomingCallStore } from '../stores/incomingCallStore';
 import { expressVetDispatchApi } from '../api/expressVetDispatch';
 import type { IncomingExpressVetCallPayload } from '../stores/incomingCallStore';
 
@@ -13,6 +19,15 @@ import type { IncomingExpressVetCallPayload } from '../stores/incomingCallStore'
  * everyone else pays no setup cost here (see app size note in src/services/callkeep.ts
  * for the caveat that the native binary itself is still larger for all installs once
  * these dependencies are compiled in, regardless of this role gate).
+ *
+ * iOS and Android are two genuinely different mechanisms here, not just different config:
+ *   - iOS: react-native-callkeep -> CallKit, a real incoming-call screen. This is the only
+ *     way to ring over a locked/killed screen on iOS, so it's untouched (see callkeep.ts).
+ *   - Android: a notifee full-screen notification (src/services/androidDispatchAlert.ts),
+ *     no CallKeep/telecom involved. Opening it (tap, or the OS auto-launching it over the
+ *     lock screen) navigates to /express-vet-dispatch/incoming-alert, which owns the
+ *     accept/dismiss decision — there's no native "answerCall" event to listen for the way
+ *     CallKeep has, since this isn't pretending to be a real call.
  *
  * This is deliberately separate from the on-duty toggle in the dispatcher console
  * (POST /dispatcher/duty) — a dispatcher who is authenticated but has gone off-duty
@@ -31,36 +46,45 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
     let cleanupVoip: (() => void) | undefined;
     let cleanupCallKeepListeners: (() => void) | undefined;
     let cleanupForegroundFcm: (() => void) | undefined;
+    let cleanupNotifeeForeground: (() => void) | undefined;
     let active = true;
 
+    const openAlertScreen = (alertId: string) => {
+      if (!useIncomingCallStore.getState().get(alertId)) return;
+      router.push({
+        pathname: '/express-vet-dispatch/incoming-alert',
+        params: { alertId },
+      } as any);
+    };
+
     (async () => {
-      await setupCallKeep();
-      if (!active) return;
-
-      cleanupCallKeepListeners = attachCallKeepListeners({
-        onAnswer: (payload: IncomingExpressVetCallPayload, callUUID: string) => {
-          router.push({
-            pathname: '/(app)/express-vet-dispatch/requests/[id]',
-            params: { id: payload.request_id },
-          } as any);
-
-          expressVetDispatchApi
-            .claim(payload.request_id)
-            .catch((err) => {
-              // 409 = another dispatcher answered first — normal race outcome, not a bug.
-              if (err?.response?.status === 409) {
-                Toast.show({ type: 'info', text1: 'Already claimed by another dispatcher' });
-              }
-            })
-            .finally(() => endCallKeepCall(callUUID));
-        },
-      });
-
       if (Platform.OS === 'ios') {
+        await setupCallKeep();
+        if (!active) return;
+
+        cleanupCallKeepListeners = attachCallKeepListeners({
+          onAnswer: (payload: IncomingExpressVetCallPayload, callUUID: string) => {
+            router.push({
+              pathname: '/(app)/express-vet-dispatch/requests/[id]',
+              params: { id: payload.request_id },
+            } as any);
+
+            expressVetDispatchApi
+              .claim(payload.request_id)
+              .catch((err) => {
+                // 409 = another dispatcher answered first — normal race outcome, not a bug.
+                if (err?.response?.status === 409) {
+                  Toast.show({ type: 'info', text1: 'Already claimed by another dispatcher' });
+                }
+              })
+              .finally(() => endCallKeepCall(callUUID));
+          },
+        });
+
         cleanupVoip = setupDispatcherVoipPush();
       } else if (Platform.OS === 'android') {
         const messaging = require('@react-native-firebase/messaging').default;
-        const { displayIncomingExpressVetCall } = require('../services/callkeep');
+        const notifee = require('@notifee/react-native').default;
 
         messaging()
           .getToken()
@@ -71,20 +95,27 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
 
         // Foreground counterpart to index.js's setBackgroundMessageHandler — that one
         // only fires while backgrounded/killed, this one covers the app-open case.
-        const unsubscribe = messaging().onMessage(async (remoteMessage: any) => {
+        cleanupForegroundFcm = messaging().onMessage(async (remoteMessage: any) => {
           if (remoteMessage?.data?.type !== 'express_vet_incoming_call') return;
-          const data = remoteMessage.data;
-          await displayIncomingExpressVetCall({
-            request_id: String(data.request_id),
-            category: String(data.category ?? 'express_vet'),
-            client_name: String(data.client_name ?? 'Paltuu client'),
-            client_photo_url: data.client_photo_url || null,
-            address_line: String(data.address_line ?? ''),
-            starting_price_pkr: Number(data.starting_price_pkr ?? 0),
-            contact_phone: String(data.contact_phone ?? ''),
-          });
+          await displayAndroidIncomingAlert(parseExpressVetAlertData(remoteMessage.data));
         });
-        cleanupForegroundFcm = unsubscribe;
+
+        // Cold start: app was fully killed and got launched by the dispatcher tapping the
+        // alert (or its full-screen auto-launch). Handles the equivalent of what
+        // notifee.onBackgroundEvent (index.js) can't do — that fires before JS/navigation
+        // is ready, this runs once this provider (and the router) is mounted.
+        notifee.getInitialNotification().then((initial: any) => {
+          if (active && initial && isExpressVetAlertOpenEvent({ detail: initial })) {
+            openAlertScreen(initial.notification.id);
+          }
+        });
+
+        // App backgrounded (not killed) when the dispatcher taps the alert.
+        cleanupNotifeeForeground = notifee.onForegroundEvent(({ detail }: any) => {
+          if (isExpressVetAlertOpenEvent({ detail }) && detail.notification?.id) {
+            openAlertScreen(detail.notification.id);
+          }
+        });
       }
     })();
 
@@ -93,6 +124,7 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
       cleanupVoip?.();
       cleanupCallKeepListeners?.();
       cleanupForegroundFcm?.();
+      cleanupNotifeeForeground?.();
     };
   }, [isDispatcher, router]);
 

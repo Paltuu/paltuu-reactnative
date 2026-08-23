@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 
 if (Platform.OS === 'android') {
   const messaging = require('@react-native-firebase/messaging').default;
+  const notifee = require('@notifee/react-native').default;
 
   messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     if (remoteMessage?.data?.type !== 'express_vet_incoming_call') return;
@@ -19,19 +20,15 @@ if (Platform.OS === 'android') {
     // Lazy require: this file runs before any RN module registry setup a normal
     // `import` at the top could rely on, so requiring inline here (after RN's own
     // bridge is up, which it is by the time this handler fires) is the safe order.
-    const { displayIncomingExpressVetCall } = require('./src/services/callkeep');
-    const data = remoteMessage.data;
-
-    await displayIncomingExpressVetCall({
-      request_id: String(data.request_id),
-      category: String(data.category ?? 'express_vet'),
-      client_name: String(data.client_name ?? 'Paltuu client'),
-      client_photo_url: data.client_photo_url || null,
-      address_line: String(data.address_line ?? ''),
-      starting_price_pkr: Number(data.starting_price_pkr ?? 0),
-      contact_phone: String(data.contact_phone ?? ''),
-    });
+    const { displayAndroidIncomingAlert, parseExpressVetAlertData } = require('./src/services/androidDispatchAlert');
+    await displayAndroidIncomingAlert(parseExpressVetAlertData(remoteMessage.data));
   });
+
+  // notifee requires a background-event handler to be registered even when there's
+  // nothing to do with it — the full-screen action itself is what opens the app; once
+  // open, DispatcherCallProvider.tsx picks up the launch via getInitialNotification()/
+  // onForegroundEvent and navigates to the alert screen.
+  notifee.onBackgroundEvent(async () => {});
 }
 
 require('expo-router/entry');

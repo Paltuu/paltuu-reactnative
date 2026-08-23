@@ -314,6 +314,14 @@ export default function RootLayout() {
                   name="quote/[id]"
                   options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
+                {/* Android-only Vets at Home dispatcher incoming-alert — opened by a
+                    notifee full-screen notification (see DispatcherCallProvider.tsx /
+                    src/services/androidDispatchAlert.ts). No swipe/back dismiss, mirrors
+                    how the old CallKeep native call screen couldn't be swiped away either. */}
+                <Stack.Screen
+                  name="express-vet-dispatch/incoming-alert"
+                  options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }}
+                />
               </Stack>
             </PostCardModalsProvider>
             </SocialActionsProvider>

@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.9",
+    version: "1.0.10",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -40,7 +40,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 18,
+      versionCode: 19,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -52,18 +52,12 @@ export default (): ExpoConfig => {
       permissions: [
         "android.permission.RECORD_AUDIO",
         "com.google.android.gms.permission.AD_ID",
-        // ── Vets at Home dispatcher ringing-call alert (react-native-callkeep) ──
-        // ⚠️ CALL_PHONE / READ_PHONE_STATE are Google Play "restricted permissions" —
-        // Play Console will require a Permissions Declaration form justifying their use
-        // (core feature = telecom/calling) before this build can be published. Confirm
-        // that's been filed before shipping a release with these present; see the
-        // handoff doc's dispatcher-alert section.
-        "android.permission.BIND_TELECOM_CONNECTION_SERVICE",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
-        "android.permission.FOREGROUND_SERVICE_CAMERA",
-        "android.permission.READ_PHONE_STATE",
-        "android.permission.CALL_PHONE",
+        // ── Vets at Home dispatcher ringing-call alert (Android) ──
+        // A full-screen, looping-sound notifee notification, not a fake phone call — see
+        // src/services/androidDispatchAlert.ts. This is the only Android permission it
+        // needs; no telecom/foreground-service/restricted permissions (iOS still uses
+        // react-native-callkeep/CallKit for the same feature, untouched, see ios: block).
+        "android.permission.USE_FULL_SCREEN_INTENT",
       ],
       ...(APP_ENV === 'development' && { usesCleartextTraffic: true }),
     },
@@ -206,10 +200,10 @@ export default (): ExpoConfig => {
       // ── Vets at Home dispatcher ringing-call alert ──
       // Android background FCM data-message handling (see index.js) needs the native
       // Firebase app initialized; @react-native-firebase/messaging itself autolinks and
-      // needs no plugin entry of its own.
+      // needs no plugin entry of its own. @notifee/react-native (Android alert UI) also
+      // autolinks with no plugin entry needed.
       "@react-native-firebase/app",
       "./plugins/withVoipBackgroundMode",
-      "./plugins/withCallKeepAndroid",
       "./plugins/withVoipPushAppDelegate",
     ],
   };
