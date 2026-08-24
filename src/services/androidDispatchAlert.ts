@@ -55,7 +55,7 @@ async function ensureChannel(): Promise<void> {
 
 /**
  * Displays the full-screen alert for a new Vets at Home request. Mirrors
- * `displayIncomingExpressVetCall` in callkeep.ts: generates an id, stashes the payload in
+ * the iOS CallKit path (see callkeep.ts / dispatcherVoipPush.ts): derives an id, stashes the payload in
  * the shared store, then triggers the platform-native "ring" UI — here, a notifee
  * notification with `fullScreenAction` (takes over the lock screen, same as CallKeep did)
  * and `loopSound` (repeats until the dispatcher acts, same as a real ringtone).

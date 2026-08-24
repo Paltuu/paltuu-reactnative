@@ -142,9 +142,17 @@ export default function RootLayout() {
     // Dispatchers aren't normal users of the consumer app — they get the Dispatcher
     // Console and nothing else (no tabs, no social feed, no Pets/adopt/marketplace).
     // Same login/session system underneath, just a completely different landing area.
-    const isDispatcher = useAuthStore.getState().user?.role === 'dispatcher';
+    // Read off `user` (the reactive selector, in this effect's deps) rather than
+    // getState(): role arrives asynchronously via fetchProfile() on sessions restored
+    // from storage, and getState() alone left the effect with no reason to re-run when
+    // it landed — a dispatcher could sit in the consumer app until some unrelated
+    // segment change happened to re-trigger this.
+    const isDispatcher = user?.role === 'dispatcher';
     const inAppGroup = segments[0] === '(app)';
-    const onDispatchConsole = (segments as string[])[1] === 'express-vet-dispatch';
+    // Anchor on the group as well as the child segment: `segments[1]` is meaningless
+    // outside (app), and matching it alone would treat any root route whose second
+    // segment happened to be this string as "already on the console".
+    const onDispatchConsole = inAppGroup && (segments as string[])[1] === 'express-vet-dispatch';
 
     if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
       // TEMP: onboarding slides are disabled — send everyone straight to welcome.
@@ -157,12 +165,32 @@ export default function RootLayout() {
       } else {
         router.replace(needsUsername ? '/oauth-username' : '/interests');
       }
-    } else if (isAuthenticated && isDispatcher && inAppGroup && !onDispatchConsole) {
+    } else if (
+      isAuthenticated &&
+      isDispatcher &&
+      !onDispatchConsole &&
+      !onPostAuthFlowScreen &&
+      !onOnboardingSlides
+    ) {
       // Catches deep links, notification taps, or manual navigation into any other
       // part of the consumer app (e.g. a social post link) and bounces back.
+      // Deliberately NOT limited to the (app) group: post/[id], thread/[id], media/[id],
+      // notifications, follow-requests and create-post are all root-level siblings of
+      // (app), so gating on `inAppGroup` let a notification tap or a shared post link
+      // drop a dispatcher straight into the consumer app. `(auth)` is already handled by
+      // the branch above, and the two post-auth flow screens stay exempt so a brand-new
+      // dispatcher account can still finish onboarding before being pinned to the console.
       router.replace('/(app)/express-vet-dispatch');
     }
-  }, [isAuthenticated, isLoading, segments, fontsLoaded, navigationState?.key, hasSeenOnboarding]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    segments,
+    fontsLoaded,
+    navigationState?.key,
+    hasSeenOnboarding,
+    user?.role,
+  ]);
 
   // 3. Notification query invalidation + deep link handler
   // Token registration & listener setup is handled by <NotificationProvider>.

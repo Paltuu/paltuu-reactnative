@@ -142,7 +142,18 @@ export const expressVetDispatchApi = {
   // Ringing-call push token — raw APNs VoIP token (iOS) or raw FCM token (Android), never
   // an Expo push token. See src/services/callkeep.ts for why this is a separate channel
   // from the normal notification token registered by NotificationContext.
-  async registerPushToken(payload: { platform: 'ios' | 'android'; voip_token?: string; fcm_token?: string }): Promise<void> {
+  async registerPushToken(payload: {
+    platform: 'ios' | 'android';
+    voip_token?: string;
+    fcm_token?: string;
+    /**
+     * Bundle id of THIS build. The server derives the APNs VoIP topic from it
+     * (`<bundle id>.voip`), and dev/preview/production builds each have their own — a
+     * server-side default would silently send every push to the wrong topic for anyone
+     * not on a production build, and APNs answers 400 with nothing visible on the device.
+     */
+    bundle_id?: string;
+  }): Promise<void> {
     await client.post('/express-vet/dispatcher/push-token', payload);
   },
 };
