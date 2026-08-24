@@ -53,7 +53,7 @@ export const GROOMING_SUB_SERVICE_LABELS: Record<string, string> = {
 };
 
 export const GROOMING_SUB_SERVICE_DESCRIPTIONS: Record<string, string> = {
-  full_groom_package: 'Bath, haircut, nail trim & ear clean — everything in one visit',
+  full_groom_package: 'Medicated bath, nail trim & ear clean (haircut priced separately)',
   medicated_bath: 'Shampoo bath with a medicated/skin-friendly wash',
   haircut_trim: 'Coat trim only, no bath included',
   de_shedding: 'Deep brush-out for heavy shedders',
