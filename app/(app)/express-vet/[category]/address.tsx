@@ -17,10 +17,11 @@ export default function ExpressVetAddressScreen() {
   const insets = useSafeAreaInsets();
   const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const user = useAuthStore((s) => s.user);
-  const { addressLine, addressLandmark, contactPhone, setAddress } = useExpressVetDraftStore();
+  const { addressLine, addressLandmark, mapsLink, contactPhone, setAddress } = useExpressVetDraftStore();
 
   const [line, setLine] = useState(addressLine);
   const [landmark, setLandmark] = useState(addressLandmark);
+  const [maps, setMaps] = useState(mapsLink);
   const [phone, setPhone] = useState(contactPhone || (user?.phone_number ?? '').replace(/^\+?92/, '').replace(/^0/, ''));
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function ExpressVetAddressScreen() {
     setAddress({
       addressLine: line.trim(),
       addressLandmark: landmark.trim(),
+      mapsLink: maps.trim(),
       contactPhone: `+92${phone.replace(/^0/, '')}`,
     });
     router.push({
@@ -94,6 +96,22 @@ export default function ExpressVetAddressScreen() {
               onChangeText={setLandmark}
               placeholder="e.g. Near Hill Park, DHA"
               placeholderTextColor="#B0B7C3"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.fieldLabel}>
+              Google Maps link <Text style={styles.optionalTag}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={maps}
+              onChangeText={setMaps}
+              placeholder="Paste a Google Maps link to your location"
+              placeholderTextColor="#B0B7C3"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
             />
           </View>
 

@@ -16,9 +16,11 @@ export interface ExpressVetDispatchRequest {
   address_landmark: string | null;
   latitude: string | null;
   longitude: string | null;
+  maps_link: string | null;
   contact_phone: string;
   starting_price_pkr: number;
   final_price_pkr: number | null;
+  scheduled_at: string | null;
   assigned_provider_id: string | null;
   provider_name?: string | null;
   provider_photo_url?: string | null;
@@ -55,6 +57,7 @@ export interface NewProviderInput {
 
 export interface AssignPayload {
   final_price_pkr: number;
+  scheduled_at: string; // ISO 8601 — required, the confirmed visit date/time
   provider_id?: string | number;
   new_provider?: NewProviderInput;
   self_assign?: boolean;
@@ -69,13 +72,15 @@ export interface AssignResult {
 }
 
 export const expressVetDispatchApi = {
-  async getDuty(): Promise<{ status: { dispatcher_id: number; is_on_duty: boolean } }> {
-    const { data } = await client.get('/express-vet/dispatcher/duty');
+  // No on/off duty toggle — dispatchers are always alertable during operating hours
+  // (12pm-12am PKT, enforced server-side). This is the only control: mute for 30 minutes.
+  async getMuteStatus(): Promise<{ muted_until: string | null }> {
+    const { data } = await client.get('/express-vet/dispatcher/mute');
     return data;
   },
 
-  async setDuty(isOnDuty: boolean): Promise<{ status: { dispatcher_id: number; is_on_duty: boolean } }> {
-    const { data } = await client.post('/express-vet/dispatcher/duty', { is_on_duty: isOnDuty });
+  async muteFor30Min(): Promise<{ muted_until: string }> {
+    const { data } = await client.post('/express-vet/dispatcher/mute');
     return data;
   },
 

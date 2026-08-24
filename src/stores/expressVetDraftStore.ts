@@ -8,9 +8,10 @@ interface ExpressVetDraftState {
   questionnaireAnswers: Record<string, any>;
   addressLine: string;
   addressLandmark: string;
+  mapsLink: string;
   contactPhone: string;
   setQuestionnaireAnswers: (answers: Record<string, any>) => void;
-  setAddress: (patch: Partial<{ addressLine: string; addressLandmark: string; contactPhone: string }>) => void;
+  setAddress: (patch: Partial<{ addressLine: string; addressLandmark: string; mapsLink: string; contactPhone: string }>) => void;
   reset: () => void;
 }
 
@@ -18,6 +19,7 @@ const initialState = {
   questionnaireAnswers: {},
   addressLine: '',
   addressLandmark: '',
+  mapsLink: '',
   contactPhone: '',
 };
 

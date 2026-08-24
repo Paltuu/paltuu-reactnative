@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi, EXPRESS_VET_ADDON_REASON_TAGS } from '../../../../../src/api/expressVet';
 import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
@@ -50,6 +50,7 @@ function YesNoPill({ label, value, onChange }: { label: string; value: boolean |
 export default function ExpressVetRateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data, isPending } = useQuery({
@@ -81,7 +82,14 @@ export default function ExpressVetRateScreen() {
         addon_reason_tags: showAddon ? addonTags : [],
         addon_total_pkr: showAddon && addonTotal ? Number(addonTotal) : null,
       }),
-    onSuccess: () => setSubmitted(true),
+    onSuccess: () => {
+      setSubmitted(true);
+      // The persistent booking bar (see (tabs)/_layout.tsx) treats a completed-and-reviewed
+      // request as closed out — refresh its query so it disappears immediately instead of
+      // waiting for its 30s polling interval.
+      queryClient.invalidateQueries({ queryKey: ['express-vet-my-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['express-vet-request', id] });
+    },
     onError: () => Alert.alert('Something went wrong', 'Could not submit your rating. Please try again.'),
   });
 
@@ -136,6 +144,13 @@ export default function ExpressVetRateScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {request.final_price_pkr != null && (
+              <View style={styles.totalCard}>
+                <Text style={styles.totalLabel}>Total bill</Text>
+                <Text style={styles.totalValue}>PKR {request.final_price_pkr.toLocaleString()}</Text>
+              </View>
+            )}
+
             <StarPicker rating={rating} onChange={setRating} />
 
             <View style={{ gap: 10 }}>
@@ -225,6 +240,16 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+
+  totalCard: {
+    borderRadius: 16,
+    backgroundColor: '#FAF0F2',
+    padding: 16,
+    alignItems: 'center',
+    gap: 4,
+  },
+  totalLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
+  totalValue: { fontFamily: FONTS.heading, fontSize: 22, color: PRIMARY },
 
   fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
   optionalTag: { fontFamily: FONTS.body, fontSize: 12, color: '#B0B7C3' },

@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { emitTabPress } from '../../../src/utils/tabPressSubscription';
+import { useActiveExpressVetRequest } from '../../../src/hooks/useActiveExpressVetRequest';
+import { ActiveBookingBar } from '../../../src/components/expressVet/ActiveBookingBar';
 
 // Swipeable tab navigator: home <-> pets <-> search <-> profile.
 // Built on react-native-tab-view / react-native-pager-view, so during a swipe
@@ -125,13 +127,28 @@ function AnimatedTabIcon({
 function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  // Only ever queried for Karachi accounts with the feature available — cheap no-op
+  // elsewhere since react-query just returns undefined without ever firing the request
+  // (see the hook's `enabled` gate wired through isKarachiExpressVet-equivalent logic
+  // isn't available here, so this queries unconditionally; harmless — an empty/absent
+  // Vets at Home history for a non-Karachi user just means `activeRequest` stays null).
+  const { activeRequest } = useActiveExpressVetRequest();
+  const baseBarHeight = Platform.OS === 'ios' ? 52 : 56;
 
   return (
-    <View
-      style={[
-        styles.bar,
-        {
-          height: (Platform.OS === 'ios' ? 52 : 56) + insets.bottom,
+    <View>
+      {/* Persistent active-booking bar — same base height as the tab row below it (not
+          counting the tab row's extra bottom-safe-area padding, which is specific to being
+          the literal bottom edge element). Tapping it opens the full request detail screen;
+          see ActiveBookingBar's own comment for why this isn't a custom expand-in-place
+          animation. */}
+      {activeRequest && <ActiveBookingBar request={activeRequest} height={baseBarHeight} />}
+
+      <View
+        style={[
+          styles.bar,
+          {
+            height: baseBarHeight + insets.bottom,
           // Reserve the FULL bottom inset so the icons clear the device's native
           // navigation bar and stay centered in the visible band above it. The
           // old formula subtracted 10 here, which pulled the icons down into the
@@ -187,6 +204,7 @@ function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
           </TouchableOpacity>
         );
       })}
+      </View>
     </View>
   );
 }

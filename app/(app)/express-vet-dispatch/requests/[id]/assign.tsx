@@ -41,7 +41,20 @@ export default function ExpressVetAssignScreen() {
   const request = requestData?.request;
 
   const [finalPrice, setFinalPrice] = useState(request?.starting_price_pkr ? String(request.starting_price_pkr) : '');
+  const [scheduledDate, setScheduledDate] = useState(''); // YYYY-MM-DD
+  const [scheduledTime, setScheduledTime] = useState(''); // HH:MM, 24h
   const [mode, setMode] = useState<Mode>('search');
+
+  // Combines the two plain-text fields into a real Date so we can validate it's an actual,
+  // parseable date/time before letting the dispatcher submit — a native date/time picker
+  // would be the nicer UX here, but adding one means a new native dependency and a fresh
+  // `expo prebuild` verification pass (see the CallKit plugins for why that matters), which
+  // isn't worth it for this one internal-tool field. Revisit if dispatchers find this fiddly.
+  const parseScheduledAt = (): Date | null => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) || !/^\d{1,2}:\d{2}$/.test(scheduledTime)) return null;
+    const d = new Date(`${scheduledDate}T${scheduledTime.padStart(5, '0')}:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
 
   // ── Search mode ──
   const [search, setSearch] = useState('');
@@ -114,16 +127,21 @@ export default function ExpressVetAssignScreen() {
       Alert.alert('Required', 'Please enter a valid final price.');
       return;
     }
+    const scheduledAt = parseScheduledAt();
+    if (!scheduledAt) {
+      Alert.alert('Required', 'Please enter a valid visit date (YYYY-MM-DD) and time (HH:MM).');
+      return;
+    }
 
     let payload: AssignPayload;
     if (mode === 'myself') {
-      payload = { final_price_pkr: price, self_assign: true };
+      payload = { final_price_pkr: price, scheduled_at: scheduledAt.toISOString(), self_assign: true };
     } else if (mode === 'search') {
       if (!selectedProvider) {
         Alert.alert('Required', 'Please select a provider.');
         return;
       }
-      payload = { final_price_pkr: price, provider_id: selectedProvider.provider_id };
+      payload = { final_price_pkr: price, scheduled_at: scheduledAt.toISOString(), provider_id: selectedProvider.provider_id };
     } else {
       if (!newName.trim()) {
         Alert.alert('Required', "Please enter the provider's name.");
@@ -132,6 +150,7 @@ export default function ExpressVetAssignScreen() {
       const photoUrl = await uploadPhotoIfNeeded().catch(() => null);
       payload = {
         final_price_pkr: price,
+        scheduled_at: scheduledAt.toISOString(),
         new_provider: {
           name: newName.trim(),
           photo_url: photoUrl,
@@ -174,6 +193,30 @@ export default function ExpressVetAssignScreen() {
               placeholder="e.g. 3500"
               placeholderTextColor="#B0B7C3"
             />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.fieldLabel}>Visit date & time</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={scheduledDate}
+                onChangeText={setScheduledDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#B0B7C3"
+                keyboardType="numbers-and-punctuation"
+                maxLength={10}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={scheduledTime}
+                onChangeText={setScheduledTime}
+                placeholder="HH:MM (24h)"
+                placeholderTextColor="#B0B7C3"
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+              />
+            </View>
           </View>
 
           <View style={styles.modeRow}>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,14 +13,15 @@ import {
   GROOMING_SUB_SERVICE_LABELS,
   GROOMING_SUB_SERVICE_ORDER,
 } from '../../../../src/constants/expressVet';
+import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
 
 // Grooming-only step, inserted between species.tsx and questionnaire.tsx. Every other
-// category prices at the category+species level alone (single "Starting from" figure,
-// no picker needed) — grooming is the one category with multiple priced sub-services, so
-// it gets this one extra screen. Selecting an item here sets `sub_service`, threaded
-// through the rest of the flow as a route param exactly like `category`/`species` already
-// are (not stored in useExpressVetDraftStore, which only holds free-form user input).
+// category prices at the category+species level alone (single "Starting from" figure, no
+// picker needed) — grooming is the one category priced as a real cart: pick "Quick Clean"
+// (a fixed-price package), any individual items, or both together (extras on top of the
+// package). The running total is what gets shown as this booking's "Starting from" price —
+// still an estimate, confirmed on the dispatcher's call, same as every other category.
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
 const H_PAD = 20;
@@ -30,6 +31,7 @@ export default function ExpressVetGroomingServiceScreen() {
   const insets = useSafeAreaInsets();
   const { category, species } = useLocalSearchParams<{ category: string; species: string }>();
   const cityId = useLocationStore((s) => s.cityId);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const { data: config, isPending } = useQuery({
     queryKey: ['express-vet-config'],
@@ -43,6 +45,17 @@ export default function ExpressVetGroomingServiceScreen() {
     )?.starting_price_pkr;
 
   const availableItems = GROOMING_SUB_SERVICE_ORDER.filter((key) => priceFor(key) !== undefined);
+  const total = selected.reduce((sum, key) => sum + (priceFor(key) ?? 0), 0);
+
+  const toggle = (key: string) =>
+    setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+
+  const handleContinue = () => {
+    router.push({
+      pathname: '/(app)/express-vet/[category]/questionnaire',
+      params: { category, species, sub_service: selected.join(',') },
+    } as any);
+  };
 
   return (
     <View style={styles.root}>
@@ -55,7 +68,7 @@ export default function ExpressVetGroomingServiceScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>What does your {EXPRESS_VET_SPECIES_LABELS[species]?.toLowerCase() ?? 'pet'} need?</Text>
-          <Text style={styles.subtitle}>Pick one — pricing shown is per visit</Text>
+          <Text style={styles.subtitle}>Pick one or more — build your own, or start with Quick Clean</Text>
         </View>
       </View>
 
@@ -64,51 +77,61 @@ export default function ExpressVetGroomingServiceScreen() {
           <ActivityIndicator color={PRIMARY} />
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 12 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {availableItems.map((key) => {
-            const price = priceFor(key);
-            const isBundle = key === 'full_groom_package';
-            return (
-              <TouchableOpacity
-                key={key}
-                activeOpacity={0.9}
-                style={[styles.row, isBundle && styles.rowBundle]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(app)/express-vet/[category]/questionnaire',
-                    params: { category, species, sub_service: key },
-                  } as any)
-                }
-              >
-                <View style={[styles.rowIcon, isBundle && styles.rowIconBundle]}>
-                  <Ionicons
-                    name={GROOMING_SUB_SERVICE_ICONS[key] ?? 'cut-outline'}
-                    size={22}
-                    color={isBundle ? '#FFFFFF' : PRIMARY}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.rowLabel}>{GROOMING_SUB_SERVICE_LABELS[key] ?? key}</Text>
-                    {isBundle && (
-                      <View style={styles.bundleBadge}>
-                        <Text style={styles.bundleBadgeText}>POPULAR</Text>
-                      </View>
-                    )}
+        <>
+          <ScrollView
+            contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {availableItems.map((key) => {
+              const price = priceFor(key);
+              const isPackage = key === 'quick_clean';
+              const active = selected.includes(key);
+              return (
+                <TouchableOpacity
+                  key={key}
+                  activeOpacity={0.9}
+                  style={[styles.row, isPackage && styles.rowPackage, active && styles.rowActive]}
+                  onPress={() => toggle(key)}
+                >
+                  <View style={[styles.rowIcon, isPackage && styles.rowIconPackage, active && styles.rowIconActive]}>
+                    <Ionicons
+                      name={GROOMING_SUB_SERVICE_ICONS[key] ?? 'cut-outline'}
+                      size={22}
+                      color={isPackage || active ? '#FFFFFF' : PRIMARY}
+                    />
                   </View>
-                  <Text style={styles.rowDescription}>{GROOMING_SUB_SERVICE_DESCRIPTIONS[key]}</Text>
-                  <Text style={styles.rowPrice}>
-                    {price !== undefined ? `Starting from PKR ${price.toLocaleString()}` : 'Pricing coming soon'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.rowLabel}>{GROOMING_SUB_SERVICE_LABELS[key] ?? key}</Text>
+                      {isPackage && (
+                        <View style={styles.packageBadge}>
+                          <Text style={styles.packageBadgeText}>PACKAGE</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.rowDescription}>{GROOMING_SUB_SERVICE_DESCRIPTIONS[key]}</Text>
+                    <Text style={styles.rowPrice}>
+                      {price !== undefined ? `PKR ${price.toLocaleString()}` : 'Pricing coming soon'}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={active ? 'checkbox' : 'square-outline'}
+                    size={24}
+                    color={active ? PRIMARY : '#D1D5DB'}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{selected.length === 0 ? 'Nothing selected yet' : 'Starting from'}</Text>
+              <Text style={styles.totalValue}>{selected.length > 0 ? `PKR ${total.toLocaleString()}` : ''}</Text>
+            </View>
+            <PaltuuButton label="Continue" onPress={handleContinue} radius={26} disabled={selected.length === 0} />
+          </View>
+        </>
       )}
     </View>
   );
@@ -136,11 +159,14 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#F0F0F0',
     padding: 14,
   },
-  rowBundle: {
+  rowPackage: {
+    borderColor: '#F0D8DC',
+  },
+  rowActive: {
     borderColor: PRIMARY,
     backgroundColor: '#FAF0F2',
   },
@@ -152,7 +178,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowIconBundle: {
+  rowIconPackage: {
+    backgroundColor: '#C98A97',
+  },
+  rowIconActive: {
     backgroundColor: PRIMARY,
   },
   rowLabel: {
@@ -160,13 +189,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: DARK,
   },
-  bundleBadge: {
+  packageBadge: {
     backgroundColor: PRIMARY,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  bundleBadgeText: {
+  packageBadgeText: {
     fontFamily: FONTS.bodyBold,
     fontSize: 9,
     color: '#FFFFFF',
@@ -183,5 +212,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: PRIMARY,
     marginTop: 4,
+  },
+
+  bottom: {
+    paddingHorizontal: H_PAD,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    gap: 10,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontFamily: FONTS.body,
+    fontSize: 13,
+    color: '#8A8A94',
+  },
+  totalValue: {
+    fontFamily: FONTS.heading,
+    fontSize: 20,
+    color: PRIMARY,
   },
 });

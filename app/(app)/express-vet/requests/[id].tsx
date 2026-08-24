@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -109,12 +109,26 @@ export default function ExpressVetRequestDetailScreen() {
             <View style={styles.card}>
               <Row label="Address" value={request.address_line} />
               {!!request.address_landmark && <Row label="Landmark" value={request.address_landmark} />}
+              {!!request.maps_link && <Row label="Maps Link" value={request.maps_link} />}
               <Row label="Contact" value={request.contact_phone} />
+              {!!request.scheduled_at && (
+                <Row
+                  label="Visit time"
+                  value={new Date(request.scheduled_at).toLocaleString('en-PK', {
+                    timeZone: 'Asia/Karachi',
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                />
+              )}
               <Row
-                label="Price"
+                label={request.status === 'completed' ? 'Total bill' : 'Price'}
                 value={
                   request.final_price_pkr != null
-                    ? `PKR ${request.final_price_pkr.toLocaleString()} (confirmed)`
+                    ? `PKR ${request.final_price_pkr.toLocaleString()}${request.status === 'completed' ? '' : ' (confirmed)'}`
                     : `From PKR ${request.starting_price_pkr.toLocaleString()} (estimate)`
                 }
               />
@@ -133,6 +147,9 @@ export default function ExpressVetRequestDetailScreen() {
                   )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.providerName}>{request.provider_name}</Text>
+                    {request.provider_years_experience != null && (
+                      <Text style={styles.providerMeta}>{request.provider_years_experience} yrs experience</Text>
+                    )}
                     {request.provider_rating != null && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                         <Ionicons name="star" size={13} color="#F5A623" />
@@ -140,7 +157,19 @@ export default function ExpressVetRequestDetailScreen() {
                       </View>
                     )}
                   </View>
+                  {!!request.provider_phone_number && (
+                    <TouchableOpacity
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`tel:${request.provider_phone_number}`)}
+                    >
+                      <Ionicons name="call" size={16} color="#FFFFFF" />
+                      <Text style={styles.contactButtonText}>Contact</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+                {!!request.provider_qualifications && (
+                  <Text style={styles.providerQualifications}>{request.provider_qualifications}</Text>
+                )}
               </View>
             ) : null}
           </ScrollView>
@@ -250,6 +279,17 @@ const styles = StyleSheet.create({
   providerPhotoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   providerName: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
   providerMeta: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
+  providerQualifications: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 10, lineHeight: 17 },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: PRIMARY,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  contactButtonText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: '#FFFFFF' },
 
   bottom: {
     paddingHorizontal: H_PAD,

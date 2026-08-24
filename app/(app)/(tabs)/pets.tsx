@@ -18,6 +18,7 @@ import { useLocationStore } from '../../../src/stores/locationStore';
 import { petApi } from '../../../src/api/pets';
 import { expressVetApi } from '../../../src/api/expressVet';
 import { EXPRESS_VET_SECTIONS, lowestStartingPriceForCategories } from '../../../src/constants/expressVet';
+import { useActiveExpressVetRequest } from '../../../src/hooks/useActiveExpressVetRequest';
 import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
 import { FONTS } from '../../../src/constants/typography';
 import { SkeletonCircle } from '../../../src/components/common/Skeleton';
@@ -287,6 +288,7 @@ export default function PetsHubScreen() {
     staleTime: 1000 * 60 * 30,
   });
   const isKarachiExpressVet = !!cityId && !!expressVetConfig?.enabled_cities.city_ids.includes(cityId);
+  const { activeRequest } = useActiveExpressVetRequest(isKarachiExpressVet);
 
   // Strictly the user's own city — no nationwide fallback. A tile headed
   // "Pets Near You" that quietly lists pets from other cities is misleading,
@@ -372,6 +374,16 @@ export default function PetsHubScreen() {
             rateCards={expressVetConfig?.rate_cards ?? []}
             cityId={cityId}
             onPressSection={(section) => {
+              // One booking at a time — the server rejects a second submission anyway (see
+              // requests/route.ts's active-booking guard), so redirect straight to the
+              // existing one instead of walking the user through a form that'll fail at the end.
+              if (activeRequest) {
+                router.push({
+                  pathname: '/(app)/express-vet/requests/[id]',
+                  params: { id: activeRequest.request_id },
+                } as any);
+                return;
+              }
               // Vaccination/Grooming have one underlying category each — go straight to
               // species.tsx. Vet at Home / Neutering & Spaying cover two categories, so they
               // route to a picker screen first (see EXPRESS_VET_SECTIONS' `route` field).

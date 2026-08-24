@@ -22,14 +22,14 @@ export const EXPRESS_VET_SPECIES_ICONS: Record<string, keyof typeof Ionicons.gly
   other: 'ellipsis-horizontal-circle-outline',
 };
 
-// Grooming is the only category with a sub-service picker (see
+// Grooming is the only category priced as a cart (see
 // app/(app)/express-vet/[category]/service.tsx) — every other category prices at the
-// category+species level alone. Order here is the display order on that picker: the
-// bundle first (most people want "just do everything"), then à la carte items cheapest
-// to costliest-ish grouping. Keys must match `sub_service` values seeded in
-// prisma/seed-express-vet-config.ts exactly.
+// category+species level alone. Order here is the display order on that cart screen:
+// "quick_clean" first (most people want the convenient package), then à la carte items.
+// Keys must match `sub_service` values seeded in prisma/seed-express-vet-config.ts exactly,
+// and EXPRESS_VET_GROOMING_ITEM_KEYS in the backend's lib/expressVet/catalog.ts.
 export const GROOMING_SUB_SERVICE_ORDER = [
-  'full_groom_package',
+  'quick_clean',
   'medicated_bath',
   'haircut_trim',
   'de_shedding',
@@ -40,8 +40,11 @@ export const GROOMING_SUB_SERVICE_ORDER = [
   'sanitary_trim',
 ];
 
+// "quick_clean" was named "Full Groom Package" originally, but it doesn't include a full
+// coat trim/style the way a "full groom" implies — just a bath + basic trim + nails + ears —
+// so it's named for what it actually is instead.
 export const GROOMING_SUB_SERVICE_LABELS: Record<string, string> = {
-  full_groom_package: 'Full Groom Package',
+  quick_clean: 'Quick Clean',
   medicated_bath: 'Medicated Bath',
   haircut_trim: 'Haircut / Trim Only',
   de_shedding: 'De-shedding Treatment',
@@ -53,7 +56,7 @@ export const GROOMING_SUB_SERVICE_LABELS: Record<string, string> = {
 };
 
 export const GROOMING_SUB_SERVICE_DESCRIPTIONS: Record<string, string> = {
-  full_groom_package: 'Medicated bath, nail trim & ear clean (haircut priced separately)',
+  quick_clean: 'Medicated bath, haircut/trim, nail trim & ear clean — the essentials in one package',
   medicated_bath: 'Shampoo bath with a medicated/skin-friendly wash',
   haircut_trim: 'Coat trim only, no bath included',
   de_shedding: 'Deep brush-out for heavy shedders',
@@ -65,7 +68,7 @@ export const GROOMING_SUB_SERVICE_DESCRIPTIONS: Record<string, string> = {
 };
 
 export const GROOMING_SUB_SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  full_groom_package: 'sparkles-outline',
+  quick_clean: 'sparkles-outline',
   medicated_bath: 'water-outline',
   haircut_trim: 'cut-outline',
   de_shedding: 'brush-outline',

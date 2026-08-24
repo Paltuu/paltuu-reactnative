@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { expressVetApi } from '../../../../src/api/expressVet';
+import { expressVetApi, ExpressVetActiveBookingError } from '../../../../src/api/expressVet';
 import { useLocationStore } from '../../../../src/stores/locationStore';
 import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftStore';
 import { EXPRESS_VET_SPECIES_LABELS, GROOMING_SUB_SERVICE_LABELS } from '../../../../src/constants/expressVet';
@@ -32,13 +32,18 @@ export default function ExpressVetReviewAndSubmitScreen() {
   });
 
   const categoryConfig = config?.categories.find((c) => c.key === category);
-  const rateCard = (config?.rate_cards ?? []).find(
-    (rc) =>
-      rc.category === category &&
-      rc.species === species &&
-      rc.city_id === cityId &&
-      (rc.sub_service ?? null) === (sub_service ?? null)
-  );
+
+  // Grooming: sum every selected cart item (sub_service is a comma-joined list of keys).
+  // Every other category: a single (category, species) rate card lookup, as before.
+  const groomingKeys = category === 'grooming' ? (sub_service ?? '').split(',').filter(Boolean) : [];
+  const rateCardFor = (key: string | null) =>
+    (config?.rate_cards ?? []).find(
+      (rc) => rc.category === category && rc.species === species && rc.city_id === cityId && (rc.sub_service ?? null) === key
+    );
+  const totalPrice =
+    category === 'grooming'
+      ? groomingKeys.reduce((sum, key) => sum + (rateCardFor(key)?.starting_price_pkr ?? 0), 0)
+      : rateCardFor(sub_service ?? null)?.starting_price_pkr;
 
   const submitMutation = useMutation({
     mutationFn: () =>
@@ -50,6 +55,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
         questionnaire_answers: draft.questionnaireAnswers,
         address_line: draft.addressLine,
         address_landmark: draft.addressLandmark || null,
+        maps_link: draft.mapsLink || null,
         latitude,
         longitude,
         contact_phone: draft.contactPhone,
@@ -62,7 +68,21 @@ export default function ExpressVetReviewAndSubmitScreen() {
         params: { id: request.request_id, justSubmitted: '1' },
       } as any);
     },
-    onError: () => {
+    onError: (err) => {
+      if (err instanceof ExpressVetActiveBookingError) {
+        draft.reset();
+        Alert.alert('You already have a booking', err.message, [
+          {
+            text: 'View it',
+            onPress: () =>
+              router.replace({
+                pathname: '/(app)/express-vet/requests/[id]',
+                params: { id: err.existingRequestId },
+              } as any),
+          },
+        ]);
+        return;
+      }
       Alert.alert('Something went wrong', 'Could not submit your request. Please try again.');
     },
   });
@@ -106,21 +126,34 @@ export default function ExpressVetReviewAndSubmitScreen() {
           >
             <View style={styles.card}>
               <Row label="Service" value={categoryConfig?.label ?? category} />
-              {!!sub_service && <Row label="Package" value={GROOMING_SUB_SERVICE_LABELS[sub_service] ?? sub_service} />}
               <Row label="For" value={EXPRESS_VET_SPECIES_LABELS[species] ?? species} />
               <Row label="Address" value={draft.addressLine} />
               {!!draft.addressLandmark && <Row label="Landmark" value={draft.addressLandmark} />}
+              {!!draft.mapsLink && <Row label="Maps Link" value={draft.mapsLink} />}
               <Row label="Contact" value={draft.contactPhone} />
             </View>
 
+            {groomingKeys.length > 0 && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Selected services</Text>
+                {groomingKeys.map((key) => (
+                  <Row
+                    key={key}
+                    label={GROOMING_SUB_SERVICE_LABELS[key] ?? key}
+                    value={`PKR ${(rateCardFor(key)?.starting_price_pkr ?? 0).toLocaleString()}`}
+                  />
+                ))}
+              </View>
+            )}
+
             <View style={styles.priceCard}>
-              <Text style={styles.priceLabel}>Starting from</Text>
+              <Text style={styles.priceLabel}>{groomingKeys.length > 1 ? 'Total — Starting from' : 'Starting from'}</Text>
               <Text style={styles.priceValue}>
-                {rateCard ? `PKR ${rateCard.starting_price_pkr.toLocaleString()}` : 'Pricing unavailable'}
+                {totalPrice != null ? `PKR ${totalPrice.toLocaleString()}` : 'Pricing unavailable'}
               </Text>
               <Text style={styles.priceDisclaimer}>
-                This is a starting estimate. Your final price will be confirmed by our team on a quick call
-                before your appointment.
+                This is a starting estimate so our team can confirm all the rates with you. Your final price will
+                be confirmed by our team on a quick call before your appointment.
               </Text>
             </View>
 
@@ -190,6 +223,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#8A8A94', marginBottom: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94' },
   rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },

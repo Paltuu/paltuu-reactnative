@@ -48,9 +48,11 @@ export interface ExpressVetRequest {
   address_landmark: string | null;
   latitude: string | null;
   longitude: string | null;
+  maps_link: string | null;
   contact_phone: string;
   starting_price_pkr: number;
   final_price_pkr: number | null;
+  scheduled_at: string | null;
   dispatcher_notes: string | null;
   assigned_provider_id: string | null;
   created_at: string;
@@ -59,6 +61,7 @@ export interface ExpressVetRequest {
   provider_rating?: string | null;
   provider_years_experience?: number | null;
   provider_qualifications?: string | null;
+  provider_phone_number?: string | null;
   review_rating?: number | null;
   review_content?: string | null;
 }
@@ -73,7 +76,19 @@ export interface CreateExpressVetRequestPayload {
   address_landmark?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  maps_link?: string | null;
   contact_phone: string;
+}
+
+// Thrown by createRequest when the backend rejects with 409 — the client already has an
+// active (or completed-but-unreviewed) booking. Carries the existing request's id so the
+// caller can redirect straight to it instead of showing a generic error.
+export class ExpressVetActiveBookingError extends Error {
+  existingRequestId: string;
+  constructor(message: string, existingRequestId: string) {
+    super(message);
+    this.existingRequestId = existingRequestId;
+  }
 }
 
 // Must match EXPRESS_VET_ADDON_REASON_TAGS in lib/expressVet/catalog.ts on the backend.
@@ -114,8 +129,16 @@ export const expressVetApi = {
   },
 
   async createRequest(payload: CreateExpressVetRequestPayload): Promise<{ request: ExpressVetRequest }> {
-    const { data } = await client.post('/express-vet/requests', payload);
-    return data;
+    try {
+      const { data } = await client.post('/express-vet/requests', payload);
+      return data;
+    } catch (err: any) {
+      const existingId = err?.response?.data?.existing_request_id;
+      if (err?.response?.status === 409 && existingId) {
+        throw new ExpressVetActiveBookingError(err.response.data.error, String(existingId));
+      }
+      throw err;
+    }
   },
 
   async getMyRequests(page = 1): Promise<{ data: ExpressVetRequest[]; page: number; limit: number }> {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, Alert, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,13 @@ const PRIMARY = '#A03048';
 const H_PAD = 20;
 const INBOX_QUERY_KEY = ['express-vet-dispatch-inbox'];
 
+function formatCountdown(until: Date): string {
+  const secs = Math.max(0, Math.round((until.getTime() - Date.now()) / 1000));
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.max(0, Math.round(diffMs / 60000));
@@ -30,14 +37,31 @@ export default function ExpressVetDispatchIndexScreen() {
   const queryClient = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
 
-  const { data: dutyData } = useQuery({
-    queryKey: ['express-vet-dispatch-duty'],
-    queryFn: expressVetDispatchApi.getDuty,
+  // No on/off duty toggle — dispatchers are always alertable during operating hours
+  // (12pm-12am PKT, enforced server-side). The only control is muting for 30 minutes.
+  const { data: muteData, refetch: refetchMute } = useQuery({
+    queryKey: ['express-vet-dispatch-mute'],
+    queryFn: expressVetDispatchApi.getMuteStatus,
+    refetchInterval: 15000,
   });
-  const [isOnDuty, setIsOnDuty] = useState(false);
+  const mutedUntil = muteData?.muted_until ? new Date(muteData.muted_until) : null;
+  const isMuted = !!mutedUntil && mutedUntil.getTime() > Date.now();
+
+  // Ticks once a second purely to re-render the "Muted for Xm Ys" countdown text off the
+  // same `mutedUntil` value above — the 15s query refetch is the source of truth for whether
+  // muting is still active at all, this just keeps the displayed number moving in between.
+  const [, forceTick] = useState(0);
   useEffect(() => {
-    if (dutyData) setIsOnDuty(dutyData.status.is_on_duty);
-  }, [dutyData]);
+    if (!isMuted) return;
+    const t = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [isMuted]);
+
+  const muteMutation = useMutation({
+    mutationFn: expressVetDispatchApi.muteFor30Min,
+    onSuccess: () => refetchMute(),
+    onError: () => Alert.alert('Something went wrong', 'Could not mute alerts. Please try again.'),
+  });
 
   const { data: stats } = useQuery({
     queryKey: ['express-vet-dispatch-stats'],
@@ -59,18 +83,13 @@ export default function ExpressVetDispatchIndexScreen() {
   const { data, isPending } = useQuery({
     queryKey: INBOX_QUERY_KEY,
     queryFn: expressVetDispatchApi.getInbox,
-    enabled: isOnDuty,
-    // Socket updates (below) are the fast path; this polling is the resilience fallback —
-    // the shared realtime socket can get disconnected by navigation elsewhere in the app
-    // (see src/context/SocialRealtimeContext.tsx, which only keeps it alive on "social" routes).
-    refetchInterval: isOnDuty ? 30000 : false,
+    // Always on — there's no duty state to gate this behind anymore. Socket updates (below)
+    // are the fast path; this polling is the resilience fallback — the shared realtime
+    // socket can get disconnected by navigation elsewhere in the app (see
+    // src/context/SocialRealtimeContext.tsx, which only keeps it alive on "social" routes).
+    refetchInterval: 30000,
   });
   const requests = data?.data ?? [];
-
-  const dutyMutation = useMutation({
-    mutationFn: (next: boolean) => expressVetDispatchApi.setDuty(next),
-    onSuccess: (result) => setIsOnDuty(result.status.is_on_duty),
-  });
 
   // Own socket lifecycle scoped to this screen (mount -> connect, unmount -> disconnect)
   // rather than relying on SocialRealtimeContext, since this isn't a "social" route and
@@ -92,11 +111,6 @@ export default function ExpressVetDispatchIndexScreen() {
       disconnectRealtimeSocket();
     };
   }, [queryClient]);
-
-  const handleToggleDuty = (value: boolean) => {
-    setIsOnDuty(value);
-    dutyMutation.mutate(value);
-  };
 
   // Android 14+ doesn't auto-grant full-screen job alerts for non-calling apps — the
   // dispatcher may need a one-time manual toggle (see src/services/androidDispatchAlert.ts).
@@ -131,9 +145,20 @@ export default function ExpressVetDispatchIndexScreen() {
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Dispatcher Console</Text>
-          <Text style={styles.subtitle}>{isOnDuty ? 'On duty' : 'Off duty'}</Text>
+          <Text style={styles.subtitle}>
+            {isMuted ? `Muted — ${formatCountdown(mutedUntil!)} left` : 'Alerts on · 12pm-12am PKT'}
+          </Text>
         </View>
-        <Switch value={isOnDuty} onValueChange={handleToggleDuty} trackColor={{ true: PRIMARY }} />
+        <TouchableOpacity
+          style={[styles.muteButton, isMuted && styles.muteButtonActive]}
+          onPress={() => muteMutation.mutate()}
+          disabled={isMuted || muteMutation.isPending}
+        >
+          <Ionicons name={isMuted ? 'notifications-off' : 'notifications-off-outline'} size={16} color={isMuted ? '#FFFFFF' : PRIMARY} />
+          <Text style={[styles.muteButtonText, isMuted && styles.muteButtonTextActive]}>
+            {isMuted ? formatCountdown(mutedUntil!) : 'Mute 30m'}
+          </Text>
+        </TouchableOpacity>
         {/* Dispatcher-role accounts can't reach the normal profile menu (where logout
             normally lives) — this is the only way out for them, so it has to live here. */}
         <TouchableOpacity
@@ -280,12 +305,7 @@ export default function ExpressVetDispatchIndexScreen() {
         )}
       </View>
 
-      {!isOnDuty ? (
-        <View style={styles.centerFill}>
-          <Ionicons name="moon-outline" size={32} color="#D1D5DB" />
-          <Text style={styles.emptyText}>Go on duty to see incoming requests.</Text>
-        </View>
-      ) : isPending ? (
+      {isPending ? (
         <View style={styles.centerFill}>
           <ActivityIndicator color={PRIMARY} />
         </View>
@@ -350,6 +370,20 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
   subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+
+  muteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  muteButtonActive: { backgroundColor: PRIMARY },
+  muteButtonText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: PRIMARY },
+  muteButtonTextActive: { color: '#FFFFFF' },
 
   alertSettingsHint: {
     flexDirection: 'row',
