@@ -22,6 +22,9 @@ import { GifPickerSheet } from '../src/components/social/GifPickerSheet';
 import { useMentionInput, MentionSuggestionDropdown, MentionInputField } from '../src/components/social/MentionInput';
 import { ComposerMediaGrid } from '../src/components/social/ComposerMediaGrid';
 import { ContentWarningBanner } from '../src/components/social/CommentComposer';
+import { PetSaleWarningModal, AdoptionNudgeModal } from '../src/components/social/PostIntentModal';
+import { detectPostIntent } from '../src/utils/moderation/postIntent';
+import type { PostIntent } from '../src/utils/moderation/postIntent';
 import { useMediaDraft } from '../src/hooks/useMediaDraft';
 import { HEADER_HEIGHT } from '../src/components/common/MainHeader';
 import PaltuuButton from '../src/components/ui/PaltuuButton';
@@ -227,6 +230,16 @@ export default function CreatePostScreen() {
   const petHint = usePetTagHint();
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
+  // ── Pet-sale / adoption intent gate ──────────────────────────────────────
+  // Set by handlePost when the caption trips one of the regex checks in
+  // utils/moderation/postIntent.ts; the matching modal takes over from there
+  // and calls back into submitPost if the author still wants to go ahead.
+  const [intentPrompt, setIntentPrompt] = useState<PostIntent>(null);
+  // One prompt per intent per composing session. Without this, dismissing
+  // "Post anyway" and then hitting Post again would re-show the same modal —
+  // the author has already answered it for this caption.
+  const acknowledgedIntents = useRef<Set<Exclude<PostIntent, null>>>(new Set());
+
   const enqueueUpload = useUploadStore((s) => s.enqueue);
 
   // Track the real keyboard height so the bottom toolbar can float directly
@@ -284,9 +297,7 @@ export default function CreatePostScreen() {
   // Never waits on the network. Media has been uploading since it was picked;
   // whatever is left finishes inside the background job while this screen is
   // already gone.
-  const handlePost = () => {
-    if (!canPost) return;
-
+  const submitPost = () => {
     if (isEditMode) {
       enqueueUpload({
         kind: 'edit',
@@ -315,6 +326,36 @@ export default function CreatePostScreen() {
     // banner in MainHeader — which only lives on Feed/Bazaar — is guaranteed
     // to be visible right away, regardless of where create-post was opened from.
     router.dismissTo('/(app)/(tabs)');
+  };
+
+  // Gate in front of submitPost: a caption that reads as a pet sale or as a
+  // rehoming listing gets one modal before it goes out (see
+  // utils/moderation/postIntent.ts). Neither blocks — the sale warning tells
+  // the author what will happen to the post, the adoption one offers a better
+  // place for it, and both leave "post anyway" one tap away. Edits skip the
+  // gate: the post already exists and the server re-runs the sale check on
+  // update anyway.
+  const handlePost = () => {
+    if (!canPost) return;
+
+    if (!isEditMode) {
+      const intent = detectPostIntent(caption);
+      if (intent && !acknowledgedIntents.current.has(intent)) {
+        Keyboard.dismiss();
+        setIntentPrompt(intent);
+        return;
+      }
+    }
+
+    submitPost();
+  };
+
+  // "Post anyway" / "Post here anyway" — remember the answer so the same
+  // modal doesn't reappear on the next tap, then go straight out.
+  const handleIntentOverride = () => {
+    if (intentPrompt) acknowledgedIntents.current.add(intentPrompt);
+    setIntentPrompt(null);
+    submitPost();
   };
 
   // ── Helpers for render ────────────────────────────────────────────────────────
@@ -568,6 +609,25 @@ export default function CreatePostScreen() {
         visible={gifSheetVisible}
         onClose={() => setGifSheetVisible(false)}
         onSelect={(gif) => mediaDraft.addGif(gif)}
+      />
+
+      {/* ── Intent gate (see handlePost) ── */}
+      <PetSaleWarningModal
+        visible={intentPrompt === 'pet_sale'}
+        onEdit={() => setIntentPrompt(null)}
+        onPostAnyway={handleIntentOverride}
+      />
+
+      <AdoptionNudgeModal
+        visible={intentPrompt === 'adoption'}
+        onGoToAdopt={() => {
+          setIntentPrompt(null);
+          // push, not replace — the composer stays mounted underneath with the
+          // caption intact, so backing out of the listing flow doesn't lose
+          // what they already wrote.
+          router.push('/(app)/create-pet');
+        }}
+        onPostAnyway={handleIntentOverride}
       />
 
     </View>

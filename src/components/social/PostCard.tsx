@@ -44,6 +44,7 @@ import { COLORS } from '../../constants/colors';
 import { useSocialActionsContext } from '../../context/SocialActionsContext';
 import { NO_PROFILE_IMAGE } from '../../constants/images';
 import { getShareUrl } from '../../utils/share';
+import { PetSalePolicyModal } from './PostIntentModal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -68,6 +69,17 @@ export const CONTENT_W = CARD_W - CARD_INNER_PAD * 2 - AVATAR_SIZE - COL_GAP;
 // The media starts at the avatar's x position
 const MEDIA_LEFT_OFFSET = CARD_INNER_PAD + AVATAR_SIZE + COL_GAP;
 const MEDIA_FULL_W = CARD_W - MEDIA_LEFT_OFFSET;
+
+// Feed captions collapse past this many characters, with a "Show more" tail
+// (see MentionText's `collapseAfter`). ~280 lands around 6-7 lines at the
+// caption's 15px/22 — enough for a normal post to read in full, short enough
+// that one essay-length caption can't push every post after it off screen.
+// The post detail screen opts out via PostCard's `fullCaption`.
+export const FEED_CAPTION_COLLAPSE_CHARS = 280;
+// The embedded original inside a quote gets a tighter budget and no expand
+// affordance — tapping it opens the real post, which is where the full text
+// belongs.
+const QUOTE_PREVIEW_COLLAPSE_CHARS = 180;
 
 // Carousel: primary card width, second card peeks
 const CAROUSEL_PEEK = 120;
@@ -134,34 +146,33 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  noticeBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  // Sits in the post body, lined up with the caption (see PetSaleNoticeBanner).
+  saleNotice: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-  },
-  noticeTooltip: {
-    position: 'absolute',
-    top: 34,
-    right: 8,
-    maxWidth: 240,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    gap: 8,
+    marginLeft: MEDIA_LEFT_OFFSET,
+    marginRight: 14,
+    marginBottom: 8,
     paddingVertical: 8,
-    zIndex: 5,
+    paddingLeft: 10,
+    paddingRight: 8,
+    borderRadius: 10,
+    backgroundColor: '#fce8ed',
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
   },
-  noticeTooltipText: {
-    color: '#fff',
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '600',
+  saleNoticeTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: -0.2,
+  },
+  saleNoticeBody: {
+    fontSize: 11.5,
+    lineHeight: 15,
+    color: '#8a2b3f',
+    marginTop: 1,
   },
   cardPressed: {
     backgroundColor: '#F9F9F9',
@@ -487,7 +498,12 @@ export const OriginalPostPreview = ({
         )}
       </View>
 
-      <MentionText content={content} textStyle={{ fontSize: 14, color: '#111', lineHeight: 19, marginBottom: 8 }} />
+      <MentionText
+        content={content}
+        textStyle={{ fontSize: 14, color: '#111', lineHeight: 19, marginBottom: 8 }}
+        collapseAfter={QUOTE_PREVIEW_COLLAPSE_CHARS}
+        expandable={false}
+      />
 
       {media && media.length > 0 && (
         <Pressable
@@ -515,20 +531,28 @@ export const OriginalPostPreview = ({
     </Pressable>
   );
 };
-// ─── Public "Paltuu doesn't condone this" notice, top-right of the media ────
-// Unlike the old shadow-hide approach, the post stays fully visible to
-// everyone — this is just a small badge every viewer can see and tap.
-const PetSaleNoticeBadge = ({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) => (
-  <>
-    <TouchableOpacity activeOpacity={0.8} hitSlop={8} style={s.noticeBadge} onPress={onToggle}>
-      <Ionicons name="information" size={13} color="#fff" />
-    </TouchableOpacity>
-    {expanded && (
-      <TouchableOpacity activeOpacity={0.9} style={s.noticeTooltip} onPress={onToggle}>
-        <Text style={s.noticeTooltipText}>Paltuu strongly opposes buying or selling pets, supporting only adoption.</Text>
-      </TouchableOpacity>
-    )}
-  </>
+// ─── Public "flagged as a sale post" banner ─────────────────────────────────
+// The post stays fully visible to everyone — this is a disclaimer, not a
+// hide. It replaces the old "i" badge that floated in the corner of the
+// media: that read as a neutral info affordance, sat on the photo rather
+// than on the post, and said nothing until it was tapped. This is a
+// primary-coloured bar in the post body itself, above the caption, stating
+// the flag up front; tapping it opens the full policy (PetSalePolicyModal).
+//
+// Deliberately not red/destructive: the detector is a heuristic and the post
+// is still under review, so this is Paltuu speaking, not an error state.
+const PetSaleNoticeBanner = ({ onPress }: { onPress: () => void }) => (
+  <TouchableOpacity activeOpacity={0.75} style={s.saleNotice} onPress={onPress}>
+    <Ionicons name="alert-circle" size={17} color={COLORS.primary} />
+    <View style={{ flex: 1 }}>
+      <Text style={s.saleNoticeTitle}>Flagged: buying or selling pets</Text>
+      <Text style={s.saleNoticeBody}>
+        Auto-marked as a sale post. Paltuu does not condone this — under review and
+        may be removed.
+      </Text>
+    </View>
+    <Ionicons name="chevron-forward" size={15} color={COLORS.primary} />
+  </TouchableOpacity>
 );
 
 // Images start at the avatar's left edge and stretch to the card's right edge.
@@ -537,18 +561,11 @@ const MediaBlock = React.memo(({
   media,
   onImagePress,
   isPlaying,
-  noticeReason,
 }: {
   media: SocialPostMedia[];
   onImagePress?: (index: number) => void;
   isPlaying?: boolean;
-  /** Public content notice — shown to every viewer as an "i" badge, top-right of the media. Currently only 'pet_sale'. */
-  noticeReason?: 'pet_sale' | null;
 }) => {
-  const [noticeExpanded, setNoticeExpanded] = useState(false);
-  const notice = noticeReason === 'pet_sale'
-    ? <PetSaleNoticeBadge expanded={noticeExpanded} onToggle={() => setNoticeExpanded(v => !v)} />
-    : null;
   const carouselImgH = Math.round(CAROUSEL_CARD_W * 1.05);
 
   const renderCarouselItem = useCallback(({ item, index }: { item: SocialPostMedia; index: number }) => {
@@ -623,7 +640,6 @@ const MediaBlock = React.memo(({
               isProcessing={false}
               onPress={() => onImagePress?.(0)}
             />
-            {notice}
           </View>
         );
       }
@@ -640,7 +656,6 @@ const MediaBlock = React.memo(({
             isProcessing={false}
             onPress={() => onImagePress?.(0)}
           />
-          {notice}
         </View>
       );
     }
@@ -661,7 +676,6 @@ const MediaBlock = React.memo(({
             recyclingKey={firstItem.url}
           />
         </TouchableOpacity>
-        {notice}
       </View>
     );
   }
@@ -685,7 +699,6 @@ const MediaBlock = React.memo(({
           </React.Fragment>
         ))}
       </ScrollView>
-      {notice}
     </View>
   );
 });
@@ -813,11 +826,18 @@ export const PostCard = React.memo(({
   onPress,
   onComment,
   onPlusPress,
+  fullCaption = false,
 }: {
   post: SocialPost;
   onPress: () => void;
   onComment?: () => void;
   onPlusPress?: (userId: number) => void;
+  /**
+   * Render the caption in full instead of collapsing it behind "Show more".
+   * For the single-post screen, where the reader has already chosen this post
+   * and hiding its body behind another tap is just friction.
+   */
+  fullCaption?: boolean;
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -982,10 +1002,11 @@ export const PostCard = React.memo(({
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
   const [isHidden, setIsHidden] = useState(false);
   const isOwnPost = String(currentUserId) === String(post.user_id);
-  // MediaBlock renders its own notice badge overlaid on the media — but a
-  // text-only flagged post has no media to overlay it on, so this is the
-  // fallback: same badge, just inline instead of absolute-positioned.
-  const [textNoticeExpanded, setTextNoticeExpanded] = useState(false);
+  // Whether the tapped-through policy explainer behind the pet-sale banner is
+  // open (see PetSaleNoticeBanner / PetSalePolicyModal).
+  const [salePolicyOpen, setSalePolicyOpen] = useState(false);
+  const hasSaleNotice = post.content_notice_reason === 'pet_sale';
+  const collapseCaptionAfter = fullCaption ? undefined : FEED_CAPTION_COLLAPSE_CHARS;
 
   const handleDelete = () => {
     Alert.alert(
@@ -1298,13 +1319,16 @@ export const PostCard = React.memo(({
             onAvatarPress={handleAvatarPress}
           />
 
-          {/* ── Pet-sale notice, text-only fallback ──
-               MediaBlock overlays this same badge on the media itself; a
-               post with no media has no media to overlay it on, so it
-               renders inline here instead, top-right of the post body. ── */}
-          {!bodyMedia?.length && post.content_notice_reason === 'pet_sale' && (
-            <View style={{ position: 'relative', height: 30, marginLeft: MEDIA_LEFT_OFFSET, marginRight: 14, marginTop: -8, marginBottom: 2 }}>
-              <PetSaleNoticeBadge expanded={textNoticeExpanded} onToggle={() => setTextNoticeExpanded(v => !v)} />
+          {/* ── Pet-sale disclaimer ──
+               Above the caption and the media, not on top of either: this is
+               about the post, and a flagged post with no media at all still
+               has to carry it. When it shows, IT takes the pull-up under the
+               author's name line that the caption/media would otherwise
+               claim (see the `hasSaleNotice` guards below), so the three
+               don't all try to negative-margin into the same gap. ── */}
+          {hasSaleNotice && (
+            <View style={{ marginTop: -14 }}>
+              <PetSaleNoticeBanner onPress={() => setSalePolicyOpen(true)} />
             </View>
           )}
 
@@ -1319,10 +1343,11 @@ export const PostCard = React.memo(({
 
           {/* ── Body text: quote text for normal/quote posts, original text for plain reposts ── */}
           {!!bodyContent && (
-            <View style={s.caption}>
+            <View style={[s.caption, hasSaleNotice && { marginTop: 0 }]}>
               <MentionText
                 content={bodyContent}
                 textStyle={{ fontSize: 15, lineHeight: 22, color: '#111', letterSpacing: -0.4 }}
+                collapseAfter={collapseCaptionAfter}
               />
             </View>
           )}
@@ -1330,12 +1355,11 @@ export const PostCard = React.memo(({
           {/* ── Quote's own attached media (images/videos), above the embedded
                original — the quoter's media reads first, then the quoted post ── */}
           {isQuoteRepost && bodyMedia?.length > 0 && (
-            <View style={!bodyContent ? { marginTop: -12 } : undefined}>
+            <View style={!bodyContent && !hasSaleNotice ? { marginTop: -12 } : undefined}>
               <MediaBlock
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
-                noticeReason={post.content_notice_reason}
               />
             </View>
           )}
@@ -1375,15 +1399,11 @@ export const PostCard = React.memo(({
             // When there's no caption, pull the media up under the single
             // name/username line the same way the caption does — otherwise the
             // media starts below the taller avatar's overhang, leaving a gap.
-            <View style={!bodyContent && { marginTop: -12 }}>
+            <View style={!bodyContent && !hasSaleNotice && { marginTop: -12 }}>
               <MediaBlock
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
-                // Known gap: for a plain repost, this reflects the reposting
-                // row's own (always-empty) content, not the original post's —
-                // a repost of a flagged post won't show the badge yet.
-                noticeReason={post.content_notice_reason}
               />
             </View>
           )}
@@ -1423,6 +1443,13 @@ export const PostCard = React.memo(({
             onShare={handleShare}
           />
         </Pressable>
+
+    {/* What the pet-sale banner above means, in full — mounted only once
+        tapped so a feed full of flagged posts isn't a feed full of Modals. */}
+    {salePolicyOpen && (
+      <PetSalePolicyModal visible onClose={() => setSalePolicyOpen(false)} />
+    )}
+
     <View style={s.postSeparator} />
     </View>
   );

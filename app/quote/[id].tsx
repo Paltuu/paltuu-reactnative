@@ -23,6 +23,8 @@ import { useMentionInput, MentionInputField, MentionSuggestionDropdown } from '.
 import { ComposerMediaGrid } from '../../src/components/social/ComposerMediaGrid';
 import { useMediaDraft } from '../../src/hooks/useMediaDraft';
 import { useUploadStore } from '../../src/stores/uploadStore';
+import { PetSaleWarningModal } from '../../src/components/social/PostIntentModal';
+import { hasPetSaleMatch } from '../../src/utils/moderation/postIntent';
 import { petProfilesApi } from '../../src/api/petProfiles';
 import { useAuthStore } from '../../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../src/constants/images';
@@ -62,6 +64,13 @@ export default function QuoteComposerScreen() {
   const petHint = usePetTagHint();
   const [gifSheetVisible, setGifSheetVisible] = useState(false);
 
+  // Sale-intent gate, same as the main composer (app/create-post.tsx). Only
+  // the sale half applies here: the Adopt nudge exists to redirect a listing
+  // to the listing flow, and a quote is commentary on someone else's post,
+  // not a listing to redirect.
+  const [saleWarningOpen, setSaleWarningOpen] = useState(false);
+  const saleWarningAcknowledged = useRef(false);
+
   // Preview of the quoted post, read once on mount — set synchronously by
   // PostCard before this screen is pushed.
   const [target] = useState<QuoteTarget | undefined>(
@@ -99,8 +108,7 @@ export default function QuoteComposerScreen() {
   const canSubmit = content.trim().length > 0 || mediaDraft.count > 0;
 
   // ── Submit: hand off to the shared background queue and leave ───────────────
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const submitQuote = () => {
     enqueueUpload({
       kind: 'quote',
       targetPostId: String(id),
@@ -112,6 +120,18 @@ export default function QuoteComposerScreen() {
       thumbnailUri: mediaDraft.items[0]?.thumbnailUri || mediaDraft.items[0]?.uri || null,
     });
     router.back();
+  };
+
+  // The quote caption goes out as its own post and gets flagged server-side
+  // like any other, so warn the author first (see utils/moderation/postIntent).
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    if (!saleWarningAcknowledged.current && hasPetSaleMatch(content)) {
+      Keyboard.dismiss();
+      setSaleWarningOpen(true);
+      return;
+    }
+    submitQuote();
   };
 
   return (
@@ -270,6 +290,16 @@ export default function QuoteComposerScreen() {
         visible={gifSheetVisible}
         onClose={() => setGifSheetVisible(false)}
         onSelect={(gif) => mediaDraft.addGif(gif)}
+      />
+
+      <PetSaleWarningModal
+        visible={saleWarningOpen}
+        onEdit={() => setSaleWarningOpen(false)}
+        onPostAnyway={() => {
+          saleWarningAcknowledged.current = true;
+          setSaleWarningOpen(false);
+          submitQuote();
+        }}
       />
     </View>
   );

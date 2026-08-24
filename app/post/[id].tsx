@@ -306,6 +306,9 @@ export default function PostDetailScreen() {
               onPress={() => {}}
               onComment={openComposer}
               onPlusPress={(uid) => setSelectedUserId(uid)}
+              // The reader already opened this specific post — don't make them
+              // tap "Show more" to read the thing they navigated to.
+              fullCaption
             />
           </View>
         );
