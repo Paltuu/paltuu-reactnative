@@ -26,8 +26,18 @@ function LayoutContent() {
   // Home, Search, and Bazaar each render their own <MainHeader>/<SearchHeader>
   // (see (tabs)/index.tsx, (tabs)/search.tsx, bazaar.tsx) bound to a private
   // `useHeaderScroll()` instance, so no header is rendered at the layout level.
+  // Screens whose own root background is #FAFAFB rather than white — the notch strip below
+  // has to match them or a hard white band shows above the header.
+  // `startsWith('/express-vet')` deliberately, not `includes('/vet')`: the latter never
+  // matched any Vets at Home route (they read `-vet`, not `/vet`), which is exactly why
+  // every screen in that flow rendered a white notch over its grey page. This one prefix
+  // covers the client flow and the dispatcher console, which share that background.
   const isGreyScreen =
-    pathname === '/pet-care' || pathname === '/adopt' || pathname?.includes('/clinic') || pathname?.includes('/vet');
+    pathname === '/pet-care' ||
+    pathname === '/adopt' ||
+    pathname?.includes('/clinic') ||
+    pathname?.includes('/vet') ||
+    pathname?.startsWith('/express-vet');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>

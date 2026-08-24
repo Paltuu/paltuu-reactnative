@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi } from '../../../../src/api/expressVet';
 import { useLocationStore } from '../../../../src/stores/locationStore';
-import { EXPRESS_VET_SPECIES_ICONS, EXPRESS_VET_SPECIES_LABELS } from '../../../../src/constants/expressVet';
+import { EXPRESS_VET_SPECIES_LABELS } from '../../../../src/constants/expressVet';
 import { FONTS } from '../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -70,9 +70,6 @@ export default function ExpressVetSpeciesScreen() {
                   } as any)
                 }
               >
-                <View style={styles.rowIcon}>
-                  <Ionicons name={EXPRESS_VET_SPECIES_ICONS[species] ?? 'paw'} size={24} color={PRIMARY} />
-                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>{EXPRESS_VET_SPECIES_LABELS[species] ?? species}</Text>
                   <Text style={styles.rowSub}>
@@ -114,14 +111,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0F0F0',
     padding: 14,
-  },
-  rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F8E9EC',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rowLabel: {
     fontFamily: FONTS.bodyBold,

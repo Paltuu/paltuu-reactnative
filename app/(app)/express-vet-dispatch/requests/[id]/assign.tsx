@@ -18,8 +18,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider, AssignPayload } from '../../../../../src/api/expressVetDispatch';
-import client from '../../../../../src/api/client';
 import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
+import { useKeyboardVisible } from '../../../../../src/hooks/useKeyboardVisible';
+import { uploadImageToS3 } from '../../../../../src/utils/uploadImage';
 import { FONTS } from '../../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -31,6 +32,7 @@ type Mode = 'search' | 'new' | 'myself';
 export default function ExpressVetAssignScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -85,12 +87,7 @@ export default function ExpressVetAssignScreen() {
     if (!newPhoto) return null;
     setIsUploadingPhoto(true);
     try {
-      const formData = new FormData();
-      formData.append('files', newPhoto as any);
-      const { data } = await client.post('/social/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return data?.media?.[0]?.url ?? null;
+      return await uploadImageToS3(newPhoto);
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -322,7 +319,8 @@ export default function ExpressVetAssignScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+        {/* Drops the home-indicator inset while the keyboard is up — see address.tsx. */}
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 16 }]}>
           <PaltuuButton
             label="Confirm & Assign"
             onPress={handleConfirm}

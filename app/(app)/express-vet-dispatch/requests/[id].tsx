@@ -160,14 +160,36 @@ export default function ExpressVetDispatchRequestDetailScreen() {
               </View>
               <Row label="Address" value={request.address_line} />
               {!!request.address_landmark && <Row label="Landmark" value={request.address_landmark} />}
+              {/* The whole point of collecting this is one-tap navigation for whoever's
+                  going out — a plain text row would make them copy-paste a URL by hand. */}
+              {!!request.maps_link && (
+                <TouchableOpacity style={styles.mapsLinkRow} onPress={() => Linking.openURL(request.maps_link!)}>
+                  <Ionicons name="navigate-outline" size={16} color={PRIMARY} />
+                  <Text style={styles.mapsLinkText}>Open in Google Maps</Text>
+                </TouchableOpacity>
+              )}
               <Row label="Starting price" value={`PKR ${request.starting_price_pkr.toLocaleString()}`} />
             </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Questionnaire</Text>
-              {fields.map((field) => (
-                <Row key={field.key} label={field.label} value={formatAnswer(field, request.questionnaire_answers?.[field.key])} />
-              ))}
+              {fields.map((field) => {
+                const answer = request.questionnaire_answers?.[field.key];
+                // Photo answers are stored as S3 URLs (see the client's questionnaire.tsx
+                // PhotoField) — render the actual image, since a raw URL string in a Row is
+                // useless to the dispatcher triaging the case. Tap opens it full-size.
+                if (field.type === 'photo' && typeof answer === 'string' && answer) {
+                  return (
+                    <View key={field.key} style={{ gap: 6 }}>
+                      <Text style={styles.rowLabel}>{field.label}</Text>
+                      <TouchableOpacity activeOpacity={0.9} onPress={() => Linking.openURL(answer)}>
+                        <Image source={{ uri: answer }} style={styles.answerPhoto} contentFit="cover" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+                return <Row key={field.key} label={field.label} value={formatAnswer(field, answer)} />;
+              })}
             </View>
 
             {(request.status === 'assigned' || request.status === 'completed') && (
@@ -296,6 +318,9 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#8A8A94' },
+  answerPhoto: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#F3F4F6' },
+  mapsLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  mapsLinkText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94', flex: 1 },
   rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },

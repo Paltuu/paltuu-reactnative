@@ -9,7 +9,6 @@ import { useLocationStore } from '../../../../src/stores/locationStore';
 import {
   EXPRESS_VET_SPECIES_LABELS,
   GROOMING_SUB_SERVICE_DESCRIPTIONS,
-  GROOMING_SUB_SERVICE_ICONS,
   GROOMING_SUB_SERVICE_LABELS,
   GROOMING_SUB_SERVICE_ORDER,
 } from '../../../../src/constants/expressVet';
@@ -25,6 +24,7 @@ import { FONTS } from '../../../../src/constants/typography';
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
 const H_PAD = 20;
+const QUICK_CLEAN_KEY = 'quick_clean';
 
 export default function ExpressVetGroomingServiceScreen() {
   const router = useRouter();
@@ -47,6 +47,13 @@ export default function ExpressVetGroomingServiceScreen() {
   const availableItems = GROOMING_SUB_SERVICE_ORDER.filter((key) => priceFor(key) !== undefined);
   const total = selected.reduce((sum, key) => sum + (priceFor(key) ?? 0), 0);
 
+  // Quick Clean is an either/or, not an add-on: it's the package deal, everything else is
+  // "build your own". Selecting it clears any à la carte picks, and picking an à la carte
+  // item clears it — so the two modes can never be mixed into a double-charged basket
+  // (Quick Clean already contains bath/haircut/nails/ears).
+  const quickCleanSelected = selected.includes(QUICK_CLEAN_KEY);
+  const hasALaCarte = selected.some((k) => k !== QUICK_CLEAN_KEY);
+
   const toggle = (key: string) =>
     setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
@@ -68,7 +75,7 @@ export default function ExpressVetGroomingServiceScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>What does your {EXPRESS_VET_SPECIES_LABELS[species]?.toLowerCase() ?? 'pet'} need?</Text>
-          <Text style={styles.subtitle}>Pick one or more — build your own, or start with Quick Clean</Text>
+          <Text style={styles.subtitle}>Choose the Quick Clean package, or build your own</Text>
         </View>
       </View>
 
@@ -84,22 +91,25 @@ export default function ExpressVetGroomingServiceScreen() {
           >
             {availableItems.map((key) => {
               const price = priceFor(key);
-              const isPackage = key === 'quick_clean';
+              const isPackage = key === QUICK_CLEAN_KEY;
               const active = selected.includes(key);
+              // Either/or: with the package chosen, à la carte items are locked, and once
+              // any à la carte item is chosen the package is locked. Shown as visibly
+              // disabled rather than silently swapping the basket under the user.
+              const disabled = isPackage ? hasALaCarte : quickCleanSelected;
               return (
                 <TouchableOpacity
                   key={key}
                   activeOpacity={0.9}
-                  style={[styles.row, isPackage && styles.rowPackage, active && styles.rowActive]}
+                  disabled={disabled}
+                  style={[
+                    styles.row,
+                    isPackage && styles.rowPackage,
+                    active && styles.rowActive,
+                    disabled && styles.rowDisabled,
+                  ]}
                   onPress={() => toggle(key)}
                 >
-                  <View style={[styles.rowIcon, isPackage && styles.rowIconPackage, active && styles.rowIconActive]}>
-                    <Ionicons
-                      name={GROOMING_SUB_SERVICE_ICONS[key] ?? 'cut-outline'}
-                      size={22}
-                      color={isPackage || active ? '#FFFFFF' : PRIMARY}
-                    />
-                  </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.rowLabel}>{GROOMING_SUB_SERVICE_LABELS[key] ?? key}</Text>
@@ -170,19 +180,8 @@ const styles = StyleSheet.create({
     borderColor: PRIMARY,
     backgroundColor: '#FAF0F2',
   },
-  rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F8E9EC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowIconPackage: {
-    backgroundColor: '#C98A97',
-  },
-  rowIconActive: {
-    backgroundColor: PRIMARY,
+  rowDisabled: {
+    opacity: 0.4,
   },
   rowLabel: {
     fontFamily: FONTS.bodyBold,

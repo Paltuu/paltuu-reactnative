@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../../src/stores/authStore';
 import { useLocationStore } from '../../../../src/stores/locationStore';
 import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftStore';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import { useKeyboardVisible } from '../../../../src/hooks/useKeyboardVisible';
 import { FONTS } from '../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -15,6 +16,7 @@ const H_PAD = 20;
 export default function ExpressVetAddressScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const user = useAuthStore((s) => s.user);
   const { addressLine, addressLandmark, mapsLink, contactPhone, setAddress } = useExpressVetDraftStore();
@@ -132,7 +134,10 @@ export default function ExpressVetAddressScreen() {
           </View>
         </ScrollView>
 
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+        {/* With the keyboard up, KeyboardAvoidingView has already lifted this clear of it —
+            still adding the home-indicator inset on top is what leaves a dead gap between
+            the button and the keyboard. Same fix as create-pet.tsx's bottom CTA. */}
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 16 }]}>
           <PaltuuButton label="Continue" onPress={handleContinue} radius={26} />
         </View>
       </KeyboardAvoidingView>

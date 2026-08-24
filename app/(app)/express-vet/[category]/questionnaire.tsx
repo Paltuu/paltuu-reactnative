@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi, ExpressVetQuestionnaireField } from '../../../../src/api/expressVet';
 import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftStore';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import { useKeyboardVisible } from '../../../../src/hooks/useKeyboardVisible';
+import { uploadImageToS3 } from '../../../../src/utils/uploadImage';
 import { FONTS } from '../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -27,6 +31,7 @@ function resolveFields(
 export default function ExpressVetQuestionnaireScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const setQuestionnaireAnswers = useExpressVetDraftStore((s) => s.setQuestionnaireAnswers);
 
@@ -82,7 +87,7 @@ export default function ExpressVetQuestionnaireScreen() {
           <ActivityIndicator color={PRIMARY} />
         </View>
       ) : (
-        <>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView
             contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 24, gap: 20 }}
             showsVerticalScrollIndicator={false}
@@ -92,10 +97,11 @@ export default function ExpressVetQuestionnaireScreen() {
               <QuestionnaireField key={field.key} field={field} value={answers[field.key]} onChange={(v) => setAnswer(field.key, v)} />
             ))}
           </ScrollView>
-          <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+          {/* Drops the home-indicator inset while the keyboard is up — see address.tsx. */}
+          <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 16 }]}>
             <PaltuuButton label="Continue" onPress={handleContinue} radius={26} />
           </View>
-        </>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
@@ -196,13 +202,70 @@ function QuestionnaireField({
         />
       )}
 
-      {field.type === 'photo' && (
-        <View style={styles.photoPlaceholder}>
-          <Ionicons name="camera-outline" size={22} color="#B0B7C3" />
-          <Text style={styles.photoPlaceholderText}>Photo upload coming soon</Text>
-        </View>
-      )}
+      {field.type === 'photo' && <PhotoField value={value} onChange={onChange} />}
     </View>
+  );
+}
+
+/**
+ * Photo answer for a `type: 'photo'` questionnaire field. Uploads to S3 immediately on pick
+ * (rather than deferring to submit) so the stored answer is a plain URL string — that keeps
+ * `questionnaire_answers` JSON uniform, survives the user backing out and returning, and
+ * means the submit button never has to wait on a slow upload. The answer value IS the URL;
+ * null/absent means no photo, which is what every photo field's `required: false` expects.
+ */
+function PhotoField({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+  const [uploading, setUploading] = useState(false);
+
+  const pick = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], // videos are rejected by /social/upload — see uploadImage.ts
+        quality: 0.7,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      setUploading(true);
+      const url = await uploadImageToS3({
+        uri: asset.uri,
+        name: asset.fileName || `photo_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      });
+      if (!url) throw new Error('No URL returned');
+      onChange(url);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload that photo. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (value) {
+    return (
+      <View style={styles.photoPreviewWrap}>
+        <Image source={{ uri: value }} style={styles.photoPreview} contentFit="cover" />
+        <TouchableOpacity style={styles.photoRemove} onPress={() => onChange(null)}>
+          <Ionicons name="close-circle" size={24} color="#FF4B4B" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity style={styles.photoPicker} onPress={pick} disabled={uploading} activeOpacity={0.8}>
+      {uploading ? (
+        <>
+          <ActivityIndicator color={PRIMARY} />
+          <Text style={styles.photoPickerText}>Uploading…</Text>
+        </>
+      ) : (
+        <>
+          <Ionicons name="camera-outline" size={22} color={PRIMARY} />
+          <Text style={styles.photoPickerText}>Add a photo</Text>
+        </>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -294,21 +357,40 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
 
-  photoPlaceholder: {
+  photoPicker: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#E5E7EB',
+    borderColor: PRIMARY,
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 18,
+    backgroundColor: '#FDF7F8',
   },
-  photoPlaceholderText: {
-    fontFamily: FONTS.body,
+  photoPickerText: {
+    fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: '#B0B7C3',
+    color: PRIMARY,
+  },
+  photoPreviewWrap: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+  },
+  photoPreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
   },
 
   bottom: {

@@ -71,9 +71,6 @@ export default function ExpressVetIndexScreen() {
                       : router.push(section.route as any)
                   }
                 >
-                  <View style={styles.cardIcon}>
-                    <Ionicons name={section.icon} size={28} color={PRIMARY} />
-                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardLabel}>{section.label}</Text>
                     <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
@@ -118,14 +115,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0F0F0',
     padding: 16,
-  },
-  cardIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F8E9EC',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cardLabel: {
     fontFamily: FONTS.bodyBold,

@@ -57,9 +57,6 @@ export default function NeuteringSpayingChoiceScreen() {
           showsVerticalScrollIndicator={false}
         >
           <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('neutering')}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="male-outline" size={26} color={PRIMARY} />
-            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardLabel}>Neutering</Text>
               <Text style={styles.cardDescription}>For male pets</Text>
@@ -71,9 +68,6 @@ export default function NeuteringSpayingChoiceScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('spaying')}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="female-outline" size={26} color={PRIMARY} />
-            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardLabel}>Spaying</Text>
               <Text style={styles.cardDescription}>For female pets</Text>
@@ -114,14 +108,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0F0F0',
     padding: 16,
-  },
-  cardIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F8E9EC',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cardLabel: {
     fontFamily: FONTS.bodyBold,

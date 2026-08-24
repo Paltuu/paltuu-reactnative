@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi, EXPRESS_VET_ADDON_REASON_TAGS } from '../../../../../src/api/expressVet';
 import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
+import { useKeyboardVisible } from '../../../../../src/hooks/useKeyboardVisible';
 import { FONTS } from '../../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -51,6 +52,7 @@ export default function ExpressVetRateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const keyboardVisible = useKeyboardVisible();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data, isPending } = useQuery({
@@ -211,7 +213,8 @@ export default function ExpressVetRateScreen() {
             )}
           </ScrollView>
 
-          <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+          {/* Drops the home-indicator inset while the keyboard is up — see address.tsx. */}
+          <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 16 }]}>
             <PaltuuButton
               label="Submit Rating"
               onPress={handleSubmit}
