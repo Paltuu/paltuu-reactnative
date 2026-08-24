@@ -73,8 +73,21 @@ export default function WelcomeScreen() {
       // expo-linking's auto-resolved host, which bakes the Metro packager's LAN
       // address (e.g. 192.168.x.x:8081) into the URI on dev-client builds and
       // breaks the redirect hand-off back from the browser.
-      const appScheme = Constants.expoConfig?.scheme;
-      const nativeScheme = Array.isArray(appScheme) ? appScheme[0] : appScheme;
+      //
+      // This MUST come from an EXPO_PUBLIC_ env var, not Constants.expoConfig.scheme.
+      // expoConfig reflects whatever app.config.ts resolved to in the process that
+      // produced the CURRENTLY RUNNING JS bundle — for a native build that's the EAS
+      // Build profile's env (reliable), but `eas update` has no profile/env mechanism
+      // of its own, so app.config.ts's APP_ENV silently falls back to "development"
+      // unless the publishing shell happens to export it first. That shipped a
+      // production OTA update with the dev scheme ("paltuu-dev") baked in, which no
+      // installed production app has an intent-filter for — Android had nowhere to
+      // route the OAuth redirect, so the in-app browser just sat there forever after
+      // account selection. EXPO_PUBLIC_ vars are inlined by Metro straight from
+      // .env/eas.json build profiles at bundle time regardless of which command
+      // triggered the bundle, which is why EXPO_PUBLIC_API_URL above never had this
+      // problem — this needs the same treatment.
+      const nativeScheme = process.env.EXPO_PUBLIC_APP_SCHEME || 'paltuu';
       const redirectUrl = AuthSession.makeRedirectUri({ native: `${nativeScheme}://oauth2redirect` });
       const authUrl = `${apiBaseUrl}/v1/auth/google/mobile?app_redirect=${encodeURIComponent(redirectUrl)}`;
 
