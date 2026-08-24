@@ -73,10 +73,38 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // 5. Cleanup
+    // 5. Android foreground FCM listener — general (non-dispatcher) notifications only.
+    // @react-native-firebase/messaging's native Android service now receives every FCM
+    // push (see below), which starves expo-notifications' own receiver, so
+    // addNotificationReceivedListener above never fires for these on Android any more —
+    // this listener is what actually displays them while the app is foregrounded.
+    // Filtered on `.notification` presence rather than a `data.type` check: the Vets at
+    // Home dispatcher alert is deliberately sent data-only (see
+    // lib/expressVet/dispatcherCallPush.ts) specifically so it never has this field, and
+    // is displayed instead by DispatcherCallProvider.tsx's own onMessage listener.
+    let cleanupAndroidForegroundFcm: (() => void) | undefined;
+    if (Platform.OS === 'android') {
+      const messaging = require('@react-native-firebase/messaging').default;
+      const sub = messaging().onMessage(async (remoteMessage: any) => {
+        if (!remoteMessage?.notification) return;
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: remoteMessage.notification.title,
+            body: remoteMessage.notification.body,
+            data: remoteMessage.data ?? {},
+            sound: 'default',
+          },
+          trigger: null,
+        });
+      });
+      cleanupAndroidForegroundFcm = sub;
+    }
+
+    // 6. Cleanup
     return () => {
       notificationListener.remove();
       responseListener.remove();
+      cleanupAndroidForegroundFcm?.();
     };
   }, []);
 
@@ -84,18 +112,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // authenticated session. Re-runs on login (the token is usually obtained
   // before the user is authenticated on a fresh install, so the initial
   // registration attempt would otherwise 401 and never be retried).
+  //
+  // Android registers the native FCM device token, not the Expo push token: adding
+  // @react-native-firebase/messaging (for the Vets at Home dispatcher alert) put a second
+  // native FCM receiver service in the manifest, and Android FCM only invokes the
+  // highest-priority one — RNFB's, at default priority, over expo-notifications' own
+  // (explicit priority -1). Expo's push service therefore never receives anything on
+  // Android any more, so sending to an Expo push token silently goes nowhere; the backend
+  // already has a working native-FCM send path (NotificationService.ts classifyTokens),
+  // previously only exercised by the dispatcher-specific token registration below. iOS is
+  // unaffected by this particular conflict and keeps using the Expo token.
   useEffect(() => {
-    if (!expoPushToken || !isAuthenticated) return;
+    const tokenToRegister = Platform.OS === 'android' ? devicePushToken : expoPushToken;
+    if (!tokenToRegister || !isAuthenticated) return;
 
     notificationsApi
-      .registerDevice({ fcm_token: expoPushToken, platform: Platform.OS as 'ios' | 'android' })
+      .registerDevice({ fcm_token: tokenToRegister, platform: Platform.OS as 'ios' | 'android' })
       .then(() => {
         console.log('[Paltuu Notifications] ✅ Device token registered with backend successfully');
       })
       .catch((apiErr: any) => {
         console.log('[Paltuu Notifications] ⚠️ Backend token registration failed:', apiErr.message);
       });
-  }, [expoPushToken, isAuthenticated]);
+  }, [expoPushToken, devicePushToken, isAuthenticated]);
 
   const value = useMemo(
     () => ({ expoPushToken, devicePushToken, notification, error }),

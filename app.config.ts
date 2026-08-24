@@ -32,6 +32,12 @@ export default (): ExpoConfig => {
     ios: {
       supportsTablet: true,
       bundleIdentifier,
+      // App Store Connect rejects a submission that reuses a version+buildNumber it has
+      // already seen (this is what "Something went wrong when submitting" turned out to
+      // mean — three separate 1.0.10 builds today all defaulted to buildNumber "1" with
+      // nothing here to bump it). Bump this by hand alongside android.versionCode whenever
+      // submitting a new production build for the same `version`.
+      buildNumber: "2",
       googleServicesFile: "./GoogleService-Info.plist",
       usesAppleSignIn: true,
       infoPlist: {
