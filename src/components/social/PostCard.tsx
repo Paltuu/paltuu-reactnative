@@ -159,8 +159,6 @@ const s = StyleSheet.create({
     paddingRight: 8,
     borderRadius: 10,
     backgroundColor: '#fce8ed',
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
   },
   saleNoticeTitle: {
     fontSize: 12.5,
