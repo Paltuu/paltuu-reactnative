@@ -67,13 +67,18 @@ function AnimatedTabIcon({
 
   // Tapping a tab (as opposed to swiping) makes react-native-tab-view jump the
   // pager via `setPageWithoutAnimation` while also manually forcing `position`
-  // to the new index. On Android those native `onPageScroll` events can still
-  // land afterward and race that manual set, sometimes leaving `position`
-  // stuck at a fractional value — the icon renders half-faded forever even
-  // though the tab is genuinely focused. `state.index` (passed down as
-  // `focused`) is settled instantly and reliably by React Navigation itself,
-  // so once it says this tab is focused, trust it over the racy shared value.
-  const focusedOpacity = focused ? 1 : interpolatedOpacity;
+  // to the new index. Those two updates can race — and separately, this same
+  // opacity previously got toggled between a plain number and this Animated
+  // node depending on focus, which is its own footgun: once a native-driven
+  // Animated node is attached to a style prop, React Native doesn't reliably
+  // hand control back to a later plain-value render on the same view. Either
+  // way the result is the same: the icon can render permanently half-faded
+  // even though the tab is genuinely focused. So `interpolatedOpacity` below
+  // is ALWAYS the value bound to the animated crossfade layer — never swapped
+  // for a plain number — and a separate, plain (non-Animated) layer, gated
+  // only by React Navigation's own settled `state.index` (passed down as
+  // `focused`), is stacked on top to guarantee the focused tab is correct
+  // regardless of whatever state the racy interpolation is stuck in.
 
   if (routeName === 'profile/index') {
     return (
@@ -105,9 +110,24 @@ function AnimatedTabIcon({
             borderRadius: 13,
             borderWidth: 2,
             borderColor: '#a03048',
-            opacity: focusedOpacity,
+            opacity: interpolatedOpacity,
           }}
         />
+        {focused && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              borderWidth: 2,
+              borderColor: '#a03048',
+            }}
+          />
+        )}
       </View>
     );
   }
@@ -117,9 +137,14 @@ function AnimatedTabIcon({
   return (
     <View style={{ width: pair.size, height: pair.size }}>
       <Image source={pair.unselect} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
-      <Animated.View style={{ position: 'absolute', top: 0, left: 0, opacity: focusedOpacity }}>
+      <Animated.View style={{ position: 'absolute', top: 0, left: 0, opacity: interpolatedOpacity }}>
         <Image source={pair.select} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
       </Animated.View>
+      {focused && (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
+          <Image source={pair.select} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
+        </View>
+      )}
     </View>
   );
 }
