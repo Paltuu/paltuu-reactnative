@@ -160,11 +160,13 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
   );
 });
 
-// Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen). Renders as
-// full-width, front-facing tiles rather than a small equal-width grid — the earlier 3-per-row
-// carousel (31% width each) truncated labels like "Neutering"/"Vaccination". Grouped into 4
-// sections (see EXPRESS_VET_SECTIONS) instead of 6 raw categories, and each section deep-links
-// straight into its picker/species screen, skipping the express-vet index screen.
+// Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen). Bento-style
+// grid (not all tiles the same size) matching the rest of the Pets tab's visual language —
+// TILE_BG background like every other tile here, no brand-color highlight on any one card,
+// and an empty illustration slot per tile (no icons) ready for real artwork to be dropped in
+// later — swap `bentoIllustration`'s empty <View> for an <Image source={require(...)} />.
+// Grouped into 4 sections (see EXPRESS_VET_SECTIONS) instead of 6 raw categories, and each
+// section deep-links straight into its picker/species screen, skipping the express-vet index.
 const VetAtHomeSections = React.memo(function VetAtHomeSections({
   rateCards,
   cityId,
@@ -176,6 +178,10 @@ const VetAtHomeSections = React.memo(function VetAtHomeSections({
   onPressSection: (section: (typeof EXPRESS_VET_SECTIONS)[number]) => void;
   onPressMyRequests: () => void;
 }) {
+  const [vetAtHome, neuteringSpaying, vaccination, grooming] = EXPRESS_VET_SECTIONS;
+  const priceFor = (section: (typeof EXPRESS_VET_SECTIONS)[number]) =>
+    lowestStartingPriceForCategories(rateCards, section.categoryKeys, cityId);
+
   return (
     <View style={{ gap: 10 }}>
       <View style={styles.vetAtHomeHeaderRow}>
@@ -188,32 +194,69 @@ const VetAtHomeSections = React.memo(function VetAtHomeSections({
         </TouchableOpacity>
       </View>
 
-      {EXPRESS_VET_SECTIONS.map((section) => {
-        const price = lowestStartingPriceForCategories(rateCards, section.categoryKeys, cityId);
-        return (
-          <TouchableOpacity
-            key={section.key}
-            activeOpacity={0.9}
-            style={[styles.sectionTile, section.featured && styles.sectionTileFeatured]}
-            onPress={() => onPressSection(section)}
-          >
-            <View style={[styles.sectionIcon, section.featured && styles.sectionIconFeatured]}>
-              <Ionicons name={section.icon} size={26} color={section.featured ? '#FFFFFF' : '#A03048'} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sectionLabel}>{section.label}</Text>
-              <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
-              <Text style={[styles.sectionPrice, section.featured && styles.sectionPriceFeatured]}>
-                {price != null ? `Starting from PKR ${price.toLocaleString()}` : 'Pricing coming soon'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          </TouchableOpacity>
-        );
-      })}
+      {/* Hero row — full width, the primary/most-urgent entry point */}
+      <BentoTile
+        section={vetAtHome}
+        price={priceFor(vetAtHome)}
+        onPress={() => onPressSection(vetAtHome)}
+        tileStyle={styles.bentoHero}
+      />
+
+      {/* Two small tiles stacked on the left, matched in total height by one tall tile on
+          the right — the "not all tiles the same size" bento layout. */}
+      <View style={styles.bentoRow}>
+        <View style={styles.bentoColumn}>
+          <BentoTile
+            section={neuteringSpaying}
+            price={priceFor(neuteringSpaying)}
+            onPress={() => onPressSection(neuteringSpaying)}
+            tileStyle={styles.bentoSmall}
+          />
+          <BentoTile
+            section={vaccination}
+            price={priceFor(vaccination)}
+            onPress={() => onPressSection(vaccination)}
+            tileStyle={styles.bentoSmall}
+          />
+        </View>
+        <BentoTile
+          section={grooming}
+          price={priceFor(grooming)}
+          onPress={() => onPressSection(grooming)}
+          tileStyle={styles.bentoTall}
+        />
+      </View>
     </View>
   );
 });
+
+function BentoTile({
+  section,
+  price,
+  onPress,
+  tileStyle,
+}: {
+  section: (typeof EXPRESS_VET_SECTIONS)[number];
+  price: number | null;
+  onPress: () => void;
+  tileStyle: any;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.9} style={[styles.bentoTile, tileStyle]} onPress={onPress}>
+      {/* Illustration slot — intentionally empty. Replace with an <Image source={require(...)} />
+          once artwork exists; no icon here per product direction. */}
+      <View style={styles.bentoIllustration} />
+      <View style={styles.bentoFooter}>
+        <Text style={styles.bentoLabel} numberOfLines={2}>
+          {section.label}
+        </Text>
+        <Text style={styles.bentoPrice} numberOfLines={1}>
+          {price != null ? `From PKR ${price.toLocaleString()}` : 'Coming soon'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function PetsHubScreen() {
   const router = useRouter();
@@ -411,37 +454,27 @@ export default function PetsHubScreen() {
 
         <View style={{ height: 12 }} />
 
-        {/* Tile 3 — Lost & Found. Karachi: demoted to the least prominent element on the
-            screen per product direction, shrunk to a slim link instead of an illustrated tile. */}
-        {isKarachiExpressVet ? (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/(app)/create-lost-found' as any)}
-            style={styles.lostFoundSlim}
-          >
-            <Text style={styles.lostFoundSlimText}>Lost or Found a Pet?</Text>
-            <Ionicons name="arrow-forward" size={14} color="#999999" />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => router.push('/(app)/create-lost-found' as any)}
-            style={styles.lostFoundStrip}
-          >
-            <Image
-              source={require('../../../assets/pets-hub/sad.webp')}
-              style={styles.lostFoundImg}
-              contentFit="contain"
-            />
-            <View style={styles.lostFoundTextCol}>
-              <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
-              <View style={styles.lostFoundSubRow}>
-                <Text style={styles.lostFoundSubText}>Report here</Text>
-                <Ionicons name="arrow-forward" size={12} color="#999999" />
-              </View>
+        {/* Tile 3 — Lost & Found. Same full tile in every city (Karachi included) — kept
+            last in the scroll since it's the lowest-priority feature on this page, but not
+            visually demoted to a slim link. */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => router.push('/(app)/create-lost-found' as any)}
+          style={styles.lostFoundStrip}
+        >
+          <Image
+            source={require('../../../assets/pets-hub/sad.webp')}
+            style={styles.lostFoundImg}
+            contentFit="contain"
+          />
+          <View style={styles.lostFoundTextCol}>
+            <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
+            <View style={styles.lostFoundSubRow}>
+              <Text style={styles.lostFoundSubText}>Report here</Text>
+              <Ionicons name="arrow-forward" size={12} color="#999999" />
             </View>
-          </TouchableOpacity>
-        )}
+          </View>
+        </TouchableOpacity>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -578,49 +611,49 @@ const styles = StyleSheet.create({
     color: '#A03048',
     paddingTop: 2,
   },
-  sectionTile: {
+  // Bento grid — every tile shares the same neutral TILE_BG used everywhere else on this
+  // page, no per-tile color; size is what varies (hero + stacked small + tall).
+  bentoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderRadius: 18,
+    gap: 10,
+  },
+  bentoColumn: {
+    flex: 1,
+    gap: 10,
+  },
+  bentoTile: {
+    borderRadius: 20,
     backgroundColor: TILE_BG,
-    padding: 14,
+    overflow: 'hidden',
   },
-  sectionTileFeatured: {
-    backgroundColor: '#FAF0F2',
-    borderWidth: 1.5,
-    borderColor: '#A03048',
+  bentoHero: {
+    height: 130,
   },
-  sectionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+  bentoSmall: {
+    flex: 1,
+    height: 90,
   },
-  sectionIconFeatured: {
-    backgroundColor: '#A03048',
+  bentoTall: {
+    flex: 1,
+    height: 190, // matches bentoSmall(90) + gap(10) + bentoSmall(90)
   },
-  sectionLabel: {
+  bentoIllustration: {
+    flex: 1,
+  },
+  bentoFooter: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  bentoLabel: {
     fontFamily: FONTS.bodyBold,
-    fontSize: 16,
+    fontSize: 14,
     color: DARK,
   },
-  sectionSubtitle: {
+  bentoPrice: {
     fontFamily: FONTS.body,
-    fontSize: 12,
-    color: '#8A8A94',
-    marginTop: 2,
-  },
-  sectionPrice: {
-    fontFamily: FONTS.bodyBold,
-    fontSize: 12,
+    fontSize: 11,
     color: '#999999',
-    marginTop: 5,
-  },
-  sectionPriceFeatured: {
-    color: '#A03048',
+    marginTop: 2,
   },
 
   // ── Square tiles
@@ -705,19 +738,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999999',
     textAlign: 'right',
-  },
-
-  // ── Lost & Found, Karachi-demoted slim variant
-  lostFoundSlim: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-  },
-  lostFoundSlimText: {
-    fontFamily: FONTS.bodyBold,
-    fontSize: 13,
-    color: '#999999',
   },
 });
