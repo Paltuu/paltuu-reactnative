@@ -173,157 +173,162 @@ export default function ExpressVetDispatchIndexScreen() {
         </TouchableOpacity>
       </View>
 
-      {Platform.OS === 'android' && (
-        <TouchableOpacity
-          style={[styles.alertSettingsHint, { marginHorizontal: H_PAD }]}
-          onPress={openAlertSettings}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="notifications-outline" size={16} color={PRIMARY} />
-          <Text style={styles.alertSettingsHintText}>
-            Make sure job alerts are allowed to show over your lock screen — tap to check
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {Platform.OS === 'android' && (
-        <TouchableOpacity
-          style={[styles.alertSettingsHint, { marginHorizontal: H_PAD, marginTop: 8 }]}
-          onPress={openBatterySettings}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="battery-charging-outline" size={16} color={PRIMARY} />
-          <Text style={styles.alertSettingsHintText}>
-            Some phones (Samsung, Xiaomi, etc.) silently mute alerts under battery-saving —
-            tap to allow Paltuu to run unrestricted
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Existing work, not new incoming requests — so this stays visible even off duty. */}
-      <View style={[styles.statsRow, { paddingHorizontal: H_PAD }]}>
-        <TouchableOpacity
-          style={styles.statCard}
-          activeOpacity={0.9}
-          onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
-        >
-          <Text style={styles.statValue}>{stats?.in_progress ?? '—'}</Text>
-          <Text style={styles.statLabel}>In Progress</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.statCard}
-          activeOpacity={0.9}
-          onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
-        >
-          <Text style={styles.statValue}>{stats?.completed_today ?? '—'}</Text>
-          <Text style={styles.statLabel}>Completed Today</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ paddingHorizontal: H_PAD, paddingBottom: 16 }}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>My Jobs</Text>
-          <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}>
-            <Text style={styles.seeAllText}>See all</Text>
-          </TouchableOpacity>
-        </View>
-        {jobsPreview.length === 0 ? (
-          <Text style={styles.sectionEmptyText}>No jobs yet.</Text>
-        ) : (
-          <View style={{ gap: 8 }}>
-            {jobsPreview.map((job) => (
+      <FlatList
+        style={{ flex: 1 }}
+        data={requests}
+        keyExtractor={(item) => item.request_id}
+        contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 10, flexGrow: 1 }}
+        renderItem={({ item }) => <InboxRow item={item} onPress={() => router.push({
+          pathname: '/(app)/express-vet-dispatch/requests/[id]',
+          params: { id: item.request_id },
+        } as any)} />}
+        ListHeaderComponent={
+          <View style={{ marginBottom: 4 }}>
+            {Platform.OS === 'android' && (
               <TouchableOpacity
-                key={job.request_id}
-                style={styles.previewRow}
-                onPress={() =>
-                  router.push({ pathname: '/(app)/express-vet-dispatch/requests/[id]', params: { id: job.request_id } } as any)
-                }
+                style={styles.alertSettingsHint}
+                onPress={openAlertSettings}
+                activeOpacity={0.85}
               >
-                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[job.category] ?? 'paw'} size={18} color={PRIMARY} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.previewRowText} numberOfLines={1}>
-                    {job.category.replace('_', ' ')} — {job.client_name}
-                  </Text>
-                  <Text style={styles.previewRowSubtext} numberOfLines={1}>
-                    {job.provider_name ? `${job.provider_name} · ` : ''}{job.address_line}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text style={styles.previewRowMeta}>{job.status === 'completed' ? 'Done' : 'In Progress'}</Text>
-                  <Text style={styles.previewRowPrice}>
-                    PKR {(job.final_price_pkr ?? job.starting_price_pkr).toLocaleString()}
-                  </Text>
-                </View>
+                <Ionicons name="notifications-outline" size={16} color={PRIMARY} />
+                <Text style={styles.alertSettingsHintText}>
+                  Make sure job alerts are allowed to show over your lock screen — tap to check
+                </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+            )}
 
-      <View style={{ paddingHorizontal: H_PAD, paddingBottom: 16 }}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Providers</Text>
-          <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/providers' as any)}>
-            <Text style={styles.seeAllText}>See all</Text>
-          </TouchableOpacity>
-        </View>
-        {providersPreview.length === 0 ? (
-          <Text style={styles.sectionEmptyText}>No providers yet — one gets added automatically the first time you assign a job.</Text>
-        ) : (
-          <View style={{ gap: 8 }}>
-            {providersPreview.map((provider: ExpressVetProvider) => (
+            {Platform.OS === 'android' && (
               <TouchableOpacity
-                key={provider.provider_id}
-                style={styles.previewRow}
-                onPress={() =>
-                  router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any)
-                }
+                style={[styles.alertSettingsHint, { marginTop: 8 }]}
+                onPress={openBatterySettings}
+                activeOpacity={0.85}
               >
-                {provider.photo_url ? (
-                  <Image source={{ uri: provider.photo_url }} style={styles.previewAvatar} contentFit="cover" />
-                ) : (
-                  <Ionicons name="person-circle-outline" size={30} color="#C4C4CC" />
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.previewRowText} numberOfLines={1}>
-                    {provider.name}
-                  </Text>
-                  <Text style={styles.previewRowSubtext} numberOfLines={1}>
-                    {provider.categories.map((c) => c.replace('_', ' ')).join(', ')}
-                    {provider.years_experience != null ? ` · ${provider.years_experience}y exp` : ''}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text style={styles.previewRowMeta}>
-                    {provider.rating != null ? `${provider.rating} ★` : 'No ratings'}
-                  </Text>
-                  <Text style={styles.previewRowSubtext}>{provider.total_reviews} review{provider.total_reviews === 1 ? '' : 's'}</Text>
-                </View>
+                <Ionicons name="battery-charging-outline" size={16} color={PRIMARY} />
+                <Text style={styles.alertSettingsHintText}>
+                  Some phones (Samsung, Xiaomi, etc.) silently mute alerts under battery-saving —
+                  tap to allow Paltuu to run unrestricted
+                </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+            )}
 
-      {isPending ? (
-        <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
-        </View>
-      ) : requests.length === 0 ? (
-        <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>No pending requests right now.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item.request_id}
-          contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 10 }}
-          renderItem={({ item }) => <InboxRow item={item} onPress={() => router.push({
-            pathname: '/(app)/express-vet-dispatch/requests/[id]',
-            params: { id: item.request_id },
-          } as any)} />}
-        />
-      )}
+            {/* Existing work, not new incoming requests — so this stays visible even off duty. */}
+            <View style={styles.statsRow}>
+              <TouchableOpacity
+                style={styles.statCard}
+                activeOpacity={0.9}
+                onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
+              >
+                <Text style={styles.statValue}>{stats?.in_progress ?? '—'}</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statCard}
+                activeOpacity={0.9}
+                onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}
+              >
+                <Text style={styles.statValue}>{stats?.completed_today ?? '—'}</Text>
+                <Text style={styles.statLabel}>Completed Today</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingBottom: 16 }}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>My Jobs</Text>
+                <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/jobs' as any)}>
+                  <Text style={styles.seeAllText}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              {jobsPreview.length === 0 ? (
+                <Text style={styles.sectionEmptyText}>No jobs yet.</Text>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {jobsPreview.map((job) => (
+                    <TouchableOpacity
+                      key={job.request_id}
+                      style={styles.previewRow}
+                      onPress={() =>
+                        router.push({ pathname: '/(app)/express-vet-dispatch/requests/[id]', params: { id: job.request_id } } as any)
+                      }
+                    >
+                      <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[job.category] ?? 'paw'} size={18} color={PRIMARY} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.previewRowText} numberOfLines={1}>
+                          {job.category.replace('_', ' ')} — {job.client_name}
+                        </Text>
+                        <Text style={styles.previewRowSubtext} numberOfLines={1}>
+                          {job.provider_name ? `${job.provider_name} · ` : ''}{job.address_line}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                        <Text style={styles.previewRowMeta}>{job.status === 'completed' ? 'Done' : 'In Progress'}</Text>
+                        <Text style={styles.previewRowPrice}>
+                          PKR {(job.final_price_pkr ?? job.starting_price_pkr).toLocaleString()}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={{ paddingBottom: 16 }}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Providers</Text>
+                <TouchableOpacity onPress={() => router.push('/(app)/express-vet-dispatch/providers' as any)}>
+                  <Text style={styles.seeAllText}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              {providersPreview.length === 0 ? (
+                <Text style={styles.sectionEmptyText}>No providers yet — one gets added automatically the first time you assign a job.</Text>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {providersPreview.map((provider: ExpressVetProvider) => (
+                    <TouchableOpacity
+                      key={provider.provider_id}
+                      style={styles.previewRow}
+                      onPress={() =>
+                        router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any)
+                      }
+                    >
+                      {provider.photo_url ? (
+                        <Image source={{ uri: provider.photo_url }} style={styles.previewAvatar} contentFit="cover" />
+                      ) : (
+                        <Ionicons name="person-circle-outline" size={30} color="#C4C4CC" />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.previewRowText} numberOfLines={1}>
+                          {provider.name}
+                        </Text>
+                        <Text style={styles.previewRowSubtext} numberOfLines={1}>
+                          {provider.categories.map((c) => c.replace('_', ' ')).join(', ')}
+                          {provider.years_experience != null ? ` · ${provider.years_experience}y exp` : ''}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                        <Text style={styles.previewRowMeta}>
+                          {provider.rating != null ? `${provider.rating} ★` : 'No ratings'}
+                        </Text>
+                        <Text style={styles.previewRowSubtext}>{provider.total_reviews} review{provider.total_reviews === 1 ? '' : 's'}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          isPending ? (
+            <View style={styles.centerFill}>
+              <ActivityIndicator color={PRIMARY} />
+            </View>
+          ) : (
+            <View style={styles.centerFill}>
+              <Text style={styles.emptyText}>No pending requests right now.</Text>
+            </View>
+          )
+        }
+      />
     </View>
   );
 }

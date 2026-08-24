@@ -38,8 +38,8 @@ export default function ExpressVetAddressScreen() {
       Alert.alert('Required', 'Please enter the visit address.');
       return;
     }
-    if (!phone.trim()) {
-      Alert.alert('Required', 'Please add a contact number.');
+    if (phone.length !== 10) {
+      Alert.alert('Invalid number', 'Please enter a 10-digit contact number (e.g. 3001234567).');
       return;
     }
     setAddress({
@@ -124,11 +124,11 @@ export default function ExpressVetAddressScreen() {
               <TextInput
                 style={styles.prefixInput}
                 value={phone}
-                onChangeText={setPhone}
-                placeholder="300 1234567"
+                onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
+                placeholder="3001234567"
                 placeholderTextColor="#B0B7C3"
                 keyboardType="number-pad"
-                maxLength={11}
+                maxLength={10}
               />
             </View>
           </View>
