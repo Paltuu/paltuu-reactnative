@@ -1,6 +1,6 @@
 {
   "react-native": {
     "messaging_android_notification_channel_id": "default",
-    "messaging_android_notification_color": "@color/notification_icon_color"
+    "messaging_android_notification_color": "@android:color/white"
   }
 }

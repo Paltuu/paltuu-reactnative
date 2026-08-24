@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.10",
+    version: "1.0.11",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -58,7 +58,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 19,
+      versionCode: 20,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
