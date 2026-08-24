@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { withLayoutContext } from 'expo-router';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
@@ -39,46 +40,45 @@ const ICON_PAIRS: Record<string, { select: any; unselect: any; size: number }> =
   search: { select: Icons.searchSelect, unselect: Icons.searchUnselect, size: 24 },
 };
 
-// Driven by the pager's live `position` (a native-driven Animated value that
-// updates on the UI thread as the finger moves) instead of `state.index`
-// (which only updates once React Navigation processes the settled
-// `onPageSelected` event on the JS thread). Using `state.index` made the
-// highlighted icon visibly lag behind the page content, which the pager
-// already renders/transitions natively. Interpolating opacity off `position`
-// keeps the highlight in lockstep with the actual swipe.
+// Two earlier approaches to this both leaned on the pager's shared, native-
+// driven `position` value (interpolating opacity off it directly, then later
+// layering a deterministic overlay on top only when focused) to keep the
+// highlight in lockstep with an actual finger-driven swipe. Both left a real
+// gap: `position` is driven by continuous native onPageScroll events during a
+// genuine swipe, and that interpolation doesn't reliably land on exactly 0/1
+// when the drag ends — so the tab you swiped AWAY FROM could get stuck
+// showing a partially-opaque "select" icon forever, with nothing to correct
+// it (a deterministic overlay only for the FOCUSED case fixes the tab you
+// land on, not the one you left). Tapping never showed this because a tap
+// sets `position` via one explicit synchronous value, not continuous native
+// scroll events.
+//
+// Driving this off a locally-owned Animated.Value instead, explicitly
+// animated via Animated.timing whenever `focused` changes, sidesteps the
+// whole class of bug: it's never subject to the pager's native scroll
+// events, so it can't get left in a stuck intermediate state — every
+// animation we start always runs to its exact target. The tradeoff is the
+// icon highlight snaps on settle (onPageSelected) rather than crossfading
+// continuously with mid-swipe finger position, which is a small, common,
+// and much safer compromise than an icon that can render broken.
 function AnimatedTabIcon({
   routeName,
-  index,
-  position,
   focused,
   profileImageUrl,
 }: {
   routeName: string;
-  index: number;
-  position: Animated.AnimatedInterpolation<number>;
   focused: boolean;
   profileImageUrl?: string | null;
 }) {
-  const interpolatedOpacity = position.interpolate({
-    inputRange: [index - 1, index, index + 1],
-    outputRange: [0, 1, 0],
-    extrapolate: 'clamp',
-  });
+  const opacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
 
-  // Tapping a tab (as opposed to swiping) makes react-native-tab-view jump the
-  // pager via `setPageWithoutAnimation` while also manually forcing `position`
-  // to the new index. Those two updates can race — and separately, this same
-  // opacity previously got toggled between a plain number and this Animated
-  // node depending on focus, which is its own footgun: once a native-driven
-  // Animated node is attached to a style prop, React Native doesn't reliably
-  // hand control back to a later plain-value render on the same view. Either
-  // way the result is the same: the icon can render permanently half-faded
-  // even though the tab is genuinely focused. So `interpolatedOpacity` below
-  // is ALWAYS the value bound to the animated crossfade layer — never swapped
-  // for a plain number — and a separate, plain (non-Animated) layer, gated
-  // only by React Navigation's own settled `state.index` (passed down as
-  // `focused`), is stacked on top to guarantee the focused tab is correct
-  // regardless of whatever state the racy interpolation is stuck in.
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: focused ? 1 : 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, opacity]);
 
   if (routeName === 'profile/index') {
     return (
@@ -110,24 +110,9 @@ function AnimatedTabIcon({
             borderRadius: 13,
             borderWidth: 2,
             borderColor: '#a03048',
-            opacity: interpolatedOpacity,
+            opacity,
           }}
         />
-        {focused && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: 26,
-              height: 26,
-              borderRadius: 13,
-              borderWidth: 2,
-              borderColor: '#a03048',
-            }}
-          />
-        )}
       </View>
     );
   }
@@ -137,19 +122,14 @@ function AnimatedTabIcon({
   return (
     <View style={{ width: pair.size, height: pair.size }}>
       <Image source={pair.unselect} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
-      <Animated.View style={{ position: 'absolute', top: 0, left: 0, opacity: interpolatedOpacity }}>
+      <Animated.View style={{ position: 'absolute', top: 0, left: 0, opacity }}>
         <Image source={pair.select} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
       </Animated.View>
-      {focused && (
-        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
-          <Image source={pair.select} style={{ width: pair.size, height: pair.size }} contentFit="contain" />
-        </View>
-      )}
     </View>
   );
 }
 
-function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
+function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   // Only ever queried for Karachi accounts with the feature available — cheap no-op
@@ -221,8 +201,6 @@ function CustomTabBar({ state, navigation, position }: MaterialTopTabBarProps) {
           >
             <AnimatedTabIcon
               routeName={route.name}
-              index={index}
-              position={position}
               focused={focused}
               profileImageUrl={user?.profile_image_url}
             />
