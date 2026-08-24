@@ -135,8 +135,6 @@ const styles = StyleSheet.create({
     marginLeft: MEDIA_LEFT_OFFSET,
     marginRight: 14,
     paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
     gap: 6,
   },
   ctaIcon: { width: 14, height: 14 },
