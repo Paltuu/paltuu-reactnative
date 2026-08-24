@@ -57,21 +57,30 @@ export default function ExpressVetRequestDetailScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          onPress={() =>
-            // After a fresh submit, back history is the now-stale species/questionnaire/address
-            // screens from the form — jumping straight to Pets avoids walking back through those.
-            justSubmitted === '1'
-              ? router.replace('/(app)/pets')
-              : router.canGoBack()
-                ? router.back()
-                : router.replace('/(app)/express-vet/requests')
-          }
+          onPress={() => {
+            // Always a dismissal, never a "back" — this screen rises from the bottom (see
+            // its fullScreenModal registration in (app)/_layout.tsx), so it closes downward
+            // whichever way it was opened.
+            if (justSubmitted === '1') {
+              // Back history here is the now-stale species/questionnaire/address screens the
+              // booking was just made through — dismissAll drops the whole form stack at once
+              // (animating down) instead of walking back through screens for a booking that
+              // already exists.
+              router.dismissAll();
+              return;
+            }
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace('/(app)/express-vet/requests');
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
+          <Ionicons name="close" size={26} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Request Details</Text>
+          <Text style={styles.title}>{justSubmitted === '1' ? 'Booking Confirmed' : 'Your Booking'}</Text>
         </View>
       </View>
 
@@ -174,18 +183,14 @@ export default function ExpressVetRequestDetailScreen() {
             ) : null}
           </ScrollView>
 
-          {(justSubmitted === '1' || CANCELLABLE_STATUSES.includes(request.status)) && (
-            <View style={[styles.bottom, { paddingBottom: insets.bottom + 16, gap: 8 }]}>
-              {justSubmitted === '1' && (
-                <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
-              )}
-              {CANCELLABLE_STATUSES.includes(request.status) && (
-                <TouchableOpacity onPress={handleCancel} disabled={cancelMutation.isPending} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>
-                    {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Request'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+          {/* No "Back to Pets" CTA — the header's close button is the way out (see above). */}
+          {CANCELLABLE_STATUSES.includes(request.status) && (
+            <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
+              <TouchableOpacity onPress={handleCancel} disabled={cancelMutation.isPending} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>
+                  {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Request'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
