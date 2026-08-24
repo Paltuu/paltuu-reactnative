@@ -84,20 +84,32 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // is displayed instead by DispatcherCallProvider.tsx's own onMessage listener.
     let cleanupAndroidForegroundFcm: (() => void) | undefined;
     if (Platform.OS === 'android') {
-      const messaging = require('@react-native-firebase/messaging').default;
-      const sub = messaging().onMessage(async (remoteMessage: any) => {
-        if (!remoteMessage?.notification) return;
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification.title,
-            body: remoteMessage.notification.body,
-            data: remoteMessage.data ?? {},
-            sound: 'default',
-          },
-          trigger: null,
+      // Guarded like index.js's equivalent block: this ran fine in isolated testing, but
+      // firing unconditionally for every user (not just dispatcher accounts, which is all
+      // DispatcherCallProvider.tsx's identical call pattern actually exercised before this
+      // shipped) surfaced a `messaging()` call throwing "undefined is not a function" on
+      // every cold start in production — crashing the whole app before any error boundary
+      // could catch it, since this runs directly in NotificationProvider's render tree
+      // (not inside a native-module require that's already try/caught, like index.js).
+      // Losing the foreground FCM display is recoverable; crashing on every launch is not.
+      try {
+        const messaging = require('@react-native-firebase/messaging').default;
+        const sub = messaging().onMessage(async (remoteMessage: any) => {
+          if (!remoteMessage?.notification) return;
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: remoteMessage.notification.title,
+              body: remoteMessage.notification.body,
+              data: remoteMessage.data ?? {},
+              sound: 'default',
+            },
+            trigger: null,
+          });
         });
-      });
-      cleanupAndroidForegroundFcm = sub;
+        cleanupAndroidForegroundFcm = sub;
+      } catch (e: any) {
+        console.log('[Paltuu Notifications] ⚠️ Android foreground FCM listener failed to register:', e?.message);
+      }
     }
 
     // 6. Cleanup
