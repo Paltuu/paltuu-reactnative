@@ -37,11 +37,23 @@ export default (): ExpoConfig => {
       // mean — three separate 1.0.10 builds today all defaulted to buildNumber "1" with
       // nothing here to bump it). Bump this by hand alongside android.versionCode whenever
       // submitting a new production build for the same `version`.
-      buildNumber: "2",
+      buildNumber: "3",
       googleServicesFile: "./GoogleService-Info.plist",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        // @react-native-firebase/app auto-configures Firebase natively on iOS too (it's
+        // not platform-gated the way @react-native-firebase/messaging's JS usage is —
+        // that one is Android-only, see DispatcherCallProvider.tsx/index.js/
+        // NotificationContext.tsx). Left at its default (unset = YES), GoogleUtilities'
+        // AppDelegateSwizzler swizzles application:didRegisterForRemoteNotificationsWith
+        // DeviceToken: to feed Firebase Messaging — competing with Expo's own
+        // EXAppDelegateSubscriber chain for the same callback, which is the suspected
+        // cause of "simple" (non-VoIP) push notifications silently failing on iOS after
+        // this dependency was added. Nothing on iOS actually calls the Firebase
+        // Messaging JS API, so there is no APNs-token forwarding to preserve here —
+        // disabling the proxy should be a clean no-op for Firebase's own behavior.
+        FirebaseAppDelegateProxyEnabled: false,
       },
     },
     android: {

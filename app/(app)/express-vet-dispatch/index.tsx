@@ -107,6 +107,17 @@ export default function ExpressVetDispatchIndexScreen() {
     notifee.openNotificationSettings().catch(() => {});
   };
 
+  // Samsung (and other OEMs' custom battery managers) silently downgrade a background
+  // full-screen alert to a plain notification instead of blocking it outright when the app
+  // is battery-restricted or "put to sleep" — this is what a Samsung dispatcher hit live:
+  // notification settings alone were fine, the alert just never went full-screen. notifee
+  // detects the manufacturer and opens the right OEM screen (Samsung's "Unmonitored apps" /
+  // battery settings here); on OEMs with no special screen this is a harmless no-op.
+  const openBatterySettings = () => {
+    const notifee = require('@notifee/react-native').default;
+    notifee.openPowerManagerSettings().catch(() => {});
+  };
+
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
@@ -146,6 +157,20 @@ export default function ExpressVetDispatchIndexScreen() {
           <Ionicons name="notifications-outline" size={16} color={PRIMARY} />
           <Text style={styles.alertSettingsHintText}>
             Make sure job alerts are allowed to show over your lock screen — tap to check
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {Platform.OS === 'android' && (
+        <TouchableOpacity
+          style={[styles.alertSettingsHint, { marginHorizontal: H_PAD, marginTop: 8 }]}
+          onPress={openBatterySettings}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="battery-charging-outline" size={16} color={PRIMARY} />
+          <Text style={styles.alertSettingsHintText}>
+            Some phones (Samsung, Xiaomi, etc.) silently mute alerts under battery-saving —
+            tap to allow Paltuu to run unrestricted
           </Text>
         </TouchableOpacity>
       )}
