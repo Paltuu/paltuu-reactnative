@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 import { storage } from '../utils/storage';
+import { getCurrentPushToken } from '../services/pushTokenHolder';
+
+// Guards logout() against re-entrancy: it now makes a network call (unregister-device)
+// before clearing credentials, and client.ts's 401 interceptor calls logout() on a genuine
+// refresh failure — if the access token is already dead when logout() runs (that auto-logout
+// path), the unregister call itself 401s, which would otherwise re-trigger the same
+// interceptor and call logout() again. Without this flag that's unbounded recursion, not just
+// one extra call, since each nested attempt makes its own doomed network request in turn.
+let isLoggingOut = false;
 
 interface User {
   id: string;
@@ -84,8 +93,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await storage.clearAll();
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    if (isLoggingOut) return;
+    isLoggingOut = true;
+    try {
+      // Unregister this device's push token BEFORE clearing credentials — the request needs
+      // the still-valid access token to authenticate, and without this the device would keep
+      // receiving this account's push notifications (and, if it was a dispatcher, VoIP
+      // ringing calls) indefinitely after logout. Every logout path funnels through this one
+      // function (both the profile-menu logout mutation and the dispatcher console's direct
+      // call), so fixing it here covers all of them. Best-effort: a failed/offline unregister
+      // call must never block the user from actually logging out — if the access token is
+      // already dead (the client.ts 401-interceptor's auto-logout path), this call 401s too,
+      // which is exactly what `isLoggingOut` above stops from recursing.
+      try {
+        const token = getCurrentPushToken();
+        if (token) {
+          // Inline require, matching fetchProfile() below — avoids a circular import between
+          // this store and the api client (which reads the store for auth headers).
+          const { notificationsApi } = require('../api/notifications');
+          await notificationsApi.unregisterDevice(token);
+        }
+      } catch (e) {
+        console.log('[Paltuu] Push token unregister on logout skipped:', e);
+      }
+
+      await storage.clearAll();
+      set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    } finally {
+      isLoggingOut = false;
+    }
   },
 
   fetchProfile: async () => {

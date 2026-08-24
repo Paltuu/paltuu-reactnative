@@ -68,5 +68,12 @@ export const notificationsApi = {
   async registerDevice(params: { fcm_token: string; platform: 'ios' | 'android' }) {
     const { data } = await client.post('/notifications/device', params);
     return data;
+  },
+
+  // Called on logout — see useAuthStore.logout(). Without this the device keeps this
+  // account's push notifications (and, server-side, its dispatcher VoIP token) indefinitely.
+  async unregisterDevice(fcm_token: string) {
+    const { data } = await client.delete('/notifications/device', { data: { fcm_token } });
+    return data;
   }
 };

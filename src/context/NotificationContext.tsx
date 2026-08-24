@@ -13,6 +13,7 @@ import { registerForPushNotificationsAsync } from '../utils/registerForPushNotif
 import { notificationsApi } from '../api/notifications';
 import { useAuthStore } from '../stores/authStore';
 import { useBadgeSync } from '../hooks/useBadgeSync';
+import { setCurrentPushToken } from '../services/pushTokenHolder';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // unaffected by this particular conflict and keeps using the Expo token.
   useEffect(() => {
     const tokenToRegister = Platform.OS === 'android' ? devicePushToken : expoPushToken;
+    // Kept in sync regardless of auth state — useAuthStore.logout() reads this to unregister
+    // the token on the way out, and it needs the current value even mid-logout.
+    setCurrentPushToken(tokenToRegister ?? null);
     if (!tokenToRegister || !isAuthenticated) return;
 
     notificationsApi
