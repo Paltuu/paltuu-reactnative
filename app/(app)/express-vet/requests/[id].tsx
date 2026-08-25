@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, StyleSheet, BackHandler } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -45,6 +45,17 @@ export default function ExpressVetRequestDetailScreen() {
     },
     onError: () => Alert.alert('Something went wrong', 'Could not cancel this request. Please try again.'),
   });
+
+  // Same stale-form-stack problem the close "X" button below handles, but for the Android
+  // hardware back button, which bypasses that onPress entirely. Mirrors apply-adopt.tsx.
+  useEffect(() => {
+    if (justSubmitted !== '1') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.dismissAll();
+      return true;
+    });
+    return () => sub.remove();
+  }, [justSubmitted]);
 
   const handleCancel = () => {
     Alert.alert('Cancel this request?', 'This cannot be undone.', [

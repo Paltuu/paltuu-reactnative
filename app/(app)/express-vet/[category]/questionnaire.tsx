@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -227,9 +228,13 @@ function PhotoField({ value, onChange }: { value: any; onChange: (v: any) => voi
 
       const asset = result.assets[0];
       setUploading(true);
+      // Library photos are frequently HEIC on iOS (the default camera format) — the upload
+      // server's sharp build has no HEIC decoder, so it 500s unless we force real JPEG bytes
+      // here rather than just relabeling the mime type. Same fix as profile/edit.tsx's avatar upload.
+      const jpeg = await manipulateAsync(asset.uri, [], { compress: 0.8, format: SaveFormat.JPEG });
       const url = await uploadImageToS3({
-        uri: asset.uri,
-        name: asset.fileName || `photo_${Date.now()}.jpg`,
+        uri: jpeg.uri,
+        name: `photo_${Date.now()}.jpg`,
         type: 'image/jpeg',
       });
       if (!url) throw new Error('No URL returned');

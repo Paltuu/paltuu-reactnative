@@ -14,6 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,7 +80,11 @@ export default function ExpressVetAssignScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
-      setNewPhoto({ uri: a.uri, name: a.fileName || `provider_${Date.now()}.jpg`, type: 'image/jpeg' });
+      // Library photos are frequently HEIC on iOS (the default camera format) — the upload
+      // server's sharp build has no HEIC decoder, so it 500s unless we force real JPEG bytes
+      // here rather than just relabeling the mime type. Same fix as profile/edit.tsx's avatar upload.
+      const jpeg = await manipulateAsync(a.uri, [], { compress: 0.8, format: SaveFormat.JPEG });
+      setNewPhoto({ uri: jpeg.uri, name: `provider_${Date.now()}.jpg`, type: 'image/jpeg' });
     }
   };
 
@@ -144,7 +149,13 @@ export default function ExpressVetAssignScreen() {
         Alert.alert('Required', "Please enter the provider's name.");
         return;
       }
-      const photoUrl = await uploadPhotoIfNeeded().catch(() => null);
+      let photoUrl: string | null;
+      try {
+        photoUrl = await uploadPhotoIfNeeded();
+      } catch {
+        Alert.alert('Photo upload failed', 'Could not upload the photo. Please try again or continue without one.');
+        return;
+      }
       payload = {
         final_price_pkr: price,
         scheduled_at: scheduledAt.toISOString(),

@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Switch, Alert, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi } from '../../../../src/api/expressVetDispatch';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import { uploadImageToS3 } from '../../../../src/utils/uploadImage';
 import { FONTS } from '../../../../src/constants/typography';
 
 const DARK = '#1A1A2E';
@@ -34,6 +37,8 @@ export default function ExpressVetProviderDetailScreen() {
   const [phone, setPhone] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [newPhoto, setNewPhoto] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!provider) return;
@@ -48,6 +53,7 @@ export default function ExpressVetProviderDetailScreen() {
   const updateMutation = useMutation({
     mutationFn: (patch: Record<string, any>) => expressVetDispatchApi.updateProvider(id, patch),
     onSuccess: () => {
+      setNewPhoto(null);
       queryClient.invalidateQueries({ queryKey: ['express-vet-provider', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
     },
@@ -63,7 +69,19 @@ export default function ExpressVetProviderDetailScreen() {
     updateMutation.mutate({ is_active: value });
   };
 
-  const handleSave = () => {
+  const pickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (!result.canceled && result.assets?.[0]) {
+      const a = result.assets[0];
+      // Library photos are frequently HEIC on iOS (the default camera format) — the upload
+      // server's sharp build has no HEIC decoder, so it 500s unless we force real JPEG bytes
+      // here rather than just relabeling the mime type. Same fix as profile/edit.tsx's avatar upload.
+      const jpeg = await manipulateAsync(a.uri, [], { compress: 0.8, format: SaveFormat.JPEG });
+      setNewPhoto({ uri: jpeg.uri, name: `provider_${Date.now()}.jpg`, type: 'image/jpeg' });
+    }
+  };
+
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Required', "Please enter the provider's name.");
       return;
@@ -72,12 +90,27 @@ export default function ExpressVetProviderDetailScreen() {
       Alert.alert('Required', 'Please select at least one category.');
       return;
     }
+
+    let photoUrl: string | undefined;
+    if (newPhoto) {
+      setIsUploadingPhoto(true);
+      try {
+        photoUrl = await uploadImageToS3(newPhoto) ?? undefined;
+      } catch {
+        setIsUploadingPhoto(false);
+        Alert.alert('Photo upload failed', 'Could not upload the photo. Please try again.');
+        return;
+      }
+      setIsUploadingPhoto(false);
+    }
+
     updateMutation.mutate({
       name: name.trim(),
       years_experience: years ? Number(years) : null,
       qualifications: qualifications.trim() || null,
       phone_number: phone.trim() || null,
       categories,
+      ...(photoUrl ? { photo_url: photoUrl } : {}),
     });
   };
 
@@ -103,13 +136,18 @@ export default function ExpressVetProviderDetailScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.photoRow}>
-              {provider.photo_url ? (
-                <Image source={{ uri: provider.photo_url }} style={styles.photo} contentFit="cover" />
-              ) : (
-                <View style={[styles.photo, styles.photoFallback]}>
-                  <Ionicons name="person" size={28} color="#B0B7C3" />
+              <TouchableOpacity onPress={pickPhoto}>
+                {newPhoto || provider.photo_url ? (
+                  <Image source={{ uri: newPhoto?.uri ?? provider.photo_url ?? undefined }} style={styles.photo} contentFit="cover" />
+                ) : (
+                  <View style={[styles.photo, styles.photoFallback]}>
+                    <Ionicons name="person" size={28} color="#B0B7C3" />
+                  </View>
+                )}
+                <View style={styles.photoEditBadge}>
+                  <Ionicons name="camera" size={13} color="#FFFFFF" />
                 </View>
-              )}
+              </TouchableOpacity>
               {provider.rating != null && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Ionicons name="star" size={14} color="#F5A623" />
@@ -190,7 +228,7 @@ export default function ExpressVetProviderDetailScreen() {
           </ScrollView>
 
           <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
-            <PaltuuButton label="Save Changes" onPress={handleSave} loading={updateMutation.isPending} radius={26} />
+            <PaltuuButton label="Save Changes" onPress={handleSave} loading={updateMutation.isPending || isUploadingPhoto} radius={26} />
           </View>
         </>
       )}
@@ -216,6 +254,19 @@ const styles = StyleSheet.create({
   photoRow: { alignItems: 'center', gap: 8 },
   photo: { width: 76, height: 76, borderRadius: 38 },
   photoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  photoEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
+    borderWidth: 2,
+    borderColor: '#FAFAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ratingText: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
 
   activeRow: {
