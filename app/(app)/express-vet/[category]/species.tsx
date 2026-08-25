@@ -72,9 +72,11 @@ export default function ExpressVetSpeciesScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>{EXPRESS_VET_SPECIES_LABELS[species] ?? species}</Text>
-                  <Text style={styles.rowSub}>
-                    {rateCard ? `Starting from PKR ${rateCard.starting_price_pkr.toLocaleString()}` : 'Pricing coming soon'}
-                  </Text>
+                  {category !== 'grooming' && (
+                    <Text style={styles.rowSub}>
+                      {rateCard ? `Starting from PKR ${rateCard.starting_price_pkr.toLocaleString()}` : 'Pricing coming soon'}
+                    </Text>
+                  )}
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
               </TouchableOpacity>

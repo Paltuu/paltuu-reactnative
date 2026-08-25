@@ -17,7 +17,7 @@ import { useAuthStore } from '../../../src/stores/authStore';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { petApi } from '../../../src/api/pets';
 import { expressVetApi } from '../../../src/api/expressVet';
-import { EXPRESS_VET_SECTIONS, lowestStartingPriceForCategories } from '../../../src/constants/expressVet';
+import { EXPRESS_VET_SECTIONS } from '../../../src/constants/expressVet';
 import { useActiveExpressVetRequest } from '../../../src/hooks/useActiveExpressVetRequest';
 import { StaggeredPlaceholder } from '../../../src/components/common/CyclingText';
 import { FONTS } from '../../../src/constants/typography';
@@ -169,38 +169,22 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
 // Grouped into 4 sections (see EXPRESS_VET_SECTIONS) instead of 6 raw categories, and each
 // section deep-links straight into its picker/species screen, skipping the express-vet index.
 const VetAtHomeSections = React.memo(function VetAtHomeSections({
-  rateCards,
-  cityId,
   onPressSection,
-  onPressMyRequests,
 }: {
-  rateCards: any[];
-  cityId: number | null;
   onPressSection: (section: (typeof EXPRESS_VET_SECTIONS)[number]) => void;
-  onPressMyRequests: () => void;
 }) {
   const [vetAtHome, neuteringSpaying, vaccination, grooming] = EXPRESS_VET_SECTIONS;
-  const priceFor = (section: (typeof EXPRESS_VET_SECTIONS)[number]) =>
-    lowestStartingPriceForCategories(rateCards, section.categoryKeys, cityId);
 
+  // Title/subtitle now live in <VetsAtHomePresents> above these tiles, which doubles as the
+  // divider between the everyday pet tiles and this feature's own section.
   return (
     <View style={{ gap: 10 }}>
-      <View style={styles.vetAtHomeHeaderRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.nearbyTitle}>Vets at Home</Text>
-          <Text style={styles.nearbySub}>Home-visit vet & grooming care, in Karachi</Text>
-        </View>
-        <TouchableOpacity onPress={onPressMyRequests} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.myRequestsLink}>My Requests</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Hero row — full width, the primary/most-urgent entry point */}
       <BentoTile
         section={vetAtHome}
-        price={priceFor(vetAtHome)}
         onPress={() => onPressSection(vetAtHome)}
         tileStyle={styles.bentoHero}
+        badge="20% OFF"
       />
 
       {/* Two small tiles stacked on the left, matched in total height by one tall tile on
@@ -209,41 +193,58 @@ const VetAtHomeSections = React.memo(function VetAtHomeSections({
         <View style={styles.bentoColumn}>
           <BentoTile
             section={neuteringSpaying}
-            price={priceFor(neuteringSpaying)}
             onPress={() => onPressSection(neuteringSpaying)}
             tileStyle={styles.bentoSmall}
           />
           <BentoTile
             section={vaccination}
-            price={priceFor(vaccination)}
             onPress={() => onPressSection(vaccination)}
             tileStyle={styles.bentoSmall}
           />
         </View>
-        <BentoTile
-          section={grooming}
-          price={priceFor(grooming)}
-          onPress={() => onPressSection(grooming)}
-          tileStyle={styles.bentoTall}
-        />
+        <BentoTile section={grooming} onPress={() => onPressSection(grooming)} tileStyle={styles.bentoTall} />
       </View>
+    </View>
+  );
+});
+
+// Divider between the everyday pet tiles (adopt/rehome/vets directory/lost & found, all
+// cities) and the Karachi-only Vets at Home section below it. The wordmark is the actual
+// logo asset in place of the word "Paltuu" — not a font rendering of the name.
+const VetsAtHomePresents = React.memo(function VetsAtHomePresents() {
+  return (
+    <View style={styles.presentsWrap}>
+      <View style={styles.presentsBrandRow}>
+        <Image
+          source={require('../../../assets/paltuu_bilkul_tight.svg')}
+          style={styles.presentsLogo}
+          contentFit="contain"
+        />
+        <Text style={styles.presentsText}>Home Vets</Text>
+      </View>
+      <Text style={styles.presentsCta}>Certified vets & caretakers, at your doorstep in Karachi</Text>
     </View>
   );
 });
 
 function BentoTile({
   section,
-  price,
   onPress,
   tileStyle,
+  badge,
 }: {
   section: (typeof EXPRESS_VET_SECTIONS)[number];
-  price: number | null;
   onPress: () => void;
   tileStyle: any;
+  badge?: string;
 }) {
   return (
     <TouchableOpacity activeOpacity={0.9} style={[styles.bentoTile, tileStyle]} onPress={onPress}>
+      {badge ? (
+        <View style={styles.bentoBadge}>
+          <Text style={styles.bentoBadgeText}>{badge}</Text>
+        </View>
+      ) : null}
       {/* Illustration slot — intentionally empty. Replace with an <Image source={require(...)} />
           once artwork exists; no icon here per product direction. */}
       <View style={styles.bentoIllustration} />
@@ -251,8 +252,8 @@ function BentoTile({
         <Text style={styles.bentoLabel} numberOfLines={2}>
           {section.label}
         </Text>
-        <Text style={styles.bentoPrice} numberOfLines={1}>
-          {price != null ? `From PKR ${price.toLocaleString()}` : 'Coming soon'}
+        <Text style={styles.bentoCtaText} numberOfLines={2}>
+          {section.subtitle}
         </Text>
       </View>
     </TouchableOpacity>
@@ -324,6 +325,186 @@ export default function PetsHubScreen() {
     return pages.length ? pages : [[]];
   }, [nearbyPets]);
 
+  // Extracted so the Karachi branch below can reorder these ahead of the Vets at Home
+  // section while the non-Karachi branch keeps them exactly where they always were — same
+  // elements either way, just placed differently.
+
+  // Tile — Adopt a Pet (Hero). `city: 'all'` clears any city left in Adopt's cached filters:
+  // this is the "browse everything" entry point, so it must not inherit the city Pets Near
+  // You last set.
+  const heroTile = (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push({ pathname: '/(app)/adopt', params: { city: 'all' } } as any)}
+      // Shorter on the Karachi layout only — there's more competing for space above the fold
+      // once the squareRow/Lost&Found/Vets-at-Home section all sit on the same screen.
+      // Every other city keeps the original height untouched.
+      style={[styles.heroTile, isKarachiExpressVet && styles.heroTileShort]}
+    >
+      <View style={styles.heroText}>
+        <Text style={styles.heroHeadline}>
+          Find Your{'\n'}Forever Friend
+        </Text>
+        <View style={styles.lostFoundSubRow}>
+          <Text style={styles.lostFoundSubText}>Adopt a Pet Now</Text>
+          <Ionicons name="arrow-forward" size={12} color="#999999" />
+        </View>
+      </View>
+      <View style={styles.heroIllustrationSpace}>
+        <Image
+          source={require('../../../assets/pets-hub/huugging.webp')}
+          style={styles.heroIllustrationImg}
+          contentFit="contain"
+        />
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Row — Vets & Clinics / Rehome a Pet. Non-Karachi only from here on (see the Karachi
+  // branch below for karachiBigTile/karachiSquareRow, which swap Clinics and Lost & Found
+  // between these two shapes) — left exactly as it always was.
+  const squareRow = (
+    <View style={styles.squareRow}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push('/(app)/pet-care' as any)}
+        style={styles.squareTile}
+      >
+        <View style={styles.squareIllustration}>
+          <Image
+            source={require('../../../assets/pets-hub/doctor.webp')}
+            style={styles.clinicIllustrationImg}
+            contentFit="contain"
+          />
+        </View>
+        <View style={styles.squareFooter}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.squareLabel}>Find Vets</Text>
+            <Text style={styles.squareSub}>& Clinics Near You</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push('/(app)/create-pet' as any)}
+        style={styles.squareTile}
+      >
+        <View style={styles.squareIllustration}>
+          <Image
+            source={require('../../../assets/pets-hub/playing.webp')}
+            style={styles.squareIllustrationImg}
+            contentFit="contain"
+          />
+        </View>
+        <View style={styles.squareFooter}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.squareLabel}>Find a New Home</Text>
+            <Text style={styles.squareSub}>for Your Pet</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Tile — Lost & Found. Non-Karachi only from here on — full tile, unchanged, the least
+  // important tile/feature on this page but not visually demoted to a slim link.
+  const lostFoundTile = (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push('/(app)/create-lost-found' as any)}
+      style={styles.lostFoundStrip}
+    >
+      <Image
+        source={require('../../../assets/pets-hub/sad.webp')}
+        style={styles.lostFoundImg}
+        contentFit="contain"
+      />
+      <View style={styles.lostFoundTextCol}>
+        <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
+        <View style={styles.lostFoundSubRow}>
+          <Text style={styles.lostFoundSubText}>Report here</Text>
+          <Ionicons name="arrow-forward" size={12} color="#999999" />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Karachi only — same two tiles, swapped shapes: Vets & Clinics moves into the big strip
+  // tile (it's the more useful everyday link once Vets at Home exists below), Lost & Found
+  // moves into a small square alongside "Find a New Home for Your Pet". Reduced height on
+  // the big tile per product direction, matching heroTileShort above.
+  // Same text-left / illustration-bleeding-right structure as heroTile (not the small
+  // inline-icon pattern lostFoundStrip normally uses) — the small icon read as cramped at
+  // this tile's height, per product feedback.
+  const karachiBigTile = (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push('/(app)/pet-care' as any)}
+      style={[styles.heroTile, styles.heroTileShort]}
+    >
+      {/* Mirror of heroTile's layout: illustration on the left, text on the right. */}
+      <View style={styles.heroIllustrationSpace}>
+        <Image
+          source={require('../../../assets/pets-hub/doctor.webp')}
+          style={styles.clinicsWideIllustrationImg}
+          contentFit="contain"
+        />
+      </View>
+      <View style={styles.clinicsWideText}>
+        <Text style={styles.lostFoundText}>Find Vets{'\n'}& Clinics</Text>
+        <View style={styles.lostFoundSubRow}>
+          <Text style={styles.lostFoundSubText}>Near You</Text>
+          <Ionicons name="arrow-forward" size={12} color="#999999" />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const karachiSquareRow = (
+    <View style={styles.squareRow}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push('/(app)/create-lost-found' as any)}
+        style={styles.squareTile}
+      >
+        <View style={styles.squareIllustration}>
+          <Image
+            source={require('../../../assets/pets-hub/sad.webp')}
+            style={styles.squareIllustrationImg}
+            contentFit="contain"
+          />
+        </View>
+        <View style={styles.squareFooter}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.squareLabel}>Lost or Found</Text>
+            <Text style={styles.squareSub}>a Pet?</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push('/(app)/create-pet' as any)}
+        style={styles.squareTile}
+      >
+        <View style={styles.squareIllustration}>
+          <Image
+            source={require('../../../assets/pets-hub/playing.webp')}
+            style={styles.squareIllustrationImg}
+            contentFit="contain"
+          />
+        </View>
+        <View style={styles.squareFooter}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.squareLabel}>Find a New Home</Text>
+            <Text style={styles.squareSub}>for Your Pet</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.root}>
       {/* ── Scrollable Content ─────────────────────────────── */}
@@ -338,155 +519,79 @@ export default function PetsHubScreen() {
         {/* ── Top Bar (now inside ScrollView) ───────────────── */}
         <GreetingText firstName={firstName} isFocused={isFocused} />
 
-        {/* Tile 1 — Adopt a Pet (Hero). `city: 'all'` clears any city left in
-            Adopt's cached filters: this is the "browse everything" entry point,
-            so it must not inherit the city Pets Near You last set. */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => router.push({ pathname: '/(app)/adopt', params: { city: 'all' } } as any)}
-          style={styles.heroTile}
-        >
-          <View style={styles.heroText}>
-            <Text style={styles.heroHeadline}>
-              Find Your{'\n'}Forever Friend
-            </Text>
-            <View style={styles.lostFoundSubRow}>
-              <Text style={styles.lostFoundSubText}>Adopt a Pet Now</Text>
-              <Ionicons name="arrow-forward" size={12} color="#999999" />
-            </View>
-          </View>
-          <View style={styles.heroIllustrationSpace}>
-            <Image
-              source={require('../../../assets/pets-hub/huugging.webp')}
-              style={styles.heroIllustrationImg}
-              contentFit="contain"
-            />
-          </View>
-        </TouchableOpacity>
-
+        {heroTile}
         <View style={{ height: 12 }} />
 
-        {/* Karachi: Pets Near You is redundant with the hero tile's adoption entry point,
-            so it's replaced by the Vets at Home carousel — the main advertising surface
-            for that feature. Everywhere else, today's layout is untouched. */}
         {isKarachiExpressVet ? (
-          <VetAtHomeSections
-            rateCards={expressVetConfig?.rate_cards ?? []}
-            cityId={cityId}
-            onPressSection={(section) => {
-              // One booking at a time — the server rejects a second submission anyway (see
-              // requests/route.ts's active-booking guard), so redirect straight to the
-              // existing one instead of walking the user through a form that'll fail at the end.
-              if (activeRequest) {
-                router.push({
-                  pathname: '/(app)/express-vet/requests/[id]',
-                  params: { id: activeRequest.request_id },
-                } as any);
-                return;
-              }
-              // Vaccination/Grooming have one underlying category each — go straight to
-              // species.tsx. Vet at Home / Neutering & Spaying cover two categories, so they
-              // route to a picker screen first (see EXPRESS_VET_SECTIONS' `route` field).
-              if (section.categoryKeys.length === 1) {
-                router.push({
-                  pathname: '/(app)/express-vet/[category]/species',
-                  params: { category: section.categoryKeys[0] },
-                } as any);
-              } else {
-                router.push(section.route as any);
-              }
-            }}
-            onPressMyRequests={() => router.push('/(app)/express-vet/requests' as any)}
-          />
+          <>
+            {/* Karachi: every everyday-pet tile (adopt/vets-directory/rehome/lost&found) is
+                grouped at the top, same as every other city — Vets at Home is a distinct
+                section below its own divider, not interleaved with them. Pets Near You is
+                dropped entirely here since it's redundant with the hero tile above.
+                Vets & Clinics and Lost & Found swap tile shapes here specifically (see
+                karachiBigTile/karachiSquareRow above) — the non-Karachi pairing below is
+                untouched. Wide / squared×2 / wide rhythm: hero, then the two squares, then
+                the Vets & Clinics wide tile. */}
+            {karachiSquareRow}
+            <View style={{ height: 12 }} />
+            {karachiBigTile}
+
+            <View style={{ height: 20 }} />
+            <VetsAtHomePresents />
+            <View style={{ height: 12 }} />
+
+            <VetAtHomeSections
+              onPressSection={(section) => {
+                // One booking at a time — the server rejects a second submission anyway (see
+                // requests/route.ts's active-booking guard), so redirect straight to the
+                // existing one instead of walking the user through a form that'll fail at the end.
+                if (activeRequest) {
+                  router.push({
+                    pathname: '/(app)/express-vet/requests/[id]',
+                    params: { id: activeRequest.request_id },
+                  } as any);
+                  return;
+                }
+                // Vaccination/Grooming have one underlying category each — go straight to
+                // species.tsx. Vet at Home / Neutering & Spaying cover two categories, so they
+                // route to a picker screen first (see EXPRESS_VET_SECTIONS' `route` field).
+                if (section.categoryKeys.length === 1) {
+                  router.push({
+                    pathname: '/(app)/express-vet/[category]/species',
+                    params: { category: section.categoryKeys[0] },
+                  } as any);
+                } else {
+                  router.push(section.route as any);
+                }
+              }}
+            />
+          </>
         ) : (
-          // Pets Near You — taller, rotating circular avatars. Opens Adopt with
-          // the user's city pre-selected so the grid matches what the tile was
-          // previewing; with no city resolved it passes 'all' rather than
-          // inheriting a stale city from the cached filters.
-          <NearbyPetsCarousel
-            nearbyPages={nearbyPages}
-            isNearbyLoading={isNearbyLoading}
-            isFocused={isFocused}
-            cityName={cityName}
-            hasCity={!!cityId}
-            isEmpty={isNearbyEmpty}
-            onPress={() =>
-              router.push({
-                pathname: '/(app)/adopt',
-                params: { city: cityId ? String(cityId) : 'all' },
-              } as any)
-            }
-          />
+          <>
+            {/* Pets Near You — taller, rotating circular avatars. Opens Adopt with
+                the user's city pre-selected so the grid matches what the tile was
+                previewing; with no city resolved it passes 'all' rather than
+                inheriting a stale city from the cached filters. */}
+            <NearbyPetsCarousel
+              nearbyPages={nearbyPages}
+              isNearbyLoading={isNearbyLoading}
+              isFocused={isFocused}
+              cityName={cityName}
+              hasCity={!!cityId}
+              isEmpty={isNearbyEmpty}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/adopt',
+                  params: { city: cityId ? String(cityId) : 'all' },
+                } as any)
+              }
+            />
+            <View style={{ height: 12 }} />
+            {squareRow}
+            <View style={{ height: 12 }} />
+            {lostFoundTile}
+          </>
         )}
-
-        <View style={{ height: 12 }} />
-
-        {/* Row — Vets & Clinics / Rehome a Pet */}
-        <View style={styles.squareRow}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => router.push('/(app)/pet-care' as any)}
-            style={styles.squareTile}
-          >
-            <View style={styles.squareIllustration}>
-              <Image
-                source={require('../../../assets/pets-hub/doctor.webp')}
-                style={styles.clinicIllustrationImg}
-                contentFit="contain"
-              />
-            </View>
-            <View style={styles.squareFooter}>
-              <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={styles.squareLabel}>Find Vets</Text>
-                <Text style={styles.squareSub}>& Clinics Near You</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => router.push('/(app)/create-pet' as any)}
-            style={styles.squareTile}
-          >
-            <View style={styles.squareIllustration}>
-              <Image
-                source={require('../../../assets/pets-hub/playing.webp')}
-                style={styles.squareIllustrationImg}
-                contentFit="contain"
-              />
-            </View>
-            <View style={styles.squareFooter}>
-              <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={styles.squareLabel}>Find a New Home</Text>
-                <Text style={styles.squareSub}>for Your Pet</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ height: 12 }} />
-
-        {/* Tile 3 — Lost & Found. Same full tile in every city (Karachi included) — kept
-            last in the scroll since it's the lowest-priority feature on this page, but not
-            visually demoted to a slim link. */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => router.push('/(app)/create-lost-found' as any)}
-          style={styles.lostFoundStrip}
-        >
-          <Image
-            source={require('../../../assets/pets-hub/sad.webp')}
-            style={styles.lostFoundImg}
-            contentFit="contain"
-          />
-          <View style={styles.lostFoundTextCol}>
-            <Text style={styles.lostFoundText}>Lost or Found a Pet?</Text>
-            <View style={styles.lostFoundSubRow}>
-              <Text style={styles.lostFoundSubText}>Report here</Text>
-              <Ionicons name="arrow-forward" size={12} color="#999999" />
-            </View>
-          </View>
-        </TouchableOpacity>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -534,6 +639,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     overflow: 'hidden',
   },
+  // Karachi only (see heroTile's usage in PetsHubScreen) — the illustration is absolutely
+  // positioned and anchored bottom-right (see heroIllustrationImg below), so shrinking the
+  // tile just crops more of its top off; nothing needs resizing to match.
+  heroTileShort: {
+    height: 110,
+  },
   heroText: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -552,10 +663,31 @@ const styles = StyleSheet.create({
   },
   heroIllustrationImg: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -14,
     right: -50,
-    width: 274.4,
-    height: 274.4 / (2816 / 1536),
+    width: 245,
+    height: 245 / (2816 / 1536),
+  },
+  // Karachi only — karachiBigTile ("Find Vets & Clinics") reuses heroTile's shape/structure
+  // but at a shorter height, so this bleeds less dramatically than heroIllustrationImg.
+  // Anchored bottom-LEFT (image sits on the left, text on the right — the mirror image of
+  // heroTile's layout, see clinicsWideText below).
+  clinicsWideIllustrationImg: {
+    position: 'absolute',
+    bottom: -22,
+    left: 8,
+    width: 155,
+    height: 155,
+  },
+  // Text column for karachiBigTile — same box as heroText but right-padded/right-aligned
+  // since the illustration is on the left here instead of the right.
+  clinicsWideText: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingRight: 20,
+    paddingTop: 24,
+    paddingBottom: 14,
   },
 
   // ── Pets Near You tile (taller, rotating circular avatars)
@@ -610,18 +742,33 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // ── Vets at Home sections (Karachi only) — full-width stacked tiles, not a small equal-width
-  // grid, so labels like "Neutering & Spaying" have room to breathe.
-  vetAtHomeHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  // ── "Paltuu presents Vets at Home" divider (Karachi only) — separates the everyday pet
+  // tiles above from the Vets at Home section below. The logo mark stands in for the word
+  // "Paltuu" rather than the name being set in text.
+  presentsWrap: {
     paddingHorizontal: 2,
+    alignItems: 'center',
   },
-  myRequestsLink: {
+  presentsBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  presentsLogo: {
+    width: 28 * (2210 / 1173),
+    height: 28,
+  },
+  presentsText: {
     fontFamily: FONTS.bodyBold,
+    fontSize: 18,
+    color: DARK,
+  },
+  presentsCta: {
+    fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#A03048',
-    paddingTop: 2,
+    color: '#999999',
+    marginTop: 4,
+    textAlign: 'center',
   },
   // Bento grid — every tile shares the same neutral TILE_BG used everywhere else on this
   // page, no per-tile color; size is what varies (hero + stacked small + tall).
@@ -638,34 +785,56 @@ const styles = StyleSheet.create({
     backgroundColor: TILE_BG,
     overflow: 'hidden',
   },
+  bentoBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+    backgroundColor: '#A03048',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  bentoBadgeText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
   bentoHero: {
     height: 130,
   },
   bentoSmall: {
     flex: 1,
-    height: 90,
+    // 76 was too tight: a 2-line label + 2-line subtitle in bentoFooter (~77px incl.
+    // padding) left zero room for bentoIllustration and got clipped by this tile's
+    // overflow:hidden, hiding the bottom of the CTA text (e.g. "Neutering & Spaying").
+    // 100 leaves real breathing room even in that worst-case wrap.
+    height: 100,
   },
   bentoTall: {
     flex: 1,
-    height: 190, // matches bentoSmall(90) + gap(10) + bentoSmall(90)
+    height: 210, // matches bentoSmall(100) + gap(10) + bentoSmall(100)
   },
   bentoIllustration: {
     flex: 1,
   },
   bentoFooter: {
     paddingHorizontal: 14,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
   bentoLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 14,
+    lineHeight: 16,
     color: DARK,
   },
-  bentoPrice: {
+  bentoCtaText: {
     fontFamily: FONTS.body,
     fontSize: 11,
+    lineHeight: 13,
     color: '#999999',
-    marginTop: 2,
+    marginTop: 1,
   },
 
   // ── Square tiles
@@ -712,7 +881,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Lost & Found strip
+  // ── Lost & Found strip (non-Karachi) / big tile shape reused for Karachi's Vets & Clinics
   lostFoundStrip: {
     height: 116,
     borderRadius: 14,

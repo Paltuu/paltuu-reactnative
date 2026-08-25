@@ -9,10 +9,12 @@ import { useLocationStore } from '../../../src/stores/locationStore';
 import { lowestStartingPrice } from '../../../src/constants/expressVet';
 import { FONTS } from '../../../src/constants/typography';
 
-// Entry point for the "Vet at Home" Pets-tab section — the client never sees "Normal Vet"
-// as a bare tile name; it's presented here as one of two choices, framed by urgency rather
-// than a category label. Picking either continues into the existing species.tsx flow
-// unchanged, just with `category` set to whichever was picked.
+// Entry point for the "Doorstep Vet" Pets-tab section — the client never sees the raw
+// express_vet/normal_vet category names; it's presented here as "Urgent Visit" vs.
+// "Scheduled Visit", two equally-weighted choices (same card style, same price emphasis)
+// so asking about urgency first doesn't read as ranking one option above the other.
+// Picking either continues into the existing species.tsx flow unchanged, just with
+// `category` set to whichever was picked.
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
 const H_PAD = 20;
@@ -44,7 +46,7 @@ export default function VetAtHomeChoiceScreen() {
           <Ionicons name="chevron-back" size={26} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Vet at Home</Text>
+          <Text style={styles.title}>Doorstep Vet</Text>
           <Text style={styles.subtitle}>How urgent is this?</Text>
         </View>
       </View>
@@ -58,11 +60,14 @@ export default function VetAtHomeChoiceScreen() {
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 14 }}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity activeOpacity={0.9} style={[styles.card, styles.cardUrgent]} onPress={() => goTo('express_vet')}>
+          <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('express_vet')}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="flash" size={20} color={PRIMARY} />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardLabel}>Express Vet</Text>
-              <Text style={styles.cardDescription}>Same-day emergency care — a vet comes as soon as one's available</Text>
-              <Text style={[styles.cardPrice, styles.cardPriceUrgent]}>
+              <Text style={styles.cardLabel}>Urgent Visit</Text>
+              <Text style={styles.cardDescription}>A vet comes as soon as one's available — for issues that can't wait</Text>
+              <Text style={styles.cardPrice}>
                 {expressPrice != null ? `Starting from PKR ${expressPrice.toLocaleString()}` : 'Pricing coming soon'}
               </Text>
             </View>
@@ -70,9 +75,12 @@ export default function VetAtHomeChoiceScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('normal_vet')}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardLabel}>Normal Vet</Text>
-              <Text style={styles.cardDescription}>Not urgent — scheduled within the next 1-2 days</Text>
+              <Text style={styles.cardLabel}>Scheduled Visit</Text>
+              <Text style={styles.cardDescription}>Pick a time that works for you — ideal for check-ups, vaccinations & routine care</Text>
               <Text style={styles.cardPrice}>
                 {normalPrice != null ? `Starting from PKR ${normalPrice.toLocaleString()}` : 'Pricing coming soon'}
               </Text>
@@ -111,9 +119,13 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     padding: 16,
   },
-  cardUrgent: {
-    borderColor: PRIMARY,
+  cardIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#FAF0F2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardLabel: {
     fontFamily: FONTS.bodyBold,
@@ -130,10 +142,7 @@ const styles = StyleSheet.create({
   cardPrice: {
     fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: '#8A8A94',
-    marginTop: 6,
-  },
-  cardPriceUrgent: {
     color: PRIMARY,
+    marginTop: 6,
   },
 });

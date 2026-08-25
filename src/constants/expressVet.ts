@@ -123,8 +123,8 @@ export const EXPRESS_VET_SECTIONS: Array<{
 }> = [
   {
     key: 'vet_at_home',
-    label: 'Vet at Home',
-    subtitle: 'Express or scheduled visits',
+    label: 'Doorstep Vet',
+    subtitle: 'Urgent or scheduled visits',
     icon: 'medkit-outline',
     categoryKeys: ['express_vet', 'normal_vet'],
     route: '/(app)/express-vet/vet-at-home',
