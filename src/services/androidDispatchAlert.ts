@@ -85,8 +85,13 @@ export async function displayAndroidIncomingAlert(
       ongoing: true,
       autoCancel: false,
       onlyAlertOnce: false,
-      pressAction: { id: FULL_SCREEN_ACTION_ID },
-      fullScreenAction: { id: FULL_SCREEN_ACTION_ID },
+      // notifee only launches the app for a non-'default' action id when `launchActivity`
+      // (and/or `mainComponent`) is set — without it, per notifee's own docs, this action
+      // never opens anything, so the notification silently degrades to an ordinary one
+      // whenever the app isn't already foregrounded. That's why full-screen ringing only
+      // ever appeared to work when the app happened to already be open.
+      pressAction: { id: FULL_SCREEN_ACTION_ID, launchActivity: 'default' },
+      fullScreenAction: { id: FULL_SCREEN_ACTION_ID, launchActivity: 'default' },
     },
   });
 

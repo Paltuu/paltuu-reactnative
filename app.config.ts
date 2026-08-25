@@ -242,6 +242,7 @@ export default (): ExpoConfig => {
       "./plugins/withVoipBackgroundMode",
       "./plugins/withVoipPushAppDelegate",
       "./plugins/withDisableVerifyReleaseResources",
+      "./plugins/withAndroidLockScreenAlert",
     ],
   };
 };
