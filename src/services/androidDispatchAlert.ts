@@ -14,7 +14,10 @@ import { useIncomingCallStore, IncomingExpressVetCallPayload } from '../stores/i
  * payload behind a generated id, look it up on answer" shape.
  */
 
-const CHANNEL_ID = 'express_vet_dispatch_alert';
+// _v2: Android notification channel settings (including sound) are locked once created —
+// changing them in code has no effect on a channel that already exists on a device. Bumping
+// the id forces every device to create a fresh channel with the new sound setting below.
+const CHANNEL_ID = 'express_vet_dispatch_alert_v2';
 const FULL_SCREEN_ACTION_ID = 'open_express_vet_alert';
 
 /** Shared FCM data-message -> payload mapping, used by both index.js's background handler
@@ -43,7 +46,13 @@ async function ensureChannel(): Promise<void> {
         name: 'Incoming job alerts',
         importance: AndroidImportance.HIGH,
         visibility: AndroidVisibility.PUBLIC,
-        sound: 'default',
+        // 'default' plays the system NOTIFICATION sound (a short ding), not a ringtone.
+        // There's no bundled ringtone-style audio file in this app to reference instead, so
+        // this points at Android's stable "current ringtone" system URI — the same one the
+        // OS resolves for an actual incoming call — rather than a static sound file.
+        // Unverified against notifee's native URI handling; if this silently falls back to
+        // no sound, the only real fix is bundling an actual audio file as a raw resource.
+        sound: 'content://settings/system/ringtone',
         vibration: true,
         vibrationPattern: [300, 600, 300, 600],
         bypassDnd: true,
