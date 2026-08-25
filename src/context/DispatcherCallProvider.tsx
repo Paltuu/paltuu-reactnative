@@ -86,23 +86,47 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
         let notifee: any;
         let messagingInstance: any;
         try {
-          const messaging = require('@react-native-firebase/messaging').default;
           notifee = require('@notifee/react-native').default;
-          // Calling messaging() (not just requiring the module) is the documented failure
-          // point on this codebase — see NotificationContext.tsx — so it must be inside
-          // the try too. If it throws, nothing below ever runs, including the .catch()
-          // blocks that report to client-log, which is why this path stayed a silent
-          // mystery. Report it here, synchronously, before anything else can blow up.
-          messagingInstance = messaging();
         } catch (err: any) {
           expressVetDispatchApi
             .reportClientLog({
               context: 'android_messaging_init_failed',
               message: String(err?.message ?? err),
-              extra: { name: err?.name },
+              extra: { name: err?.name, module: 'notifee' },
             })
             .catch(() => {});
           return;
+        }
+
+        // Calling messaging() (not just requiring the module) has been observed throwing
+        // "undefined is not a function" — see NotificationContext.tsx. Confirmed via
+        // client-log to be happening on real cold-start Android launches, not just in
+        // testing. The native module is present (this device does receive FCM pushes
+        // through it elsewhere), so this reads as a startup race: JS running before the
+        // native module has finished registering with the bridge under Hermes + New
+        // Architecture, rather than a permanent unavailability. Retry with backoff instead
+        // of giving up after one attempt.
+        const RETRY_DELAYS_MS = [500, 1500, 3000];
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const messaging = require('@react-native-firebase/messaging').default;
+            messagingInstance = messaging();
+            break;
+          } catch (err: any) {
+            const delay = RETRY_DELAYS_MS[attempt];
+            if (delay === undefined) {
+              expressVetDispatchApi
+                .reportClientLog({
+                  context: 'android_messaging_init_failed',
+                  message: String(err?.message ?? err),
+                  extra: { name: err?.name, attempts: attempt + 1 },
+                })
+                .catch(() => {});
+              return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            if (!active) return;
+          }
         }
 
         messagingInstance
