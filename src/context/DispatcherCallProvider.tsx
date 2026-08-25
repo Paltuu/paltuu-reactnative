@@ -58,8 +58,24 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
     let cleanupNotifeeForeground: (() => void) | undefined;
     let active = true;
 
-    const openAlertScreen = (alertId: string) => {
-      if (!useIncomingCallStore.getState().get(alertId)) return;
+    const openAlertScreen = (notification: { id?: string; data?: Record<string, any> }) => {
+      const alertId = notification?.id;
+      if (!alertId) return;
+
+      if (!useIncomingCallStore.getState().get(alertId)) {
+        // Not in the store — most likely because this notification was created by
+        // index.js's background handler running in a separate headless JS task (killed-app
+        // cold start), whose in-memory store never reaches the main app. Rehydrate from the
+        // notification's own data instead, which does survive that boundary.
+        const raw = notification?.data?.payload;
+        if (typeof raw !== 'string') return;
+        try {
+          useIncomingCallStore.getState().register(alertId, JSON.parse(raw));
+        } catch {
+          return;
+        }
+      }
+
       router.push({
         pathname: '/express-vet-dispatch/incoming-alert',
         params: { alertId },
@@ -162,14 +178,14 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
         // is ready, this runs once this provider (and the router) is mounted.
         notifee.getInitialNotification().then((initial: any) => {
           if (active && initial && isExpressVetAlertOpenEvent({ detail: initial })) {
-            openAlertScreen(initial.notification.id);
+            openAlertScreen(initial.notification);
           }
         });
 
         // App backgrounded (not killed) when the dispatcher taps the alert.
         cleanupNotifeeForeground = notifee.onForegroundEvent(({ detail }: any) => {
           if (isExpressVetAlertOpenEvent({ detail }) && detail.notification?.id) {
-            openAlertScreen(detail.notification.id);
+            openAlertScreen(detail.notification);
           }
         });
       }

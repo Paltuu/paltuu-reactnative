@@ -99,6 +99,17 @@ function LayoutContent() {
           name="express-vet/requests/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
         />
+        {/* Android-only Vets at Home dispatcher incoming-alert — opened by a notifee
+            full-screen notification (see DispatcherCallProvider.tsx /
+            src/services/androidDispatchAlert.ts). No swipe/back dismiss, mirrors how the
+            old CallKeep native call screen couldn't be swiped away either. Registered here
+            (not the root layout) because this route lives under (app) so the dispatcher
+            guard in the root layout recognizes it as part of the dispatch console instead
+            of bouncing it back there. */}
+        <Stack.Screen
+          name="express-vet-dispatch/incoming-alert"
+          options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }}
+        />
       </Stack>
     </View>
   );

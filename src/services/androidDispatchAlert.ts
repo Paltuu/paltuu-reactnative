@@ -85,7 +85,14 @@ export async function displayAndroidIncomingAlert(
     id: alertId,
     title: payload.client_name || 'Paltuu client',
     body: `${payload.category.replace(/_/g, ' ')} — ${payload.address_line}`,
-    data: { type: 'express_vet_incoming_call', alertId },
+    // Full payload, not just the id: when the app is fully killed, this notification gets
+    // created by index.js's background handler running in a separate, ephemeral headless
+    // JS task — a different JS engine instance with its own in-memory store. By the time
+    // the dispatcher taps the alert and the main app actually starts, that task (and
+    // whatever it registered in useIncomingCallStore) is long gone. The notification's own
+    // data survives that boundary since Android owns it, not JS memory, so the app can
+    // rehydrate the store from here on open instead of finding it empty.
+    data: { type: 'express_vet_incoming_call', alertId, payload: JSON.stringify(payload) },
     android: {
       channelId: CHANNEL_ID,
       category: AndroidCategory.CALL,
@@ -116,6 +123,29 @@ export async function dismissAndroidIncomingAlert(alertId: string): Promise<void
     // Already dismissed / notifee not initialized — safe to ignore.
   }
   useIncomingCallStore.getState().clear(alertId);
+}
+
+/**
+ * Cancels every currently-displayed alert of this type, regardless of alertId — for the
+ * claim path that doesn't go through incoming-alert.tsx at all (the separate generic push
+ * notification deep-links straight to the request screen; see NotificationContext.tsx /
+ * app/_layout.tsx). Without this, claiming a job from that screen left the full-screen
+ * alert looping/ringing forever on this device, since nothing there ever knew an alertId
+ * to cancel by. Scans displayed notifications instead of needing one, so it works no
+ * matter which entry point the dispatcher actually claimed from.
+ */
+export async function dismissAllExpressVetAlerts(): Promise<void> {
+  try {
+    const notifee = require('@notifee/react-native').default;
+    const displayed = await notifee.getDisplayedNotifications();
+    await Promise.all(
+      displayed
+        .filter((d: any) => d.notification?.data?.type === 'express_vet_incoming_call')
+        .map((d: any) => notifee.cancelNotification(d.notification.id))
+    );
+  } catch {
+    // Best-effort — nothing to clean up, or notifee not initialized.
+  }
 }
 
 /**

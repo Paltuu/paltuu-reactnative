@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useIncomingCallStore, IncomingExpressVetCallPayload } from '../../src/stores/incomingCallStore';
-import { dismissAndroidIncomingAlert } from '../../src/services/androidDispatchAlert';
-import { expressVetDispatchApi } from '../../src/api/expressVetDispatch';
-import { EXPRESS_VET_CATEGORY_ICONS } from '../../src/constants/expressVet';
-import { FONTS } from '../../src/constants/typography';
+import { useIncomingCallStore, IncomingExpressVetCallPayload } from '../../../src/stores/incomingCallStore';
+import { dismissAndroidIncomingAlert } from '../../../src/services/androidDispatchAlert';
+import { expressVetDispatchApi } from '../../../src/api/expressVetDispatch';
+import { EXPRESS_VET_CATEGORY_ICONS } from '../../../src/constants/expressVet';
+import { FONTS } from '../../../src/constants/typography';
 
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
@@ -33,20 +33,27 @@ export default function IncomingAlertScreen() {
   );
   const [busy, setBusy] = useState(false);
 
+  // Only block back while there's an actual alert to force a decision on — otherwise this
+  // would trap the dispatcher on a permanent black screen with no way out (this route can
+  // be the app's very first screen on a killed-app cold start, so router.back() has no
+  // history to fall back to; see the effect below for why payload can end up empty).
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => !!payload);
     return () => sub.remove();
-  }, []);
+  }, [payload]);
 
   useEffect(() => {
     if (!alertId) {
-      router.back();
+      router.replace('/(app)/express-vet-dispatch');
       return;
     }
     const current = useIncomingCallStore.getState().get(alertId);
     if (!current) {
-      // Payload already cleared (e.g. dismissed elsewhere) — nothing to show.
-      router.back();
+      // Payload already cleared (e.g. dismissed elsewhere), or — if this is ever reached —
+      // DispatcherCallProvider's rehydration-from-notification-data didn't find anything to
+      // recover either. Either way there's nothing to show; route to the console instead of
+      // router.back(), which is a no-op with no history when this is the app's first screen.
+      router.replace('/(app)/express-vet-dispatch');
       return;
     }
     setPayload(current);

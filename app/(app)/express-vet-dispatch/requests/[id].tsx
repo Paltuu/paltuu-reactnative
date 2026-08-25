@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Linking, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Linking, Alert, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,6 +11,7 @@ import { useAuthStore } from '../../../../src/stores/authStore';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
+import { dismissAllExpressVetAlerts } from '../../../../src/services/androidDispatchAlert';
 
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
@@ -60,6 +61,11 @@ export default function ExpressVetDispatchRequestDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-request', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-inbox'] });
+      // This screen is also where the separate generic push notification deep-links
+      // straight to (bypassing incoming-alert.tsx and its own alertId-scoped dismiss
+      // entirely), so without this the full-screen ring notification was left looping
+      // forever whenever a dispatcher claimed from here instead.
+      if (Platform.OS === 'android') dismissAllExpressVetAlerts();
     },
     onError: (err: any) => {
       if (err?.response?.status === 409) {
