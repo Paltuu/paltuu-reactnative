@@ -19,10 +19,13 @@ if (Platform.OS === 'android') {
   // visible crash. Losing dispatcher alerts on a broken build is recoverable; a
   // permanent splash hang for every Android user is not.
   try {
-    const messaging = require('@react-native-firebase/messaging').default;
+    // v26 dropped the old `messaging()` default-export API — see
+    // DispatcherCallProvider.tsx for the full story (that `.default` call was resolving
+    // to undefined on every real device, not just here).
+    const { getMessaging, setBackgroundMessageHandler } = require('@react-native-firebase/messaging');
     const notifee = require('@notifee/react-native').default;
 
-    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+    setBackgroundMessageHandler(getMessaging(), async (remoteMessage) => {
       if (remoteMessage?.data?.type !== 'express_vet_incoming_call') return;
 
       // Lazy require: this file runs before any RN module registry setup a normal

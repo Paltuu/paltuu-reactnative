@@ -94,8 +94,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // (not inside a native-module require that's already try/caught, like index.js).
       // Losing the foreground FCM display is recoverable; crashing on every launch is not.
       try {
-        const messaging = require('@react-native-firebase/messaging').default;
-        const sub = messaging().onMessage(async (remoteMessage: any) => {
+        // v26 dropped the old `messaging()` default-export API — see
+        // DispatcherCallProvider.tsx for the full story (that `.default` call was
+        // resolving to undefined on every real device, not just here).
+        const { getMessaging, onMessage } = require('@react-native-firebase/messaging');
+        const sub = onMessage(getMessaging(), async (remoteMessage: any) => {
           if (!remoteMessage?.notification) return;
           await Notifications.scheduleNotificationAsync({
             content: {

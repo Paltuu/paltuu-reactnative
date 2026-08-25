@@ -2,6 +2,15 @@ import { useEffect, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
+// @react-native-firebase/messaging v26 dropped the old `messaging()` default-export /
+// namespaced-instance API in favor of Firebase's "modular" API (free functions taking a
+// Messaging instance) — confirmed by its type declarations having no default export at
+// all. The rest of this codebase (including index.js and NotificationContext.tsx) was
+// still written against the old API, which is why `require(...).default` resolved to
+// undefined on every real device, every attempt, including retries with backoff —
+// there was never a race to retry past, the old API simply doesn't exist in this
+// package version.
+import { getMessaging, getToken, onMessage } from '@react-native-firebase/messaging';
 import { useAuthStore } from '../stores/authStore';
 import { setupCallKeep, attachCallKeepListeners, endCallKeepCall } from '../services/callkeep';
 import { setupDispatcherVoipPush } from '../services/dispatcherVoipPush';
@@ -98,39 +107,20 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Calling messaging() (not just requiring the module) has been observed throwing
-        // "undefined is not a function" — see NotificationContext.tsx. Confirmed via
-        // client-log to be happening on real cold-start Android launches, not just in
-        // testing. The native module is present (this device does receive FCM pushes
-        // through it elsewhere), so this reads as a startup race: JS running before the
-        // native module has finished registering with the bridge under Hermes + New
-        // Architecture, rather than a permanent unavailability. Retry with backoff instead
-        // of giving up after one attempt.
-        const RETRY_DELAYS_MS = [500, 1500, 3000];
-        for (let attempt = 0; ; attempt++) {
-          try {
-            const messaging = require('@react-native-firebase/messaging').default;
-            messagingInstance = messaging();
-            break;
-          } catch (err: any) {
-            const delay = RETRY_DELAYS_MS[attempt];
-            if (delay === undefined) {
-              expressVetDispatchApi
-                .reportClientLog({
-                  context: 'android_messaging_init_failed',
-                  message: String(err?.message ?? err),
-                  extra: { name: err?.name, attempts: attempt + 1 },
-                })
-                .catch(() => {});
-              return;
-            }
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            if (!active) return;
-          }
+        try {
+          messagingInstance = getMessaging();
+        } catch (err: any) {
+          expressVetDispatchApi
+            .reportClientLog({
+              context: 'android_messaging_init_failed',
+              message: String(err?.message ?? err),
+              extra: { name: err?.name },
+            })
+            .catch(() => {});
+          return;
         }
 
-        messagingInstance
-          .getToken()
+        getToken(messagingInstance)
           .then((fcmToken: string) =>
             expressVetDispatchApi
               .registerPushToken({ platform: 'android', fcm_token: fcmToken })
@@ -145,10 +135,10 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
               })
           )
           .catch((err: any) => {
-            // messaging().getToken() itself failed — the more interesting case, since it
-            // means the device never even got a token (Google Play Services missing/stale,
-            // Firebase native init failed, etc.). Previously this was a bare `.catch(() =>
-            // {})` with zero trace anywhere, which is why this path stayed a mystery despite
+            // getToken() itself failed — the more interesting case, since it means the
+            // device never even got a token (Google Play Services missing/stale, Firebase
+            // native init failed, etc.). Previously this was a bare `.catch(() => {})`
+            // with zero trace anywhere, which is why this path stayed a mystery despite
             // dispatcher_status never showing a single successful Android FCM registration.
             expressVetDispatchApi
               .reportClientLog({
@@ -161,7 +151,7 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
 
         // Foreground counterpart to index.js's setBackgroundMessageHandler — that one
         // only fires while backgrounded/killed, this one covers the app-open case.
-        cleanupForegroundFcm = messagingInstance.onMessage(async (remoteMessage: any) => {
+        cleanupForegroundFcm = onMessage(messagingInstance, async (remoteMessage: any) => {
           if (remoteMessage?.data?.type !== 'express_vet_incoming_call') return;
           await displayAndroidIncomingAlert(parseExpressVetAlertData(remoteMessage.data));
         });
