@@ -35,6 +35,12 @@ export default function ExpressVetProvidersScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Providers</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/express-vet-dispatch/providers/new' as any)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="add-circle" size={28} color={PRIMARY} />
+        </TouchableOpacity>
       </View>
 
       <View style={{ paddingHorizontal: H_PAD, paddingTop: 12 }}>
@@ -58,7 +64,7 @@ export default function ExpressVetProvidersScreen() {
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 12, paddingBottom: 40, gap: 10 }}
           ListEmptyComponent={
             <View style={styles.centerFill}>
-              <Text style={styles.emptyText}>No providers yet — one gets added automatically the first time you assign a job.</Text>
+              <Text style={styles.emptyText}>No providers yet — tap + above to add one, or assign a job to add one on the fly.</Text>
             </View>
           }
           renderItem={({ item }: { item: ExpressVetProvider }) => (
