@@ -89,9 +89,32 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
         messaging()
           .getToken()
           .then((fcmToken: string) =>
-            expressVetDispatchApi.registerPushToken({ platform: 'android', fcm_token: fcmToken })
+            expressVetDispatchApi
+              .registerPushToken({ platform: 'android', fcm_token: fcmToken })
+              .catch((err: any) => {
+                expressVetDispatchApi
+                  .reportClientLog({
+                    context: 'android_register_push_token_post_failed',
+                    message: String(err?.message ?? err),
+                    extra: { status: err?.response?.status, data: err?.response?.data },
+                  })
+                  .catch(() => {});
+              })
           )
-          .catch(() => {});
+          .catch((err: any) => {
+            // messaging().getToken() itself failed — the more interesting case, since it
+            // means the device never even got a token (Google Play Services missing/stale,
+            // Firebase native init failed, etc.). Previously this was a bare `.catch(() =>
+            // {})` with zero trace anywhere, which is why this path stayed a mystery despite
+            // dispatcher_status never showing a single successful Android FCM registration.
+            expressVetDispatchApi
+              .reportClientLog({
+                context: 'android_fcm_get_token_failed',
+                message: String(err?.message ?? err),
+                extra: { code: err?.code, name: err?.name },
+              })
+              .catch(() => {});
+          });
 
         // Foreground counterpart to index.js's setBackgroundMessageHandler — that one
         // only fires while backgrounded/killed, this one covers the app-open case.

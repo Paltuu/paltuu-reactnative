@@ -161,4 +161,11 @@ export const expressVetDispatchApi = {
   }): Promise<void> {
     await client.post('/express-vet/dispatcher/push-token', payload);
   },
+
+  // Fire-and-forget diagnostic logging for failures nobody can otherwise see (no device
+  // logs/adb access to the dispatcher's phone) — lands in Vercel's function logs. See
+  // app/api/v1/express-vet/dispatcher/client-log/route.ts.
+  async reportClientLog(payload: { context: string; message: string; extra?: Record<string, unknown> }): Promise<void> {
+    await client.post('/express-vet/dispatcher/client-log', payload);
+  },
 };
