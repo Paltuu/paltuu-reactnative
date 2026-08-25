@@ -72,8 +72,8 @@ export interface AssignResult {
 }
 
 export const expressVetDispatchApi = {
-  // No on/off duty toggle — dispatchers are always alertable during operating hours
-  // (12pm-12am PKT, enforced server-side). This is the only control: mute for 30 minutes.
+  // No on/off duty toggle — dispatchers are always alertable. This is the only control:
+  // mute for 30 minutes.
   async getMuteStatus(): Promise<{ muted_until: string | null }> {
     const { data } = await client.get('/express-vet/dispatcher/mute');
     return data;

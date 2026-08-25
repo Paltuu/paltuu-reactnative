@@ -37,8 +37,8 @@ export default function ExpressVetDispatchIndexScreen() {
   const queryClient = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
 
-  // No on/off duty toggle — dispatchers are always alertable during operating hours
-  // (12pm-12am PKT, enforced server-side). The only control is muting for 30 minutes.
+  // No on/off duty toggle — dispatchers are always alertable. The only control is muting
+  // for 30 minutes.
   const { data: muteData, refetch: refetchMute } = useQuery({
     queryKey: ['express-vet-dispatch-mute'],
     queryFn: expressVetDispatchApi.getMuteStatus,
@@ -146,7 +146,7 @@ export default function ExpressVetDispatchIndexScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Dispatcher Console</Text>
           <Text style={styles.subtitle}>
-            {isMuted ? `Muted — ${formatCountdown(mutedUntil!)} left` : 'Alerts on · 12pm-12am PKT'}
+            {isMuted ? `Muted — ${formatCountdown(mutedUntil!)} left` : 'Alerts on'}
           </Text>
         </View>
         <TouchableOpacity
