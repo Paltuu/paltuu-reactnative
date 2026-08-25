@@ -83,10 +83,29 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
 
         cleanupVoip = setupDispatcherVoipPush();
       } else if (Platform.OS === 'android') {
-        const messaging = require('@react-native-firebase/messaging').default;
-        const notifee = require('@notifee/react-native').default;
+        let notifee: any;
+        let messagingInstance: any;
+        try {
+          const messaging = require('@react-native-firebase/messaging').default;
+          notifee = require('@notifee/react-native').default;
+          // Calling messaging() (not just requiring the module) is the documented failure
+          // point on this codebase — see NotificationContext.tsx — so it must be inside
+          // the try too. If it throws, nothing below ever runs, including the .catch()
+          // blocks that report to client-log, which is why this path stayed a silent
+          // mystery. Report it here, synchronously, before anything else can blow up.
+          messagingInstance = messaging();
+        } catch (err: any) {
+          expressVetDispatchApi
+            .reportClientLog({
+              context: 'android_messaging_init_failed',
+              message: String(err?.message ?? err),
+              extra: { name: err?.name },
+            })
+            .catch(() => {});
+          return;
+        }
 
-        messaging()
+        messagingInstance
           .getToken()
           .then((fcmToken: string) =>
             expressVetDispatchApi
@@ -118,7 +137,7 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
 
         // Foreground counterpart to index.js's setBackgroundMessageHandler — that one
         // only fires while backgrounded/killed, this one covers the app-open case.
-        cleanupForegroundFcm = messaging().onMessage(async (remoteMessage: any) => {
+        cleanupForegroundFcm = messagingInstance.onMessage(async (remoteMessage: any) => {
           if (remoteMessage?.data?.type !== 'express_vet_incoming_call') return;
           await displayAndroidIncomingAlert(parseExpressVetAlertData(remoteMessage.data));
         });
