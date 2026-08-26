@@ -15,17 +15,21 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider, AssignPayload } from '../../../../../src/api/expressVetDispatch';
 import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
+import { QueryErrorState } from '../../../../../src/components/ui/QueryErrorState';
+import PhoneInput, { isValidPkPhone } from '../../../../../src/components/ui/PhoneInput';
 import { useKeyboardVisible } from '../../../../../src/hooks/useKeyboardVisible';
 import { uploadImageToS3 } from '../../../../../src/utils/uploadImage';
+import { showApiErrorAlert } from '../../../../../src/utils/apiError';
+import { COLORS } from '../../../../../src/constants/colors';
 import { FONTS } from '../../../../../src/constants/typography';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 type Mode = 'search' | 'new' | 'myself';
@@ -37,26 +41,34 @@ export default function ExpressVetAssignScreen() {
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: requestData } = useQuery({
+  const { data: requestData, isError: isRequestError, error: requestError, refetch: refetchRequest } = useQuery({
     queryKey: ['express-vet-dispatch-request', id],
     queryFn: () => expressVetDispatchApi.getRequestDetail(id),
   });
   const request = requestData?.request;
 
   const [finalPrice, setFinalPrice] = useState(request?.starting_price_pkr ? String(request.starting_price_pkr) : '');
-  const [scheduledDate, setScheduledDate] = useState(''); // YYYY-MM-DD
-  const [scheduledTime, setScheduledTime] = useState(''); // HH:MM, 24h
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [mode, setMode] = useState<Mode>('search');
 
-  // Combines the two plain-text fields into a real Date so we can validate it's an actual,
-  // parseable date/time before letting the dispatcher submit — a native date/time picker
-  // would be the nicer UX here, but adding one means a new native dependency and a fresh
-  // `expo prebuild` verification pass (see the CallKit plugins for why that matters), which
-  // isn't worth it for this one internal-tool field. Revisit if dispatchers find this fiddly.
-  const parseScheduledAt = (): Date | null => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) || !/^\d{1,2}:\d{2}$/.test(scheduledTime)) return null;
-    const d = new Date(`${scheduledDate}T${scheduledTime.padStart(5, '0')}:00`);
-    return Number.isNaN(d.getTime()) ? null : d;
+  // A native picker can't produce an unparseable value, so unlike the old two-text-field
+  // version there's nothing left to validate here beyond "something was picked" (see
+  // handleConfirm) — `minimumDate` below also rules out scheduling a visit in the past,
+  // which the old regex-only validation never caught.
+  const mergeDateAndTime = (prev: Date | null, picked: Date, targetMode: 'date' | 'time'): Date => {
+    const base = prev ?? new Date();
+    return targetMode === 'date'
+      ? new Date(picked.getFullYear(), picked.getMonth(), picked.getDate(), base.getHours(), base.getMinutes())
+      : new Date(base.getFullYear(), base.getMonth(), base.getDate(), picked.getHours(), picked.getMinutes());
+  };
+
+  const onPickerChange = (event: DateTimePickerEvent, picked?: Date) => {
+    // Android's dialog is a one-shot modal that dismisses itself; iOS's inline spinner stays
+    // open until the "Done" button below is tapped.
+    if (Platform.OS === 'android') setPickerMode(null);
+    if (event.type === 'dismissed' || !picked || !pickerMode) return;
+    setScheduledAt((prev) => mergeDateAndTime(prev, picked, pickerMode));
   };
 
   // ── Search mode ──
@@ -120,7 +132,7 @@ export default function ExpressVetAssignScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-jobs'] });
       router.replace('/(app)/express-vet-dispatch/jobs' as any);
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not assign this request. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not assign this request. Please try again.'),
   });
 
   const handleConfirm = async () => {
@@ -129,9 +141,8 @@ export default function ExpressVetAssignScreen() {
       Alert.alert('Required', 'Please enter a valid final price.');
       return;
     }
-    const scheduledAt = parseScheduledAt();
     if (!scheduledAt) {
-      Alert.alert('Required', 'Please enter a valid visit date (YYYY-MM-DD) and time (HH:MM).');
+      Alert.alert('Required', 'Please select a visit date and time.');
       return;
     }
 
@@ -149,6 +160,10 @@ export default function ExpressVetAssignScreen() {
         Alert.alert('Required', "Please enter the provider's name.");
         return;
       }
+      if (newPhone && !isValidPkPhone(newPhone)) {
+        Alert.alert('Incomplete phone number', 'Please enter all 10 digits, or clear the field to leave it blank.');
+        return;
+      }
       let photoUrl: string | null;
       try {
         photoUrl = await uploadPhotoIfNeeded();
@@ -164,7 +179,7 @@ export default function ExpressVetAssignScreen() {
           photo_url: photoUrl,
           years_experience: newYears ? Number(newYears) : null,
           qualifications: newQualifications.trim() || null,
-          phone_number: newPhone.trim() || null,
+          phone_number: isValidPkPhone(newPhone) ? newPhone : null,
           categories: request ? [request.category] : [],
         },
       };
@@ -185,6 +200,13 @@ export default function ExpressVetAssignScreen() {
         </View>
       </View>
 
+      {isRequestError ? (
+        <QueryErrorState
+          error={requestError}
+          fallbackMessage="Could not load this request. Please try again."
+          onRetry={() => refetchRequest()}
+        />
+      ) : (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 24, gap: 16 }}
@@ -199,32 +221,38 @@ export default function ExpressVetAssignScreen() {
               onChangeText={setFinalPrice}
               keyboardType="number-pad"
               placeholder="e.g. 3500"
-              placeholderTextColor="#B0B7C3"
+              placeholderTextColor={COLORS.textPlaceholder}
             />
           </View>
 
           <View style={{ gap: 8 }}>
             <Text style={styles.fieldLabel}>Visit date & time</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                value={scheduledDate}
-                onChangeText={setScheduledDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-              />
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                value={scheduledTime}
-                onChangeText={setScheduledTime}
-                placeholder="HH:MM (24h)"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
+              <TouchableOpacity style={[styles.input, { flex: 1 }]} onPress={() => setPickerMode('date')}>
+                <Text style={scheduledAt ? styles.pickerValueText : styles.pickerPlaceholderText}>
+                  {scheduledAt ? format(scheduledAt, 'EEE, MMM d') : 'Select date'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.input, { flex: 1 }]} onPress={() => setPickerMode('time')}>
+                <Text style={scheduledAt ? styles.pickerValueText : styles.pickerPlaceholderText}>
+                  {scheduledAt ? format(scheduledAt, 'h:mm a') : 'Select time'}
+                </Text>
+              </TouchableOpacity>
             </View>
+            {pickerMode && (
+              <DateTimePicker
+                value={scheduledAt ?? new Date()}
+                mode={pickerMode}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date()}
+                onChange={onPickerChange}
+              />
+            )}
+            {Platform.OS === 'ios' && pickerMode && (
+              <TouchableOpacity onPress={() => setPickerMode(null)} style={styles.pickerDoneButton}>
+                <Text style={styles.pickerDoneText}>Done</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.modeRow}>
@@ -248,10 +276,10 @@ export default function ExpressVetAssignScreen() {
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Search providers by name…"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={COLORS.textPlaceholder}
               />
               {isSearching ? (
-                <ActivityIndicator color={PRIMARY} />
+                <ActivityIndicator color={COLORS.primary} />
               ) : (
                 (providersData?.data ?? []).map((p) => {
                   const active = selectedProvider?.provider_id === p.provider_id;
@@ -265,7 +293,7 @@ export default function ExpressVetAssignScreen() {
                         <Image source={{ uri: p.photo_url }} style={styles.providerPhoto} contentFit="cover" />
                       ) : (
                         <View style={[styles.providerPhoto, styles.providerPhotoFallback]}>
-                          <Ionicons name="person" size={18} color="#B0B7C3" />
+                          <Ionicons name="person" size={18} color={COLORS.textPlaceholder} />
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
@@ -276,7 +304,7 @@ export default function ExpressVetAssignScreen() {
                           </Text>
                         )}
                       </View>
-                      {active && <Ionicons name="checkmark-circle" size={20} color={PRIMARY} />}
+                      {active && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
                     </TouchableOpacity>
                   );
                 })
@@ -291,18 +319,18 @@ export default function ExpressVetAssignScreen() {
                   <Image source={{ uri: newPhoto.uri }} style={styles.photoPreview} contentFit="cover" />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={22} color="#B0B7C3" />
+                    <Ionicons name="camera-outline" size={22} color={COLORS.textPlaceholder} />
                     <Text style={styles.photoPickerText}>Add a photo (optional)</Text>
                   </>
                 )}
               </TouchableOpacity>
-              <TextInput style={styles.input} value={newName} onChangeText={setNewName} placeholder="Full name" placeholderTextColor="#B0B7C3" />
+              <TextInput style={styles.input} value={newName} onChangeText={setNewName} placeholder="Full name" placeholderTextColor={COLORS.textPlaceholder} />
               <TextInput
                 style={styles.input}
                 value={newYears}
                 onChangeText={setNewYears}
                 placeholder="Years of experience (optional)"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={COLORS.textPlaceholder}
                 keyboardType="number-pad"
               />
               <TextInput
@@ -310,16 +338,12 @@ export default function ExpressVetAssignScreen() {
                 value={newQualifications}
                 onChangeText={setNewQualifications}
                 placeholder="Qualifications (optional)"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={COLORS.textPlaceholder}
               />
-              <TextInput
-                style={styles.input}
-                value={newPhone}
-                onChangeText={setNewPhone}
-                placeholder="Phone number (optional, for your own reference)"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="phone-pad"
-              />
+              <View style={{ gap: 6 }}>
+                <Text style={styles.phoneFieldHint}>Phone number (optional, for your own reference)</Text>
+                <PhoneInput value={newPhone} onChangeValue={setNewPhone} />
+              </View>
             </View>
           )}
 
@@ -340,6 +364,7 @@ export default function ExpressVetAssignScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
@@ -356,9 +381,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
-  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: DARK },
+  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.textDark },
+  phoneFieldHint: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
@@ -367,9 +393,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
+  pickerValueText: { fontSize: 14, fontFamily: FONTS.bodyBold, color: COLORS.textDark },
+  pickerPlaceholderText: { fontSize: 14, fontFamily: FONTS.body, color: COLORS.textPlaceholder },
+  pickerDoneButton: { alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 4 },
+  pickerDoneText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.primary },
 
   modeRow: { flexDirection: 'row', gap: 8 },
   modeTab: {
@@ -381,9 +411,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  modeTabActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
-  modeTabText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: DARK, textAlign: 'center' },
-  modeTabTextActive: { color: PRIMARY },
+  modeTabActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
+  modeTabText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: COLORS.textDark, textAlign: 'center' },
+  modeTabTextActive: { color: COLORS.primary },
 
   providerRow: {
     flexDirection: 'row',
@@ -395,11 +425,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 12,
   },
-  providerRowActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
+  providerRowActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
   providerPhoto: { width: 40, height: 40, borderRadius: 20 },
   providerPhotoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  providerName: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
-  providerMeta: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  providerName: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
+  providerMeta: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   photoPicker: {
     height: 100,
@@ -413,14 +443,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   photoPreview: { width: '100%', height: '100%' },
-  photoPickerText: { fontFamily: FONTS.body, fontSize: 12, color: '#B0B7C3' },
+  photoPickerText: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textPlaceholder },
 
   card: {
     borderRadius: 14,
     backgroundColor: '#FAF0F2',
     padding: 16,
   },
-  cardText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: PRIMARY, textAlign: 'center' },
+  cardText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.primary, textAlign: 'center' },
 
   bottom: { paddingHorizontal: H_PAD, paddingTop: 8 },
 });

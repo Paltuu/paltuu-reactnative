@@ -13,9 +13,10 @@ import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { useKeyboardVisible } from '../../../../src/hooks/useKeyboardVisible';
 import { uploadImageToS3 } from '../../../../src/utils/uploadImage';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 function resolveFields(
@@ -36,7 +37,7 @@ export default function ExpressVetQuestionnaireScreen() {
   const { category, species, sub_service } = useLocalSearchParams<{ category: string; species: string; sub_service?: string }>();
   const setQuestionnaireAnswers = useExpressVetDraftStore((s) => s.setQuestionnaireAnswers);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -85,8 +86,10 @@ export default function ExpressVetQuestionnaireScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load the questionnaire." onRetry={refetch} />
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView
@@ -139,7 +142,7 @@ function QuestionnaireField({
                 <Ionicons
                   name={active ? 'radio-button-on' : 'radio-button-off'}
                   size={20}
-                  color={active ? PRIMARY : '#D1D5DB'}
+                  color={active ? COLORS.primary : '#D1D5DB'}
                 />
               </TouchableOpacity>
             );
@@ -165,7 +168,7 @@ function QuestionnaireField({
                 <Ionicons
                   name={active ? 'checkbox' : 'square-outline'}
                   size={20}
-                  color={active ? PRIMARY : '#D1D5DB'}
+                  color={active ? COLORS.primary : '#D1D5DB'}
                 />
               </TouchableOpacity>
             );
@@ -198,7 +201,7 @@ function QuestionnaireField({
           value={value ?? ''}
           onChangeText={onChange}
           placeholder={field.placeholder ?? 'Type here…'}
-          placeholderTextColor="#B0B7C3"
+          placeholderTextColor={COLORS.textPlaceholder}
           multiline
         />
       )}
@@ -239,8 +242,9 @@ function PhotoField({ value, onChange }: { value: any; onChange: (v: any) => voi
       });
       if (!url) throw new Error('No URL returned');
       onChange(url);
-    } catch {
-      Alert.alert('Upload failed', 'Could not upload that photo. Please try again.');
+    } catch (err) {
+      showApiErrorAlert(err, 'Could not upload that photo. Please try again.');
+      return;
     } finally {
       setUploading(false);
     }
@@ -261,12 +265,12 @@ function PhotoField({ value, onChange }: { value: any; onChange: (v: any) => voi
     <TouchableOpacity style={styles.photoPicker} onPress={pick} disabled={uploading} activeOpacity={0.8}>
       {uploading ? (
         <>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
           <Text style={styles.photoPickerText}>Uploading…</Text>
         </>
       ) : (
         <>
-          <Ionicons name="camera-outline" size={22} color={PRIMARY} />
+          <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
           <Text style={styles.photoPickerText}>Add a photo</Text>
         </>
       )}
@@ -287,18 +291,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   fieldLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 15,
-    color: DARK,
+    color: COLORS.textDark,
   },
   optionalTag: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#B0B7C3',
+    color: COLORS.textPlaceholder,
   },
 
   optionCard: {
@@ -313,18 +317,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   optionCardActive: {
-    borderColor: PRIMARY,
+    borderColor: COLORS.primary,
     backgroundColor: '#FAF0F2',
   },
   optionText: {
     fontFamily: FONTS.body,
     fontSize: 14,
-    color: DARK,
+    color: COLORS.textDark,
     flex: 1,
   },
   optionTextActive: {
     fontFamily: FONTS.bodyBold,
-    color: PRIMARY,
+    color: COLORS.primary,
   },
 
   choicePill: {
@@ -337,16 +341,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   choicePillActive: {
-    borderColor: PRIMARY,
+    borderColor: COLORS.primary,
     backgroundColor: '#FAF0F2',
   },
   choicePillText: {
     fontFamily: FONTS.bodyBold,
     fontSize: 14,
-    color: DARK,
+    color: COLORS.textDark,
   },
   choicePillTextActive: {
-    color: PRIMARY,
+    color: COLORS.primary,
   },
 
   input: {
@@ -357,7 +361,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
     minHeight: 48,
   },
@@ -369,7 +373,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: PRIMARY,
+    borderColor: COLORS.primary,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 18,
@@ -378,7 +382,7 @@ const styles = StyleSheet.create({
   photoPickerText: {
     fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: PRIMARY,
+    color: COLORS.primary,
   },
   photoPreviewWrap: {
     position: 'relative',

@@ -10,11 +10,12 @@ import { expressVetApi, ExpressVetQuestionnaireField } from '../../../../src/api
 import { useAuthStore } from '../../../../src/stores/authStore';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
+import { COLORS } from '../../../../src/constants/colors';
 import { FONTS } from '../../../../src/constants/typography';
 import { dismissAllExpressVetAlerts } from '../../../../src/services/androidDispatchAlert';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 function formatAnswer(field: ExpressVetQuestionnaireField | undefined, value: any): string {
@@ -42,7 +43,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUser = useAuthStore((s) => s.user);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-dispatch-request', id],
     queryFn: () => expressVetDispatchApi.getRequestDetail(id),
   });
@@ -72,7 +73,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
         Alert.alert('Already claimed', 'Another dispatcher claimed this request first.');
         router.back();
       } else {
-        Alert.alert('Something went wrong', 'Could not claim this request. Please try again.');
+        showApiErrorAlert(err, 'Could not claim this request. Please try again.');
       }
     },
   });
@@ -84,7 +85,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-inbox'] });
       router.back();
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not release this request. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not release this request. Please try again.'),
   });
 
   const completeMutation = useMutation({
@@ -93,7 +94,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-request', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-dispatch-jobs'] });
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not mark this job complete. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not mark this job complete. Please try again.'),
   });
 
   const isAdmin = currentUser?.role === 'admin';
@@ -123,9 +124,15 @@ export default function ExpressVetDispatchRequestDetailScreen() {
         </View>
       </View>
 
-      {isPending || !request ? (
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          fallbackMessage="Could not load this request. Please try again."
+          onRetry={() => refetch()}
+        />
+      ) : isPending || !request ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       ) : (
         <>
@@ -139,7 +146,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
                   <Image source={{ uri: request.client_photo_url }} style={styles.clientPhoto} contentFit="cover" />
                 ) : (
                   <View style={[styles.clientPhoto, styles.clientPhotoFallback]}>
-                    <Ionicons name="person" size={22} color="#B0B7C3" />
+                    <Ionicons name="person" size={22} color={COLORS.textPlaceholder} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
@@ -159,7 +166,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
 
             <View style={styles.card}>
               <View style={styles.cardHeaderRow}>
-                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[request.category] ?? 'paw'} size={20} color={PRIMARY} />
+                <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[request.category] ?? 'paw'} size={20} color={COLORS.primary} />
                 <Text style={styles.categoryLabel}>
                   {request.category.replace('_', ' ')} — {request.species}
                 </Text>
@@ -170,7 +177,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
                   going out — a plain text row would make them copy-paste a URL by hand. */}
               {!!request.maps_link && (
                 <TouchableOpacity style={styles.mapsLinkRow} onPress={() => Linking.openURL(request.maps_link!)}>
-                  <Ionicons name="navigate-outline" size={16} color={PRIMARY} />
+                  <Ionicons name="navigate-outline" size={16} color={COLORS.primary} />
                   <Text style={styles.mapsLinkText}>Open in Google Maps</Text>
                 </TouchableOpacity>
               )}
@@ -206,7 +213,7 @@ export default function ExpressVetDispatchRequestDetailScreen() {
                     <Image source={{ uri: request.provider_photo_url }} style={styles.clientPhoto} contentFit="cover" />
                   ) : (
                     <View style={[styles.clientPhoto, styles.clientPhotoFallback]}>
-                      <Ionicons name="person" size={20} color="#B0B7C3" />
+                      <Ionicons name="person" size={20} color={COLORS.textPlaceholder} />
                     </View>
                   )}
                   <View style={{ flex: 1 }}>
@@ -296,7 +303,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
   card: {
     borderRadius: 16,
@@ -307,32 +314,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  categoryLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: DARK, textTransform: 'capitalize' },
+  categoryLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.textDark, textTransform: 'capitalize' },
 
   clientRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   clientPhoto: { width: 52, height: 52, borderRadius: 26 },
   clientPhotoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  clientName: { fontFamily: FONTS.bodyBold, fontSize: 16, color: DARK },
-  clientPhone: { fontFamily: FONTS.body, fontSize: 13, color: PRIMARY, marginTop: 2 },
+  clientName: { fontFamily: FONTS.bodyBold, fontSize: 16, color: COLORS.textDark },
+  clientPhone: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.primary, marginTop: 2 },
   callButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#8A8A94' },
+  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textMuted },
   answerPhoto: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#F3F4F6' },
   mapsLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
-  mapsLinkText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY },
+  mapsLinkText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.primary },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94', flex: 1 },
-  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },
+  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted, flex: 1 },
+  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark, flex: 1, textAlign: 'right' },
 
   bottom: { paddingHorizontal: H_PAD, paddingTop: 8 },
   releaseButton: { alignItems: 'center', paddingVertical: 14 },
   releaseButtonText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: '#B3261E' },
-  claimedByOther: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94', textAlign: 'center' },
+  claimedByOther: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
 });

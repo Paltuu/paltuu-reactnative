@@ -6,10 +6,10 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider } from '../../../../src/api/expressVetDispatch';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import { COLORS } from '../../../../src/constants/colors';
 import { FONTS } from '../../../../src/constants/typography';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 export default function ExpressVetProvidersScreen() {
@@ -17,7 +17,7 @@ export default function ExpressVetProvidersScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-providers-roster', search],
     queryFn: () => expressVetDispatchApi.searchProviders({ search }),
   });
@@ -39,7 +39,7 @@ export default function ExpressVetProvidersScreen() {
           onPress={() => router.push('/(app)/express-vet-dispatch/providers/new' as any)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="add-circle" size={28} color={PRIMARY} />
+          <Ionicons name="add-circle" size={28} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -49,13 +49,19 @@ export default function ExpressVetProvidersScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Search providers…"
-          placeholderTextColor="#B0B7C3"
+          placeholderTextColor={COLORS.textPlaceholder}
         />
       </View>
 
-      {isPending ? (
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          fallbackMessage="Could not load providers. Please try again."
+          onRetry={() => refetch()}
+        />
+      ) : isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       ) : (
         <FlatList
@@ -79,7 +85,7 @@ export default function ExpressVetProvidersScreen() {
                 <Image source={{ uri: item.photo_url }} style={styles.photo} contentFit="cover" />
               ) : (
                 <View style={[styles.photo, styles.photoFallback]}>
-                  <Ionicons name="person" size={20} color="#B0B7C3" />
+                  <Ionicons name="person" size={20} color={COLORS.textPlaceholder} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
@@ -105,7 +111,7 @@ export default function ExpressVetProvidersScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FAFAFB' },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyText: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94', textAlign: 'center' },
+  emptyText: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
 
   topBar: {
     flexDirection: 'row',
@@ -116,7 +122,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
   input: {
     borderWidth: 1.5,
@@ -126,7 +132,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
 
@@ -142,7 +148,7 @@ const styles = StyleSheet.create({
   },
   photo: { width: 44, height: 44, borderRadius: 22 },
   photoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  name: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
-  categories: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2, textTransform: 'capitalize' },
-  rating: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK },
+  name: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
+  categories: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2, textTransform: 'capitalize' },
+  rating: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark },
 });

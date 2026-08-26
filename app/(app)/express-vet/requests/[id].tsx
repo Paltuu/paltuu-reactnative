@@ -9,9 +9,11 @@ import { expressVetApi, ExpressVetRequest } from '../../../../src/api/expressVet
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
+import { formatDisplayPhone } from '../../../../src/components/ui/PhoneInput';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 const STATUS_LABELS: Record<ExpressVetRequest['status'], string> = {
@@ -31,7 +33,7 @@ export default function ExpressVetRequestDetailScreen() {
   const queryClient = useQueryClient();
   const { id, justSubmitted } = useLocalSearchParams<{ id: string; justSubmitted?: string }>();
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-request', id],
     queryFn: () => expressVetApi.getRequestDetail(id),
   });
@@ -43,7 +45,7 @@ export default function ExpressVetRequestDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-request', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-my-requests'] });
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not cancel this request. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not cancel this request. Please try again.'),
   });
 
   // Same stale-form-stack problem the close "X" button below handles, but for the Android
@@ -95,9 +97,15 @@ export default function ExpressVetRequestDetailScreen() {
         </View>
       </View>
 
-      {isPending || !request ? (
+      {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
+        </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load this request." onRetry={refetch} />
+      ) : !request ? (
+        <View style={styles.centerFill}>
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       ) : (
         <>
@@ -117,7 +125,7 @@ export default function ExpressVetRequestDetailScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardIcon}>
-                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[request.category] ?? 'paw'} size={22} color={PRIMARY} />
+                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[request.category] ?? 'paw'} size={22} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.categoryLabel}>{request.category.replace('_', ' ')}</Text>
@@ -131,19 +139,6 @@ export default function ExpressVetRequestDetailScreen() {
               {!!request.address_landmark && <Row label="Landmark" value={request.address_landmark} />}
               {!!request.maps_link && <Row label="Maps Link" value={request.maps_link} />}
               <Row label="Contact" value={request.contact_phone} />
-              {!!request.scheduled_at && (
-                <Row
-                  label="Visit time"
-                  value={new Date(request.scheduled_at).toLocaleString('en-PK', {
-                    timeZone: 'Asia/Karachi',
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                />
-              )}
               <Row
                 label={request.status === 'completed' ? 'Total bill' : 'Price'}
                 value={
@@ -162,7 +157,7 @@ export default function ExpressVetRequestDetailScreen() {
                     <Image source={{ uri: request.provider_photo_url }} style={styles.providerPhoto} contentFit="cover" />
                   ) : (
                     <View style={[styles.providerPhoto, styles.providerPhotoFallback]}>
-                      <Ionicons name="person" size={20} color="#B0B7C3" />
+                      <Ionicons name="person" size={20} color={COLORS.textPlaceholder} />
                     </View>
                   )}
                   <View style={{ flex: 1 }}>
@@ -177,18 +172,40 @@ export default function ExpressVetRequestDetailScreen() {
                       </View>
                     )}
                   </View>
-                  {!!request.provider_phone_number && (
+                </View>
+                {!!request.provider_qualifications && (
+                  <Text style={styles.providerQualifications}>{request.provider_qualifications}</Text>
+                )}
+                <View style={styles.divider} />
+                {!!request.scheduled_at && (
+                  <Row
+                    label="Visit time"
+                    value={new Date(request.scheduled_at).toLocaleString('en-PK', {
+                      timeZone: 'Asia/Karachi',
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  />
+                )}
+                {!!request.provider_phone_number && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View>
+                      <Text style={styles.rowLabel}>Phone</Text>
+                      <Text style={[styles.rowValue, { textAlign: 'left', marginTop: 2 }]} selectable>
+                        {formatDisplayPhone(request.provider_phone_number)}
+                      </Text>
+                    </View>
                     <TouchableOpacity
                       style={styles.contactButton}
                       onPress={() => Linking.openURL(`tel:${request.provider_phone_number}`)}
                     >
                       <Ionicons name="call" size={16} color="#FFFFFF" />
-                      <Text style={styles.contactButtonText}>Contact</Text>
+                      <Text style={styles.contactButtonText}>Call</Text>
                     </TouchableOpacity>
-                  )}
-                </View>
-                {!!request.provider_qualifications && (
-                  <Text style={styles.providerQualifications}>{request.provider_qualifications}</Text>
+                  </View>
                 )}
               </View>
             ) : null}
@@ -246,7 +263,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
   successBanner: {
     flexDirection: 'row',
@@ -281,26 +298,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryLabel: { fontFamily: FONTS.bodyBold, fontSize: 16, color: DARK, textTransform: 'capitalize' },
-  statusLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  categoryLabel: { fontFamily: FONTS.bodyBold, fontSize: 16, color: COLORS.textDark, textTransform: 'capitalize' },
+  statusLabel: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
-  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#8A8A94' },
+  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textMuted },
 
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94' },
-  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },
+  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted },
+  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark, flex: 1, textAlign: 'right' },
+
+  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 4 },
 
   providerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   providerPhoto: { width: 48, height: 48, borderRadius: 24 },
   providerPhotoFallback: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  providerName: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
-  providerMeta: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
-  providerQualifications: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 10, lineHeight: 17 },
+  providerName: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
+  providerMeta: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
+  providerQualifications: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 10, lineHeight: 17 },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.primary,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 9,

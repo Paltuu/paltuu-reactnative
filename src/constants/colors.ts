@@ -23,4 +23,8 @@ export const COLORS = {
   // (see toastConfig.tsx) and don't have enough contrast against white on their own.
   errorStrong: '#B91C1C',
   successStrong: '#15803D',
+  primaryTint: '#FAF0F2',      // unifies '#FAF0F2'/'#F8E9EC' drift (active tab/chip/badge backgrounds)
+  textDark: '#1A1A2E',         // canonical replacement for the many locally-redeclared `const DARK = '#1A1A2E'` consts across the app
+  textMuted: '#8A8A94',        // secondary/meta text: subtitles, row labels, timestamps
+  textPlaceholder: '#B0B7C3',  // placeholder text, disabled/fallback icons — a deliberately lighter, distinct tier from textMuted
 };

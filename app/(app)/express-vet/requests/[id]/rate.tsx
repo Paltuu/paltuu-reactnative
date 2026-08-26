@@ -8,9 +8,10 @@ import { expressVetApi, EXPRESS_VET_ADDON_REASON_TAGS } from '../../../../../src
 import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
 import { useKeyboardVisible } from '../../../../../src/hooks/useKeyboardVisible';
 import { FONTS } from '../../../../../src/constants/typography';
+import { COLORS } from '../../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../../src/components/ui/QueryErrorState';
+import { showApiErrorAlert } from '../../../../../src/utils/apiError';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 function StarPicker({ rating, onChange }: { rating: number; onChange: (n: number) => void }) {
@@ -55,7 +56,7 @@ export default function ExpressVetRateScreen() {
   const keyboardVisible = useKeyboardVisible();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-request', id],
     queryFn: () => expressVetApi.getRequestDetail(id),
   });
@@ -92,7 +93,7 @@ export default function ExpressVetRateScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-my-requests'] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-request', id] });
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not submit your rating. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not submit your rating. Please try again.'),
   });
 
   const handleSubmit = () => {
@@ -108,7 +109,7 @@ export default function ExpressVetRateScreen() {
       <View style={styles.root}>
         <View style={styles.centerFill}>
           <View style={styles.successIcon}>
-            <Ionicons name="heart" size={34} color={PRIMARY} />
+            <Ionicons name="heart" size={34} color={COLORS.primary} />
           </View>
           <Text style={styles.successTitle}>Thanks for rating!</Text>
           <Text style={styles.successText}>Your feedback helps us keep Vets at Home reliable.</Text>
@@ -135,9 +136,15 @@ export default function ExpressVetRateScreen() {
         </View>
       </View>
 
-      {isPending || !request ? (
+      {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
+        </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load this request." onRetry={refetch} />
+      ) : !request ? (
+        <View style={styles.centerFill}>
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -169,14 +176,14 @@ export default function ExpressVetRateScreen() {
                 value={reviewContent}
                 onChangeText={setReviewContent}
                 placeholder="Tell us about your experience…"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={COLORS.textPlaceholder}
                 multiline
               />
             </View>
 
             {!showAddon ? (
               <TouchableOpacity style={styles.addAddonRow} onPress={() => setShowAddon(true)}>
-                <Ionicons name="add-circle-outline" size={18} color={PRIMARY} />
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.addAddonText}>Was there any extra charge during the visit?</Text>
               </TouchableOpacity>
             ) : (
@@ -184,7 +191,7 @@ export default function ExpressVetRateScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={styles.fieldLabel}>Extra charge details</Text>
                   <TouchableOpacity onPress={() => { setShowAddon(false); setAddonTags([]); setAddonTotal(''); }}>
-                    <Ionicons name="close-circle" size={20} color="#B0B7C3" />
+                    <Ionicons name="close-circle" size={20} color={COLORS.textPlaceholder} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.tagGrid}>
@@ -206,7 +213,7 @@ export default function ExpressVetRateScreen() {
                   value={addonTotal}
                   onChangeText={setAddonTotal}
                   placeholder="Total extra amount paid, PKR"
-                  placeholderTextColor="#B0B7C3"
+                  placeholderTextColor={COLORS.textPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -241,8 +248,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   totalCard: {
     borderRadius: 16,
@@ -251,11 +258,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  totalLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
-  totalValue: { fontFamily: FONTS.heading, fontSize: 22, color: PRIMARY },
+  totalLabel: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
+  totalValue: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.primary },
 
-  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
-  optionalTag: { fontFamily: FONTS.body, fontSize: 12, color: '#B0B7C3' },
+  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
+  optionalTag: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textPlaceholder },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
     minHeight: 48,
   },
@@ -279,7 +286,7 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     padding: 14,
   },
-  yesNoLabel: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1 },
+  yesNoLabel: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark, flex: 1 },
   yesNoPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -288,12 +295,12 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  yesNoPillActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
-  yesNoPillText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: DARK },
-  yesNoPillTextActive: { color: PRIMARY },
+  yesNoPillActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
+  yesNoPillText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.textDark },
+  yesNoPillTextActive: { color: COLORS.primary },
 
   addAddonRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  addAddonText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: PRIMARY },
+  addAddonText: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.primary },
 
   tagGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tagChip: {
@@ -304,9 +311,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  tagChipActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
-  tagChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: '#8A8A94' },
-  tagChipTextActive: { color: PRIMARY },
+  tagChipActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
+  tagChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: COLORS.textMuted },
+  tagChipTextActive: { color: COLORS.primary },
 
   successIcon: {
     width: 76,
@@ -316,8 +323,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  successTitle: { fontFamily: FONTS.heading, fontSize: 22, color: DARK, textAlign: 'center' },
-  successText: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94', textAlign: 'center' },
+  successTitle: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark, textAlign: 'center' },
+  successText: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
 
   bottom: { paddingHorizontal: H_PAD, paddingTop: 8 },
 });

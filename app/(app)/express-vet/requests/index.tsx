@@ -7,9 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetApi, ExpressVetRequest } from '../../../../src/api/expressVet';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 const STATUS_LABELS: Record<ExpressVetRequest['status'], string> = {
@@ -34,7 +34,7 @@ export default function ExpressVetRequestsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-my-requests'],
     queryFn: () => expressVetApi.getMyRequests(),
   });
@@ -58,8 +58,10 @@ export default function ExpressVetRequestsScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load your bookings." onRetry={refetch} />
       ) : requests.length === 0 ? (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>You haven't booked a home visit yet.</Text>
@@ -80,7 +82,7 @@ export default function ExpressVetRequestsScreen() {
                 }
               >
                 <View style={styles.rowIcon}>
-                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[item.category] ?? 'paw'} size={22} color={PRIMARY} />
+                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[item.category] ?? 'paw'} size={22} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>{item.category.replace('_', ' ')}</Text>
@@ -101,7 +103,7 @@ export default function ExpressVetRequestsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FAFAFB' },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyText: { fontFamily: FONTS.body, fontSize: 14, color: '#8A8A94', textAlign: 'center' },
+  emptyText: { fontFamily: FONTS.body, fontSize: 14, color: COLORS.textMuted, textAlign: 'center' },
 
   topBar: {
     flexDirection: 'row',
@@ -112,8 +114,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 24, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 24, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   row: {
     flexDirection: 'row',
@@ -136,13 +138,13 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 15,
-    color: DARK,
+    color: COLORS.textDark,
     textTransform: 'capitalize',
   },
   rowSub: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   statusBadge: {

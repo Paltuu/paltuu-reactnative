@@ -30,6 +30,8 @@ export interface ExpressVetDispatchRequest {
   assigned_at: string | null;
   completed_at: string | null;
   created_at: string;
+  /** Only present in `scope: 'team'` responses — the name of the dispatcher who owns this row. */
+  dispatcher_name?: string | null;
 }
 
 export interface ExpressVetProvider {
@@ -89,12 +91,33 @@ export const expressVetDispatchApi = {
     return data;
   },
 
-  async getJobs(status?: 'assigned' | 'completed'): Promise<{ data: ExpressVetDispatchRequest[] }> {
-    const { data } = await client.get('/express-vet/dispatcher/jobs', { params: status ? { status } : {} });
+  async getJobs(options?: {
+    status?: 'assigned' | 'completed';
+    /** Admin-only — drops the per-dispatcher filter and adds `dispatcher_name` to each row. A
+     *  non-admin passing this gets a 403 from the backend. */
+    scope?: 'team';
+  }): Promise<{ data: ExpressVetDispatchRequest[] }> {
+    const params: Record<string, string> = {};
+    if (options?.status) params.status = options.status;
+    if (options?.scope) params.scope = options.scope;
+    const { data } = await client.get('/express-vet/dispatcher/jobs', { params });
     return data;
   },
 
-  async getStats(): Promise<{ in_progress: number; completed_today: number }> {
+  async getStats(): Promise<{
+    in_progress: number;
+    completed_today: number;
+    total_completed: number;
+    total_earned_pkr: number;
+    unconfirmed_count: number;
+    /** Present only when the caller is an admin. */
+    team?: {
+      in_progress: number;
+      completed_today: number;
+      total_completed: number;
+      total_earned_pkr: number;
+    };
+  }> {
     const { data } = await client.get('/express-vet/dispatcher/stats');
     return data;
   },

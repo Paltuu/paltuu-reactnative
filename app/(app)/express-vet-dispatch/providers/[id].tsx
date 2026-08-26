@@ -10,11 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi } from '../../../../src/api/expressVetDispatch';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import PhoneInput, { isValidPkPhone, normalizeIncomingPhone } from '../../../../src/components/ui/PhoneInput';
 import { uploadImageToS3 } from '../../../../src/utils/uploadImage';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
+import { COLORS } from '../../../../src/constants/colors';
 import { FONTS } from '../../../../src/constants/typography';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 const ALL_CATEGORIES = ['express_vet', 'normal_vet', 'neutering', 'spaying', 'vaccination', 'grooming'];
 
@@ -24,7 +26,7 @@ export default function ExpressVetProviderDetailScreen() {
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-provider', id],
     queryFn: () => expressVetDispatchApi.getProvider(id),
   });
@@ -45,7 +47,7 @@ export default function ExpressVetProviderDetailScreen() {
     setName(provider.name);
     setYears(provider.years_experience != null ? String(provider.years_experience) : '');
     setQualifications(provider.qualifications ?? '');
-    setPhone(provider.phone_number ?? '');
+    setPhone(normalizeIncomingPhone(provider.phone_number));
     setCategories(provider.categories);
     setIsActive(provider.is_active);
   }, [provider]);
@@ -57,7 +59,7 @@ export default function ExpressVetProviderDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-provider', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not save changes. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not save changes. Please try again.'),
   });
 
   const toggleCategory = (category: string) => {
@@ -90,6 +92,10 @@ export default function ExpressVetProviderDetailScreen() {
       Alert.alert('Required', 'Please select at least one category.');
       return;
     }
+    if (phone && !isValidPkPhone(phone)) {
+      Alert.alert('Incomplete phone number', 'Please enter all 10 digits, or clear the field to leave it blank.');
+      return;
+    }
 
     let photoUrl: string | undefined;
     if (newPhoto) {
@@ -108,7 +114,7 @@ export default function ExpressVetProviderDetailScreen() {
       name: name.trim(),
       years_experience: years ? Number(years) : null,
       qualifications: qualifications.trim() || null,
-      phone_number: phone.trim() || null,
+      phone_number: isValidPkPhone(phone) ? phone : null,
       categories,
       ...(photoUrl ? { photo_url: photoUrl } : {}),
     });
@@ -125,9 +131,15 @@ export default function ExpressVetProviderDetailScreen() {
         </View>
       </View>
 
-      {isPending || !provider ? (
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          fallbackMessage="Could not load this provider. Please try again."
+          onRetry={() => refetch()}
+        />
+      ) : isPending || !provider ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       ) : (
         <>
@@ -141,7 +153,7 @@ export default function ExpressVetProviderDetailScreen() {
                   <Image source={{ uri: newPhoto?.uri ?? provider.photo_url ?? undefined }} style={styles.photo} contentFit="cover" />
                 ) : (
                   <View style={[styles.photo, styles.photoFallback]}>
-                    <Ionicons name="person" size={28} color="#B0B7C3" />
+                    <Ionicons name="person" size={28} color={COLORS.textPlaceholder} />
                   </View>
                 )}
                 <View style={styles.photoEditBadge}>
@@ -160,12 +172,12 @@ export default function ExpressVetProviderDetailScreen() {
 
             <View style={styles.activeRow}>
               <Text style={styles.fieldLabel}>Active — assignable to new jobs</Text>
-              <Switch value={isActive} onValueChange={handleToggleActive} trackColor={{ true: PRIMARY }} />
+              <Switch value={isActive} onValueChange={handleToggleActive} trackColor={{ true: COLORS.primary }} />
             </View>
 
             <View style={{ gap: 8 }}>
               <Text style={styles.fieldLabel}>Name</Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor="#B0B7C3" />
+              <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={COLORS.textPlaceholder} />
             </View>
 
             <View style={{ gap: 8 }}>
@@ -179,7 +191,7 @@ export default function ExpressVetProviderDetailScreen() {
                       style={[styles.categoryChip, active && styles.categoryChipActive]}
                       onPress={() => toggleCategory(c)}
                     >
-                      <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[c] ?? 'paw'} size={14} color={active ? PRIMARY : '#8A8A94'} />
+                      <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[c] ?? 'paw'} size={14} color={active ? COLORS.primary : COLORS.textMuted} />
                       <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
                         {c.replace('_', ' ')}
                       </Text>
@@ -191,17 +203,17 @@ export default function ExpressVetProviderDetailScreen() {
 
             <View style={{ gap: 8 }}>
               <Text style={styles.fieldLabel}>Years of experience</Text>
-              <TextInput style={styles.input} value={years} onChangeText={setYears} keyboardType="number-pad" placeholderTextColor="#B0B7C3" />
+              <TextInput style={styles.input} value={years} onChangeText={setYears} keyboardType="number-pad" placeholderTextColor={COLORS.textPlaceholder} />
             </View>
 
             <View style={{ gap: 8 }}>
               <Text style={styles.fieldLabel}>Qualifications</Text>
-              <TextInput style={styles.input} value={qualifications} onChangeText={setQualifications} placeholderTextColor="#B0B7C3" />
+              <TextInput style={styles.input} value={qualifications} onChangeText={setQualifications} placeholderTextColor={COLORS.textPlaceholder} />
             </View>
 
             <View style={{ gap: 8 }}>
               <Text style={styles.fieldLabel}>Phone (your own reference)</Text>
-              <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholderTextColor="#B0B7C3" />
+              <PhoneInput value={phone} onChangeValue={setPhone} />
             </View>
 
             {reviews.length > 0 && (
@@ -249,7 +261,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
   photoRow: { alignItems: 'center', gap: 8 },
   photo: { width: 76, height: 76, borderRadius: 38 },
@@ -261,13 +273,13 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.primary,
     borderWidth: 2,
     borderColor: '#FAFAFB',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ratingText: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
+  ratingText: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
 
   activeRow: {
     flexDirection: 'row',
@@ -280,7 +292,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
 
-  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
+  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
@@ -289,7 +301,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
 
@@ -305,9 +317,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  categoryChipActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
-  categoryChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: '#8A8A94', textTransform: 'capitalize' },
-  categoryChipTextActive: { color: PRIMARY },
+  categoryChipActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
+  categoryChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: COLORS.textMuted, textTransform: 'capitalize' },
+  categoryChipTextActive: { color: COLORS.primary },
 
   reviewCard: {
     borderRadius: 14,
@@ -317,9 +329,9 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 4,
   },
-  reviewRating: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK },
-  reviewClient: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
-  reviewContent: { fontFamily: FONTS.body, fontSize: 13, color: DARK },
+  reviewRating: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark },
+  reviewClient: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
+  reviewContent: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textDark },
   reviewAddon: { fontFamily: FONTS.body, fontSize: 11, color: '#B26B00', marginTop: 2 },
 
   bottom: { paddingHorizontal: H_PAD, paddingTop: 8 },

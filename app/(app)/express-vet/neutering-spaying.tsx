@@ -8,11 +8,11 @@ import { expressVetApi } from '../../../src/api/expressVet';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { lowestStartingPrice } from '../../../src/constants/expressVet';
 import { FONTS } from '../../../src/constants/typography';
+import { COLORS } from '../../../src/constants/colors';
+import { QueryErrorState } from '../../../src/components/ui/QueryErrorState';
 
 // Entry point for the "Neutering & Spaying" Pets-tab section — same two-choice pattern as
 // vet-at-home.tsx. Picking either continues into the existing species.tsx flow unchanged.
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 export default function NeuteringSpayingChoiceScreen() {
@@ -20,7 +20,7 @@ export default function NeuteringSpayingChoiceScreen() {
   const insets = useSafeAreaInsets();
   const cityId = useLocationStore((s) => s.cityId);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -49,8 +49,10 @@ export default function NeuteringSpayingChoiceScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load procedure options." onRetry={refetch} />
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 14 }}
@@ -96,8 +98,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   card: {
     flexDirection: 'row',
@@ -112,18 +114,18 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 17,
-    color: DARK,
+    color: COLORS.textDark,
   },
   cardDescription: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 3,
   },
   cardPrice: {
     fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 6,
   },
 });

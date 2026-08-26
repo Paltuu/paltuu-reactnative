@@ -10,9 +10,10 @@ import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftS
 import { EXPRESS_VET_SPECIES_LABELS, GROOMING_SUB_SERVICE_LABELS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 export default function ExpressVetReviewAndSubmitScreen() {
@@ -25,7 +26,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
 
   const [acknowledged, setAcknowledged] = useState(false);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -83,7 +84,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
         ]);
         return;
       }
-      Alert.alert('Something went wrong', 'Could not submit your request. Please try again.');
+      showApiErrorAlert(err, 'Could not submit your request. Please try again.');
     },
   });
 
@@ -116,8 +117,10 @@ export default function ExpressVetReviewAndSubmitScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load your request summary." onRetry={refetch} />
       ) : (
         <>
           <ScrollView
@@ -165,7 +168,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
               <Ionicons
                 name={acknowledged ? 'checkbox' : 'square-outline'}
                 size={22}
-                color={acknowledged ? PRIMARY : '#D1D5DB'}
+                color={acknowledged ? COLORS.primary : '#D1D5DB'}
               />
               <Text style={styles.ackText}>
                 I understand the price above is a starting estimate and will be confirmed before my appointment.
@@ -212,8 +215,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   card: {
     borderRadius: 16,
@@ -223,10 +226,10 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#8A8A94', marginBottom: 2 },
+  sectionTitle: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textMuted, marginBottom: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: '#8A8A94' },
-  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },
+  rowLabel: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted },
+  rowValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark, flex: 1, textAlign: 'right' },
 
   priceCard: {
     borderRadius: 16,
@@ -234,9 +237,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 6,
   },
-  priceLabel: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94' },
-  priceValue: { fontFamily: FONTS.heading, fontSize: 24, color: PRIMARY },
-  priceDisclaimer: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', lineHeight: 17, marginTop: 4 },
+  priceLabel: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
+  priceValue: { fontFamily: FONTS.heading, fontSize: 24, color: COLORS.primary },
+  priceDisclaimer: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, lineHeight: 17, marginTop: 4 },
 
   ackRow: {
     flexDirection: 'row',
@@ -247,7 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textPlaceholder,
     lineHeight: 17,
   },
 

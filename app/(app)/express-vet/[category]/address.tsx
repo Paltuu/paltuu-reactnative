@@ -7,10 +7,11 @@ import { useAuthStore } from '../../../../src/stores/authStore';
 import { useLocationStore } from '../../../../src/stores/locationStore';
 import { useExpressVetDraftStore } from '../../../../src/stores/expressVetDraftStore';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import PhoneInput, { isValidPkPhone, normalizeIncomingPhone } from '../../../../src/components/ui/PhoneInput';
 import { useKeyboardVisible } from '../../../../src/hooks/useKeyboardVisible';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
 
-const DARK = '#1A1A2E';
 const H_PAD = 20;
 
 export default function ExpressVetAddressScreen() {
@@ -24,12 +25,12 @@ export default function ExpressVetAddressScreen() {
   const [line, setLine] = useState(addressLine);
   const [landmark, setLandmark] = useState(addressLandmark);
   const [maps, setMaps] = useState(mapsLink);
-  const [phone, setPhone] = useState(contactPhone || (user?.phone_number ?? '').replace(/^\+?92/, '').replace(/^0/, ''));
+  const [phone, setPhone] = useState(contactPhone || normalizeIncomingPhone(user?.phone_number));
 
   useEffect(() => {
     // Prefill once, if the draft store didn't already have a value from a previous pass through this screen.
     if (!contactPhone && user?.phone_number) {
-      setPhone(user.phone_number.replace(/^\+?92/, '').replace(/^0/, ''));
+      setPhone(normalizeIncomingPhone(user.phone_number));
     }
   }, [user?.phone_number]);
 
@@ -38,15 +39,15 @@ export default function ExpressVetAddressScreen() {
       Alert.alert('Required', 'Please enter the visit address.');
       return;
     }
-    if (phone.length !== 10) {
-      Alert.alert('Invalid number', 'Please enter a 10-digit contact number (e.g. 3001234567).');
+    if (!isValidPkPhone(phone)) {
+      Alert.alert('Invalid number', 'Please enter a 10-digit contact number.');
       return;
     }
     setAddress({
       addressLine: line.trim(),
       addressLandmark: landmark.trim(),
       mapsLink: maps.trim(),
-      contactPhone: `+92${phone.replace(/^0/, '')}`,
+      contactPhone: phone,
     });
     router.push({
       pathname: '/(app)/express-vet/[category]/review-and-submit',
@@ -82,7 +83,7 @@ export default function ExpressVetAddressScreen() {
               value={line}
               onChangeText={setLine}
               placeholder="House/flat number, street, area…"
-              placeholderTextColor="#B0B7C3"
+              placeholderTextColor={COLORS.textPlaceholder}
               multiline
               autoFocus
             />
@@ -97,7 +98,7 @@ export default function ExpressVetAddressScreen() {
               value={landmark}
               onChangeText={setLandmark}
               placeholder="e.g. Near Hill Park, DHA"
-              placeholderTextColor="#B0B7C3"
+              placeholderTextColor={COLORS.textPlaceholder}
             />
           </View>
 
@@ -110,7 +111,7 @@ export default function ExpressVetAddressScreen() {
               value={maps}
               onChangeText={setMaps}
               placeholder="Paste a Google Maps link to your location"
-              placeholderTextColor="#B0B7C3"
+              placeholderTextColor={COLORS.textPlaceholder}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -119,18 +120,7 @@ export default function ExpressVetAddressScreen() {
 
           <View style={{ gap: 8 }}>
             <Text style={styles.fieldLabel}>Contact number</Text>
-            <View style={styles.prefixRow}>
-              <Text style={styles.prefix}>+92</Text>
-              <TextInput
-                style={styles.prefixInput}
-                value={phone}
-                onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
-                placeholder="3001234567"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="number-pad"
-                maxLength={10}
-              />
-            </View>
+            <PhoneInput value={phone} onChangeValue={setPhone} />
           </View>
         </ScrollView>
 
@@ -157,11 +147,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
-  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: DARK },
-  optionalTag: { fontFamily: FONTS.body, fontSize: 12, color: '#B0B7C3' },
+  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.textDark },
+  optionalTag: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textPlaceholder },
 
   input: {
     borderWidth: 1.5,
@@ -171,33 +161,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-
-  prefixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  prefix: {
-    fontSize: 14,
-    fontFamily: FONTS.bodyBold,
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  prefixInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: FONTS.body,
-    color: DARK,
-  },
 
   bottom: {
     paddingHorizontal: H_PAD,

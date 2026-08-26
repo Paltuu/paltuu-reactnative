@@ -11,10 +11,11 @@ import { expressVetDispatchApi } from '../../../../src/api/expressVetDispatch';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import { uploadImageToS3 } from '../../../../src/utils/uploadImage';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
+import PhoneInput, { isValidPkPhone } from '../../../../src/components/ui/PhoneInput';
+import { showApiErrorAlert } from '../../../../src/utils/apiError';
+import { COLORS } from '../../../../src/constants/colors';
 import { FONTS } from '../../../../src/constants/typography';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 const ALL_CATEGORIES = ['express_vet', 'normal_vet', 'neutering', 'spaying', 'vaccination', 'grooming'];
 
@@ -53,7 +54,7 @@ export default function ExpressVetNewProviderScreen() {
       queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
       router.replace({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any);
     },
-    onError: () => Alert.alert('Something went wrong', 'Could not create this provider. Please try again.'),
+    onError: (err) => showApiErrorAlert(err, 'Could not create this provider. Please try again.'),
   });
 
   const handleCreate = async () => {
@@ -63,6 +64,10 @@ export default function ExpressVetNewProviderScreen() {
     }
     if (categories.length === 0) {
       Alert.alert('Required', 'Please select at least one category.');
+      return;
+    }
+    if (phone && !isValidPkPhone(phone)) {
+      Alert.alert('Incomplete phone number', 'Please enter all 10 digits, or clear the field to leave it blank.');
       return;
     }
 
@@ -84,7 +89,7 @@ export default function ExpressVetNewProviderScreen() {
       photo_url: photoUrl,
       years_experience: years ? Number(years) : null,
       qualifications: qualifications.trim() || null,
-      phone_number: phone.trim() || null,
+      phone_number: isValidPkPhone(phone) ? phone : null,
       categories,
     });
   };
@@ -110,7 +115,7 @@ export default function ExpressVetNewProviderScreen() {
             <Image source={{ uri: newPhoto.uri }} style={styles.photoPreview} contentFit="cover" />
           ) : (
             <>
-              <Ionicons name="camera-outline" size={22} color="#B0B7C3" />
+              <Ionicons name="camera-outline" size={22} color={COLORS.textPlaceholder} />
               <Text style={styles.photoPickerText}>Add a photo (optional)</Text>
             </>
           )}
@@ -118,7 +123,7 @@ export default function ExpressVetNewProviderScreen() {
 
         <View style={{ gap: 8 }}>
           <Text style={styles.fieldLabel}>Name</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor="#B0B7C3" />
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={COLORS.textPlaceholder} />
         </View>
 
         <View style={{ gap: 8 }}>
@@ -132,7 +137,7 @@ export default function ExpressVetNewProviderScreen() {
                   style={[styles.categoryChip, active && styles.categoryChipActive]}
                   onPress={() => toggleCategory(c)}
                 >
-                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[c] ?? 'paw'} size={14} color={active ? PRIMARY : '#8A8A94'} />
+                  <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[c] ?? 'paw'} size={14} color={active ? COLORS.primary : COLORS.textMuted} />
                   <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{c.replace('_', ' ')}</Text>
                 </TouchableOpacity>
               );
@@ -148,7 +153,7 @@ export default function ExpressVetNewProviderScreen() {
             onChangeText={setYears}
             placeholder="Optional"
             keyboardType="number-pad"
-            placeholderTextColor="#B0B7C3"
+            placeholderTextColor={COLORS.textPlaceholder}
           />
         </View>
 
@@ -159,20 +164,13 @@ export default function ExpressVetNewProviderScreen() {
             value={qualifications}
             onChangeText={setQualifications}
             placeholder="Optional"
-            placeholderTextColor="#B0B7C3"
+            placeholderTextColor={COLORS.textPlaceholder}
           />
         </View>
 
         <View style={{ gap: 8 }}>
           <Text style={styles.fieldLabel}>Phone (your own reference)</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="Optional"
-            keyboardType="phone-pad"
-            placeholderTextColor="#B0B7C3"
-          />
+          <PhoneInput value={phone} onChangeValue={setPhone} />
         </View>
       </ScrollView>
 
@@ -200,9 +198,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
 
-  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: DARK },
+  fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.textDark },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
@@ -211,7 +209,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: FONTS.body,
-    color: DARK,
+    color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
 
@@ -227,7 +225,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   photoPreview: { width: '100%', height: '100%' },
-  photoPickerText: { fontFamily: FONTS.body, fontSize: 12, color: '#B0B7C3' },
+  photoPickerText: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textPlaceholder },
 
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: {
@@ -241,9 +239,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  categoryChipActive: { borderColor: PRIMARY, backgroundColor: '#FAF0F2' },
-  categoryChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: '#8A8A94', textTransform: 'capitalize' },
-  categoryChipTextActive: { color: PRIMARY },
+  categoryChipActive: { borderColor: COLORS.primary, backgroundColor: '#FAF0F2' },
+  categoryChipText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: COLORS.textMuted, textTransform: 'capitalize' },
+  categoryChipTextActive: { color: COLORS.primary },
 
   bottom: { paddingHorizontal: H_PAD, paddingTop: 8 },
 });

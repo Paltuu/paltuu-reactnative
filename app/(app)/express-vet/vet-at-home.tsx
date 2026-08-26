@@ -8,6 +8,8 @@ import { expressVetApi } from '../../../src/api/expressVet';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { lowestStartingPrice } from '../../../src/constants/expressVet';
 import { FONTS } from '../../../src/constants/typography';
+import { COLORS } from '../../../src/constants/colors';
+import { QueryErrorState } from '../../../src/components/ui/QueryErrorState';
 
 // Entry point for the "Doorstep Vet" Pets-tab section — the client never sees the raw
 // express_vet/normal_vet category names; it's presented here as "Urgent Visit" vs.
@@ -15,8 +17,6 @@ import { FONTS } from '../../../src/constants/typography';
 // so asking about urgency first doesn't read as ranking one option above the other.
 // Picking either continues into the existing species.tsx flow unchanged, just with
 // `category` set to whichever was picked.
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 export default function VetAtHomeChoiceScreen() {
@@ -24,7 +24,7 @@ export default function VetAtHomeChoiceScreen() {
   const insets = useSafeAreaInsets();
   const cityId = useLocationStore((s) => s.cityId);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -53,8 +53,10 @@ export default function VetAtHomeChoiceScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load visit options." onRetry={refetch} />
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40, gap: 14 }}
@@ -62,7 +64,7 @@ export default function VetAtHomeChoiceScreen() {
         >
           <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('express_vet')}>
             <View style={styles.cardIconWrap}>
-              <Ionicons name="flash" size={20} color={PRIMARY} />
+              <Ionicons name="flash" size={20} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardLabel}>Urgent Visit</Text>
@@ -76,7 +78,7 @@ export default function VetAtHomeChoiceScreen() {
 
           <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => goTo('normal_vet')}>
             <View style={styles.cardIconWrap}>
-              <Ionicons name="calendar-outline" size={20} color={PRIMARY} />
+              <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardLabel}>Scheduled Visit</Text>
@@ -106,8 +108,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 22, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   card: {
     flexDirection: 'row',
@@ -130,19 +132,19 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 17,
-    color: DARK,
+    color: COLORS.textDark,
   },
   cardDescription: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 3,
     lineHeight: 16,
   },
   cardPrice: {
     fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: PRIMARY,
+    color: COLORS.primary,
     marginTop: 6,
   },
 });

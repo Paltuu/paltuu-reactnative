@@ -8,9 +8,9 @@ import { expressVetApi } from '../../../src/api/expressVet';
 import { useLocationStore } from '../../../src/stores/locationStore';
 import { EXPRESS_VET_SECTIONS, lowestStartingPriceForCategories } from '../../../src/constants/expressVet';
 import { FONTS } from '../../../src/constants/typography';
+import { COLORS } from '../../../src/constants/colors';
+import { QueryErrorState } from '../../../src/components/ui/QueryErrorState';
 
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 
 export default function ExpressVetIndexScreen() {
@@ -18,7 +18,7 @@ export default function ExpressVetIndexScreen() {
   const insets = useSafeAreaInsets();
   const cityId = useLocationStore((s) => s.cityId);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -47,8 +47,10 @@ export default function ExpressVetIndexScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load Vets at Home." onRetry={refetch} />
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40 }}
@@ -102,9 +104,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 26, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
-  myRequestsLink: { fontFamily: FONTS.bodyBold, fontSize: 12, color: PRIMARY },
+  title: { fontFamily: FONTS.heading, fontSize: 26, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  myRequestsLink: { fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.primary },
 
   card: {
     flexDirection: 'row',
@@ -119,12 +121,12 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 16,
-    color: DARK,
+    color: COLORS.textDark,
   },
   cardSubtitle: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   cardPrice: {

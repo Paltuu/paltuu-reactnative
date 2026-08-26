@@ -114,6 +114,7 @@ export default (): ExpoConfig => {
     plugins: [
       "expo-secure-store",
       "expo-apple-authentication",
+      "@react-native-community/datetimepicker",
       [
         "expo-splash-screen",
         {

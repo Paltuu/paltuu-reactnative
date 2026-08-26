@@ -9,10 +9,8 @@ import { useIncomingCallStore, IncomingExpressVetCallPayload } from '../../../sr
 import { dismissAndroidIncomingAlert } from '../../../src/services/androidDispatchAlert';
 import { expressVetDispatchApi } from '../../../src/api/expressVetDispatch';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../src/constants/expressVet';
+import { COLORS } from '../../../src/constants/colors';
 import { FONTS } from '../../../src/constants/typography';
-
-const PRIMARY = '#A03048';
-const DARK = '#1A1A2E';
 
 /**
  * Android-only full-screen incoming-job alert — what a notifee `fullScreenAction`
@@ -100,14 +98,14 @@ export default function IncomingAlertScreen() {
           <Image source={{ uri: payload.client_photo_url }} style={styles.photo} contentFit="cover" />
         ) : (
           <View style={[styles.photo, styles.photoFallback]}>
-            <Ionicons name="person" size={48} color="#B0B7C3" />
+            <Ionicons name="person" size={48} color={COLORS.textPlaceholder} />
           </View>
         )}
 
         <Text style={styles.clientName}>{payload.client_name}</Text>
 
         <View style={styles.categoryRow}>
-          <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[payload.category] ?? 'paw'} size={16} color={PRIMARY} />
+          <Ionicons name={EXPRESS_VET_CATEGORY_ICONS[payload.category] ?? 'paw'} size={16} color={COLORS.primary} />
           <Text style={styles.categoryText}>{payload.category.replace(/_/g, ' ')}</Text>
         </View>
 
@@ -130,7 +128,7 @@ export default function IncomingAlertScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: DARK },
+  root: { flex: 1, backgroundColor: COLORS.textDark },
   content: { flex: 1, alignItems: 'center', paddingHorizontal: 32, justifyContent: 'space-between' },
   eyebrow: { fontFamily: FONTS.bodyBold, fontSize: 13, color: '#C4C4CC', letterSpacing: 0.5, textTransform: 'uppercase' },
   photo: { width: 120, height: 120, borderRadius: 60, marginTop: 24 },

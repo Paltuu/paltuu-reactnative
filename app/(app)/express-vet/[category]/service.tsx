@@ -14,6 +14,8 @@ import {
 } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
+import { COLORS } from '../../../../src/constants/colors';
+import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
 
 // Grooming-only step, inserted between species.tsx and questionnaire.tsx. Every other
 // category prices at the category+species level alone (single "Starting from" figure, no
@@ -21,8 +23,6 @@ import { FONTS } from '../../../../src/constants/typography';
 // (a fixed-price package), any individual items, or both together (extras on top of the
 // package). The running total is what gets shown as this booking's "Starting from" price —
 // still an estimate, confirmed on the dispatcher's call, same as every other category.
-const DARK = '#1A1A2E';
-const PRIMARY = '#A03048';
 const H_PAD = 20;
 const QUICK_CLEAN_KEY = 'quick_clean';
 
@@ -33,7 +33,7 @@ export default function ExpressVetGroomingServiceScreen() {
   const cityId = useLocationStore((s) => s.cityId);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const { data: config, isPending } = useQuery({
+  const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
     queryFn: expressVetApi.getConfig,
     staleTime: 1000 * 60 * 30,
@@ -81,8 +81,10 @@ export default function ExpressVetGroomingServiceScreen() {
 
       {isPending ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={PRIMARY} />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
+      ) : isError ? (
+        <QueryErrorState error={error} fallbackMessage="Could not load grooming services." onRetry={refetch} />
       ) : (
         <>
           <ScrollView
@@ -127,7 +129,7 @@ export default function ExpressVetGroomingServiceScreen() {
                   <Ionicons
                     name={active ? 'checkbox' : 'square-outline'}
                     size={24}
-                    color={active ? PRIMARY : '#D1D5DB'}
+                    color={active ? COLORS.primary : '#D1D5DB'}
                   />
                 </TouchableOpacity>
               );
@@ -160,8 +162,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  title: { fontFamily: FONTS.heading, fontSize: 20, color: DARK },
-  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: '#8A8A94', marginTop: 2 },
+  title: { fontFamily: FONTS.heading, fontSize: 20, color: COLORS.textDark },
+  subtitle: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
 
   row: {
     flexDirection: 'row',
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
     borderColor: '#F0D8DC',
   },
   rowActive: {
-    borderColor: PRIMARY,
+    borderColor: COLORS.primary,
     backgroundColor: '#FAF0F2',
   },
   rowDisabled: {
@@ -186,10 +188,10 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: FONTS.bodyBold,
     fontSize: 15,
-    color: DARK,
+    color: COLORS.textDark,
   },
   packageBadge: {
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.primary,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -203,13 +205,13 @@ const styles = StyleSheet.create({
   rowDescription: {
     fontFamily: FONTS.body,
     fontSize: 12,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   rowPrice: {
     fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    color: PRIMARY,
+    color: COLORS.primary,
     marginTop: 4,
   },
 
@@ -229,11 +231,11 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontFamily: FONTS.body,
     fontSize: 13,
-    color: '#8A8A94',
+    color: COLORS.textMuted,
   },
   totalValue: {
     fontFamily: FONTS.heading,
     fontSize: 20,
-    color: PRIMARY,
+    color: COLORS.primary,
   },
 });
