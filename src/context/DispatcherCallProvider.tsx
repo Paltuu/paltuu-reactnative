@@ -172,15 +172,12 @@ export function DispatcherCallProvider({ children }: { children: ReactNode }) {
           await displayAndroidIncomingAlert(parseExpressVetAlertData(remoteMessage.data));
         });
 
-        // Cold start: app was fully killed and got launched by the dispatcher tapping the
-        // alert (or its full-screen auto-launch). Handles the equivalent of what
-        // notifee.onBackgroundEvent (index.js) can't do — that fires before JS/navigation
-        // is ready, this runs once this provider (and the router) is mounted.
-        notifee.getInitialNotification().then((initial: any) => {
-          if (active && initial && isExpressVetAlertOpenEvent({ detail: initial })) {
-            openAlertScreen(initial.notification);
-          }
-        });
+        // Cold start (app fully killed, launched by the alert) is handled earlier, in
+        // app/_layout.tsx's navigation-protection effect — before its own first redirect
+        // decision, so the app lands directly on the call screen instead of landing on the
+        // dispatch console first and hopping to the call screen a beat later once this
+        // provider got around to checking. Checking it again here would just re-navigate to
+        // a route the user's already on. This provider only needs the backgrounded case.
 
         // App backgrounded (not killed) when the dispatcher taps the alert.
         cleanupNotifeeForeground = notifee.onForegroundEvent(({ detail }: any) => {

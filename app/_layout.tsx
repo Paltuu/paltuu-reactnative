@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -34,6 +34,8 @@ import * as TaskManager from 'expo-task-manager';
 import * as Updates from 'expo-updates';
 import { NotificationProvider } from '../src/context/NotificationContext';
 import { DispatcherCallProvider } from '../src/context/DispatcherCallProvider';
+import { isExpressVetAlertOpenEvent } from '../src/services/androidDispatchAlert';
+import { useIncomingCallStore } from '../src/stores/incomingCallStore';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
@@ -92,6 +94,19 @@ export default function RootLayout() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const initialNotifHandled = useRef(false);
+  // Android cold start via the dispatcher ringing alert: checked once, ahead of the normal
+  // redirect decision below, so the app can land directly on the call screen instead of
+  // landing on the dispatch console first and then hopping to the call screen a beat later
+  // (that hop is what read as a flash of the wrong screen — DispatcherCallProvider's own
+  // check for this ran as an afterthought, well after this effect had already redirected
+  // somewhere else). `route` stays null until this resolves one way or the other, and the
+  // redirect effect below waits on it rather than proceeding without an answer.
+  const pendingDispatchAlert = useRef<{ checked: boolean; checking: boolean; route: string | null }>({
+    checked: Platform.OS !== 'android',
+    checking: false,
+    route: null,
+  });
+  const [dispatchAlertCheckTick, setDispatchAlertCheckTick] = useState(0);
 
   // 1. Initial Hydration
   useEffect(() => {
@@ -154,6 +169,37 @@ export default function RootLayout() {
     // segment happened to be this string as "already on the console".
     const onDispatchConsole = inAppGroup && (segments as string[])[1] === 'express-vet-dispatch';
 
+    // Check once, ahead of any redirect below, whether this launch was the OS auto-opening
+    // the app for the full-screen ringing alert (killed-app cold start) — see the ref's
+    // declaration above for why this has to happen before the redirect decision, not after.
+    // `checking` (distinct from `checked`) guards against a second copy of this async check
+    // firing if some unrelated dependency (e.g. segments) re-runs this effect while the
+    // first one is still in flight.
+    if (Platform.OS === 'android' && isAuthenticated && isDispatcher && !pendingDispatchAlert.current.checked) {
+      if (!pendingDispatchAlert.current.checking) {
+        pendingDispatchAlert.current.checking = true;
+        (async () => {
+          try {
+            const notifee = require('@notifee/react-native').default;
+            const initial = await notifee.getInitialNotification();
+            if (initial && isExpressVetAlertOpenEvent({ detail: initial })) {
+              const alertId = initial.notification?.id;
+              const raw = initial.notification?.data?.payload;
+              if (alertId && typeof raw === 'string') {
+                useIncomingCallStore.getState().register(alertId, JSON.parse(raw));
+                pendingDispatchAlert.current.route = `/(app)/express-vet-dispatch/incoming-alert?alertId=${alertId}`;
+              }
+            }
+          } catch {
+            // Nothing to recover — proceed with the normal landing below.
+          }
+          pendingDispatchAlert.current.checked = true;
+          setDispatchAlertCheckTick((t) => t + 1); // re-run this effect now the check is resolved
+        })();
+      }
+      return; // nothing to decide until the check above resolves
+    }
+
     if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
       // TEMP: onboarding slides are disabled — send everyone straight to welcome.
       // Re-enable by restoring: router.replace(!hasSeenOnboarding ? '/onboarding' : '/(auth)/welcome');
@@ -161,7 +207,9 @@ export default function RootLayout() {
     } else if (isAuthenticated && inAuthGroup) {
       const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
       if (!newUser) {
-        router.replace(isDispatcher ? '/(app)/express-vet-dispatch' : '/(app)');
+        router.replace(
+          (pendingDispatchAlert.current.route ?? (isDispatcher ? '/(app)/express-vet-dispatch' : '/(app)')) as any
+        );
       } else {
         router.replace(needsUsername ? '/oauth-username' : '/interests');
       }
@@ -180,10 +228,11 @@ export default function RootLayout() {
       // drop a dispatcher straight into the consumer app. `(auth)` is already handled by
       // the branch above, and the two post-auth flow screens stay exempt so a brand-new
       // dispatcher account can still finish onboarding before being pinned to the console.
-      router.replace('/(app)/express-vet-dispatch');
+      router.replace((pendingDispatchAlert.current.route ?? '/(app)/express-vet-dispatch') as any);
     }
   }, [
     isAuthenticated,
+    dispatchAlertCheckTick,
     isLoading,
     segments,
     fontsLoaded,
