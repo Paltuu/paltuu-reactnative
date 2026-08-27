@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.11",
+    version: "1.0.12",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -37,7 +37,7 @@ export default (): ExpoConfig => {
       // mean — three separate 1.0.10 builds today all defaulted to buildNumber "1" with
       // nothing here to bump it). Bump this by hand alongside android.versionCode whenever
       // submitting a new production build for the same `version`.
-      buildNumber: "3",
+      buildNumber: "4",
       googleServicesFile: "./GoogleService-Info.plist",
       usesAppleSignIn: true,
       infoPlist: {
@@ -58,7 +58,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 21,
+      versionCode: 22,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
