@@ -15,6 +15,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,19 @@ import PaltuuButton from '../../../../../src/components/ui/PaltuuButton';
 import { useKeyboardVisible } from '../../../../../src/hooks/useKeyboardVisible';
 import { uploadImageToS3 } from '../../../../../src/utils/uploadImage';
 import { FONTS } from '../../../../../src/constants/typography';
+
+// require(), not a static import: binaries built before @react-native-community/datetimepicker
+// was added (prod 1.0.10 / 1.0.11 — still live on iOS) throw at module-eval inside this package
+// (TurboModuleRegistry.getEnforcing('RNCDatePicker')). Catching it here lets those builds fall
+// back to the plain text inputs below instead of black-screening the whole screen. Once every
+// shipped platform is on a binary that bundles the module (>= 1.0.12), this can go back to a
+// normal import and the text-input fallback can be deleted.
+let NativeDateTimePicker: React.ComponentType<any> | null = null;
+try {
+  NativeDateTimePicker = require('@react-native-community/datetimepicker').default;
+} catch {
+  NativeDateTimePicker = null;
+}
 
 const DARK = '#1A1A2E';
 const PRIMARY = '#A03048';
@@ -44,16 +58,34 @@ export default function ExpressVetAssignScreen() {
   const request = requestData?.request;
 
   const [finalPrice, setFinalPrice] = useState(request?.starting_price_pkr ? String(request.starting_price_pkr) : '');
-  const [scheduledDate, setScheduledDate] = useState(''); // YYYY-MM-DD
-  const [scheduledTime, setScheduledTime] = useState(''); // HH:MM, 24h
   const [mode, setMode] = useState<Mode>('search');
 
-  // Combines the two plain-text fields into a real Date so we can validate it's an actual,
-  // parseable date/time before letting the dispatcher submit — a native date/time picker
-  // would be the nicer UX here, but adding one means a new native dependency and a fresh
-  // `expo prebuild` verification pass (see the CallKit plugins for why that matters), which
-  // isn't worth it for this one internal-tool field. Revisit if dispatchers find this fiddly.
-  const parseScheduledAt = (): Date | null => {
+  // Native picker is the primary path; `scheduledAt` is the single source of truth for it.
+  const canUseNativePicker = NativeDateTimePicker != null;
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  // Text fallback — only rendered on binaries that don't bundle the native picker module.
+  const [scheduledDate, setScheduledDate] = useState(''); // YYYY-MM-DD
+  const [scheduledTime, setScheduledTime] = useState(''); // HH:MM, 24h
+
+  const mergeDateAndTime = (prev: Date | null, picked: Date, targetMode: 'date' | 'time'): Date => {
+    const base = prev ?? new Date();
+    return targetMode === 'date'
+      ? new Date(picked.getFullYear(), picked.getMonth(), picked.getDate(), base.getHours(), base.getMinutes())
+      : new Date(base.getFullYear(), base.getMonth(), base.getDate(), picked.getHours(), picked.getMinutes());
+  };
+
+  const onPickerChange = (event: { type?: string }, picked?: Date) => {
+    // Android's dialog is a one-shot modal that dismisses itself; iOS's inline spinner stays
+    // open until the "Done" button below is tapped.
+    if (Platform.OS === 'android') setPickerMode(null);
+    if (event?.type === 'dismissed' || !picked || !pickerMode) return;
+    setScheduledAt((prev) => mergeDateAndTime(prev, picked, pickerMode));
+  };
+
+  // Resolves whichever input path is active into a real Date (or null if incomplete/unparseable).
+  const resolveScheduledAt = (): Date | null => {
+    if (canUseNativePicker) return scheduledAt;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate) || !/^\d{1,2}:\d{2}$/.test(scheduledTime)) return null;
     const d = new Date(`${scheduledDate}T${scheduledTime.padStart(5, '0')}:00`);
     return Number.isNaN(d.getTime()) ? null : d;
@@ -129,9 +161,18 @@ export default function ExpressVetAssignScreen() {
       Alert.alert('Required', 'Please enter a valid final price.');
       return;
     }
-    const scheduledAt = parseScheduledAt();
+    const scheduledAt = resolveScheduledAt();
     if (!scheduledAt) {
-      Alert.alert('Required', 'Please enter a valid visit date (YYYY-MM-DD) and time (HH:MM).');
+      Alert.alert(
+        'Required',
+        canUseNativePicker
+          ? 'Please select a visit date and time.'
+          : 'Please enter a valid visit date (YYYY-MM-DD) and time (HH:MM).'
+      );
+      return;
+    }
+    if (scheduledAt.getTime() <= Date.now()) {
+      Alert.alert('Invalid time', 'The visit must be scheduled for a future date and time.');
       return;
     }
 
@@ -205,26 +246,63 @@ export default function ExpressVetAssignScreen() {
 
           <View style={{ gap: 8 }}>
             <Text style={styles.fieldLabel}>Visit date & time</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                value={scheduledDate}
-                onChangeText={setScheduledDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-              />
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                value={scheduledTime}
-                onChangeText={setScheduledTime}
-                placeholder="HH:MM (24h)"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
-            </View>
+            {canUseNativePicker ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.input, styles.pickerField, { flex: 1 }]}
+                    onPress={() => setPickerMode('date')}
+                  >
+                    <Text style={scheduledAt ? styles.pickerValueText : styles.pickerPlaceholderText}>
+                      {scheduledAt ? format(scheduledAt, 'EEE, MMM d') : 'Select date'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.input, styles.pickerField, { flex: 1 }]}
+                    onPress={() => setPickerMode('time')}
+                  >
+                    <Text style={scheduledAt ? styles.pickerValueText : styles.pickerPlaceholderText}>
+                      {scheduledAt ? format(scheduledAt, 'h:mm a') : 'Select time'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {pickerMode && NativeDateTimePicker && (
+                  <NativeDateTimePicker
+                    value={scheduledAt ?? new Date()}
+                    mode={pickerMode}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    minimumDate={new Date()}
+                    onChange={onPickerChange}
+                  />
+                )}
+                {Platform.OS === 'ios' && pickerMode && (
+                  <TouchableOpacity onPress={() => setPickerMode(null)} style={styles.pickerDoneButton}>
+                    <Text style={styles.pickerDoneText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  value={scheduledDate}
+                  onChangeText={setScheduledDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#B0B7C3"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={10}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  value={scheduledTime}
+                  onChangeText={setScheduledTime}
+                  placeholder="HH:MM (24h)"
+                  placeholderTextColor="#B0B7C3"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                />
+              </View>
+            )}
           </View>
 
           <View style={styles.modeRow}>
@@ -370,6 +448,11 @@ const styles = StyleSheet.create({
     color: DARK,
     backgroundColor: '#FFFFFF',
   },
+  pickerField: { justifyContent: 'center', minHeight: 46 },
+  pickerValueText: { fontSize: 14, fontFamily: FONTS.bodyBold, color: DARK },
+  pickerPlaceholderText: { fontSize: 14, fontFamily: FONTS.body, color: '#B0B7C3' },
+  pickerDoneButton: { alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 4 },
+  pickerDoneText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: PRIMARY },
 
   modeRow: { flexDirection: 'row', gap: 8 },
   modeTab: {
