@@ -20,6 +20,8 @@ expo-env.d.ts
 *.mobileprovision
 *.aab
 *.apk
+credentials.json
+/credentials/
 
 # Metro
 .metro-health-check*
