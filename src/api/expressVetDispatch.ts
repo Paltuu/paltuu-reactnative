@@ -162,6 +162,14 @@ export const expressVetDispatchApi = {
     return data;
   },
 
+  // The caller's own provider row (linked_user_id = me), created the first time they
+  // assign a job to themselves. `provider` is null until then. Edited through the same
+  // screen as any other provider — see providers/[id].tsx.
+  async getMyProviderProfile(): Promise<{ provider: ExpressVetProvider | null }> {
+    const { data } = await client.get('/express-vet/dispatcher/providers/me');
+    return data;
+  },
+
   async updateProvider(id: string | number, patch: Partial<NewProviderInput & { is_active: boolean }>): Promise<{ provider: ExpressVetProvider }> {
     const { data } = await client.patch(`/express-vet/dispatcher/providers/${id}`, patch);
     return data;

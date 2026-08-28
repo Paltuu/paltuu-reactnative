@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider } from '../../../../src/api/expressVetDispatch';
+import { useAuthStore } from '../../../../src/stores/authStore';
 import { QueryErrorState } from '../../../../src/components/ui/QueryErrorState';
 import { COLORS } from '../../../../src/constants/colors';
 import { FONTS } from '../../../../src/constants/typography';
@@ -16,12 +17,35 @@ export default function ExpressVetProvidersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-providers-roster', search],
     queryFn: () => expressVetDispatchApi.searchProviders({ search }),
   });
   const providers = data?.data ?? [];
+
+  // The dispatcher's own vet profile — the row auto-created on their first self-assign.
+  // Edited through the same screen as any other provider; this is just a shortcut to it.
+  const { data: myProfileData } = useQuery({
+    queryKey: ['express-vet-my-provider-profile'],
+    queryFn: expressVetDispatchApi.getMyProviderProfile,
+  });
+  const myProfile = myProfileData?.provider ?? null;
+
+  const openMyProfile = () => {
+    if (myProfile) {
+      router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: myProfile.provider_id } } as any);
+    } else {
+      Alert.alert(
+        'No vet profile yet',
+        'You get your own editable vet profile here the first time you assign a job to yourself.',
+      );
+    }
+  };
+
+  const isMe = (item: ExpressVetProvider) =>
+    currentUserId != null && item.linked_user_id != null && String(item.linked_user_id) === currentUserId;
 
   return (
     <View style={styles.root}>
@@ -43,7 +67,26 @@ export default function ExpressVetProvidersScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ paddingHorizontal: H_PAD, paddingTop: 12 }}>
+      <View style={{ paddingHorizontal: H_PAD, paddingTop: 12, gap: 12 }}>
+        <TouchableOpacity style={styles.myProfileRow} activeOpacity={0.9} onPress={openMyProfile}>
+          {myProfile?.photo_url ? (
+            <Image source={{ uri: myProfile.photo_url }} style={styles.myProfileAvatar} contentFit="cover" />
+          ) : (
+            <View style={[styles.myProfileAvatar, styles.photoFallback]}>
+              <Ionicons name="person" size={18} color={COLORS.primary} />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.myProfileTitle}>My vet profile</Text>
+            <Text style={styles.myProfileSubtitle} numberOfLines={1}>
+              {myProfile
+                ? 'Tap to edit your photo, categories, experience and more'
+                : 'Added automatically the first time you assign a job to yourself'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textPlaceholder} />
+        </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           value={search}
@@ -89,7 +132,14 @@ export default function ExpressVetProvidersScreen() {
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.name}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  {isMe(item) && (
+                    <View style={styles.youBadge}>
+                      <Text style={styles.youBadgeText}>You</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.categories} numberOfLines={1}>
                   {item.categories.map((c) => c.replace('_', ' ')).join(', ')}
                 </Text>
@@ -135,6 +185,31 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     backgroundColor: '#FFFFFF',
   },
+
+  myProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: COLORS.primaryTint,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    padding: 14,
+  },
+  myProfileAvatar: { width: 40, height: 40, borderRadius: 20 },
+  myProfileTitle: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.primary },
+  myProfileSubtitle: { fontFamily: FONTS.body, fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  youBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: COLORS.primaryTint,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  youBadgeText: { fontFamily: FONTS.bodyBold, fontSize: 10, color: COLORS.primary },
 
   row: {
     flexDirection: 'row',

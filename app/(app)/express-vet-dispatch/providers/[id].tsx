@@ -58,6 +58,7 @@ export default function ExpressVetProviderDetailScreen() {
       setNewPhoto(null);
       queryClient.invalidateQueries({ queryKey: ['express-vet-provider', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
+      queryClient.invalidateQueries({ queryKey: ['express-vet-my-provider-profile'] });
     },
     onError: (err) => showApiErrorAlert(err, 'Could not save changes. Please try again.'),
   });
