@@ -161,11 +161,20 @@ const NearbyPetsCarousel = React.memo(function NearbyPetsCarousel({
   );
 });
 
+// Illustration per section, keyed by EXPRESS_VET_SECTIONS' `key` — pixel-art icons matching
+// what each section actually is (stethoscope/scissors/vaccine/grooming tools), converted to
+// webp from the vets-pixel source set.
+// Neutering/Spaying and Vaccination deliberately have no entry here — those two tiles keep
+// the empty illustration slot (per product direction) while Doorstep Vet and Grooming keep
+// their artwork.
+const BENTO_ILLUSTRATIONS: Record<string, any> = {
+  vet_at_home: require('../../../assets/pets-hub/vet-stethoscope.webp'),
+  grooming: require('../../../assets/pets-hub/vet-grooming.webp'),
+};
+
 // Karachi-only. Replaces NearbyPetsCarousel in that layout (see PetsHubScreen). Bento-style
 // grid (not all tiles the same size) matching the rest of the Pets tab's visual language —
-// TILE_BG background like every other tile here, no brand-color highlight on any one card,
-// and an empty illustration slot per tile (no icons) ready for real artwork to be dropped in
-// later — swap `bentoIllustration`'s empty <View> for an <Image source={require(...)} />.
+// TILE_BG background like every other tile here, no brand-color highlight on any one card.
 // Grouped into 4 sections (see EXPRESS_VET_SECTIONS) instead of 6 raw categories, and each
 // section deep-links straight into its picker/species screen, skipping the express-vet index.
 const VetAtHomeSections = React.memo(function VetAtHomeSections({
@@ -179,17 +188,22 @@ const VetAtHomeSections = React.memo(function VetAtHomeSections({
   // divider between the everyday pet tiles and this feature's own section.
   return (
     <View style={{ gap: 10 }}>
-      {/* Hero row — full width, the primary/most-urgent entry point */}
+      {/* Hero row — full width, the primary/most-urgent entry point. Taller than the other
+          tiles (bentoHero, not bentoSmall/bentoTall's shared height budget) so the stethoscope
+          illustration — roughly square, unlike this tile's wide aspect ratio — has real room
+          instead of rendering small and centered in a lot of empty space. */}
       <BentoTile
         section={vetAtHome}
         onPress={() => onPressSection(vetAtHome)}
         tileStyle={styles.bentoHero}
         badge="20% OFF"
+        heroLayout
       />
 
-      {/* Two small tiles stacked on the left, matched in total height by one tall tile on
+      {/* One tall tile on the left, matched in total height by two small tiles stacked on
           the right — the "not all tiles the same size" bento layout. */}
       <View style={styles.bentoRow}>
+        <BentoTile section={grooming} onPress={() => onPressSection(grooming)} tileStyle={styles.bentoTall} />
         <View style={styles.bentoColumn}>
           <BentoTile
             section={neuteringSpaying}
@@ -202,7 +216,6 @@ const VetAtHomeSections = React.memo(function VetAtHomeSections({
             tileStyle={styles.bentoSmall}
           />
         </View>
-        <BentoTile section={grooming} onPress={() => onPressSection(grooming)} tileStyle={styles.bentoTall} />
       </View>
     </View>
   );
@@ -232,12 +245,45 @@ function BentoTile({
   onPress,
   tileStyle,
   badge,
+  heroLayout,
 }: {
   section: (typeof EXPRESS_VET_SECTIONS)[number];
   onPress: () => void;
   tileStyle: any;
   badge?: string;
+  heroLayout?: boolean;
 }) {
+  const illustration = BENTO_ILLUSTRATIONS[section.key];
+
+  // Hero variant (Doorstep Vet) — mirrors heroTile/karachiBigTile's own bleed-art pattern
+  // elsewhere in this file: text pinned bottom-left in its own flex column, a fixed-width
+  // spacer reserves layout room on the right, and the actual illustration is absolutely
+  // positioned oversized/bleeding out of that space rather than being letterboxed small and
+  // centered like the small/tall tiles below it.
+  if (heroLayout) {
+    return (
+      <TouchableOpacity activeOpacity={0.9} style={[styles.bentoTile, tileStyle, styles.bentoHeroRow]} onPress={onPress}>
+        {badge ? (
+          <View style={styles.bentoBadge}>
+            <Text style={styles.bentoBadgeText}>{badge}</Text>
+          </View>
+        ) : null}
+        <View style={styles.bentoHeroText}>
+          <Text style={styles.bentoLabel} numberOfLines={2}>
+            {section.label}
+          </Text>
+          <Text style={styles.bentoCtaText} numberOfLines={2}>
+            {section.subtitle}
+          </Text>
+        </View>
+        <View style={styles.bentoHeroIllustrationSpace} />
+        {illustration && (
+          <Image source={illustration} style={styles.bentoHeroIllustrationImg} contentFit="contain" />
+        )}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity activeOpacity={0.9} style={[styles.bentoTile, tileStyle]} onPress={onPress}>
       {badge ? (
@@ -245,9 +291,11 @@ function BentoTile({
           <Text style={styles.bentoBadgeText}>{badge}</Text>
         </View>
       ) : null}
-      {/* Illustration slot — intentionally empty. Replace with an <Image source={require(...)} />
-          once artwork exists; no icon here per product direction. */}
-      <View style={styles.bentoIllustration} />
+      <View style={styles.bentoIllustration}>
+        {illustration && (
+          <Image source={illustration} style={styles.bentoIllustrationImg} contentFit="contain" />
+        )}
+      </View>
       <View style={styles.bentoFooter}>
         <Text style={styles.bentoLabel} numberOfLines={2}>
           {section.label}
@@ -759,8 +807,10 @@ const styles = StyleSheet.create({
     height: 28,
   },
   presentsText: {
-    fontFamily: FONTS.bodyBold,
-    fontSize: 18,
+    fontFamily: FONTS.pixel,
+    // Pixeled renders visually larger/wider than the DMSans this used to be, so 18 (the old
+    // size) overpowered the subtitle beneath it — 14 reads as the same optical weight.
+    fontSize: 14,
     color: DARK,
   },
   presentsCta: {
@@ -803,6 +853,33 @@ const styles = StyleSheet.create({
   bentoHero: {
     height: 130,
   },
+  bentoHeroRow: {
+    flexDirection: 'row',
+  },
+  bentoHeroText: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingVertical: 14,
+  },
+  // Fixed-width spacer reserving layout room on the right for the illustration.
+  bentoHeroIllustrationSpace: {
+    width: 140,
+  },
+  // Sized deliberately larger than the tile so the stethoscope bleeds past the top and bottom
+  // edges and gets cropped by bentoTile's overflow:'hidden' — same bleed treatment the other
+  // hero tiles on this page use. Negative top/bottom insets make the image box 162 high on a
+  // 130-high tile; contentFit:'contain' then renders the ~square art at the 140 width, and the
+  // 15° rotation pushes its corners out further still.
+  bentoHeroIllustrationImg: {
+    position: 'absolute',
+    top: -16,
+    bottom: -16,
+    right: 10,
+    width: 140,
+    transform: [{ rotate: '-15deg' }],
+  },
   bentoSmall: {
     flex: 1,
     // 76 was too tight: a 2-line label + 2-line subtitle in bentoFooter (~77px incl.
@@ -817,6 +894,13 @@ const styles = StyleSheet.create({
   },
   bentoIllustration: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  bentoIllustrationImg: {
+    width: '100%',
+    height: '100%',
   },
   bentoFooter: {
     paddingHorizontal: 14,
