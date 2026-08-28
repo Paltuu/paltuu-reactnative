@@ -25,9 +25,13 @@ export function getApiErrorInfo(error: unknown, fallbackMessage: string): ApiErr
         Number(error.response.data?.retry_after) ||
         Number(error.response.headers?.['retry-after']) ||
         30;
+      // Prefer a route-specific message from the server (e.g. Vets at Home request
+      // creation's "blocked due to too many requests") over the generic default.
+      const serverMessage =
+        typeof error.response.data?.message === 'string' ? error.response.data.message : null;
       return {
         title: "You're going a bit fast",
-        message: `Please wait ${retryAfter}s and try again.`,
+        message: serverMessage ?? `Please wait ${retryAfter}s and try again.`,
         retryAfterSeconds: retryAfter,
       };
     }
