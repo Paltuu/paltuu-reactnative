@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, A
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider } from '../../../../src/api/expressVetDispatch';
 import { useAuthStore } from '../../../../src/stores/authStore';
@@ -16,6 +16,7 @@ const H_PAD = 20;
 export default function ExpressVetProvidersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const currentUserId = useAuthStore((s) => s.user?.id);
 
@@ -33,14 +34,21 @@ export default function ExpressVetProvidersScreen() {
   });
   const myProfile = myProfileData?.provider ?? null;
 
+  const ensureProfileMutation = useMutation({
+    mutationFn: expressVetDispatchApi.ensureMyProviderProfile,
+    onSuccess: ({ provider }) => {
+      queryClient.setQueryData(['express-vet-my-provider-profile'], { provider });
+      queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
+      router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any);
+    },
+    onError: () => Alert.alert('Something went wrong', 'Could not open your vet profile. Please try again.'),
+  });
+
   const openMyProfile = () => {
     if (myProfile) {
       router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: myProfile.provider_id } } as any);
-    } else {
-      Alert.alert(
-        'No vet profile yet',
-        'You get your own editable vet profile here the first time you assign a job to yourself.',
-      );
+    } else if (!ensureProfileMutation.isPending) {
+      ensureProfileMutation.mutate();
     }
   };
 
@@ -78,13 +86,17 @@ export default function ExpressVetProvidersScreen() {
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.myProfileTitle}>My vet profile</Text>
-            <Text style={styles.myProfileSubtitle} numberOfLines={1}>
+            <Text style={styles.myProfileSubtitle} numberOfLines={2}>
               {myProfile
                 ? 'Tap to edit your photo, categories, experience and more'
-                : 'Added automatically the first time you assign a job to yourself'}
+                : 'Set up your own vet profile so you can take jobs yourself'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.textPlaceholder} />
+          {ensureProfileMutation.isPending ? (
+            <ActivityIndicator color={COLORS.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textPlaceholder} />
+          )}
         </TouchableOpacity>
 
         <TextInput

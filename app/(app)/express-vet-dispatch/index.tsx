@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider } from '../../../src/api/expressVetDispatch';
 import { useAuthStore } from '../../../src/stores/authStore';
@@ -23,6 +23,7 @@ function formatCountdown(until: Date): string {
 export default function ExpressVetDispatchIndexScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
@@ -65,6 +66,32 @@ export default function ExpressVetDispatchIndexScreen() {
     queryFn: () => expressVetDispatchApi.searchProviders({}),
   });
   const providersPreview = (providersData?.data ?? []).slice(0, 3);
+
+  // A dispatcher is also a vet — this is their own editable vet profile (same edit screen
+  // as any other provider). The row is created on demand the first time they open it.
+  const { data: myProfileData } = useQuery({
+    queryKey: ['express-vet-my-provider-profile'],
+    queryFn: expressVetDispatchApi.getMyProviderProfile,
+  });
+  const myProfile = myProfileData?.provider ?? null;
+
+  const ensureProfileMutation = useMutation({
+    mutationFn: expressVetDispatchApi.ensureMyProviderProfile,
+    onSuccess: ({ provider }) => {
+      queryClient.setQueryData(['express-vet-my-provider-profile'], { provider });
+      queryClient.invalidateQueries({ queryKey: ['express-vet-providers-preview'] });
+      router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: provider.provider_id } } as any);
+    },
+    onError: () => Alert.alert('Something went wrong', 'Could not open your vet profile. Please try again.'),
+  });
+
+  const openMyProfile = () => {
+    if (myProfile) {
+      router.push({ pathname: '/(app)/express-vet-dispatch/providers/[id]', params: { id: myProfile.provider_id } } as any);
+    } else if (!ensureProfileMutation.isPending) {
+      ensureProfileMutation.mutate();
+    }
+  };
 
   // `team` is only present in the stats response for admins, and only meaningful for the
   // in-progress/completed-today/total-completed/total-earned tiles — `unconfirmed_count`
@@ -222,6 +249,29 @@ export default function ExpressVetDispatchIndexScreen() {
           </View>
         </View>
 
+        <TouchableOpacity style={styles.myProfileCard} activeOpacity={0.9} onPress={openMyProfile}>
+          {myProfile?.photo_url ? (
+            <Image source={{ uri: myProfile.photo_url }} style={styles.myProfileAvatar} contentFit="cover" />
+          ) : (
+            <View style={[styles.myProfileAvatar, styles.myProfileAvatarFallback]}>
+              <Ionicons name="person" size={20} color={COLORS.primary} />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.myProfileTitle}>My vet profile</Text>
+            <Text style={styles.myProfileSubtitle} numberOfLines={2}>
+              {myProfile
+                ? 'Edit your photo, categories, experience and qualifications'
+                : 'Set up your own vet profile so you can take jobs yourself'}
+            </Text>
+          </View>
+          {ensureProfileMutation.isPending ? (
+            <ActivityIndicator color={COLORS.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textPlaceholder} />
+          )}
+        </TouchableOpacity>
+
         <View style={{ paddingTop: 8, paddingBottom: 16 }}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Providers</Text>
@@ -350,6 +400,23 @@ const styles = StyleSheet.create({
   },
   totalEarnedValue: { fontFamily: FONTS.heading, fontSize: 30, color: COLORS.primary },
   totalEarnedLabel: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.primary, marginTop: 4 },
+
+  myProfileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: COLORS.primaryTint,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  myProfileAvatar: { width: 44, height: 44, borderRadius: 22 },
+  myProfileAvatarFallback: { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  myProfileTitle: { fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.primary },
+  myProfileSubtitle: { fontFamily: FONTS.body, fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
 
   sectionHeaderRow: {
     flexDirection: 'row',
