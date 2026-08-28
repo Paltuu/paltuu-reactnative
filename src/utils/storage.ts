@@ -19,6 +19,11 @@ const STORAGE_KEYS = {
   PET_GALLERY_MASCOT_SEEN: 'pet_gallery_mascot_seen',
   PET_POSTS_MASCOT_SEEN: 'pet_posts_mascot_seen',
   LAST_SEEN_OTA_UPDATE_ID: 'last_seen_ota_update_id',
+  // Dispatcher tapped "I've enabled it" on the full-screen job-alert special-access
+  // reminder. There's no OS API to read that grant back (notifee only exposes the
+  // alarm permission), so this is a manual acknowledgement — once set, the reminder
+  // card stays hidden on this device.
+  DISPATCH_FULLSCREEN_ALERT_ACK: 'dispatch_fullscreen_alert_ack',
 };
 
 // expo-secure-store is not supported on web; fall back to localStorage
@@ -140,6 +145,16 @@ export const storage = {
   async isPetPostsMascotSeen(): Promise<boolean> {
     const val = await store.getItem(STORAGE_KEYS.PET_POSTS_MASCOT_SEEN);
     return val === '1';
+  },
+  async markDispatchFullscreenAlertAck() {
+    await store.setItem(STORAGE_KEYS.DISPATCH_FULLSCREEN_ALERT_ACK, '1');
+  },
+  async isDispatchFullscreenAlertAck(): Promise<boolean> {
+    const val = await store.getItem(STORAGE_KEYS.DISPATCH_FULLSCREEN_ALERT_ACK);
+    return val === '1';
+  },
+  async clearDispatchFullscreenAlertAck() {
+    await store.removeItem(STORAGE_KEYS.DISPATCH_FULLSCREEN_ALERT_ACK);
   },
   async getLastSeenOtaUpdateId(): Promise<string | null> {
     return store.getItem(STORAGE_KEYS.LAST_SEEN_OTA_UPDATE_ID);

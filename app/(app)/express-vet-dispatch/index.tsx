@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expressVetDispatchApi, ExpressVetProvider } from '../../../src/api/expressVetDispatch';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useDispatcherScopeStore } from '../../../src/stores/dispatcherScopeStore';
+import { storage } from '../../../src/utils/storage';
 import { COLORS } from '../../../src/constants/colors';
 import { FONTS } from '../../../src/constants/typography';
 
@@ -55,6 +56,18 @@ export default function ExpressVetDispatchIndexScreen() {
     onSuccess: () => refetchMute(),
     onError: () => Alert.alert('Something went wrong', 'Could not mute alerts. Please try again.'),
   });
+
+  // Full-screen job-alert special-access reminder. There's no OS API to read that grant
+  // back, so we can't auto-detect it — instead the dispatcher taps "I've enabled it" once
+  // and the card stays hidden after that (per device). `null` = still loading, don't flash.
+  const [fsAlertAck, setFsAlertAck] = useState<boolean | null>(null);
+  useEffect(() => {
+    storage.isDispatchFullscreenAlertAck().then(setFsAlertAck);
+  }, []);
+  const markFullScreenAlertDone = () => {
+    setFsAlertAck(true);
+    storage.markDispatchFullscreenAlertAck();
+  };
 
   const { data: stats } = useQuery({
     queryKey: ['express-vet-dispatch-stats'],
@@ -165,15 +178,47 @@ export default function ExpressVetDispatchIndexScreen() {
         contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Name plate — who's signed in. */}
+        <View style={styles.namePlate}>
+          {currentUser?.profile_image_url ? (
+            <Image source={{ uri: currentUser.profile_image_url }} style={styles.namePlateAvatar} contentFit="cover" />
+          ) : (
+            <View style={[styles.namePlateAvatar, styles.namePlateAvatarFallback]}>
+              <Ionicons name="person" size={18} color={COLORS.primary} />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.namePlateName} numberOfLines={1}>{currentUser?.name || 'Dispatcher'}</Text>
+            <Text style={styles.namePlateRole}>{isAdmin ? 'Admin' : 'Dispatcher'}</Text>
+          </View>
+        </View>
+
         {/* One-time system-setup reminders, unrelated to any list content — kept here rather
             than following the inbox down into jobs/index.tsx. */}
-        {Platform.OS === 'android' && (
-          <TouchableOpacity style={styles.alertSettingsHint} onPress={openAlertSettings} activeOpacity={0.85}>
-            <Ionicons name="notifications-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.alertSettingsHintText}>
-              Make sure job alerts are allowed to show over your lock screen — tap to check
-            </Text>
-          </TouchableOpacity>
+        {Platform.OS === 'android' && fsAlertAck === false && (
+          <View style={[styles.alertSettingsHint, { alignItems: 'flex-start' }]}>
+            <Ionicons name="notifications-outline" size={16} color={COLORS.primary} style={{ marginTop: 1 }} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text style={styles.alertSettingsHintText}>
+                Job alerts need permission to take over your screen. On some phones this is a
+                separate toggle — look under{' '}
+                <Text style={styles.alertSettingsHintStrong}>Special app access → Full-screen notifications</Text>{' '}
+                (may also be called “Appear on top” or “Display over other apps”).
+              </Text>
+              <View style={styles.alertHintActions}>
+                <TouchableOpacity style={styles.alertHintBtn} onPress={openAlertSettings} activeOpacity={0.85}>
+                  <Text style={styles.alertHintBtnText}>Open settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.alertHintBtn, styles.alertHintBtnGhost]}
+                  onPress={markFullScreenAlertDone}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.alertHintBtnText, styles.alertHintBtnGhostText]}>I&apos;ve enabled it</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         )}
 
         {Platform.OS === 'android' && (
@@ -350,6 +395,17 @@ const styles = StyleSheet.create({
   muteButtonText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.primary },
   muteButtonTextActive: { color: '#FFFFFF' },
 
+  namePlate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  namePlateAvatar: { width: 40, height: 40, borderRadius: 20 },
+  namePlateAvatarFallback: { backgroundColor: COLORS.primaryTint, alignItems: 'center', justifyContent: 'center' },
+  namePlateName: { fontFamily: FONTS.heading, fontSize: 16, color: COLORS.textDark },
+  namePlateRole: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
+
   alertSettingsHint: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -360,6 +416,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCEFF1',
   },
   alertSettingsHintText: { flex: 1, fontFamily: FONTS.body, fontSize: 12, color: COLORS.textDark },
+  alertSettingsHintStrong: { fontFamily: FONTS.bodyBold, color: COLORS.textDark },
+  alertHintActions: { flexDirection: 'row', gap: 8 },
+  alertHintBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+  },
+  alertHintBtnText: { fontFamily: FONTS.bodyBold, fontSize: 11, color: '#FFFFFF' },
+  alertHintBtnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary },
+  alertHintBtnGhostText: { color: COLORS.primary },
 
   scopeRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   scopeChip: {
