@@ -178,20 +178,28 @@ export default function ExpressVetDispatchIndexScreen() {
         contentContainerStyle={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Name plate — who's signed in. */}
-        <View style={styles.namePlate}>
-          {currentUser?.profile_image_url ? (
-            <Image source={{ uri: currentUser.profile_image_url }} style={styles.namePlateAvatar} contentFit="cover" />
+        <TouchableOpacity style={styles.myProfileCard} activeOpacity={0.9} onPress={openMyProfile}>
+          {myProfile?.photo_url ? (
+            <Image source={{ uri: myProfile.photo_url }} style={styles.myProfileAvatar} contentFit="cover" />
           ) : (
-            <View style={[styles.namePlateAvatar, styles.namePlateAvatarFallback]}>
-              <Ionicons name="person" size={18} color={COLORS.primary} />
+            <View style={[styles.myProfileAvatar, styles.myProfileAvatarFallback]}>
+              <Ionicons name="person" size={20} color={COLORS.primary} />
             </View>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.namePlateName} numberOfLines={1}>{currentUser?.name || 'Dispatcher'}</Text>
-            <Text style={styles.namePlateRole}>{isAdmin ? 'Admin' : 'Dispatcher'}</Text>
+            <Text style={styles.myProfileTitle}>My vet profile</Text>
+            <Text style={styles.myProfileSubtitle} numberOfLines={2}>
+              {myProfile
+                ? 'Edit your photo, categories, experience and qualifications'
+                : 'Set up your own vet profile so you can take jobs yourself'}
+            </Text>
           </View>
-        </View>
+          {ensureProfileMutation.isPending ? (
+            <ActivityIndicator color={COLORS.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textPlaceholder} />
+          )}
+        </TouchableOpacity>
 
         {/* One-time system-setup reminders, unrelated to any list content — kept here rather
             than following the inbox down into jobs/index.tsx. */}
@@ -294,29 +302,6 @@ export default function ExpressVetDispatchIndexScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.myProfileCard} activeOpacity={0.9} onPress={openMyProfile}>
-          {myProfile?.photo_url ? (
-            <Image source={{ uri: myProfile.photo_url }} style={styles.myProfileAvatar} contentFit="cover" />
-          ) : (
-            <View style={[styles.myProfileAvatar, styles.myProfileAvatarFallback]}>
-              <Ionicons name="person" size={20} color={COLORS.primary} />
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.myProfileTitle}>My vet profile</Text>
-            <Text style={styles.myProfileSubtitle} numberOfLines={2}>
-              {myProfile
-                ? 'Edit your photo, categories, experience and qualifications'
-                : 'Set up your own vet profile so you can take jobs yourself'}
-            </Text>
-          </View>
-          {ensureProfileMutation.isPending ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : (
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textPlaceholder} />
-          )}
-        </TouchableOpacity>
-
         <View style={{ paddingTop: 8, paddingBottom: 16 }}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Providers</Text>
@@ -394,17 +379,6 @@ const styles = StyleSheet.create({
   muteButtonActive: { backgroundColor: COLORS.primary },
   muteButtonText: { fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.primary },
   muteButtonTextActive: { color: '#FFFFFF' },
-
-  namePlate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
-  },
-  namePlateAvatar: { width: 40, height: 40, borderRadius: 20 },
-  namePlateAvatarFallback: { backgroundColor: COLORS.primaryTint, alignItems: 'center', justifyContent: 'center' },
-  namePlateName: { fontFamily: FONTS.heading, fontSize: 16, color: COLORS.textDark },
-  namePlateRole: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
 
   alertSettingsHint: {
     flexDirection: 'row',
