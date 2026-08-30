@@ -54,8 +54,18 @@ export default function ExpressVetProviderDetailScreen() {
 
   const updateMutation = useMutation({
     mutationFn: (patch: Record<string, any>) => expressVetDispatchApi.updateProvider(id, patch),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setNewPhoto(null);
+      // Write the saved row straight back into the cache so `isDirty` (and the
+      // Save button's disabled state) flip off immediately — without waiting for
+      // the invalidated query below to refetch. Closes the window where the
+      // just-re-enabled button could be tapped again on unchanged data.
+      if (result?.provider) {
+        queryClient.setQueryData(['express-vet-provider', id], (old: any) => ({
+          ...(old ?? {}),
+          provider: result.provider,
+        }));
+      }
       queryClient.invalidateQueries({ queryKey: ['express-vet-provider', id] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-providers-roster'] });
       queryClient.invalidateQueries({ queryKey: ['express-vet-my-provider-profile'] });
@@ -83,6 +93,20 @@ export default function ExpressVetProviderDetailScreen() {
       setNewPhoto({ uri: jpeg.uri, name: `provider_${Date.now()}.jpg`, type: 'image/jpeg' });
     }
   };
+
+  // Only allow a save when something actually changed. Stops a pointless write,
+  // and stops the Save button being spammed after a successful save (it
+  // re-enables the moment the request finishes). `is_active` has its own toggle
+  // + mutation and isn't part of this form.
+  const isDirty = !!provider && (
+    name.trim() !== provider.name ||
+    years !== (provider.years_experience != null ? String(provider.years_experience) : '') ||
+    qualifications.trim() !== (provider.qualifications ?? '') ||
+    phone !== normalizeIncomingPhone(provider.phone_number) ||
+    categories.length !== provider.categories.length ||
+    categories.some((c) => !provider.categories.includes(c)) ||
+    newPhoto !== null
+  );
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -241,7 +265,7 @@ export default function ExpressVetProviderDetailScreen() {
           </ScrollView>
 
           <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
-            <PaltuuButton label="Save Changes" onPress={handleSave} loading={updateMutation.isPending || isUploadingPhoto} radius={26} />
+            <PaltuuButton label="Save Changes" onPress={handleSave} loading={updateMutation.isPending || isUploadingPhoto} disabled={!isDirty} radius={26} />
           </View>
         </>
       )}
