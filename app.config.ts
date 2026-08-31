@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.12",
+    version: "1.0.13",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -37,7 +37,7 @@ export default (): ExpoConfig => {
       // mean — three separate 1.0.10 builds today all defaulted to buildNumber "1" with
       // nothing here to bump it). Bump this by hand alongside android.versionCode whenever
       // submitting a new production build for the same `version`.
-      buildNumber: "4",
+      buildNumber: "1",
       googleServicesFile: "./GoogleService-Info.plist",
       usesAppleSignIn: true,
       infoPlist: {
@@ -94,6 +94,20 @@ export default (): ExpoConfig => {
     },
     updates: {
       url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      // The `expo-channel-name` request header is what maps a binary to an
+      // EAS Update branch; without it the app asks u.expo.dev for updates and
+      // the server has nothing to resolve, so it receives NOTHING no matter how
+      // well the runtime version matches. Both `eas build` and `eas build
+      // --local` inject it from eas.json's `channel`. A plain `expo prebuild` +
+      // Xcode archive does NOT — eas.json is never consulted. That asymmetry is
+      // exactly what happened on 2026-08-27: the Android AAB (eas build --local)
+      // shipped with {"expo-channel-name":"production"} and takes OTAs fine,
+      // while the iOS 1.0.12 archived from Xcode shipped with no channel at all
+      // and can never receive one. Declaring it here bakes it into prebuild
+      // output so a hand-archived build is OTA-capable too.
+      requestHeaders: {
+        "expo-channel-name": APP_ENV,
+      },
     },
     // Back to "appVersion": simple, reliable string match on `version`
     // above. Bump `version` whenever a native module is added/changed so
@@ -102,6 +116,15 @@ export default (): ExpoConfig => {
     // version bump). "fingerprint" policy was tried and reverted: its
     // computed hash was too sensitive to incidental repo drift to
     // reliably match the live production binary.
+    //
+    // Note this makes `version` the single runtime for BOTH platforms, so a
+    // bump strands any live binary left on the old one until it's rebuilt.
+    // 2026-08-31: `version` went 1.0.12 → 1.0.13 for an iOS-only resubmission
+    // (the live iOS 1.0.12 shipped with no update channel — see
+    // `updates.requestHeaders` above), which moves Android's runtime to 1.0.13
+    // as well. Android production is live at 1.0.12/versionCode 22 and will
+    // receive no further OTAs until an Android 1.0.13 build ships; bump
+    // versionCode past 22 when it does.
     runtimeVersion: {
       policy: "appVersion",
     },

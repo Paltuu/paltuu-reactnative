@@ -52,7 +52,8 @@ function SecurityScreen() {
     } else if (step === 'newPassword') {
       setStep('otp');
     } else {
-      router.navigate('/(app)/profile/settings');
+      if (router.canGoBack()) router.back();
+      else router.replace('/(app)/profile/settings');
     }
   };
 
@@ -119,7 +120,8 @@ function SecurityScreen() {
       setLoading(true);
       await authApi.resetPasswordOtp(email, otp, newPassword);
       Alert.alert('Success', 'Your password has been changed.');
-      router.navigate('/(app)/profile/settings');
+      if (router.canGoBack()) router.back();
+      else router.replace('/(app)/profile/settings');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.error || 'Failed to reset password.');
     } finally {

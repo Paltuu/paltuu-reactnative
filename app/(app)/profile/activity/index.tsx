@@ -38,7 +38,7 @@ function ActivityHubScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="px-5 py-4 flex-row items-center border-b border-gray-100">
-        <TouchableOpacity onPress={() => router.navigate('/(app)/profile')} className="mr-4 p-1">
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/profile'))} className="mr-4 p-1">
           <Feather name="arrow-left" size={24} color="#111" />
         </TouchableOpacity>
         <Text className="font-heading text-xl text-dark">Your activity</Text>

@@ -95,7 +95,7 @@ function SavedCollectionsScreen() {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.navigate('/(app)/profile')} hitSlop={12} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/profile'))} hitSlop={12} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved</Text>

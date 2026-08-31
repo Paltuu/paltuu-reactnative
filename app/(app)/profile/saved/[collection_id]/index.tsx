@@ -65,7 +65,7 @@ function CollectionPostsScreen() {
       <StatusBar barStyle="dark-content" />
       {/* Top Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 56, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB' }}>
-        <TouchableOpacity onPress={() => router.navigate('/(app)/profile/saved')} hitSlop={12} style={{ padding: 4, marginRight: 4 }}>
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/profile/saved'))} hitSlop={12} style={{ padding: 4, marginRight: 4 }}>
           <Ionicons name="chevron-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={{ flex: 1, fontSize: 19, fontWeight: '700', color: '#111', fontFamily: 'Montserrat_700Bold' }} numberOfLines={1}>

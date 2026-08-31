@@ -49,7 +49,8 @@ function PersonalInfoScreen() {
     } else if (step === 'newEmail') {
       setStep('otp');
     } else {
-      router.navigate('/(app)/profile/settings');
+      if (router.canGoBack()) router.back();
+      else router.replace('/(app)/profile/settings');
     }
   };
 
@@ -109,7 +110,8 @@ function PersonalInfoScreen() {
       await authApi.changeEmail(otp, trimmed.toLowerCase());
       await fetchProfile();
       Alert.alert('Success', 'Your email has been updated.');
-      router.navigate('/(app)/profile/settings');
+      if (router.canGoBack()) router.back();
+      else router.replace('/(app)/profile/settings');
     } catch (error: any) {
       const msg = error.response?.data?.error || 'Failed to update email. Please try again.';
       Alert.alert('Error', msg);
