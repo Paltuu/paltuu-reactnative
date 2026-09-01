@@ -59,6 +59,7 @@ export default (): ExpoConfig => {
     android: {
       package: packageName,
       versionCode: 22,
+      runtimeVersion: "1.0.12",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
