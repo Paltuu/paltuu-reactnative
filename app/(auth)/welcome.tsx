@@ -28,8 +28,8 @@ const BUILD_VERSION = Constants.nativeBuildVersion ?? '';
 // max including spaces (3 lines of art, nothing catches the overflow), and no
 // em dashes: Pixeled has no glyph for them. See PawrvezDialog's `text` prop.
 const INTRO_DIALOGS = [
-  "Hey, I'm Pawrvez! Thanks for testing Paltuu before launch - it means a lot.", // 75
-  'This is our beta, so you might hit a rough edge or two along the way.',       // 69
+  "Hey, I'm Pawrvez! So happy you joined Paltuu - it really means a lot to me.", // 75
+  "We're still growing, so you might hit a rough edge or two on the way.",       // 69
   'Spot a bug or have feedback? Just message an admin. You know where to find us.', // 78
   'Every pet deserves a home, and thousands across Pakistan are still waiting.',  // 75
   "Alright, let's get you set up. Welcome to Pakistan's largest pet community!",  // 75
