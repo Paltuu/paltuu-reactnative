@@ -379,7 +379,11 @@ function MediaDetailScreen() {
             </TouchableOpacity>
 
             <View style={styles.pill}>
-              <TouchableOpacity onPress={handleLike} hitSlop={6}>
+              <TouchableOpacity
+                onPress={handleLike}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 2 }}
+                style={{ zIndex: 2 }}
+              >
                 <Image
                   source={likeState.liked ? Icons.pawSelect : Icons.pawUnselect}
                   style={styles.pillIcon}
@@ -390,7 +394,8 @@ function MediaDetailScreen() {
               {likeState.count > 0 && (
                 <TouchableOpacity
                   onPress={() => modals?.showLikesSheet(String(post.post_id))}
-                  hitSlop={6}
+                  hitSlop={{ top: 10, bottom: 10, right: 10, left: 0 }}
+                  style={{ zIndex: 1 }}
                 >
                   <Text style={[styles.pillText, likeState.liked && { color: PRIMARY }]}>
                     {formatCount(likeState.count)}

@@ -743,7 +743,11 @@ const ActionBar = React.memo(({
     <View style={s.actionGroup}>
       {/* Like / paw — paw toggles like; the count opens who liked it */}
       <View style={s.actionBtn}>
-        <TouchableOpacity onPress={onLike} hitSlop={8}>
+        <TouchableOpacity
+          onPress={onLike}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 2 }}
+          style={{ zIndex: 2 }}
+        >
           <Image
             source={liked ? PostIcons.pawSelect : PostIcons.pawUnselect}
             style={{ width: 20, height: 20 }}
@@ -751,11 +755,12 @@ const ActionBar = React.memo(({
           />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={likeCount > 0 ? onLikeCountPress : undefined}
-          disabled={likeCount <= 0 || !onLikeCountPress}
-          hitSlop={8}
+          onPress={likeCount > 0 ? onLikeCountPress : onLike}
+          disabled={!onLikeCountPress && !onLike}
+          hitSlop={{ top: 10, bottom: 10, right: 10, left: 0 }}
+          style={{ marginLeft: 4, zIndex: 1 }}
         >
-          <Text style={[s.actionCount, s.countSlot, liked && { color: '#A03048' }]}>
+          <Text style={[s.actionCount, s.countSlot, { marginLeft: 0 }, liked && { color: '#A03048' }]}>
             {likeCount > 0 ? formatCount(likeCount) : ''}
           </Text>
         </TouchableOpacity>
