@@ -646,7 +646,7 @@ export default function PetsHubScreen() {
 
       <PawrvezDialog
         visible={showMascotDialog}
-        text="This is Pet Hub! Find pets looking for a home, list your own pet up for adoption, or track down trusted vets and grooming spots nearby."
+        text="Pet Hub: adopt a pet, list yours for adoption, or find vets and grooming nearby."
         onDismiss={() => setShowMascotDialog(false)}
         actionLabel="Got it"
         onAction={() => setShowMascotDialog(false)}
