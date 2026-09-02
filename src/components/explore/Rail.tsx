@@ -1,5 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+// Gesture-handler's ScrollView (not RN's) so this horizontal rail wins the
+// touch against the parent material-top-tabs pager instead of losing a native
+// touch-slop race that sometimes flipped to the next/prev tab mid-swipe.
+import { ScrollView } from 'react-native-gesture-handler';
 import { FONTS } from '../../constants/typography';
 
 const DARK = '#1A1A2E';
@@ -64,6 +68,7 @@ export const Rail = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 12 }}
         decelerationRate="fast"
+        disallowInterruption
       >
         {isLoading
           ? [...Array(4)].map((_, i) => (

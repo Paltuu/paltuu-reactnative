@@ -1,5 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+// Gesture-handler's ScrollView (not RN's) so this horizontal rail wins the
+// touch against the parent material-top-tabs pager instead of losing a native
+// touch-slop race that sometimes flipped to the next/prev tab mid-swipe.
+import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { SectionHeader } from './Rail';
 import { FONTS } from '../../constants/typography';
@@ -68,6 +72,7 @@ export const TrendingRail = ({ keywords, isLoading }: TrendingRailProps) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
           decelerationRate="fast"
+          disallowInterruption
         >
           {keywords.slice(0, 8).map((k) => (
             <KeywordChip
