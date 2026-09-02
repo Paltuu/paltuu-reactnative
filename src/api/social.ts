@@ -535,13 +535,17 @@ export const socialApi = {
     return data;
   },
 
-  async getFollowers(userId: string | number) {
-    const { data } = await client.get(`/social/users/${userId}/followers`);
+  async getFollowers(userId: string | number, cursor?: string | null) {
+    const { data } = await client.get(`/social/users/${userId}/followers`, {
+      params: { limit: 30, ...(cursor ? { cursor } : {}) },
+    });
     return data as { followers: any[]; next_cursor: string | null; has_more: boolean };
   },
 
-  async getFollowing(userId: string | number) {
-    const { data } = await client.get(`/social/users/${userId}/following`);
+  async getFollowing(userId: string | number, cursor?: string | null) {
+    const { data } = await client.get(`/social/users/${userId}/following`, {
+      params: { limit: 30, ...(cursor ? { cursor } : {}) },
+    });
     return data as { following: any[]; next_cursor: string | null; has_more: boolean };
   },
 

@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { socialApi } from '../../src/api/social';
 import { useAuthStore } from '../../src/stores/authStore';
@@ -46,18 +46,43 @@ function FollowListScreen() {
   const pagerRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(initialIndex * width)).current;
 
-  // Queries
-  const { data: followersData, isLoading: isLoadingFollowers } = useQuery({
+  // Queries — paginated via cursor, "load more" on scroll (no separate pages)
+  const {
+    data: followersPages,
+    isLoading: isLoadingFollowers,
+    fetchNextPage: fetchMoreFollowers,
+    hasNextPage: hasMoreFollowers,
+    isFetchingNextPage: isFetchingMoreFollowers,
+  } = useInfiniteQuery({
     queryKey: ['social-followers', userId],
-    queryFn: () => socialApi.getFollowers(userId as string),
+    queryFn: ({ pageParam }) => socialApi.getFollowers(userId as string, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: !!userId,
   });
 
-  const { data: followingData, isLoading: isLoadingFollowing } = useQuery({
+  const {
+    data: followingPages,
+    isLoading: isLoadingFollowing,
+    fetchNextPage: fetchMoreFollowing,
+    hasNextPage: hasMoreFollowing,
+    isFetchingNextPage: isFetchingMoreFollowing,
+  } = useInfiniteQuery({
     queryKey: ['social-following', userId],
-    queryFn: () => socialApi.getFollowing(userId as string),
+    queryFn: ({ pageParam }) => socialApi.getFollowing(userId as string, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: !!userId,
   });
+
+  const followers = React.useMemo(
+    () => followersPages?.pages.flatMap((p) => p.followers) ?? [],
+    [followersPages]
+  );
+  const following = React.useMemo(
+    () => followingPages?.pages.flatMap((p) => p.following) ?? [],
+    [followingPages]
+  );
 
   // Remove-follower — optimistic: drop the row immediately, roll back on error.
   const removeFollowerMutation = useMutation({
@@ -66,10 +91,13 @@ function FollowListScreen() {
       await queryClient.cancelQueries({ queryKey: ['social-followers', userId] });
       const previous = queryClient.getQueryData(['social-followers', userId]);
       queryClient.setQueryData(['social-followers', userId], (old: any) => {
-        if (!old?.followers) return old;
+        if (!old?.pages) return old;
         return {
           ...old,
-          followers: old.followers.filter((u: any) => String(u.user_id) !== String(followerId)),
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            followers: page.followers.filter((u: any) => String(u.user_id) !== String(followerId)),
+          })),
         };
       });
       return { previous };
@@ -170,8 +198,12 @@ function FollowListScreen() {
 
   const renderPage = useCallback(
     ({ item: listType }: { item: ListType }) => {
-      const pageData = listType === 'followers' ? followersData?.followers : followingData?.following;
-      const pageLoading = listType === 'followers' ? isLoadingFollowers : isLoadingFollowing;
+      const isFollowers = listType === 'followers';
+      const pageData = isFollowers ? followers : following;
+      const pageLoading = isFollowers ? isLoadingFollowers : isLoadingFollowing;
+      const hasMore = isFollowers ? hasMoreFollowers : hasMoreFollowing;
+      const fetchingMore = isFollowers ? isFetchingMoreFollowers : isFetchingMoreFollowing;
+      const loadMore = isFollowers ? fetchMoreFollowers : fetchMoreFollowing;
 
       return (
         <View style={{ width }}>
@@ -186,6 +218,17 @@ function FollowListScreen() {
               keyExtractor={(item) => item.user_id.toString()}
               contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
               showsVerticalScrollIndicator={false}
+              onEndReachedThreshold={0.4}
+              onEndReached={() => {
+                if (hasMore && !fetchingMore) loadMore();
+              }}
+              ListFooterComponent={
+                fetchingMore ? (
+                  <View style={styles.footerLoader}>
+                    <ActivityIndicator color="#A03048" />
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="people-outline" size={60} color="#E5E7EB" />
@@ -197,7 +240,21 @@ function FollowListScreen() {
         </View>
       );
     },
-    [followersData, followingData, isLoadingFollowers, isLoadingFollowing, width, renderUser]
+    [
+      followers,
+      following,
+      isLoadingFollowers,
+      isLoadingFollowing,
+      hasMoreFollowers,
+      hasMoreFollowing,
+      isFetchingMoreFollowers,
+      isFetchingMoreFollowing,
+      fetchMoreFollowers,
+      fetchMoreFollowing,
+      insets.bottom,
+      width,
+      renderUser,
+    ]
   );
 
   const indicatorTranslate = scrollX.interpolate({
@@ -324,6 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
+  footerLoader: { paddingVertical: 24 },
   emptyContainer: { alignItems: 'center', marginTop: 100 },
   emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 15 },
 });
