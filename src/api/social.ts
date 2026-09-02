@@ -138,6 +138,11 @@ export interface SocialPost {
   // post itself stays fully visible; this just tags it for a small "i" badge
   // on the media (see MediaBlock in PostCard.tsx). Currently only 'pet_sale'.
   content_notice_reason?: 'pet_sale' | null;
+  // Admin trigger-warning flag. The post stays fully visible, but the card
+  // blurs its media behind a "See Post" reveal (see MediaBlock /
+  // TriggerWarningOverlay in PostCard.tsx). Manual, admin-only, and
+  // independent of content_notice_reason — a post can carry both.
+  has_trigger_warning?: boolean;
 }
 
 // A popular reply on a PRIVATE account's post, surfaced as its own feed card

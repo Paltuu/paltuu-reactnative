@@ -319,7 +319,9 @@ export const VideoThumbnail: React.FC<{
   borderRadius?: number;
   isProcessing?: boolean;
   onPress?: () => void;
-}> = ({ thumbnailUri, width, height, borderRadius = 14, isProcessing, onPress }) => {
+  /** Obscure the still behind a content screen (admin trigger warning). */
+  blurRadius?: number;
+}> = ({ thumbnailUri, width, height, borderRadius = 14, isProcessing, onPress, blurRadius }) => {
   if (isProcessing) {
     return (
       <View style={[s.processingContainer, { width, height, borderRadius }]}>
@@ -342,6 +344,7 @@ export const VideoThumbnail: React.FC<{
           style={{ width, height, position: 'absolute' }}
           contentFit="cover"
           recyclingKey={thumbnailUri}
+          blurRadius={blurRadius}
         />
       ) : (
         // Premium textured dark background for missing thumbnails

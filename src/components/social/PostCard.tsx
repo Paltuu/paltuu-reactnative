@@ -177,6 +177,43 @@ const s = StyleSheet.create({
     color: '#8a2b3f',
     marginTop: 1,
   },
+  // Sits directly on top of the media (absolute fill) when a post carries an
+  // admin trigger warning, until the viewer taps "See Post". See
+  // TriggerWarningOverlay / MediaBlock's `blurred` branch.
+  twOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(17,17,17,0.55)',
+  },
+  twOverlayTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginTop: 2,
+  },
+  twOverlaySub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11.5,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
+  twOverlayBtn: {
+    marginTop: 10,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  twOverlayBtnText: {
+    color: '#111',
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
   cardPressed: {
     backgroundColor: '#F9F9F9',
   },
@@ -558,18 +595,58 @@ const PetSaleNoticeBanner = ({ onPress }: { onPress: () => void }) => (
   </TouchableOpacity>
 );
 
+// ─── Trigger-warning media screen ──────────────────────────────────────────
+// An admin has flagged this post's media as potentially distressing
+// (social_posts.has_trigger_warning). The post, its caption and its
+// engagement all stay exactly as they are — only the media is covered, with
+// a blur underneath and this tap-to-reveal panel on top. One tap clears it
+// for the life of the card.
+const TriggerWarningOverlay = ({ onPress }: { onPress?: () => void }) => (
+  <Pressable
+    onPress={onPress}
+    style={[StyleSheet.absoluteFill, s.twOverlay]}
+    accessibilityRole="button"
+    accessibilityLabel="Sensitive content. Activate to see post."
+  >
+    <Ionicons name="eye-off-outline" size={24} color="#fff" />
+    <Text style={s.twOverlayTitle}>Sensitive content</Text>
+    <Text style={s.twOverlaySub}>This media may be distressing</Text>
+    <View style={s.twOverlayBtn}>
+      <Text style={s.twOverlayBtnText}>See Post</Text>
+    </View>
+  </Pressable>
+);
+
 // Images start at the avatar's left edge and stretch to the card's right edge.
 // The negative right margin removes the card's inner right padding so images bleed.
+// How hard to blur images / video stills when a post carries an admin
+// trigger warning and the viewer hasn't tapped "See Post" yet.
+const TRIGGER_WARNING_BLUR = 28;
+
 const MediaBlock = React.memo(({
   media,
   onImagePress,
   isPlaying,
+  blurred = false,
+  onReveal,
 }: {
   media: SocialPostMedia[];
   onImagePress?: (index: number) => void;
   isPlaying?: boolean;
+  /** Admin trigger warning in effect and not yet revealed — cover the media. */
+  blurred?: boolean;
+  /** Tapping the covered media (or its "See Post" button) calls this. */
+  onReveal?: () => void;
 }) => {
   const carouselImgH = Math.round(CAROUSEL_CARD_W * 1.05);
+  // A revealed-first gate: while covered, nothing plays and every tap on the
+  // media reveals it rather than opening the fullscreen viewer.
+  const playing = isPlaying && !blurred;
+  const blurRadius = blurred ? TRIGGER_WARNING_BLUR : 0;
+  const handlePress = (index: number) => {
+    if (blurred) { onReveal?.(); return; }
+    onImagePress?.(index);
+  };
 
   const renderCarouselItem = useCallback(({ item, index }: { item: SocialPostMedia; index: number }) => {
     const isItemVideo = item.media_type === 'video';
@@ -578,15 +655,19 @@ const MediaBlock = React.memo(({
       const videoUri = item.hls_url || item.url;
       const thumbUri = item.thumbnail_url;
 
-      if (!isPlaying) {
+      if (!playing) {
         return (
-          <VideoThumbnail
-            thumbnailUri={thumbUri}
-            width={CAROUSEL_CARD_W}
-            height={carouselImgH}
-            borderRadius={14}
-            onPress={() => onImagePress?.(index)}
-          />
+          <View>
+            <VideoThumbnail
+              thumbnailUri={thumbUri}
+              width={CAROUSEL_CARD_W}
+              height={carouselImgH}
+              borderRadius={14}
+              blurRadius={blurRadius || undefined}
+              onPress={() => handlePress(index)}
+            />
+            {blurred && <TriggerWarningOverlay onPress={onReveal} />}
+          </View>
         );
       }
       return (
@@ -597,7 +678,7 @@ const MediaBlock = React.memo(({
           width={CAROUSEL_CARD_W}
           height={carouselImgH}
           borderRadius={14}
-          onPress={() => onImagePress?.(index)}
+          onPress={() => handlePress(index)}
         />
       );
     }
@@ -605,7 +686,7 @@ const MediaBlock = React.memo(({
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => onImagePress?.(index)}
+        onPress={() => handlePress(index)}
       >
         <Image
           source={{ uri: item.url }}
@@ -613,10 +694,12 @@ const MediaBlock = React.memo(({
           contentFit="cover"
           transition={200}
           recyclingKey={item.url}
+          blurRadius={blurRadius}
         />
+        {blurred && <TriggerWarningOverlay onPress={onReveal} />}
       </TouchableOpacity>
     );
-  }, [onImagePress, isPlaying, carouselImgH]);
+  }, [onImagePress, playing, blurred, blurRadius, onReveal, carouselImgH]);
 
   if (!media?.length) return null;
 
@@ -632,7 +715,7 @@ const MediaBlock = React.memo(({
       const videoUri = firstItem.hls_url || firstItem.url;
       const thumbUri = firstItem.thumbnail_url;
 
-      if (!isPlaying) {
+      if (!playing) {
         return (
           <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
             <VideoThumbnail
@@ -641,8 +724,10 @@ const MediaBlock = React.memo(({
               height={videoH}
               borderRadius={14}
               isProcessing={false}
-              onPress={() => onImagePress?.(0)}
+              blurRadius={blurRadius || undefined}
+              onPress={() => handlePress(0)}
             />
+            {blurred && <TriggerWarningOverlay onPress={onReveal} />}
           </View>
         );
       }
@@ -655,9 +740,9 @@ const MediaBlock = React.memo(({
             width={SINGLE_VIDEO_W}
             height={videoH}
             borderRadius={14}
-            paused={!isPlaying}
+            paused={!playing}
             isProcessing={false}
-            onPress={() => onImagePress?.(0)}
+            onPress={() => handlePress(0)}
           />
         </View>
       );
@@ -669,7 +754,7 @@ const MediaBlock = React.memo(({
       <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => onImagePress?.(0)}
+          onPress={() => handlePress(0)}
         >
           <Image
             source={{ uri: firstItem.url }}
@@ -677,7 +762,9 @@ const MediaBlock = React.memo(({
             contentFit="cover"
             transition={200}
             recyclingKey={firstItem.url}
+            blurRadius={blurRadius}
           />
+          {blurred && <TriggerWarningOverlay onPress={onReveal} />}
         </TouchableOpacity>
       </View>
     );
@@ -697,6 +784,9 @@ const MediaBlock = React.memo(({
         // might be mid-arbitration (the parent tab pager) instead of letting a
         // native touch-slop race decide who owns the horizontal gesture.
         disallowInterruption
+        // Lock the carousel while its media is covered by a trigger warning —
+        // the only interaction offered is the "See Post" reveal.
+        scrollEnabled={!blurred}
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: carouselImgH, overflow: 'visible' }}
       >
@@ -1000,7 +1090,20 @@ export const PostCard = React.memo(({
   }, [bodyMedia, localVideoStatus, localHlsUrl, localThumbnailUrl]);
 
 
+  // Admin trigger warning: the media stays covered (blurred + "See Post")
+  // until the viewer chooses to reveal it. Resets with the card.
+  const [triggerRevealed, setTriggerRevealed] = useState(false);
+  const mediaBlurred = post.has_trigger_warning === true && !triggerRevealed;
+  const revealTriggerMedia = useCallback(() => setTriggerRevealed(true), []);
+
+
   const handleImagePress = useCallback((index: number) => {
+    // A trigger-warned post must be revealed in-card first — don't let a tap
+    // jump straight to the fullscreen viewer around the cover.
+    if (post.has_trigger_warning === true && !triggerRevealed) {
+      setTriggerRevealed(true);
+      return;
+    }
     // Pause background video player before opening the media detail screen
     setPlayingPostId(null);
     // Seed the media screen's ['post', id] query with what's already on
@@ -1008,7 +1111,7 @@ export const PostCard = React.memo(({
     // so it renders instantly instead of waiting on a redundant refetch.
     queryClient.setQueryData(['post', post.post_id], { ...post, media: bodyMedia });
     router.push({ pathname: '/media/[id]', params: { id: post.post_id, index: String(index) } });
-  }, [router, queryClient, post, bodyMedia]);
+  }, [router, queryClient, post, bodyMedia, triggerRevealed]);
 
 
   const showPlus = String(currentUserId) !== String(post.user_id) && !post.is_following;
@@ -1372,6 +1475,8 @@ export const PostCard = React.memo(({
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
+                blurred={mediaBlurred}
+                onReveal={revealTriggerMedia}
               />
             </View>
           )}
@@ -1416,6 +1521,8 @@ export const PostCard = React.memo(({
                 media={computedMedia}
                 onImagePress={handleImagePress}
                 isPlaying={isVideoPlaying}
+                blurred={mediaBlurred}
+                onReveal={revealTriggerMedia}
               />
             </View>
           )}
