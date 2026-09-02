@@ -55,6 +55,27 @@ const TEAM_BROADCAST_TYPES = new Set([
 ]);
 const isTeamBroadcast = (type?: string) => TEAM_BROADCAST_TYPES.has(type ?? '');
 
+/* ── Notification families that revolve around a specific person or pet and so
+   carry their own photo: social activity (sender's pfp) and adoption / pet-sale
+   / foster activity (listing or pet image). Everything else — system_*,
+   express_vet_*, bazaar_*, and anything unrecognised — is a platform message
+   from Paltuu itself and shows the Paltuu logo tile instead, the way Instagram
+   shows its own logo for non-social alerts. ── */
+const PET_ADOPTION_PREFIXES = ['adoption', 'pet_', 'foster'];
+const isPetAdoptionNotification = (type?: string) =>
+  PET_ADOPTION_PREFIXES.some((p) => (type ?? '').startsWith(p));
+
+/* Show the Paltuu logo tile as the avatar when the row is a platform message,
+   or when it belongs to a person/pet family but genuinely has no actor and no
+   media to point at (i.e. we don't know whose picture to use). */
+const usesPaltuuLogo = (n: Notification) => {
+  if (isTeamBroadcast(n.type)) return true;
+  if (isSocialNotification(n.type) || isPetAdoptionNotification(n.type)) {
+    return !n.sender && !n.image_url;
+  }
+  return true;
+};
+
 /* ── Notification types whose `image_url` is a person's avatar rather than
    actual post/story/product media. Follower notifications reuse image_url for
    the follower's profile photo — which already appears as the circular avatar
@@ -214,6 +235,25 @@ const ActorAvatar = ({
   />
 );
 
+/* ── Paltuu logo tile — the avatar for platform / system notifications and any
+   row with no person or pet to picture. The app-icon asset is already the white
+   Paltuu mark on the brand maroon, so it only needs clipping to a circle (kept
+   round to sit apart from the rounded-square pet avatars). ── */
+const PaltuuLogoAvatar = ({ size = 48 }: { size?: number }) => (
+  <View
+    style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      overflow: 'hidden',
+      backgroundColor: PRIMARY,
+    }}
+    className="border border-gray-100"
+  >
+    <Image source={PALTUU_LOGO} style={{ width: size, height: size }} contentFit="cover" />
+  </View>
+);
+
 /* ── Stacked, overlapping avatars for a collapsed group ── */
 const StackedAvatars = ({ items, square }: { items: Notification[]; square: boolean }) => {
   const senders = uniqueSenders(items).slice(0, 2);
@@ -351,7 +391,10 @@ const NotificationRow = ({
 }) => {
   const { items, latest } = group;
   const isSocial = isSocialNotification(latest.type);
-  const isBroadcast = isTeamBroadcast(latest.type);
+  const showLogo = usesPaltuuLogo(latest);
+  // Platform messages (Paltuu logo, no specific actor) use the title/body
+  // layout instead of the "<name> <action>" line.
+  const isPlatformMessage = showLogo && !latest.sender;
   const isGrouped = items.length > 1;
   const anyUnread = items.some((n) => !n.is_read);
 
@@ -366,12 +409,14 @@ const NotificationRow = ({
       onPress={() => onPress(group)}
       onLongPress={() => onOptionsPress(latest)}
       delayLongPress={300}
-      className="flex-row items-center px-3 py-4 active:bg-gray-50"
+      className={`flex-row items-center px-3 py-4 active:bg-gray-50 ${
+        anyUnread ? 'bg-surfaceSubtle' : ''
+      }`}
     >
-      {/* Avatar — Paltuu logo for team broadcasts; stacked for groups; square/rounded for pets & adoptions */}
+      {/* Avatar — Paltuu logo tile for platform/system rows; stacked for groups; square/rounded for pets & adoptions */}
       <View className="mr-3.5">
-        {isBroadcast ? (
-          <ActorAvatar name="Paltuu" source={PALTUU_LOGO} square />
+        {showLogo ? (
+          <PaltuuLogoAvatar />
         ) : isGrouped ? (
           <StackedAvatars items={items} square={!isSocial} />
         ) : (
@@ -380,8 +425,8 @@ const NotificationRow = ({
       </View>
 
       {/* Message Text column */}
-      <View className={`flex-1 mr-3 ${isBroadcast ? 'gap-0.5' : 'gap-1'}`}>
-        {isBroadcast ? (
+      <View className={`flex-1 mr-3 ${isPlatformMessage ? 'gap-0.5' : 'gap-1'}`}>
+        {isPlatformMessage ? (
           <>
             <Text className="font-headingSemi text-sm text-dark leading-[18px]" numberOfLines={2}>
               {latest.title}
@@ -765,11 +810,15 @@ export default function NotificationsScreen() {
             <View className="flex-1 justify-between">
               {/* Header inside Bottom Sheet */}
               <View className="flex-row items-center border-b border-gray-100 pb-3 mb-4 gap-3">
-                <ActorAvatar
-                  name={selectedNotification.sender?.name || selectedNotification.title || 'System'}
-                  uri={selectedNotification.sender?.profile_image_url || selectedNotification.image_url}
-                  size={36}
-                />
+                {usesPaltuuLogo(selectedNotification) ? (
+                  <PaltuuLogoAvatar size={36} />
+                ) : (
+                  <ActorAvatar
+                    name={selectedNotification.sender?.name || selectedNotification.title || 'System'}
+                    uri={selectedNotification.sender?.profile_image_url || selectedNotification.image_url}
+                    size={36}
+                  />
+                )}
                 <View className="flex-1">
                   <Text className="font-headingSemi text-sm text-dark" numberOfLines={1}>
                     {selectedNotification.sender?.name || selectedNotification.title || 'System'}

@@ -115,7 +115,11 @@ export default function ExpressVetRateScreen() {
           <Text style={styles.successText}>Your feedback helps us keep Vets at Home reliable.</Text>
         </View>
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]}>
-          <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
+          {/* This screen is a card pushed on top of the booking-detail fullScreenModal
+              (see [id].tsx). `replace` would only swap this card and leave that modal
+              mounted, rendering the Pets tab inside a modal container — dismissTo pops the
+              whole stack back to the real tabs and selects Pets. */}
+          <PaltuuButton label="Back to Pets" onPress={() => router.dismissTo('/(app)/pets')} radius={26} />
         </View>
       </View>
     );
@@ -125,7 +129,7 @@ export default function ExpressVetRateScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingHorizontal: H_PAD, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/pets'))}
+          onPress={() => (router.canGoBack() ? router.back() : router.dismissTo('/(app)/pets'))}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={26} color="#111827" />

@@ -120,7 +120,7 @@ export default function ProfileMenuScreen() {
             </View>
           </View>
           <TouchableOpacity onPress={close} hitSlop={12} style={{ padding: 4 }}>
-            <Ionicons name="close" size={24} color={DS.dark} />
+            <Ionicons name="arrow-back" size={24} color={DS.dark} />
           </TouchableOpacity>
         </View>
 

@@ -405,9 +405,11 @@ function UserProfileScreen() {
                 ? 'Following'
                 : profile?.has_pending_request
                   ? 'Requested'
-                  : profile?.is_private
-                    ? 'Request to Follow'
-                    : 'Follow'}
+                  : profile?.is_following_me
+                    ? 'Follow back'
+                    : profile?.is_private
+                      ? 'Request to Follow'
+                      : 'Follow'}
             </Text>
           </TouchableOpacity>
         ) : null}

@@ -39,6 +39,7 @@ const STEPS = [
   { key: 'date', heading: 'When did it happen?', subtext: 'The date the pet went missing or was found.' },
   { key: 'description', heading: 'Describe the pet', subtext: 'Colour, breed, collar, distinguishing marks…' },
   { key: 'photos', heading: 'Add photos', subtext: 'A clear photo makes all the difference.' },
+  { key: 'review', heading: 'Review your report', subtext: 'Check everything looks right before you submit.' },
 ] as const;
 
 const TOTAL_STEPS = STEPS.length;
@@ -136,6 +137,12 @@ function CreateLostFoundScreen() {
           return false;
         }
         return true;
+      case 'photos':
+        if (images.length === 0) {
+          Alert.alert('Required', 'Please add at least one photo.');
+          return false;
+        }
+        return true;
       default:
         return true;
     }
@@ -197,7 +204,7 @@ function CreateLostFoundScreen() {
             approved, it'll appear in the Lost & Found feed for the community to see.
           </Text>
         </View>
-        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 14 }]}>
           <PaltuuButton label="Back to Pets" onPress={() => router.replace('/(app)/pets')} radius={26} />
         </View>
       </SafeAreaView>
@@ -208,8 +215,11 @@ function CreateLostFoundScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <OnboardingHeader onBack={handleBack} progress={(step + 1) / TOTAL_STEPS} />
 
+      {/* On Android we let the manifest's adjustPan handle the keyboard; KAV's
+          "height" behaviour there left a large dead gap under the sticky CTA. */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
         style={{ flex: 1 }}
       >
         <ScrollView
@@ -351,10 +361,74 @@ function CreateLostFoundScreen() {
               )}
             </ScrollView>
           )}
+
+          {/* ── Review ── */}
+          {key === 'review' && (
+            <View style={{ gap: 16 }}>
+              {images.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 10 }}
+                >
+                  {images.map((img, i) => (
+                    <Image key={i} source={{ uri: img.uri }} style={styles.reviewPhoto} contentFit="cover" />
+                  ))}
+                </ScrollView>
+              )}
+
+              <View style={styles.reviewCard}>
+                <ReviewRow
+                  label="Report"
+                  value={formData.postType === 'lost' ? 'Lost pet' : formData.postType === 'found' ? 'Found pet' : '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'type'))}
+                />
+                <ReviewRow
+                  label="Pet type"
+                  value={categoryOptions.find((o) => o.value === formData.categoryId)?.label || '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'category'))}
+                />
+                <ReviewRow
+                  label="City"
+                  value={cityOptions.find((o) => o.value === formData.cityId)?.label || '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'city'))}
+                />
+                {!!formData.location && (
+                  <ReviewRow
+                    label="Spot"
+                    value={formData.location}
+                    onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'location'))}
+                  />
+                )}
+                <ReviewRow
+                  label="Contact"
+                  value={formData.contactInfo ? `+92 ${formData.contactInfo}` : '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'contact'))}
+                />
+                <ReviewRow
+                  label="Date"
+                  value={formData.date}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'date'))}
+                />
+              </View>
+
+              {!!formData.description && (
+                <View style={styles.reviewCard}>
+                  <View style={styles.reviewSectionHead}>
+                    <Text style={styles.reviewSectionTitle}>Description</Text>
+                    <TouchableOpacity onPress={() => setStep(STEPS.findIndex((s) => s.key === 'description'))} hitSlop={8}>
+                      <Text style={styles.reviewEdit}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.reviewDescription}>{formData.description}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 14 }]}>
           <PaltuuButton
             label={isLast ? 'Submit Report' : 'Next'}
             successLabel={isLast ? 'Report submitted!' : undefined}
@@ -365,6 +439,20 @@ function CreateLostFoundScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
+  return (
+    <View style={styles.reviewRow}>
+      <Text style={styles.reviewRowLabel}>{label}</Text>
+      <Text style={styles.reviewRowValue} numberOfLines={2}>
+        {value}
+      </Text>
+      <TouchableOpacity onPress={onEdit} hitSlop={8}>
+        <Text style={styles.reviewEdit}>Edit</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -467,6 +555,51 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  // Review / summary
+  reviewPhoto: { width: 110, height: 110, borderRadius: 14, backgroundColor: '#F3F4F6' },
+  reviewCard: {
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    gap: 12,
+  },
+  reviewRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  reviewRowLabel: {
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#9CA3AF',
+    width: 72,
+  },
+  reviewRowValue: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  reviewSectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reviewSectionTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#6B7280',
+  },
+  reviewEdit: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#a03048',
+  },
+  reviewDescription: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#374151',
+    lineHeight: 21,
+  },
+
   // Photos
   imgWrap: { position: 'relative' },
   img: { width: 96, height: 96, borderRadius: 16 },
@@ -501,7 +634,6 @@ const styles = StyleSheet.create({
 
   bottom: {
     paddingHorizontal: 24,
-    paddingBottom: 28,
     paddingTop: 8,
   },
 

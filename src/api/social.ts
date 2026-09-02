@@ -17,6 +17,7 @@ export interface SocialProfile {
   posts_count?: number;
   is_following?: boolean;
   has_pending_request?: boolean;
+  is_following_me?: boolean;
   is_own_profile?: boolean;
   is_private?: boolean;
   is_blocked_by_me?: boolean;

@@ -31,7 +31,12 @@ export function CityPickerField({ placeholder, value, options, onSelect, icon }:
   const [query, setQuery] = useState('');
   const selected = options.find((o) => o.value === value);
 
-  const snapPoints = useMemo(() => [Math.min(screenHeight * 0.75, 560)], [screenHeight]);
+  // Two snap points: it opens at a comfortable ~70% height, and the user can
+  // drag the handle up to (near) full screen to see the whole list at once.
+  const snapPoints = useMemo(
+    () => [Math.min(screenHeight * 0.7, 520), Math.max(screenHeight - insets.top - 8, 560)],
+    [screenHeight, insets.top],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
+import { CityPickerField } from '../../src/components/pets/CityPickerField';
 import { usePetStore } from '../../src/stores/petStore';
 import { petApi } from '../../src/api/pets';
 import { useShallow } from 'zustand/react/shallow';
@@ -65,6 +66,7 @@ const STEPS = [
   { key: 'tags', heading: 'What are they like?', subtext: 'Select the traits that describe your pet.' },
   { key: 'description', heading: 'Tell their story', subtext: 'Habits, favourite toys, anything special.' },
   { key: 'photos', heading: 'Add photos', subtext: 'A clear photo makes all the difference. Up to 5.' },
+  { key: 'review', heading: 'Review your listing', subtext: 'Check everything looks right before you post.' },
 ] as const;
 
 const TOTAL_STEPS = STEPS.length;
@@ -214,6 +216,12 @@ function CreatePetScreen() {
           return false;
         }
         return true;
+      case 'photos':
+        if (images.length === 0) {
+          Alert.alert('Required', 'Please add at least one photo of the pet.');
+          return false;
+        }
+        return true;
       default:
         return true;
     }
@@ -299,7 +307,7 @@ function CreatePetScreen() {
               : "Thanks for opening your heart! Your pet is now with our team for a quick review. Once it's approved, the listing goes live in the adoption feed for adopters to discover."}
           </Text>
         </View>
-        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 14 }]}>
           <PaltuuButton
             label={isEditMode ? 'Back to Listings' : 'Back to Pets'}
             onPress={() => router.replace(isEditMode ? '/(app)/my-listings' : '/(app)/pets')}
@@ -324,7 +332,13 @@ function CreatePetScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <OnboardingHeader onBack={handleBack} progress={(step + 1) / TOTAL_STEPS} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      {/* On Android we let the manifest's adjustPan handle the keyboard; KAV's
+          "height" behaviour there left a large dead gap under the sticky CTA. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+        style={{ flex: 1 }}
+      >
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={styles.body}
@@ -388,7 +402,7 @@ function CreatePetScreen() {
             <View style={{ gap: 16 }}>
               <View>
                 <Text style={styles.label}>City *</Text>
-                <PickerField
+                <CityPickerField
                   placeholder="Select a city"
                   value={formData.cityId}
                   options={cityOptions}
@@ -544,10 +558,105 @@ function CreatePetScreen() {
               )}
             </ScrollView>
           )}
+
+          {/* ── Review ── */}
+          {key === 'review' && (
+            <View style={{ gap: 16 }}>
+              {images.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 10 }}
+                >
+                  {images.map((img, i) => (
+                    <Image key={i} source={{ uri: img.uri }} style={styles.reviewPhoto} contentFit="cover" />
+                  ))}
+                </ScrollView>
+              )}
+
+              <View style={styles.reviewCard}>
+                <ReviewRow label="Title" value={formData.title} onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'title'))} />
+                <ReviewRow
+                  label="Pet type"
+                  value={categoryOptions.find((o) => o.value === formData.petType)?.label || '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'type'))}
+                />
+                <ReviewRow
+                  label="Sex"
+                  value={formData.sex.charAt(0).toUpperCase() + formData.sex.slice(1)}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'sex'))}
+                />
+                <ReviewRow
+                  label="Location"
+                  value={[cityOptions.find((o) => o.value === formData.cityId)?.label, formData.area]
+                    .filter(Boolean)
+                    .join(' · ') || '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'location'))}
+                />
+                <ReviewRow
+                  label="Contact"
+                  value={formData.contactNumber ? `+92 ${formData.contactNumber}` : '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'contact'))}
+                />
+                <ReviewRow
+                  label="Age"
+                  value={
+                    [
+                      Number(formData.years) ? `${Number(formData.years)}y` : null,
+                      Number(formData.months) ? `${Number(formData.months)}m` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' ') || '—'
+                  }
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'age'))}
+                />
+                {!!formData.breed && (
+                  <ReviewRow label="Breed" value={formData.breed} onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'details'))} />
+                )}
+                {!!formData.healthIssues && (
+                  <ReviewRow
+                    label="Health"
+                    value={formData.healthIssues}
+                    onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'details'))}
+                  />
+                )}
+              </View>
+
+              {formData.selectedTags.length > 0 && (
+                <View style={styles.reviewCard}>
+                  <View style={styles.reviewSectionHead}>
+                    <Text style={styles.reviewSectionTitle}>Traits</Text>
+                    <TouchableOpacity onPress={() => setStep(STEPS.findIndex((s) => s.key === 'tags'))} hitSlop={8}>
+                      <Text style={styles.reviewEdit}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.tagsWrapper}>
+                    {PET_TAGS.filter((t) => formData.selectedTags.includes(t.tag_id)).map((t) => (
+                      <View key={t.tag_id} style={styles.reviewChip}>
+                        <Text style={styles.reviewChipText}>{t.tag_name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {!!formData.description && (
+                <View style={styles.reviewCard}>
+                  <View style={styles.reviewSectionHead}>
+                    <Text style={styles.reviewSectionTitle}>Their story</Text>
+                    <TouchableOpacity onPress={() => setStep(STEPS.findIndex((s) => s.key === 'description'))} hitSlop={8}>
+                      <Text style={styles.reviewEdit}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.reviewDescription}>{formData.description}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
 
         {/* Bottom CTA */}
-        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 28 }]}>
+        <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 14 }]}>
           <PaltuuButton
             label={isLast ? (isEditMode ? 'Save Changes' : 'Post Pet for Adoption') : 'Next'}
             successLabel={isLast ? (isEditMode ? 'Saved!' : 'Pet posted!') : undefined}
@@ -558,6 +667,20 @@ function CreatePetScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
+  return (
+    <View style={styles.reviewRow}>
+      <Text style={styles.reviewRowLabel}>{label}</Text>
+      <Text style={styles.reviewRowValue} numberOfLines={2}>
+        {value}
+      </Text>
+      <TouchableOpacity onPress={onEdit} hitSlop={8}>
+        <Text style={styles.reviewEdit}>Edit</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -655,6 +778,62 @@ const styles = StyleSheet.create({
     color: '#a03048',
   },
 
+  // Review / summary
+  reviewPhoto: { width: 110, height: 110, borderRadius: 14, backgroundColor: '#F3F4F6' },
+  reviewCard: {
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    gap: 12,
+  },
+  reviewRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  reviewRowLabel: {
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#9CA3AF',
+    width: 78,
+  },
+  reviewRowValue: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#111827',
+  },
+  reviewSectionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reviewSectionTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#6B7280',
+  },
+  reviewEdit: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#a03048',
+  },
+  reviewChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#FAF0F2',
+  },
+  reviewChipText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+    color: '#a03048',
+  },
+  reviewDescription: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    color: '#374151',
+    lineHeight: 21,
+  },
+
   // Tags
   tagCategoryTitle: {
     fontSize: 11,
@@ -720,7 +899,6 @@ const styles = StyleSheet.create({
 
   bottom: {
     paddingHorizontal: 24,
-    paddingBottom: 28,
     paddingTop: 8,
   },
 

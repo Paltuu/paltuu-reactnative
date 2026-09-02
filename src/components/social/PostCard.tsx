@@ -9,8 +9,13 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Share, ScrollView,
+  Share,
 } from 'react-native';
+// Carousel uses gesture-handler's ScrollView (not RN's) so its horizontal pan
+// arbitrates deterministically with the parent material-top-tabs pager
+// (ViewPager2 on Android) instead of losing a native touch-slop race, which
+// made the carousel occasionally flip to the next/prev tab mid-swipe.
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { subscribeToPlayingPost, setPlayingPostId } from '../../utils/videoPlaySubscription';
@@ -681,13 +686,17 @@ const MediaBlock = React.memo(({
   // Carousel: square-ish cards, peek on the right
   return (
     <View style={[s.mediaWrapper, { overflow: 'visible' }]}>
-      <ScrollView
+      <GHScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={CAROUSEL_CARD_W + CAROUSEL_GAP}
         decelerationRate="fast"
         bounces={false}
         overScrollMode="never"
+        // Once this scroll view starts dragging, cancel any other handler that
+        // might be mid-arbitration (the parent tab pager) instead of letting a
+        // native touch-slop race decide who owns the horizontal gesture.
+        disallowInterruption
         contentContainerStyle={{ gap: CAROUSEL_GAP, paddingRight: CAROUSEL_GAP + 15 }}
         style={{ height: carouselImgH, overflow: 'visible' }}
       >
@@ -696,7 +705,7 @@ const MediaBlock = React.memo(({
             {renderCarouselItem({ item, index })}
           </React.Fragment>
         ))}
-      </ScrollView>
+      </GHScrollView>
     </View>
   );
 });
