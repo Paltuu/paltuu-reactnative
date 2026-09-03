@@ -332,7 +332,7 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
             <SocialActionsProvider>
             <PostCardModalsProvider>
-              <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+              <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
                 <Stack.Screen name="interests" options={{ headerShown: false }} />
