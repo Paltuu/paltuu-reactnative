@@ -34,9 +34,10 @@ import { PawrvezDialog } from '../../../src/components/common/mascot';
 // finishing the interests/customize-feed step) — a short thank-you/welcome
 // to the beta program. Independent of the pre-login welcome.tsx mascot intro.
 const BETA_INTRO_DIALOGS = [
-  "You're in! Thanks so much for being one of our very first members — welcome to Paltuu.",
-  "We're still polishing things up, so you might run into a rough edge here and there. Your feedback genuinely helps us build a better home for Pakistan's pets.",
-  "Alright, enough talk — go check out your feed!",
+  "You're in! Thanks for being one of our very first members - welcome to Paltuu.", // 78
+  "We're still polishing things up, so you might hit a rough edge here and there.",  // 78
+  "Your feedback genuinely helps us build a better home for Pakistan's pets.",       // 73
+  "Alright, enough talk - go check out your feed!",                                  // 46
 ];
 
 // (Layout constants are now managed inside the shared PostCard)
