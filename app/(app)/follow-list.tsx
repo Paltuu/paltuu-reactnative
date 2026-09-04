@@ -46,6 +46,11 @@ function FollowListScreen() {
   const pagerRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(initialIndex * width)).current;
 
+  // The nested vertical lists need a hard height to be scrollable inside the
+  // horizontal pager — without it they lay out at full content height and
+  // onEndReached never fires. Measure the pager viewport and pass it down.
+  const [pagerHeight, setPagerHeight] = useState(0);
+
   // Queries — paginated via cursor, "load more" on scroll (no separate pages)
   const {
     data: followersPages,
@@ -57,7 +62,8 @@ function FollowListScreen() {
     queryKey: ['social-followers', userId],
     queryFn: ({ pageParam }) => socialApi.getFollowers(userId as string, pageParam),
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.has_more === false ? undefined : lastPage.next_cursor ?? undefined,
     enabled: !!userId,
   });
 
@@ -71,7 +77,8 @@ function FollowListScreen() {
     queryKey: ['social-following', userId],
     queryFn: ({ pageParam }) => socialApi.getFollowing(userId as string, pageParam),
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.has_more === false ? undefined : lastPage.next_cursor ?? undefined,
     enabled: !!userId,
   });
 
@@ -206,18 +213,20 @@ function FollowListScreen() {
       const loadMore = isFollowers ? fetchMoreFollowers : fetchMoreFollowing;
 
       return (
-        <View style={{ width }}>
+        <View style={{ width, height: pagerHeight || undefined }}>
           {pageLoading ? (
             <View style={styles.center}>
               <ActivityIndicator color="#A03048" />
             </View>
           ) : (
             <FlatList
+              style={{ flex: 1 }}
               data={pageData}
               renderItem={({ item }) => renderUser(item, listType)}
               keyExtractor={(item) => item.user_id.toString()}
               contentContainerStyle={[styles.listContent, { paddingBottom: 100 + insets.bottom }]}
               showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
               onEndReachedThreshold={0.4}
               onEndReached={() => {
                 if (hasMore && !fetchingMore) loadMore();
@@ -253,6 +262,7 @@ function FollowListScreen() {
       fetchMoreFollowing,
       insets.bottom,
       width,
+      pagerHeight,
       renderUser,
     ]
   );
@@ -292,24 +302,29 @@ function FollowListScreen() {
       </View>
 
       {/* Swipeable pages */}
-      <Animated.FlatList
-        ref={pagerRef as any}
-        data={TABS}
-        keyExtractor={(t) => t}
-        renderItem={renderPage as any}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={initialIndex}
-        getItemLayout={(_: any, index: number) => ({ length: width, offset: width * index, index })}
-        onMomentumScrollEnd={onMomentumScrollEnd}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
+      <View
         style={{ flex: 1 }}
-      />
+        onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}
+      >
+        <Animated.FlatList
+          ref={pagerRef as any}
+          data={TABS}
+          keyExtractor={(t) => t}
+          renderItem={renderPage as any}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={initialIndex}
+          getItemLayout={(_: any, index: number) => ({ length: width, offset: width * index, index })}
+          onMomentumScrollEnd={onMomentumScrollEnd}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          style={{ flex: 1 }}
+        />
+      </View>
     </View>
   );
 }

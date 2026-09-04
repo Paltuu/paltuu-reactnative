@@ -35,6 +35,8 @@ import { COLORS } from '../../../../src/constants/colors';
 import { PawrvezDialog } from '../../../../src/components/common/mascot';
 import { storage } from '../../../../src/utils/storage';
 import { BadgeInfoModal } from '../../../../src/components/social/BadgeInfoModal';
+import { useTabBarStore } from '../../../../src/stores/tabBarStore';
+import { useNotchStopperStore } from '../../../../src/stores/notchStopperStore';
 
 const VerifiedIcon = require('../../../../assets/icons/verified-check-svgrepo-com.svg');
 const DayOneIcon = require('../../../../assets/icons/day1-badge.svg');
@@ -294,6 +296,22 @@ export default function ProfileScreen() {
       return true;
     });
     return () => sub.remove();
+  }, [imageModal]);
+
+  // The overlay lives inside this tab screen's tree, so the bottom tab bar would
+  // otherwise sit on top of the photo and the global notch stopper (a solid bar
+  // at zIndex 9999 in (app)/_layout.tsx) would leave a white band across the top.
+  // Send both away for as long as the viewer is open.
+  useEffect(() => {
+    if (!imageModal) return;
+    const { hideTabBar, showTabBar } = useTabBarStore.getState();
+    const { hideNotchStopper, showNotchStopper } = useNotchStopperStore.getState();
+    hideTabBar();
+    hideNotchStopper();
+    return () => {
+      showTabBar();
+      showNotchStopper();
+    };
   }, [imageModal]);
 
   const handlePickAndUpload = async (type: 'profile' | 'cover') => {

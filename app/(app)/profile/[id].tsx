@@ -35,6 +35,7 @@ import { PetIdCard } from '../../../src/components/pets/PetIdCard';
 import { petProfilesApi } from '../../../src/api/petProfiles';
 import { ProfileScreenSkeleton } from '../../../src/components/common/ProfileScreenSkeleton';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { useNotchStopperStore } from '../../../src/stores/notchStopperStore';
 import { saveScrollPosition, getScrollPosition } from '../../../src/utils/scrollRestore';
 import { COLORS } from '../../../src/constants/colors';
 
@@ -100,6 +101,16 @@ function UserProfileScreen() {
       return true;
     });
     return () => sub.remove();
+  }, [imageModal]);
+
+  // The viewer's dark backdrop lives inside this screen's tree (zIndex 100), below
+  // the global notch stopper (zIndex 9999 in (app)/_layout.tsx) — send the stopper
+  // away while it's open so the backdrop reaches the notch too.
+  useEffect(() => {
+    if (!imageModal) return;
+    const { hideNotchStopper, showNotchStopper } = useNotchStopperStore.getState();
+    hideNotchStopper();
+    return showNotchStopper;
   }, [imageModal]);
 
   const userId = id as string;

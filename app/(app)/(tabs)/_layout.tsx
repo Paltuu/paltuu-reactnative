@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { emitTabPress } from '../../../src/utils/tabPressSubscription';
+import { useTabBarHidden } from '../../../src/stores/tabBarStore';
 import { useActiveExpressVetRequest } from '../../../src/hooks/useActiveExpressVetRequest';
 import { ActiveBookingBar } from '../../../src/components/expressVet/ActiveBookingBar';
 
@@ -132,6 +133,9 @@ function AnimatedTabIcon({
 function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  // Some in-tree full-screen overlays (e.g. the profile photo viewer) ask for the
+  // tab bar to be gone while they're open — see src/stores/tabBarStore.ts.
+  const tabBarHidden = useTabBarHidden();
   // Only ever queried for Karachi accounts with the feature available — cheap no-op
   // elsewhere since react-query just returns undefined without ever firing the request
   // (see the hook's `enabled` gate wired through isKarachiExpressVet-equivalent logic
@@ -139,6 +143,9 @@ function CustomTabBar({ state, navigation }: MaterialTopTabBarProps) {
   // Vets at Home history for a non-Karachi user just means `activeRequest` stays null).
   const { activeRequest } = useActiveExpressVetRequest();
   const baseBarHeight = Platform.OS === 'ios' ? 52 : 56;
+
+  // Collapse the bar entirely (no reserved space) while an overlay owns the screen.
+  if (tabBarHidden) return null;
 
   return (
     <View>

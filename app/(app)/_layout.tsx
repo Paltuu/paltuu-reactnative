@@ -2,12 +2,17 @@ import { Stack, useRouter, usePathname } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderProvider, useHeaderContext } from '../../src/context/HeaderContext';
+import { useNotchStopperHidden } from '../../src/stores/notchStopperStore';
 import { useEffect } from 'react';
 
 function LayoutContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setOnPlusPress, setOnHeartPress } = useHeaderContext();
+  // The profile photo viewer is a full-screen dark overlay inside a tab screen's
+  // tree, so it can't paint over this bar on its own — it asks for the stopper to
+  // step aside so its backdrop reaches the notch too.
+  const notchStopperHidden = useNotchStopperHidden();
 
   useEffect(() => {
     setOnPlusPress(() => {
@@ -42,17 +47,19 @@ function LayoutContent() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
       {/* ── Global Notch Stopper ── */}
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: insets.top,
-          backgroundColor: isGreyScreen ? '#FAFAFB' : '#FFF',
-          zIndex: 9999,
-        }}
-      />
+      {!notchStopperHidden && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: isGreyScreen ? '#FAFAFB' : '#FFF',
+            zIndex: 9999,
+          }}
+        />
+      )}
       {/*
         Only "(tabs)" (the real bottom-tab screens: index/pets/search/profile)
         lives in the Tabs navigator. Every other screen here is a Stack sibling
