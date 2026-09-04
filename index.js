@@ -45,4 +45,17 @@ if (Platform.OS === 'android') {
   }
 }
 
+// react-native-screens wraps every off-screen route in <react-freeze>, which
+// unmounts screen B's subtree while you're on C and re-mounts it when you swipe
+// back. On iOS + New Architecture (screens 4.16) a fast interactive back-swipe
+// through more than one screen races that thaw against the native pop: you land
+// on A, B re-mounts a frame late, the stack "corrects" by sliding B in and then
+// back out to A on its own. Disabling freeze keeps B mounted the whole time, so
+// there is nothing to re-mount mid-gesture and the bounce goes away. Cost is
+// that backgrounded screens keep their React tree in memory (no re-render while
+// blurred — they're still detached from the view hierarchy by screens itself).
+// Must run before any screen mounts, hence here rather than in _layout.tsx.
+const { enableFreeze } = require('react-native-screens');
+enableFreeze(false);
+
 require('expo-router/entry');

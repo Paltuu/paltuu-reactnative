@@ -147,89 +147,104 @@ export default function RootLayout() {
     if (!navigationState?.key) return;
     if (isLoading || !fontsLoaded) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    // These live outside (auth) on purpose — they run mid-flow after tokens
-    // are already issued (post-OTP personalization, post-OAuth username), so
-    // they must be exempt from both the "logged out" and "logged in" redirects.
-    const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
-    const onOnboardingSlides = segments[0] === 'onboarding';
+    // During a fast interactive back-swipe, `segments` updates once for every
+    // screen the gesture flings through. Running the redirect rules on those
+    // transient mid-swipe values — and firing `router.replace` against a route
+    // that is still settling — is its own cause of the "land on A, snap forward
+    // to B, slide back to A" bounce, independent of the react-native-screens
+    // freeze race handled in index.js. Deferring the decision by a frame or two
+    // and clearing it on every re-run means rapid segment changes collapse to a
+    // single evaluation of the screen the user actually landed on. A genuine
+    // redirect (logout, dispatcher bounce) is delayed by ~150ms, which is below
+    // the threshold of noticing given it already flashes a screen.
+    const decide = () => {
+      const inAuthGroup = segments[0] === '(auth)';
+      // These live outside (auth) on purpose — they run mid-flow after tokens
+      // are already issued (post-OTP personalization, post-OAuth username), so
+      // they must be exempt from both the "logged out" and "logged in" redirects.
+      const onPostAuthFlowScreen = segments[0] === 'interests' || segments[0] === 'oauth-username';
+      const onOnboardingSlides = segments[0] === 'onboarding';
 
-    // Dispatchers aren't normal users of the consumer app — they get the Dispatcher
-    // Console and nothing else (no tabs, no social feed, no Pets/adopt/marketplace).
-    // Same login/session system underneath, just a completely different landing area.
-    // Read off `user` (the reactive selector, in this effect's deps) rather than
-    // getState(): role arrives asynchronously via fetchProfile() on sessions restored
-    // from storage, and getState() alone left the effect with no reason to re-run when
-    // it landed — a dispatcher could sit in the consumer app until some unrelated
-    // segment change happened to re-trigger this.
-    const isDispatcher = user?.role === 'dispatcher';
-    const inAppGroup = segments[0] === '(app)';
-    // Anchor on the group as well as the child segment: `segments[1]` is meaningless
-    // outside (app), and matching it alone would treat any root route whose second
-    // segment happened to be this string as "already on the console".
-    const onDispatchConsole = inAppGroup && (segments as string[])[1] === 'express-vet-dispatch';
+      // Dispatchers aren't normal users of the consumer app — they get the Dispatcher
+      // Console and nothing else (no tabs, no social feed, no Pets/adopt/marketplace).
+      // Same login/session system underneath, just a completely different landing area.
+      // Read off `user` (the reactive selector, in this effect's deps) rather than
+      // getState(): role arrives asynchronously via fetchProfile() on sessions restored
+      // from storage, and getState() alone left the effect with no reason to re-run when
+      // it landed — a dispatcher could sit in the consumer app until some unrelated
+      // segment change happened to re-trigger this.
+      const isDispatcher = user?.role === 'dispatcher';
+      const inAppGroup = segments[0] === '(app)';
+      // Anchor on the group as well as the child segment: `segments[1]` is meaningless
+      // outside (app), and matching it alone would treat any root route whose second
+      // segment happened to be this string as "already on the console".
+      const onDispatchConsole = inAppGroup && (segments as string[])[1] === 'express-vet-dispatch';
 
-    // Check once, ahead of any redirect below, whether this launch was the OS auto-opening
-    // the app for the full-screen ringing alert (killed-app cold start) — see the ref's
-    // declaration above for why this has to happen before the redirect decision, not after.
-    // `checking` (distinct from `checked`) guards against a second copy of this async check
-    // firing if some unrelated dependency (e.g. segments) re-runs this effect while the
-    // first one is still in flight.
-    if (Platform.OS === 'android' && isAuthenticated && isDispatcher && !pendingDispatchAlert.current.checked) {
-      if (!pendingDispatchAlert.current.checking) {
-        pendingDispatchAlert.current.checking = true;
-        (async () => {
-          try {
-            const notifee = require('@notifee/react-native').default;
-            const initial = await notifee.getInitialNotification();
-            if (initial && isExpressVetAlertOpenEvent({ detail: initial })) {
-              const alertId = initial.notification?.id;
-              const raw = initial.notification?.data?.payload;
-              if (alertId && typeof raw === 'string') {
-                useIncomingCallStore.getState().register(alertId, JSON.parse(raw));
-                pendingDispatchAlert.current.route = `/(app)/express-vet-dispatch/incoming-alert?alertId=${alertId}`;
+      // Check once, ahead of any redirect below, whether this launch was the OS auto-opening
+      // the app for the full-screen ringing alert (killed-app cold start) — see the ref's
+      // declaration above for why this has to happen before the redirect decision, not after.
+      // `checking` (distinct from `checked`) guards against a second copy of this async check
+      // firing if some unrelated dependency (e.g. segments) re-runs this effect while the
+      // first one is still in flight.
+      if (Platform.OS === 'android' && isAuthenticated && isDispatcher && !pendingDispatchAlert.current.checked) {
+        if (!pendingDispatchAlert.current.checking) {
+          pendingDispatchAlert.current.checking = true;
+          (async () => {
+            try {
+              const notifee = require('@notifee/react-native').default;
+              const initial = await notifee.getInitialNotification();
+              if (initial && isExpressVetAlertOpenEvent({ detail: initial })) {
+                const alertId = initial.notification?.id;
+                const raw = initial.notification?.data?.payload;
+                if (alertId && typeof raw === 'string') {
+                  useIncomingCallStore.getState().register(alertId, JSON.parse(raw));
+                  pendingDispatchAlert.current.route = `/(app)/express-vet-dispatch/incoming-alert?alertId=${alertId}`;
+                }
               }
+            } catch {
+              // Nothing to recover — proceed with the normal landing below.
             }
-          } catch {
-            // Nothing to recover — proceed with the normal landing below.
-          }
-          pendingDispatchAlert.current.checked = true;
-          setDispatchAlertCheckTick((t) => t + 1); // re-run this effect now the check is resolved
-        })();
+            pendingDispatchAlert.current.checked = true;
+            setDispatchAlertCheckTick((t) => t + 1); // re-run this effect now the check is resolved
+          })();
+        }
+        return; // nothing to decide until the check above resolves
       }
-      return; // nothing to decide until the check above resolves
-    }
 
-    if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
-      // TEMP: onboarding slides are disabled — send everyone straight to welcome.
-      // Re-enable by restoring: router.replace(!hasSeenOnboarding ? '/onboarding' : '/(auth)/welcome');
-      router.replace('/(auth)/welcome');
-    } else if (isAuthenticated && inAuthGroup) {
-      const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
-      if (!newUser) {
-        router.replace(
-          (pendingDispatchAlert.current.route ?? (isDispatcher ? '/(app)/express-vet-dispatch' : '/(app)')) as any
-        );
-      } else {
-        router.replace(needsUsername ? '/oauth-username' : '/interests');
+      if (!isAuthenticated && !inAuthGroup && !onPostAuthFlowScreen && !onOnboardingSlides) {
+        // TEMP: onboarding slides are disabled — send everyone straight to welcome.
+        // Re-enable by restoring: router.replace(!hasSeenOnboarding ? '/onboarding' : '/(auth)/welcome');
+        router.replace('/(auth)/welcome');
+      } else if (isAuthenticated && inAuthGroup) {
+        const { isNewUser: newUser, needsUsername } = useAuthStore.getState();
+        if (!newUser) {
+          router.replace(
+            (pendingDispatchAlert.current.route ?? (isDispatcher ? '/(app)/express-vet-dispatch' : '/(app)')) as any
+          );
+        } else {
+          router.replace(needsUsername ? '/oauth-username' : '/interests');
+        }
+      } else if (
+        isAuthenticated &&
+        isDispatcher &&
+        !onDispatchConsole &&
+        !onPostAuthFlowScreen &&
+        !onOnboardingSlides
+      ) {
+        // Catches deep links, notification taps, or manual navigation into any other
+        // part of the consumer app (e.g. a social post link) and bounces back.
+        // Deliberately NOT limited to the (app) group: post/[id], thread/[id], media/[id],
+        // notifications, follow-requests and create-post are all root-level siblings of
+        // (app), so gating on `inAppGroup` let a notification tap or a shared post link
+        // drop a dispatcher straight into the consumer app. `(auth)` is already handled by
+        // the branch above, and the two post-auth flow screens stay exempt so a brand-new
+        // dispatcher account can still finish onboarding before being pinned to the console.
+        router.replace((pendingDispatchAlert.current.route ?? '/(app)/express-vet-dispatch') as any);
       }
-    } else if (
-      isAuthenticated &&
-      isDispatcher &&
-      !onDispatchConsole &&
-      !onPostAuthFlowScreen &&
-      !onOnboardingSlides
-    ) {
-      // Catches deep links, notification taps, or manual navigation into any other
-      // part of the consumer app (e.g. a social post link) and bounces back.
-      // Deliberately NOT limited to the (app) group: post/[id], thread/[id], media/[id],
-      // notifications, follow-requests and create-post are all root-level siblings of
-      // (app), so gating on `inAppGroup` let a notification tap or a shared post link
-      // drop a dispatcher straight into the consumer app. `(auth)` is already handled by
-      // the branch above, and the two post-auth flow screens stay exempt so a brand-new
-      // dispatcher account can still finish onboarding before being pinned to the console.
-      router.replace((pendingDispatchAlert.current.route ?? '/(app)/express-vet-dispatch') as any);
-    }
+    };
+
+    const settleTimer = setTimeout(decide, 150);
+    return () => clearTimeout(settleTimer);
   }, [
     isAuthenticated,
     dispatchAlertCheckTick,
