@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.13",
+    version: "1.0.14",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -122,10 +122,13 @@ export default (): ExpoConfig => {
     // bump strands any live binary left on the old one until it's rebuilt.
     // 2026-08-31: `version` went 1.0.12 → 1.0.13 for an iOS-only resubmission
     // (the live iOS 1.0.12 shipped with no update channel — see
-    // `updates.requestHeaders` above), which moves Android's runtime to 1.0.13
-    // as well. Android production is live at 1.0.12/versionCode 22 and will
-    // receive no further OTAs until an Android 1.0.13 build ships; bump
-    // versionCode past 22 when it does.
+    // `updates.requestHeaders` above).
+    // 2026-09-07: `version` went 1.0.13 → 1.0.14 for a new iOS production
+    // build. This also moves Android's `runtimeVersion.policy: "appVersion"`
+    // result to 1.0.14 — but android.runtimeVersion below is pinned explicitly
+    // to "1.0.12" to keep the live Android AAB (versionCode 22) receiving OTAs,
+    // so the `version` bump does not strand it. Bump android.versionCode past 22
+    // and re-point android.runtimeVersion when an Android build ships next.
     runtimeVersion: {
       policy: "appVersion",
     },
