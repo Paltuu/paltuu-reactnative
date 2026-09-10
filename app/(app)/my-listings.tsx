@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 import { FONTS } from '../../src/constants/typography';
+import { formatPhoneDisplay } from '../../src/utils/phone';
 
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
@@ -308,7 +309,14 @@ function MyListingsScreen() {
               <DetailRow label="Sex" value={selectedItem.sex === 'male' ? 'Male' : selectedItem.sex === 'female' ? 'Female' : undefined} />
               <DetailRow label="Age" value={formatAge(selectedItem.age_months)} />
               <DetailRow label="Location" value={[selectedItem.area, selectedItem.city_name].filter(Boolean).join(', ')} />
-              <DetailRow label="Contact Number" value={selectedItem.contact_number} />
+              <DetailRow
+                label="Contact Number"
+                value={
+                  selectedItem.contact_number
+                    ? `${formatPhoneDisplay(selectedItem.contact_number).flag}  ${formatPhoneDisplay(selectedItem.contact_number).pretty}`
+                    : undefined
+                }
+              />
               <DetailRow label="Description" value={selectedItem.description} />
               <DetailRow label="Health Issues" value={selectedItem.health_issues} />
               <DetailRow label="Vaccinated" value={boolLabel(selectedItem.vaccinated)} />

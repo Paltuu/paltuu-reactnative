@@ -21,6 +21,7 @@ import { ClinicResources } from '../../../src/components/pet-care/ClinicResource
 import { ReviewsSection } from '../../../src/components/pet-care/ReviewsSection';
 import { FONTS } from '../../../src/constants/typography';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
+import { formatPhoneDisplay } from '../../../src/utils/phone';
 
 const PRIMARY = '#A03048';
 const DARK = '#1A1A2E';
@@ -104,12 +105,11 @@ function ClinicDetailsScreen() {
       : 'Coverage area not listed'
     : clinic.address;
 
-  const handleCall = () => phone && Linking.openURL(`tel:${phone}`);
+  const handleCall = () => phone && Linking.openURL(`tel:${formatPhoneDisplay(phone).e164 || phone}`);
   const handleWhatsApp = () => {
     const raw = clinic.whatsapp_number || phone;
     if (!raw) return;
-    let p = raw.trim().replace(/[^\d+]/g, '');
-    if (p.startsWith('0')) p = '92' + p.slice(1);
+    const p = formatPhoneDisplay(raw).digits || String(raw).replace(/\D/g, '');
     Linking.openURL(`whatsapp://send?phone=${p}`);
   };
   const handleMap = () => {
@@ -277,7 +277,9 @@ function ClinicDetailsScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.contactLabel}>Phone Number</Text>
-                    <Text style={styles.contactValue}>{phone}</Text>
+                    <Text style={styles.contactValue}>
+                      {formatPhoneDisplay(phone).flag} {formatPhoneDisplay(phone).pretty}
+                    </Text>
                   </View>
                 </View>
                 <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>

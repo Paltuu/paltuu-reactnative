@@ -23,6 +23,7 @@ import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { PetDetailsScreenSkeleton } from '../../src/components/common/PetDetailsScreenSkeleton';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 import { getShareUrl } from '../../src/utils/share';
+import { formatPhoneDisplay } from '../../src/utils/phone';
 
 const { width } = Dimensions.get('window');
 // Wider and less tall layout (5:4 aspect ratio)
@@ -93,7 +94,7 @@ function PetDetailsScreen() {
       Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
       return;
     }
-    Linking.openURL(`tel:${phone}`);
+    Linking.openURL(`tel:${formatPhoneDisplay(phone).e164 || phone}`);
   };
 
   const handleMessageGuardian = () => {
@@ -102,8 +103,9 @@ function PetDetailsScreen() {
       Alert.alert('No phone number', "This guardian hasn't added a phone number yet.");
       return;
     }
-    let p = String(phone).trim().replace(/[^\d+]/g, '');
-    if (p.startsWith('0')) p = '92' + p.slice(1);
+    // `digits` is the E.164 number with the "+" stripped — correct for any
+    // country, not just PK. Falls back to a bare digit strip if we can't parse.
+    const p = formatPhoneDisplay(phone).digits || String(phone).replace(/\D/g, '');
     // wa.me is a universal link (works with or without the WhatsApp app
     // installed, no iOS LSApplicationQueriesSchemes entry needed), unlike
     // the whatsapp:// app scheme which silently fails to open otherwise.
@@ -220,6 +222,12 @@ function PetDetailsScreen() {
               />
               <View style={s.sellerInfo}>
                 <Text style={s.sellerName}>{pet.owner_name || 'Legendary Kiwi'}</Text>
+                {!!pet.contact_number && (
+                  <Text style={s.sellerPhone}>
+                    {formatPhoneDisplay(pet.contact_number).flag}{'  '}
+                    {formatPhoneDisplay(pet.contact_number).pretty}
+                  </Text>
+                )}
               </View>
               <View style={s.sellerActions}>
                 <TouchableOpacity style={s.sellerActionCircle} activeOpacity={0.7} onPress={handleMessageGuardian}>
@@ -447,6 +455,7 @@ const s = StyleSheet.create({
   sellerAvatarBox: { width: 40, height: 40, borderRadius: 20, marginRight: 12, borderWidth: 1, borderColor: 'rgba(160, 48, 72, 0.08)', backgroundColor: '#F5F5F7' },
   sellerInfo: { flex: 1 },
   sellerName: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#111827' },
+  sellerPhone: { fontSize: 13, fontFamily: 'DMSans_400Regular', color: '#6B7280', marginTop: 2 },
   sellerActions: { flexDirection: 'row', gap: 10 },
   sellerActionCircle: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
 

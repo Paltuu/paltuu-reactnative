@@ -15,6 +15,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { formatPhoneDisplay } from '../../src/utils/phone';
 
 const PRIMARY = '#a03048';
 
@@ -181,7 +182,14 @@ function MyApplicationsScreen() {
               <DetailRow label="Applied On" value={selectedItem.created_at ? new Date(selectedItem.created_at).toLocaleDateString() : undefined} />
               <DetailRow label="Your Name" value={isFoster ? selectedItem.fosterer_name : selectedItem.adopter_name} />
               <DetailRow label="Address" value={isFoster ? selectedItem.fosterer_address : selectedItem.adopter_address} />
-              <DetailRow label="Contact Number" value={selectedItem.contact_number} />
+              <DetailRow
+                label="Contact Number"
+                value={
+                  selectedItem.contact_number
+                    ? `${formatPhoneDisplay(selectedItem.contact_number).flag}  ${formatPhoneDisplay(selectedItem.contact_number).pretty}`
+                    : undefined
+                }
+              />
 
               {isFoster && (
                 <>

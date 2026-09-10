@@ -8,6 +8,7 @@ import { Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { withFocusUnmount } from '../../../src/components/common/withFocusUnmount';
 import { ReviewsSection } from '../../../src/components/pet-care/ReviewsSection';
+import { formatPhoneDisplay } from '../../../src/utils/phone';
 
 function VetDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -49,16 +50,13 @@ function VetDetailsScreen() {
 
   const handleCall = () => {
     if (vet.contact_details) {
-      Linking.openURL(`tel:${vet.contact_details}`);
+      Linking.openURL(`tel:${formatPhoneDisplay(vet.contact_details).e164 || vet.contact_details}`);
     }
   };
 
   const handleWhatsApp = () => {
     if (vet.contact_details) {
-      let phone = vet.contact_details.trim();
-      if (phone.startsWith("0")) {
-        phone = "92" + phone.slice(1);
-      }
+      const phone = formatPhoneDisplay(vet.contact_details).digits || String(vet.contact_details).replace(/\D/g, '');
       Linking.openURL(`whatsapp://send?phone=${phone}`);
     }
   };

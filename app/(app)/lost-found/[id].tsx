@@ -18,6 +18,7 @@ import { NO_PROFILE_IMAGE } from '../../../src/constants/images';
 import { FONTS } from '../../../src/constants/typography';
 import { COLORS } from '../../../src/constants/colors';
 import { timeAgo } from '../../../src/utils/timeAgo';
+import { formatPhoneDisplay } from '../../../src/utils/phone';
 
 const PLACEHOLDER = require('../../../assets/dog-placeholder.webp');
 const LOST_COLOR = '#C0392B';
@@ -46,7 +47,7 @@ export default function LostFoundDetailScreen() {
       Alert.alert('No contact info', 'This report has no contact details attached.');
       return;
     }
-    Linking.openURL(`tel:${item.contact_info}`);
+    Linking.openURL(`tel:${formatPhoneDisplay(item.contact_info).e164 || item.contact_info}`);
   };
 
   const handleWhatsApp = () => {
@@ -54,8 +55,7 @@ export default function LostFoundDetailScreen() {
       Alert.alert('No contact info', 'This report has no contact details attached.');
       return;
     }
-    let p = String(item.contact_info).trim().replace(/[^\d+]/g, '');
-    if (p.startsWith('0')) p = '92' + p.slice(1);
+    const p = formatPhoneDisplay(item.contact_info).digits || String(item.contact_info).replace(/\D/g, '');
     Linking.openURL(`https://wa.me/${p}`);
   };
 
