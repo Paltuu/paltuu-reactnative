@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { CityPickerField } from '../../src/components/pets/CityPickerField';
+import InternationalPhoneInput from '../../src/components/ui/InternationalPhoneInput';
+import { isValidPhone } from '../../src/utils/phone';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { petApi } from '../../src/api/pets';
@@ -120,6 +122,10 @@ function ApplyAdoptScreen() {
           Alert.alert('Required', 'Please add a contact number.');
           return false;
         }
+        if (!isValidPhone(formData.contact_number)) {
+          Alert.alert('Invalid number', 'Please enter a valid phone number for the selected country.');
+          return false;
+        }
         return true;
       case 'agreement':
         if (!formData.agree_to_terms) {
@@ -156,9 +162,7 @@ function ApplyAdoptScreen() {
         pet_id: parseInt(pet_id as string),
         ...formData,
         city_id: parseInt(formData.city_id),
-        contact_number: formData.contact_number.startsWith('+92')
-          ? formData.contact_number
-          : `+92${formData.contact_number.replace(/^0/, '')}`,
+        contact_number: formData.contact_number,
       };
       await petApi.applyForAdoption(payload);
       setSubmitted(true);
@@ -253,19 +257,11 @@ function ApplyAdoptScreen() {
 
           {/* ── Contact ── */}
           {key === 'contact' && (
-            <View style={styles.prefixRow}>
-              <Text style={styles.prefix}>+92</Text>
-              <TextInput
-                style={styles.prefixInput}
-                value={formData.contact_number}
-                onChangeText={(t) => set({ contact_number: t })}
-                placeholder="300 1234567"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="number-pad"
-                maxLength={11}
-                autoFocus
-              />
-            </View>
+            <InternationalPhoneInput
+              value={formData.contact_number}
+              onChangeValue={(v) => set({ contact_number: v })}
+              autoFocus
+            />
           )}
 
           {/* ── Household ── */}
@@ -455,30 +451,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     paddingTop: 14,
-  },
-
-  // Prefixed contact input
-  prefixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-  },
-  prefix: {
-    fontSize: 16,
-    fontFamily: 'DMSans_700Bold',
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  prefixInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'DMSans_400Regular',
-    color: '#111827',
   },
 
   // Checks

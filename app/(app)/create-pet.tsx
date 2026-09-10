@@ -20,6 +20,8 @@ import PaltuuButton from '../../src/components/ui/PaltuuButton';
 import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
 import { CityPickerField } from '../../src/components/pets/CityPickerField';
+import InternationalPhoneInput from '../../src/components/ui/InternationalPhoneInput';
+import { isValidPhone, formatPhoneDisplay } from '../../src/utils/phone';
 import { usePetStore } from '../../src/stores/petStore';
 import { petApi } from '../../src/api/pets';
 import { useShallow } from 'zustand/react/shallow';
@@ -127,7 +129,7 @@ function CreatePetScreen() {
           sex: pet.sex || 'male',
           cityId: pet.city_id != null ? String(pet.city_id) : '',
           area: pet.area || '',
-          contactNumber: (pet.contact_number || '').replace(/^\+92/, ''),
+          contactNumber: pet.contact_number || '',
           years: String(Math.floor((pet.age_months || 0) / 12)),
           months: String((pet.age_months || 0) % 12),
           breed: pet.pet_breed || '',
@@ -209,6 +211,10 @@ function CreatePetScreen() {
           Alert.alert('Required', 'Please add a contact number.');
           return false;
         }
+        if (!isValidPhone(formData.contactNumber)) {
+          Alert.alert('Invalid number', 'Please enter a valid phone number for the selected country.');
+          return false;
+        }
         return true;
       case 'age':
         if (!formData.years && !formData.months) {
@@ -259,7 +265,7 @@ function CreatePetScreen() {
         city_id: Number(formData.cityId),
         area: formData.area,
         age_months: Number(formData.years || 0) * 12 + Number(formData.months || 0),
-        contact_number: `+92${formData.contactNumber.replace(/^0/, '')}`,
+        contact_number: formData.contactNumber || null,
         description: formData.description,
         sex: formData.sex,
         tags: formData.selectedTags,
@@ -425,19 +431,11 @@ function CreatePetScreen() {
 
           {/* ── Contact ── */}
           {key === 'contact' && (
-            <View style={styles.prefixRow}>
-              <Text style={styles.prefix}>+92</Text>
-              <TextInput
-                style={styles.prefixInput}
-                value={formData.contactNumber}
-                onChangeText={(t) => set({ contactNumber: t })}
-                placeholder="300 1234567"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="number-pad"
-                maxLength={11}
-                autoFocus
-              />
-            </View>
+            <InternationalPhoneInput
+              value={formData.contactNumber}
+              onChangeValue={(v) => set({ contactNumber: v })}
+              autoFocus
+            />
           )}
 
           {/* ── Age ── */}
@@ -595,7 +593,11 @@ function CreatePetScreen() {
                 />
                 <ReviewRow
                   label="Contact"
-                  value={formData.contactNumber ? `+92 ${formData.contactNumber}` : '—'}
+                  value={
+                    formData.contactNumber
+                      ? `${formatPhoneDisplay(formData.contactNumber).flag}  ${formatPhoneDisplay(formData.contactNumber).pretty}`
+                      : '—'
+                  }
                   onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'contact'))}
                 />
                 <ReviewRow
@@ -726,30 +728,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 130,
     paddingTop: 14,
-  },
-
-  // Prefixed contact input
-  prefixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-  },
-  prefix: {
-    fontSize: 16,
-    fontFamily: 'DMSans_700Bold',
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  prefixInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'DMSans_400Regular',
-    color: '#111827',
   },
 
   // Sex selector

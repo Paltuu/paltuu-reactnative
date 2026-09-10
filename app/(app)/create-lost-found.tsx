@@ -20,6 +20,8 @@ import { OnboardingHeader } from '../../src/components/auth/OnboardingHeader';
 import { PickerField } from '../../src/components/pets/PickerField';
 import { CityPickerField } from '../../src/components/pets/CityPickerField';
 import { DateField } from '../../src/components/pets/DateField';
+import InternationalPhoneInput from '../../src/components/ui/InternationalPhoneInput';
+import { isValidPhone, formatPhoneDisplay } from '../../src/utils/phone';
 import { usePetStore } from '../../src/stores/petStore';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -136,6 +138,10 @@ function CreateLostFoundScreen() {
           Alert.alert('Required', 'Please add a contact number.');
           return false;
         }
+        if (!isValidPhone(formData.contactInfo)) {
+          Alert.alert('Invalid number', 'Please enter a valid phone number for the selected country.');
+          return false;
+        }
         return true;
       case 'photos':
         if (images.length === 0) {
@@ -177,7 +183,7 @@ function CreateLostFoundScreen() {
         location: formData.location,
         pet_description: formData.description,
         date: formData.date,
-        contact_info: `+92${formData.contactInfo.replace(/^0/, '')}`,
+        contact_info: formData.contactInfo,
         post_type: formData.postType,
         user_id: user?.id || 47,
       };
@@ -303,20 +309,11 @@ function CreateLostFoundScreen() {
 
           {/* ── Contact ── */}
           {key === 'contact' && (
-            <View style={styles.prefixRow}>
-              <Text style={styles.prefix}>+92</Text>
-              <TextInput
-                ref={inputRef}
-                style={styles.prefixInput}
-                value={formData.contactInfo}
-                onChangeText={(t) => set({ contactInfo: t })}
-                placeholder="300 1234567"
-                placeholderTextColor="#B0B7C3"
-                keyboardType="number-pad"
-                maxLength={11}
-                autoFocus
-              />
-            </View>
+            <InternationalPhoneInput
+              value={formData.contactInfo}
+              onChangeValue={(v) => set({ contactInfo: v })}
+              autoFocus
+            />
           )}
 
           {/* ── Date ── */}
@@ -402,7 +399,11 @@ function CreateLostFoundScreen() {
                 )}
                 <ReviewRow
                   label="Contact"
-                  value={formData.contactInfo ? `+92 ${formData.contactInfo}` : '—'}
+                  value={
+                    formData.contactInfo
+                      ? `${formatPhoneDisplay(formData.contactInfo).flag}  ${formatPhoneDisplay(formData.contactInfo).pretty}`
+                      : '—'
+                  }
                   onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'contact'))}
                 />
                 <ReviewRow
@@ -493,29 +494,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
 
-  // Prefixed contact input
-  prefixRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FAFAFA',
-  },
-  prefix: {
-    fontSize: 16,
-    fontFamily: 'DMSans_700Bold',
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  prefixInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'DMSans_400Regular',
-    color: '#111827',
-  },
 
   // Option cards (lost / found)
   optionCard: {
