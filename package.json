@@ -74,7 +74,7 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-reanimated-skeleton": "^1.6.0",
     "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
+    "react-native-screens": "~4.24.0",
     "react-native-svg": "15.12.1",
     "react-native-tab-view": "^4.3.1",
     "react-native-toast-message": "^2.3.3",
@@ -90,5 +90,13 @@
     "expo-module-scripts": "^56.0.3",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "//react-native-screens": "Pinned to ~4.24.0 (above Expo SDK 54's ~4.16.0) for the iOS fast-swipe-back bounce fix (react/native state desync, software-mansion/react-native-screens#2559). 4.16.x predates the fix. 4.25.0+ requires RN 0.82+ per screens' compat table, so 4.24.x is the ceiling for RN 0.81.5. Requires a native rebuild; see SWIPE_BACK_BOUNCE_HANDOFF.md.",
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native-screens"
+      ]
+    }
+  }
 }
