@@ -23,7 +23,7 @@ export default (): ExpoConfig => {
     name,
     slug: PROJECT_SLUG,
     scheme,
-    version: "1.0.14",
+    version: "1.0.15",
     orientation: "portrait",
     icon: "./assets/paltuu-app-icon.png",
     userInterfaceStyle: "light",
@@ -58,8 +58,8 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 22,
-      runtimeVersion: "1.0.12",
+      versionCode: 23,
+      runtimeVersion: "1.0.15",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/paltuu-app-icon.png",
@@ -129,6 +129,14 @@ export default (): ExpoConfig => {
     // to "1.0.12" to keep the live Android AAB (versionCode 22) receiving OTAs,
     // so the `version` bump does not strand it. Bump android.versionCode past 22
     // and re-point android.runtimeVersion when an Android build ships next.
+    // 2026-09-11: `version` went 1.0.14 → 1.0.15 for the react-native-screens
+    // ~4.16.0 → ~4.24.0 bump (iOS fast-swipe-back bounce fix, see
+    // SWIPE_BACK_BOUNCE_HANDOFF.md). Screens is native on both platforms, so
+    // this ships as new builds for BOTH iOS and Android — android.versionCode
+    // and android.runtimeVersion below are bumped/re-pointed to 1.0.15 to
+    // match rather than left behind, since the old Android pin existed only
+    // to protect the previous live Android binary until its replacement
+    // shipped.
     runtimeVersion: {
       policy: "appVersion",
     },
