@@ -58,7 +58,7 @@ export default (): ExpoConfig => {
     },
     android: {
       package: packageName,
-      versionCode: 23,
+      versionCode: 24,
       runtimeVersion: "1.0.15",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
@@ -130,13 +130,17 @@ export default (): ExpoConfig => {
     // so the `version` bump does not strand it. Bump android.versionCode past 22
     // and re-point android.runtimeVersion when an Android build ships next.
     // 2026-09-11: `version` went 1.0.14 → 1.0.15 for the react-native-screens
-    // ~4.16.0 → ~4.24.0 bump (iOS fast-swipe-back bounce fix, see
-    // SWIPE_BACK_BOUNCE_HANDOFF.md). Screens is native on both platforms, so
-    // this ships as new builds for BOTH iOS and Android — android.versionCode
-    // and android.runtimeVersion below are bumped/re-pointed to 1.0.15 to
-    // match rather than left behind, since the old Android pin existed only
-    // to protect the previous live Android binary until its replacement
-    // shipped.
+    // ~4.16.0 → ~4.23.0 bump (iOS fast-swipe-back bounce fix, see
+    // SWIPE_BACK_BOUNCE_HANDOFF.md; landed on ~4.23.0, not ~4.24.0, after an
+    // EAS iOS build caught 4.24.0 breaking expo-router's native LinkPreview
+    // code). Screens is native on both platforms, so this ships as new builds
+    // for BOTH iOS and Android — android.versionCode and android.runtimeVersion
+    // below are bumped/re-pointed to 1.0.15 to match rather than left behind,
+    // since the old Android pin existed only to protect the previous live
+    // Android binary until its replacement shipped. versionCode went 23 → 24
+    // because a 23 build was already produced against the (wrong) 4.24.0 pin
+    // before the correction — never submitted, but left as-is to avoid two
+    // different binaries sharing one versionCode.
     runtimeVersion: {
       policy: "appVersion",
     },
