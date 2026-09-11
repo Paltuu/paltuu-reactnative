@@ -9,6 +9,15 @@
 // plugins/withVoipPushAppDelegate.js) and reaches JS through
 // src/services/dispatcherVoipPush.ts once the app is running, not through this file.
 import { Platform } from 'react-native';
+import { featureFlags } from 'react-native-screens';
+
+// react-native-screens ~4.23.0 (see package.json's "//react-native-screens" note): the
+// iOS fast-swipe-back bounce fix (software-mansion/react-native-screens#2559) is opt-in
+// at this version, off by default. 4.24.0+ turns it on by default but also renames its
+// internal Bottom Tabs classes (RNSBottomTabs* -> RNSTabs*), which breaks expo-router
+// 6.0.23/6.0.24's native LinkPreview code (hard-codes the old class names) — confirmed via
+// an EAS iOS build failure, not a hypothesis. Must be set before expo-router/entry runs.
+featureFlags.experiment.iosPreventReattachmentOfDismissedScreens = true;
 
 if (Platform.OS === 'android') {
   // Guarded: this runs before expo-router/entry, so a missing/misconfigured native
