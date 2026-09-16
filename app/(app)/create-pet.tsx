@@ -193,6 +193,16 @@ function CreatePetScreen() {
           Alert.alert('Required', 'Please add a listing title.');
           return false;
         }
+        if (formData.title.trim().length < 2) {
+          Alert.alert('Too short', 'Title must be at least 2 characters.');
+          return false;
+        }
+        return true;
+      case 'description':
+        if (formData.description && formData.description.length > 2500) {
+          Alert.alert('Too long', 'Description must be 2,500 characters or fewer.');
+          return false;
+        }
         return true;
       case 'type':
         if (!formData.petType) {
@@ -282,8 +292,22 @@ function CreatePetScreen() {
         await createPet(payload, images);
       }
       setSubmitted(true);
-    } catch {
-      Alert.alert('Error', isEditMode ? 'Failed to save changes. Check your data.' : 'Launch failed. Check your data.');
+    } catch (error: any) {
+      // Surface the real cause instead of a blind generic message — this was
+      // previously a bare `catch {}` that threw away the actual server/
+      // network error, making failures like this impossible to diagnose
+      // after the fact (no client-side detail, and server logs age out).
+      const status = error?.response?.status;
+      const serverMsg =
+        (Array.isArray(error?.response?.data?.errors) && error.response.data.errors.join(', ')) ||
+        error?.response?.data?.error ||
+        error?.response?.data?.message;
+      const detail = serverMsg || (status ? `Server error (${status})` : error?.message) || 'Unknown error';
+      console.error('[create-pet] submit failed:', { status, data: error?.response?.data, message: error?.message });
+      Alert.alert(
+        'Error',
+        `${isEditMode ? 'Failed to save changes.' : 'Launch failed.'} ${detail}`
+      );
     }
   };
 
@@ -522,16 +546,20 @@ function CreatePetScreen() {
 
           {/* ── Description ── */}
           {key === 'description' && (
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={formData.description}
-              onChangeText={(t) => set({ description: t })}
-              placeholder="Tell us about their habits, favourite toys…"
-              placeholderTextColor="#B0B7C3"
-              multiline
-              textAlignVertical="top"
-              autoFocus
-            />
+            <View>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.description}
+                onChangeText={(t) => set({ description: t })}
+                placeholder="Tell us about their habits, favourite toys…"
+                placeholderTextColor="#B0B7C3"
+                multiline
+                maxLength={2500}
+                textAlignVertical="top"
+                autoFocus
+              />
+              <Text style={styles.charCount}>{formData.description.length} / 2,500 characters</Text>
+            </View>
           )}
 
           {/* ── Photos ── */}
@@ -661,7 +689,7 @@ function CreatePetScreen() {
         <View style={[styles.bottom, { paddingBottom: keyboardVisible ? 12 : insets.bottom + 14 }]}>
           <PaltuuButton
             label={isLast ? (isEditMode ? 'Save Changes' : 'Post Pet for Adoption') : 'Next'}
-            successLabel={isLast ? (isEditMode ? 'Saved!' : 'Pet posted!') : undefined}
+            successLabel=""
             onPress={handleNext}
             loading={isLoading}
             radius={26}
@@ -728,6 +756,13 @@ const styles = StyleSheet.create({
   textArea: {
     height: 130,
     paddingTop: 14,
+  },
+  charCount: {
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginTop: 6,
   },
 
   // Sex selector
