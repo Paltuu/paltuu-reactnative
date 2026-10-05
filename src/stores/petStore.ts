@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petsApi, PetFilters } from '../api/pets';
-import client from '../api/client';
+import client, { UPLOAD_TIMEOUT_MS } from '../api/client';
 
 // Camera-roll photos (esp. HEIC/high-res JPEG) routinely exceed the API's
 // request-size limit — resize + re-encode before upload, same as the social
@@ -123,9 +123,10 @@ export const usePetStore = create<PetState>((set, get) => ({
 
   createPet: async (petData, images) => {
     set({ isLoading: true, error: null });
+    let petId: number | undefined;
     try {
       const response = await petsApi.createPet(petData);
-      const petId = response?.pet_id || response?.data?.pet_id;
+      petId = response?.pet_id || response?.data?.pet_id;
 
       if (!petId) throw new Error('Failed to create pet listing');
 
@@ -141,17 +142,27 @@ export const usePetStore = create<PetState>((set, get) => ({
           } as any);
         }
         formData.append('pet_id', petId.toString());
+        // Server emails the admin about the new listing once its photos are
+        // saved — only when this flag is set, since edits reuse this endpoint.
+        formData.append('notify_new_listing', 'true');
 
-        // We need an upload endpoint for images in the mobile API
-        // For now, using a placeholder logic if client doesn't have it
         await client.post('/upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: UPLOAD_TIMEOUT_MS,
         });
       }
 
       set({ isLoading: false });
       return response;
     } catch (error: any) {
+      // The listing row already exists by the time photos upload. Delete it on
+      // failure so the user's retry doesn't leave a duplicate in the approval
+      // queue (same rollback the web create-listing page does).
+      if (petId) {
+        await petsApi.deletePet(petId).catch((rollbackError) =>
+          console.error('[createPet] failed to roll back listing', petId, rollbackError)
+        );
+      }
       set({ error: error.message || 'Failed to create pet', isLoading: false });
       throw error;
     }
@@ -177,6 +188,7 @@ export const usePetStore = create<PetState>((set, get) => ({
         }
         const uploadRes = await client.post('/upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: UPLOAD_TIMEOUT_MS,
         });
         newImageUrls = uploadRes.data?.urls || [];
       }

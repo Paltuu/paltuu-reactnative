@@ -1,4 +1,4 @@
-import client from './client';
+import client, { UPLOAD_TIMEOUT_MS } from './client';
 
 export interface PetFilters {
   sex?: string;
@@ -32,7 +32,9 @@ export const petApi = {
   },
 
   async createPet(petData: any) {
-    const { data } = await client.post('/pets', petData);
+    // Longer than the 10s default: if this times out after the server already
+    // inserted the row, the app never learns the pet_id and can't roll it back.
+    const { data } = await client.post('/pets', petData, { timeout: 30000 });
     return data;
   },
 
@@ -54,6 +56,7 @@ export const petApi = {
   async uploadLostFoundImages(postId: number, formData: FormData) {
     const { data } = await client.post('/lost-and-found/images', formData, {
       headers: { 'Content-Type': 'multipart/form-data', 'Params': `post_id=${postId}` },
+      timeout: UPLOAD_TIMEOUT_MS,
     });
     return data;
   },

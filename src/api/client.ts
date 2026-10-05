@@ -4,6 +4,13 @@ import { storage } from '../utils/storage';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
 
+// Multipart image uploads (several photos over mobile data, then a server-side
+// re-encode + S3 write per file, plus a cold start after idle) routinely run
+// past the default 10s. Timing out there doesn't stop the server — it finishes
+// the work while the app reports "Network Error", and the user's retry then
+// creates a duplicate listing. Pass this as `timeout` on every upload call.
+export const UPLOAD_TIMEOUT_MS = 120000;
+
 const client = axios.create({
   baseURL: `${API_BASE_URL}/v1`,
   timeout: 10000,
