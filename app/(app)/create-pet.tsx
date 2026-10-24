@@ -298,11 +298,14 @@ function CreatePetScreen() {
       // network error, making failures like this impossible to diagnose
       // after the fact (no client-side detail, and server logs age out).
       const status = error?.response?.status;
+      const is413 = status === 413 || error?.message?.includes('413');
       const serverMsg =
         (Array.isArray(error?.response?.data?.errors) && error.response.data.errors.join(', ')) ||
         error?.response?.data?.error ||
         error?.response?.data?.message;
-      const detail = serverMsg || (status ? `Server error (${status})` : error?.message) || 'Unknown error';
+      const detail = is413
+        ? 'The selected photos are too large. Please try with fewer or smaller photos.'
+        : (serverMsg || (status ? `Server error (${status})` : error?.message) || 'Unknown error');
       console.error('[create-pet] submit failed:', { status, data: error?.response?.data, message: error?.message });
       Alert.alert(
         'Error',

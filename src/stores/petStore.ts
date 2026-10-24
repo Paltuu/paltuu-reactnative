@@ -4,15 +4,20 @@ import { petsApi, PetFilters } from '../api/pets';
 import client, { UPLOAD_TIMEOUT_MS } from '../api/client';
 
 // Camera-roll photos (esp. HEIC/high-res JPEG) routinely exceed the API's
-// request-size limit — resize + re-encode before upload, same as the social
-// post flow in uploadStore.ts.
+// request-size limit — resize + re-encode before upload, keeping total batch
+// payload well under Vercel's 4.5 MB serverless function limit.
 const compressImage = async (uri: string) => {
-  const result = await manipulateAsync(
-    uri,
-    [{ resize: { width: 1200 } }],
-    { compress: 0.8, format: SaveFormat.JPEG }
-  );
-  return result.uri;
+  try {
+    const result = await manipulateAsync(
+      uri,
+      [{ resize: { width: 1200 } }],
+      { compress: 0.7, format: SaveFormat.JPEG }
+    );
+    return result.uri;
+  } catch (err) {
+    console.warn('[compressImage] compression failed, using original uri:', err);
+    return uri;
+  }
 };
 
 interface PetState {
