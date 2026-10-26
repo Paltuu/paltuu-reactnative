@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { storage } from '../utils/storage';
@@ -16,6 +17,8 @@ const client = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    'x-client': 'app',
+    'x-platform': Platform.OS,
   },
 });
 
