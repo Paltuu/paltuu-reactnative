@@ -23,7 +23,7 @@ if (
 }
 
 const SUPPORT_WHATSAPP = '923000000000'; // TODO: replace with the real support number
-const SUPPORT_EMAIL = 'support@paltuu.pk';
+const SUPPORT_EMAIL = 'contact@paltuu.pk';
 
 type FeatherName = React.ComponentProps<typeof Feather>['name'];
 
