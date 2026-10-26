@@ -222,7 +222,7 @@ function CreatePetScreen() {
           return false;
         }
         if (!isValidPhone(formData.contactNumber)) {
-          Alert.alert('Invalid number', 'Please enter a valid phone number for the selected country.');
+          Alert.alert('Invalid number', 'Please enter a valid mobile number (Pakistani numbers must be 11 digits starting with 03 or +92 3XX XXXXXXX).');
           return false;
         }
         return true;
