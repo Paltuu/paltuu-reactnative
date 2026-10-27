@@ -1447,15 +1447,6 @@ export const PostCard = React.memo(({
             </View>
           )}
 
-          {/* ── Pet chip (optional) ── */}
-          {/* Pet chip above the body only when there's no media — when there is
-              media the pet is labelled with a subtle tag right under it instead. */}
-          {!!petTagLabel && !isPlainRepost && !bodyMedia?.length && (
-            <View style={s.petChipRow}>
-              <PetChip name={petTagLabel} onPress={handlePetTagPress} />
-            </View>
-          )}
-
           {/* ── Body text: quote text for normal/quote posts, original text for plain reposts ── */}
           {!!bodyContent && (
             <View style={[s.caption, hasSaleNotice && { marginTop: 0 }]}>
@@ -1529,8 +1520,8 @@ export const PostCard = React.memo(({
           </>
           )}
 
-          {/* ── Pet tag: sits right under the media to signal the pet in the picture ── */}
-          {!!petTagLabel && !isPlainRepost && bodyMedia?.length > 0 && (
+          {/* ── Pet tag: sits right under the content/media ── */}
+          {!!petTagLabel && !isPlainRepost && (
             <TouchableOpacity style={s.petTag} onPress={handlePetTagPress} hitSlop={6}>
               <Image
                 source={PostIcons.pawTag}
