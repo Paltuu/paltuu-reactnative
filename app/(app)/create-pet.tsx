@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -64,7 +64,7 @@ const STEPS = [
   { key: 'location', heading: 'Where are they?', subtext: 'Your city and area help nearby adopters find them.' },
   { key: 'contact', heading: 'How can adopters reach you?', subtext: 'We\'ll show this so people can contact you.' },
   { key: 'age', heading: 'How old are they?', subtext: 'An approximate age is fine.' },
-  { key: 'details', heading: 'Breed & health', subtext: 'Share the breed and any health notes. Optional.' },
+  { key: 'details', heading: 'Breed & health', subtext: 'Select your pet\'s breed and share any health notes.' },
   { key: 'tags', heading: 'What are they like?', subtext: 'Select the traits that describe your pet.' },
   { key: 'description', heading: 'Tell their story', subtext: 'Habits, favourite toys, anything special.' },
   { key: 'photos', heading: 'Add photos', subtext: 'A clear photo makes all the difference. Up to 5.' },
@@ -79,10 +79,11 @@ function CreatePetScreen() {
   const keyboardVisible = useKeyboardVisible();
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const isEditMode = !!editId;
-  const { cities, categories, fetchMetadata, createPet, updatePet, isLoading } = usePetStore(
+  const { cities, categories, breeds, fetchMetadata, createPet, updatePet, isLoading } = usePetStore(
     useShallow((state) => ({
       cities: state.cities,
       categories: state.categories,
+      breeds: state.breeds,
       fetchMetadata: state.fetchMetadata,
       createPet: state.createPet,
       updatePet: state.updatePet,
@@ -102,6 +103,7 @@ function CreatePetScreen() {
     contactNumber: '',
     years: '',
     months: '',
+    breedId: '',
     breed: '',
     healthIssues: '',
     description: '',
@@ -123,6 +125,13 @@ function CreatePetScreen() {
         if (pet.vaccinated) tagIds.add(17);
         if (pet.neutered) tagIds.add(18);
 
+        const resolvedBreedId = pet.breed_id != null ? String(pet.breed_id) : '';
+        let resolvedBreedName = pet.pet_breed || '';
+        if (!resolvedBreedName && resolvedBreedId && breeds?.length) {
+          const bMatch = breeds.find((b: any) => String(b.breed_id) === resolvedBreedId);
+          if (bMatch) resolvedBreedName = bMatch.name;
+        }
+
         setFormData({
           title: pet.pet_name || '',
           petType: pet.pet_type != null ? String(pet.pet_type) : '',
@@ -132,7 +141,8 @@ function CreatePetScreen() {
           contactNumber: pet.contact_number || '',
           years: String(Math.floor((pet.age_months || 0) / 12)),
           months: String((pet.age_months || 0) % 12),
-          breed: pet.pet_breed || '',
+          breedId: resolvedBreedId,
+          breed: resolvedBreedName,
           healthIssues: pet.health_issues || '',
           description: pet.description || '',
           selectedTags: Array.from(tagIds),
@@ -152,6 +162,24 @@ function CreatePetScreen() {
       }
     })();
   }, [editId]);
+
+  // If breed was pre-filled from legacy free text but breedId wasn't yet set, resolve it once breeds load
+  useEffect(() => {
+    if (formData.petType && formData.breed && !formData.breedId && breeds?.length) {
+      const bMatch = breeds.find(
+        (b: any) =>
+          b.category_id === Number(formData.petType) &&
+          b.name.toLowerCase() === formData.breed.toLowerCase()
+      );
+      if (bMatch) {
+        setFormData((prev) => ({
+          ...prev,
+          breedId: String(bMatch.breed_id),
+          breed: bMatch.name,
+        }));
+      }
+    }
+  }, [breeds, formData.petType, formData.breed, formData.breedId]);
 
   const set = (patch: Partial<typeof formData>) => setFormData((prev) => ({ ...prev, ...patch }));
 
@@ -232,6 +260,12 @@ function CreatePetScreen() {
           return false;
         }
         return true;
+      case 'details':
+        if (!formData.breedId) {
+          Alert.alert('Required', 'Please select a breed.');
+          return false;
+        }
+        return true;
       case 'photos':
         if (images.length === 0) {
           Alert.alert('Required', 'Please add at least one photo of the pet.');
@@ -267,10 +301,15 @@ function CreatePetScreen() {
       Alert.alert('Required', 'Please add at least one photo of the pet.');
       return;
     }
+    if (!formData.breedId) {
+      Alert.alert('Required', 'Please select a breed.');
+      return;
+    }
     try {
       const payload: any = {
         pet_name: formData.title,
         pet_type: Number(formData.petType),
+        breed_id: Number(formData.breedId),
         pet_breed: formData.breed || null,
         city_id: Number(formData.cityId),
         area: formData.area,
@@ -314,10 +353,36 @@ function CreatePetScreen() {
     }
   };
 
-  const categoryOptions = (categories || []).map((c: any) => ({
+  // Only species with a breed list can be listed (PALTU-70 breeds table).
+  const listableCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+    if (!breeds || breeds.length === 0) {
+      return categories.filter((c: any) => {
+        const name = (c.category_name || c.name || '').toLowerCase();
+        return ['cat', 'dog', 'bird'].includes(name);
+      });
+    }
+    return categories.filter((c: any) =>
+      breeds.some((b: any) => b.category_id === (c.category_id || c.id))
+    );
+  }, [categories, breeds]);
+
+  const categoryOptions = listableCategories.map((c: any) => ({
     label: c.category_name || c.name,
     value: (c.category_id || c.id).toString(),
   }));
+
+  const breedOptions = useMemo(() => {
+    if (!formData.petType || !breeds) return [];
+    const petTypeId = Number(formData.petType);
+    return breeds
+      .filter((b: any) => b.category_id === petTypeId)
+      .map((b: any) => ({
+        label: b.name,
+        value: String(b.breed_id),
+      }));
+  }, [formData.petType, breeds]);
+
   const cityOptions = (cities || []).map((c: any) => ({
     label: c.city_name || c.name,
     value: (c.city_id || c.id).toString(),
@@ -401,7 +466,7 @@ function CreatePetScreen() {
               placeholder="Select pet type"
               value={formData.petType}
               options={categoryOptions}
-              onSelect={(v) => set({ petType: v })}
+              onSelect={(v) => set({ petType: v, breedId: '', breed: '' })}
               icon="paw-outline"
             />
           )}
@@ -498,13 +563,16 @@ function CreatePetScreen() {
           {key === 'details' && (
             <View style={{ gap: 16 }}>
               <View>
-                <Text style={styles.label}>Breed</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.breed}
-                  onChangeText={(t) => set({ breed: t })}
-                  placeholder="e.g. Persian"
-                  placeholderTextColor="#B0B7C3"
+                <Text style={styles.label}>Breed *</Text>
+                <PickerField
+                  placeholder="Select breed"
+                  value={formData.breedId}
+                  options={breedOptions}
+                  onSelect={(v) => {
+                    const matched = breeds.find((b: any) => String(b.breed_id) === v);
+                    set({ breedId: v, breed: matched ? matched.name : '' });
+                  }}
+                  icon="paw-outline"
                 />
               </View>
               <View>
@@ -643,9 +711,11 @@ function CreatePetScreen() {
                   }
                   onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'age'))}
                 />
-                {!!formData.breed && (
-                  <ReviewRow label="Breed" value={formData.breed} onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'details'))} />
-                )}
+                <ReviewRow
+                  label="Breed"
+                  value={formData.breed || '—'}
+                  onEdit={() => setStep(STEPS.findIndex((s) => s.key === 'details'))}
+                />
                 {!!formData.healthIssues && (
                   <ReviewRow
                     label="Health"

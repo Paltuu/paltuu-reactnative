@@ -1,5 +1,14 @@
 import client, { UPLOAD_TIMEOUT_MS } from './client';
 
+export interface Breed {
+  breed_id: number;
+  category_id: number;
+  name: string;
+  slug: string;
+  kind: 'breed' | 'street' | 'mixed' | 'not_sure' | 'other';
+  parent_breed_id: number | null;
+}
+
 export interface PetFilters {
   sex?: string;
   minAge?: string;
@@ -68,6 +77,11 @@ export const petApi = {
 
   async getCategories() {
     const { data } = await client.get('/pet-categories');
+    return data;
+  },
+
+  async getBreeds(): Promise<Breed[]> {
+    const { data } = await client.get('/breeds');
     return data;
   },
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { petsApi, PetFilters } from '../api/pets';
+import { petsApi, PetFilters, Breed } from '../api/pets';
 import client, { UPLOAD_TIMEOUT_MS } from '../api/client';
 
 // Camera-roll photos (esp. HEIC/high-res JPEG) routinely exceed the API's
@@ -24,6 +24,7 @@ interface PetState {
   pets: any[];
   cities: any[];
   categories: any[];
+  breeds: Breed[];
   isLoading: boolean;
   error: string | null;
   filters: PetFilters;
@@ -34,6 +35,7 @@ interface PetState {
   // Actions
   fetchPets: (filters?: PetFilters) => Promise<void>;
   fetchMetadata: () => Promise<void>;
+  fetchBreeds: () => Promise<void>;
   setFilters: (filters: Partial<PetFilters>) => void;
   resetFilters: () => void;
   fetchMyListings: () => Promise<void>;
@@ -57,6 +59,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   pets: [],
   cities: [],
   categories: [],
+  breeds: [],
   myListings: [],
   adoptionRequests: [],
   myApplications: [],
@@ -96,17 +99,31 @@ export const usePetStore = create<PetState>((set, get) => ({
 
   fetchMetadata: async () => {
     try {
-      const [cities, categories] = await Promise.all([
+      const [cities, categories, breeds] = await Promise.all([
         petsApi.getCities(),
-        petsApi.getCategories()
+        petsApi.getCategories(),
+        petsApi.getBreeds().catch((err) => {
+          console.error('Failed to fetch breeds in metadata', err);
+          return [];
+        }),
       ]);
 
       set({
         cities: Array.isArray(cities) ? cities : (cities?.data || []),
-        categories: Array.isArray(categories) ? categories : (categories?.data || [])
+        categories: Array.isArray(categories) ? categories : (categories?.data || []),
+        breeds: Array.isArray(breeds) ? breeds : ((breeds as any)?.data || []),
       });
     } catch (error) {
       console.error('Failed to fetch pet metadata', error);
+    }
+  },
+
+  fetchBreeds: async () => {
+    try {
+      const breeds = await petsApi.getBreeds();
+      set({ breeds: Array.isArray(breeds) ? breeds : ((breeds as any)?.data || []) });
+    } catch (error) {
+      console.error('Failed to fetch breeds', error);
     }
   },
 
