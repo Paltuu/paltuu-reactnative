@@ -10,7 +10,7 @@
 // found correctly-interleaved in one pass, with no risk of hashtag/mention
 // ordering bugs from running two separate sequential splits.
 import React, { useMemo, useState } from 'react';
-import { Text } from 'react-native';
+import { Linking, Text } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { parseValue, isTriggerConfig, replaceTriggerValues } from 'react-native-controlled-mentions';
@@ -32,6 +32,9 @@ const triggersConfig: TriggersConfig<MentionTriggerName> = {
 const REDACTED_MARKER = 'REDACTED';
 
 const patternsConfig: PatternsConfig = {
+    // http(s), bare www. and bare paltuu.pk links. Sentence punctuation right
+    // after a link ("…/browse-pets/885.") is left out of it.
+    url: { pattern: /(\b(?:https?:\/\/|www\.|paltuu\.pk\/)[^\s<]*[^\s<.,!?;:'")\]])/gi },
     // Mirrors the hashtag regex already used for tap-navigation in PostCard.tsx.
     hashtag: { pattern: /(#\w+)/g },
     redacted: { pattern: /(REDACTED)/g },
@@ -39,7 +42,32 @@ const patternsConfig: PatternsConfig = {
 
 // `getConfigsArray` isn't part of the package's public export surface, so we
 // flatten the two config objects ourselves — there's only ever one of each.
-const configs: Config[] = [triggersConfig.mention, patternsConfig.hashtag, patternsConfig.redacted];
+// The url pattern runs before hashtags so a "#section" inside a link stays part of the link.
+const configs: Config[] = [triggersConfig.mention, patternsConfig.url, patternsConfig.hashtag, patternsConfig.redacted];
+
+const PALTUU_HOSTS = new Set(['paltuu.pk', 'www.paltuu.pk']);
+
+/**
+ * Paltuu listing and post links open the in-app screen; anything else opens
+ * in the browser. Non-http(s) schemes are never opened.
+ */
+function openLink(raw: string, router: ReturnType<typeof useRouter>) {
+    let url: URL;
+    try {
+        url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    } catch {
+        return;
+    }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+    if (PALTUU_HOSTS.has(url.hostname.toLowerCase())) {
+        const pet = url.pathname.match(/^\/browse-pets\/(\d+)/);
+        if (pet) return router.push({ pathname: '/(app)/pet-details', params: { id: pet[1] } });
+        const post = url.pathname.match(/^\/p\/(\d+)/);
+        if (post) return router.push(`/post/${post[1]}`);
+    }
+    Linking.openURL(url.href).catch(() => {});
+}
 
 const stripHtml = (s: string) => (s ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
@@ -220,6 +248,18 @@ export function MentionText({
                             }}
                         >
                             {'  hidden word  '}
+                        </Text>
+                    );
+                }
+
+                if (part.config === patternsConfig.url) {
+                    return (
+                        <Text
+                            key={index}
+                            style={{ color: PRIMARY, textDecorationLine: 'underline' }}
+                            onPress={() => openLink(part.text, router)}
+                        >
+                            {part.text}
                         </Text>
                     );
                 }
