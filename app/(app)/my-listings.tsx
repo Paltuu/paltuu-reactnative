@@ -112,8 +112,8 @@ function MyListingsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            deletePet(id).catch(() => {
-              Alert.alert('Error', 'Failed to delete listing. Please try again.');
+            deletePet(id).catch((err: any) => {
+              Alert.alert('Error', err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to delete listing. Please try again.');
             });
           }
         }

@@ -291,7 +291,8 @@ export const usePetStore = create<PetState>((set, get) => ({
     try {
       await petsApi.deletePet(id);
     } catch (error: any) {
-      set({ myListings: previousListings, error: error.message || 'Failed to delete listing' });
+      const errMsg = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'Failed to delete listing';
+      set({ myListings: previousListings, error: errMsg });
       throw error;
     }
   },
