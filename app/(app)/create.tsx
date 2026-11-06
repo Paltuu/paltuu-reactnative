@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
+import { LOST_AND_FOUND_ENABLED } from '../../src/constants/features';
 
 function CreateListingScreen() {
   const router = useRouter();
@@ -26,14 +27,18 @@ function CreateListingScreen() {
       color: '#2a9d8f',
       route: '/create-post'
     },
-    {
-      id: 'lost',
-      title: 'Lost & Found',
-      description: 'Report a missing pet or a found one',
-      icon: 'map-marker-radius',
-      color: '#e76f51',
-      route: '/create-lost-found'
-    }
+    ...(LOST_AND_FOUND_ENABLED
+      ? [
+          {
+            id: 'lost',
+            title: 'Lost & Found',
+            description: 'Report a missing pet or a found one',
+            icon: 'map-marker-radius',
+            color: '#e76f51',
+            route: '/create-lost-found',
+          },
+        ]
+      : []),
   ];
 
   return (

@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, SharedValue } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HEADER_HEIGHT } from '../../context/HeaderContext';
 import { SearchBar } from './SearchBar';
+import { LOST_AND_FOUND_ENABLED } from '../../constants/features';
 
 export type SearchTab = 'all' | 'posts' | 'users' | 'pets' | 'adoptions' | 'lost_found' | 'hashtags' | 'vets';
 
@@ -13,7 +14,7 @@ const TABS: { key: SearchTab; title: string }[] = [
   { key: 'users', title: 'People' },
   { key: 'pets', title: 'Pets' },
   { key: 'adoptions', title: 'Adoptions' },
-  { key: 'lost_found', title: 'Lost & Found' },
+  ...(LOST_AND_FOUND_ENABLED ? [{ key: 'lost_found' as const, title: 'Lost & Found' }] : []),
   { key: 'hashtags', title: 'Hashtags' },
   { key: 'vets', title: 'Vets' },
 ];

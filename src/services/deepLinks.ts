@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { LOST_AND_FOUND_ENABLED } from '../constants/features';
 
 /**
  * Maps a deep link string (e.g. "paltuu://social/post/123") to an expo-router path
@@ -65,7 +66,7 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
       '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,
       '/adoptions':   (p) => `/(app)/adopt/${p[1]}`,
-      '/lost-found':  ()  => `/(app)/create-lost-found`,
+      '/lost-found':  ()  => (LOST_AND_FOUND_ENABLED ? `/(app)/create-lost-found` : `/(app)/(tabs)/pets`),
       '/bazaar/cart': ()  => `/(app)/cart`,
       '/bazaar':      ()  => `/(app)/marketplace`,
       '/vet-panel':   ()  => `/(app)/vet-panel`,
