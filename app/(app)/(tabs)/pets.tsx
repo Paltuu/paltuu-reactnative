@@ -25,6 +25,7 @@ import { SkeletonCircle } from '../../../src/components/common/Skeleton';
 import { subscribeToTabPress } from '../../../src/utils/tabPressSubscription';
 import { PawrvezDialog } from '../../../src/components/common/mascot';
 import { storage } from '../../../src/utils/storage';
+import { LOST_AND_FOUND_ENABLED } from '../../../src/constants/features';
 
 const H_PAD = 20;
 const DARK = '#1A1A2E';
@@ -580,9 +581,15 @@ export default function PetsHubScreen() {
                 karachiBigTile/karachiSquareRow above) — the non-Karachi pairing below is
                 untouched. Wide / squared×2 / wide rhythm: hero, then the two squares, then
                 the Vets & Clinics wide tile. */}
-            {karachiSquareRow}
-            <View style={{ height: 12 }} />
-            {karachiBigTile}
+            {LOST_AND_FOUND_ENABLED ? (
+              <>
+                {karachiSquareRow}
+                <View style={{ height: 12 }} />
+                {karachiBigTile}
+              </>
+            ) : (
+              squareRow
+            )}
 
             <View style={{ height: 20 }} />
             <VetsAtHomePresents />
@@ -636,8 +643,12 @@ export default function PetsHubScreen() {
             />
             <View style={{ height: 12 }} />
             {squareRow}
-            <View style={{ height: 12 }} />
-            {lostFoundTile}
+            {LOST_AND_FOUND_ENABLED && (
+              <>
+                <View style={{ height: 12 }} />
+                {lostFoundTile}
+              </>
+            )}
           </>
         )}
 

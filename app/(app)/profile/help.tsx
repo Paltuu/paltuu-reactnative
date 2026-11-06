@@ -35,12 +35,6 @@ const FAQS: { icon: FeatherName; question: string; answer: string }[] = [
       "Browse the 'Adopt' section, find a pet you love, and tap 'Apply for Adoption' to submit your application directly to the current owner.",
   },
   {
-    icon: 'map-pin',
-    question: 'How do I report a lost pet?',
-    answer:
-      "Go to the 'Lost & Found' tab and tap the '+' button to create a new lost pet alert. Add as many details and photos as you can.",
-  },
-  {
     icon: 'plus-circle',
     question: 'How can I contact a vet?',
     answer:
