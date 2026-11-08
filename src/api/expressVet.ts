@@ -52,6 +52,9 @@ export interface ExpressVetRequest {
   contact_phone: string;
   starting_price_pkr: number;
   final_price_pkr: number | null;
+  // Printed Vets at Home coupon applied at booking (PALTU-131). 0 when none.
+  coupon_id?: string | null;
+  discount_pkr?: number;
   scheduled_at: string | null;
   dispatcher_notes: string | null;
   assigned_provider_id: string | null;
@@ -78,6 +81,18 @@ export interface CreateExpressVetRequestPayload {
   longitude?: number | null;
   maps_link?: string | null;
   contact_phone: string;
+  coupon_code?: string | null;
+}
+
+export type ExpressVetCouponCheck =
+  | { valid: true; code: string; discount_pkr: number }
+  | { valid: false; error: string };
+
+// What the client actually pays: the agreed price (or the estimate) minus any coupon,
+// floored at 0. Mirrors payablePkr in the backend's lib/expressVet/coupons.ts.
+export function expressVetPayablePkr(request: Pick<ExpressVetRequest, 'final_price_pkr' | 'starting_price_pkr' | 'discount_pkr'>): number {
+  const price = request.final_price_pkr ?? request.starting_price_pkr;
+  return Math.max(price - (request.discount_pkr ?? 0), 0);
 }
 
 // Thrown by createRequest when the backend rejects with 409 — the client already has an
@@ -139,6 +154,12 @@ export const expressVetApi = {
       }
       throw err;
     }
+  },
+
+  // Read-only check behind the "Apply" button; the code is only redeemed when the request is created.
+  async validateCoupon(code: string): Promise<ExpressVetCouponCheck> {
+    const { data } = await client.post('/express-vet/coupons/validate', { code });
+    return data;
   },
 
   async getMyRequests(page = 1): Promise<{ data: ExpressVetRequest[]; page: number; limit: number }> {

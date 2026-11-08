@@ -182,6 +182,9 @@ export default function ExpressVetDispatchRequestDetailScreen() {
                 </TouchableOpacity>
               )}
               <Row label="Starting price" value={`PKR ${request.starting_price_pkr.toLocaleString()}`} />
+              {(request.discount_pkr ?? 0) > 0 && (
+                <Row label="Coupon applied" value={`− PKR ${(request.discount_pkr ?? 0).toLocaleString()}`} />
+              )}
             </View>
 
             <View style={styles.card}>
@@ -218,7 +221,12 @@ export default function ExpressVetDispatchRequestDetailScreen() {
                   )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.clientName}>{request.provider_name}</Text>
-                    <Text style={styles.rowLabel}>PKR {request.final_price_pkr?.toLocaleString()} confirmed</Text>
+                    <Text style={styles.rowLabel}>
+                      PKR {request.final_price_pkr?.toLocaleString()} confirmed
+                      {(request.discount_pkr ?? 0) > 0 && request.final_price_pkr != null
+                        ? ` · client pays PKR ${Math.max(request.final_price_pkr - (request.discount_pkr ?? 0), 0).toLocaleString()}`
+                        : ''}
+                    </Text>
                   </View>
                 </View>
               </View>

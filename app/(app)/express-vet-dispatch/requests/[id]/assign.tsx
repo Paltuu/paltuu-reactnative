@@ -242,6 +242,13 @@ export default function ExpressVetAssignScreen() {
               placeholder="e.g. 3500"
               placeholderTextColor="#B0B7C3"
             />
+            {/* Coupon (PALTU-131): the final price stays the full price; the client pays it minus the coupon. */}
+            {(request?.discount_pkr ?? 0) > 0 && (
+              <Text style={styles.couponHint}>
+                Client used a PKR {(request?.discount_pkr ?? 0).toLocaleString()} coupon — enter the full price; they
+                pay PKR {Math.max((Number(finalPrice) || 0) - (request?.discount_pkr ?? 0), 0).toLocaleString()}.
+              </Text>
+            )}
           </View>
 
           <View style={{ gap: 8 }}>
@@ -437,6 +444,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONTS.heading, fontSize: 22, color: DARK },
 
   fieldLabel: { fontFamily: FONTS.bodyBold, fontSize: 15, color: DARK },
+  couponHint: { fontFamily: FONTS.body, fontSize: 12, color: '#15803D', lineHeight: 17 },
   input: {
     borderWidth: 1.5,
     borderColor: '#E5E7EB',

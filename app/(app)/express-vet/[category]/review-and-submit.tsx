@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +25,45 @@ export default function ExpressVetReviewAndSubmitScreen() {
   const draft = useExpressVetDraftStore();
 
   const [acknowledged, setAcknowledged] = useState(false);
+
+  // Printed Vets at Home coupon (PALTU-131). "Apply" only checks the code; the server
+  // redeems it when the request is created, so a code checked here can still be rejected
+  // on submit if someone else uses it first.
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_pkr: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  const couponMutation = useMutation({
+    mutationFn: (code: string) => expressVetApi.validateCoupon(code),
+    onSuccess: (res) => {
+      if (res.valid) {
+        setAppliedCoupon({ code: res.code, discount_pkr: res.discount_pkr });
+        setCouponInput(res.code);
+        setCouponError(null);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(res.error);
+      }
+    },
+    onError: (err: any) => {
+      setAppliedCoupon(null);
+      setCouponError(
+        err?.response?.data?.message ?? err?.response?.data?.error ?? 'Could not check that code. Please try again.'
+      );
+    },
+  });
+
+  const handleApplyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    couponMutation.mutate(code);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
 
   const { data: config, isPending, isError, error, refetch } = useQuery({
     queryKey: ['express-vet-config'],
@@ -60,6 +99,7 @@ export default function ExpressVetReviewAndSubmitScreen() {
         latitude,
         longitude,
         contact_phone: draft.contactPhone,
+        coupon_code: appliedCoupon?.code ?? null,
       }),
     onSuccess: ({ request }) => {
       draft.reset();
@@ -69,7 +109,14 @@ export default function ExpressVetReviewAndSubmitScreen() {
         params: { id: request.request_id, justSubmitted: '1' },
       } as any);
     },
-    onError: (err) => {
+    onError: (err: any) => {
+      // Coupon was valid at "Apply" but is gone now (used meanwhile) — show it on the
+      // coupon field instead of a generic alert, and let them submit without it.
+      if (err?.response?.status === 400 && err?.response?.data?.field === 'coupon_code') {
+        setAppliedCoupon(null);
+        setCouponError(err.response.data.error);
+        return;
+      }
       if (err instanceof ExpressVetActiveBookingError) {
         draft.reset();
         Alert.alert('You already have a booking', err.message, [
@@ -154,10 +201,70 @@ export default function ExpressVetReviewAndSubmitScreen() {
               <Text style={styles.priceValue}>
                 {totalPrice != null ? `PKR ${totalPrice.toLocaleString()}` : 'Pricing unavailable'}
               </Text>
+              {appliedCoupon && totalPrice != null && (
+                <>
+                  <View style={styles.discountRow}>
+                    <Text style={styles.discountLabel}>Coupon {appliedCoupon.code}</Text>
+                    <Text style={styles.discountValue}>− PKR {appliedCoupon.discount_pkr.toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.discountRow}>
+                    <Text style={styles.payableLabel}>Estimated you pay</Text>
+                    <Text style={styles.payableValue}>
+                      PKR {Math.max(totalPrice - appliedCoupon.discount_pkr, 0).toLocaleString()}
+                    </Text>
+                  </View>
+                </>
+              )}
               <Text style={styles.priceDisclaimer}>
                 This is a starting estimate so our team can confirm all the rates with you. Your final price will
                 be confirmed by our team on a quick call before your appointment.
               </Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Have a coupon code?</Text>
+              {appliedCoupon ? (
+                <View style={styles.couponAppliedRow}>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.successStrong} />
+                  <Text style={styles.couponAppliedText}>
+                    {appliedCoupon.code} applied — PKR {appliedCoupon.discount_pkr.toLocaleString()} off
+                  </Text>
+                  <TouchableOpacity onPress={handleRemoveCoupon} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.couponRemove}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.couponInputRow}>
+                  <TextInput
+                    value={couponInput}
+                    onChangeText={(t) => {
+                      setCouponInput(t.toUpperCase());
+                      if (couponError) setCouponError(null);
+                    }}
+                    placeholder="Enter code"
+                    placeholderTextColor={COLORS.textPlaceholder}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={16}
+                    returnKeyType="done"
+                    onSubmitEditing={handleApplyCoupon}
+                    style={[styles.couponInput, couponError ? styles.couponInputError : null]}
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.couponApply, !couponInput.trim() && styles.couponApplyDisabled]}
+                    onPress={handleApplyCoupon}
+                    disabled={!couponInput.trim() || couponMutation.isPending}
+                  >
+                    {couponMutation.isPending ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.couponApplyText}>Apply</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+              {!!couponError && <Text style={styles.couponErrorText}>{couponError}</Text>}
             </View>
 
             <TouchableOpacity
@@ -240,6 +347,42 @@ const styles = StyleSheet.create({
   priceLabel: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted },
   priceValue: { fontFamily: FONTS.heading, fontSize: 24, color: COLORS.primary },
   priceDisclaimer: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.textMuted, lineHeight: 17, marginTop: 4 },
+  discountRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  discountLabel: { fontFamily: FONTS.body, fontSize: 13, color: COLORS.textMuted },
+  discountValue: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.successStrong },
+  payableLabel: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.textDark },
+  payableValue: { fontFamily: FONTS.heading, fontSize: 18, color: COLORS.primary },
+
+  couponInputRow: { flexDirection: 'row', gap: 10 },
+  couponInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    fontFamily: FONTS.bodyBold,
+    fontSize: 15,
+    letterSpacing: 1.5,
+    color: COLORS.textDark,
+    backgroundColor: '#FFFFFF',
+  },
+  couponInputError: { borderColor: COLORS.error },
+  couponApply: {
+    height: 44,
+    minWidth: 84,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  couponApplyDisabled: { opacity: 0.4 },
+  couponApplyText: { fontFamily: FONTS.bodyBold, fontSize: 14, color: '#FFFFFF' },
+  couponAppliedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  couponAppliedText: { flex: 1, fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.successStrong },
+  couponRemove: { fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.primary },
+  couponErrorText: { fontFamily: FONTS.body, fontSize: 12, color: COLORS.errorStrong },
 
   ackRow: {
     flexDirection: 'row',

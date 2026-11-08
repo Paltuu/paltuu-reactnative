@@ -20,6 +20,9 @@ export interface ExpressVetDispatchRequest {
   contact_phone: string;
   starting_price_pkr: number;
   final_price_pkr: number | null;
+  // Printed Vets at Home coupon the client applied at booking (PALTU-131). 0 when none.
+  coupon_id?: string | null;
+  discount_pkr?: number;
   scheduled_at: string | null;
   assigned_provider_id: string | null;
   provider_name?: string | null;

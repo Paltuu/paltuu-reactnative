@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { expressVetApi, ExpressVetRequest } from '../../../../src/api/expressVet';
+import { expressVetApi, ExpressVetRequest, expressVetPayablePkr } from '../../../../src/api/expressVet';
 import { EXPRESS_VET_CATEGORY_ICONS } from '../../../../src/constants/expressVet';
 import PaltuuButton from '../../../../src/components/ui/PaltuuButton';
 import { FONTS } from '../../../../src/constants/typography';
@@ -147,6 +147,15 @@ export default function ExpressVetRequestDetailScreen() {
                     : `From PKR ${request.starting_price_pkr.toLocaleString()} (estimate)`
                 }
               />
+              {(request.discount_pkr ?? 0) > 0 && (
+                <>
+                  <Row label="Coupon" value={`− PKR ${(request.discount_pkr ?? 0).toLocaleString()}`} />
+                  <Row
+                    label={request.final_price_pkr != null ? 'You pay' : 'You pay (estimate)'}
+                    value={`PKR ${expressVetPayablePkr(request).toLocaleString()}`}
+                  />
+                </>
+              )}
             </View>
 
             {request.status === 'assigned' || request.status === 'completed' ? (
