@@ -43,6 +43,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useRouter, usePathname } from 'expo-router';
 import VideoPlayer, { VideoThumbnail } from './VideoPlayer';
 import { subscribeToVideoStatus } from '../../utils/videoStatusPoller';
+import { feedFrameRatio } from '../../utils/mediaFrame';
 import { MentionText, mentionsToPlainText } from './MentionText';
 import { usePostCardModals } from '../../context/PostCardModalsContext';
 import { COLORS } from '../../constants/colors';
@@ -716,11 +717,13 @@ const MediaBlock = React.memo(({
   const firstItem = media[0];
   const isVideo = firstItem?.media_type === 'video';
 
-  // Single item
+  // Single item: the frame takes the media's own shape, 4:5 to 16:9
+  // (PALTU-159). Media the server hasn't measured keeps the old fixed frames.
   if (isSingle) {
+    const ratio = feedFrameRatio(firstItem.width, firstItem.height);
     if (isVideo) {
       const SINGLE_VIDEO_W = MEDIA_FULL_W - 24;
-      const videoH = Math.round(SINGLE_VIDEO_W * 0.5625); // 16:9
+      const videoH = Math.round(SINGLE_VIDEO_W / (ratio ?? 16 / 9));
       const videoUri = firstItem.hls_url || firstItem.url;
       const thumbUri = firstItem.thumbnail_url;
 
@@ -758,7 +761,7 @@ const MediaBlock = React.memo(({
     }
 
     const SINGLE_IMG_W = MEDIA_FULL_W - 24;
-    const singleImgH = Math.round(SINGLE_IMG_W / 1.125);
+    const singleImgH = Math.round(SINGLE_IMG_W / (ratio ?? 1.125));
     return (
       <View style={[s.mediaWrapper, { alignSelf: 'flex-start' }]}>
         <TouchableOpacity

@@ -140,11 +140,17 @@ export function useMediaDraft({ maxItems = 10, allowVideo = true }: UseMediaDraf
         const { upload_url, video_key, raw_url } = await socialApi.getVideoUploadUrl(ext);
 
         // Uploaded so the post shows a still while MediaConvert transcodes.
+        // The poster is upright with the clip's shape, so the size the upload
+        // measured is the size the feed frames the video to (PALTU-159).
         let thumbnailRemoteUrl: string | null = null;
+        let posterSize: { width?: number; height?: number } = {};
         if (thumbnailUri) {
           try {
             const res = await socialApi.uploadMedia([thumbnailUri]);
             thumbnailRemoteUrl = res.media[0]?.url ?? null;
+            if (res.media[0]?.width && res.media[0]?.height) {
+              posterSize = { width: res.media[0].width, height: res.media[0].height };
+            }
           } catch (err) {
             console.warn('[useMediaDraft] Failed to upload video thumbnail:', err);
           }
@@ -161,6 +167,7 @@ export function useMediaDraft({ maxItems = 10, allowVideo = true }: UseMediaDraf
           url: raw_url || item.uri,
           thumbnail_url: thumbnailRemoteUrl,
           video_status: 'pending',
+          ...posterSize,
         };
         results.current.set(item.id, { remote, videoKey: video_key });
         patch(item.id, { status: 'uploaded', progress: 1, videoKey: video_key, remote });

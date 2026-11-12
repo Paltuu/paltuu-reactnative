@@ -43,6 +43,9 @@ export interface SocialPostMedia {
   url: string;
   thumbnail_url?: string;
   ordering: number;
+  /** Pixel size, null until the server has measured it (PALTU-159). Feed frames follow it. */
+  width?: number | null;
+  height?: number | null;
   // Video-specific fields
   hls_url?: string;
   video_status?: 'pending' | 'processing' | 'ready' | 'failed';
