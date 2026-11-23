@@ -18,7 +18,7 @@ import PostCard from '../../../src/components/social/PostCard';
 import { SurfacedCommentCard } from '../../../src/components/social/SurfacedCommentCard';
 import AdoptionFeedCard from '../../../src/components/social/AdoptionFeedCard';
 import LostFoundFeedCard from '../../../src/components/social/LostFoundFeedCard';
-import { getFeedItemType, feedItemKey } from '../../../src/components/social/feedItemType';
+import { getFeedItemType, feedItemKey, dedupeFeedItems } from '../../../src/components/social/feedItemType';
 import { PostCardSkeleton } from '../../../src/components/social/PostCardSkeleton';
 import { QuickProfileModal } from '../../../src/components/social/QuickProfileModal';
 import { DayOneClaimModal } from '../../../src/components/social/DayOneClaimModal';
@@ -225,7 +225,7 @@ export default function HomeScreen() {
 
   const posts = useMemo((): FeedItem[] => {
     if (USE_MOCK_POSTS_FOR_SCREENSHOTS) return MOCK_POSTS;
-    return data?.pages.flatMap(p => p.posts) ?? [];
+    return dedupeFeedItems(data?.pages.flatMap(p => p.posts) ?? []);
   }, [data]);
 
   // First time a new user's feed has actually finished loading, greet them
