@@ -39,9 +39,9 @@ import { useIncomingCallStore } from '../src/stores/incomingCallStore';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
-import { AppStickers } from '../src/components/stickers/AppStickers';
 import { toastConfig } from '../src/components/common/toastConfig';
 import { storage } from '../src/utils/storage';
+import { AppStickers } from '../src/components/stickers/AppStickers';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
