@@ -1,11 +1,19 @@
 import { router } from 'expo-router';
 import { LOST_AND_FOUND_ENABLED } from '../constants/features';
 
+// Adoption application notifications that go to the applicant. All three
+// application types share one deep link (paltuu://adoptions/applications/{id}),
+// so the notification type is what says whose screen it opens.
+const APPLICANT_APPLICATION_TYPES = new Set(['adoption_application_approved', 'adoption_application_rejected']);
+
 /**
  * Maps a deep link string (e.g. "paltuu://social/post/123") to an expo-router path
  * and performs the navigation, with safety fallbacks to prevent crashes.
+ *
+ * `type` is the notification type, when the link came from a notification. Only
+ * adoption application links need it today.
  */
-export const handleDeepLink = (deepLink: string | null | undefined) => {
+export const handleDeepLink = (deepLink: string | null | undefined, type?: string | null) => {
   if (!deepLink) return;
 
   if (__DEV__) {
@@ -52,6 +60,17 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       return;
     }
 
+    // Adoption application: paltuu://adoptions/applications/{id}. The pet owner
+    // (new application) goes to Adoption requests, the applicant (approved /
+    // not approved) to My applications, and either screen opens that application.
+    // Both screens are flat routes, so the id goes in a param: the old
+    // `/adoption-requests/{id}` path matched no route at all.
+    if (parts[0] === 'adoptions' && parts[1] === 'applications') {
+      const pathname = type && APPLICANT_APPLICATION_TYPES.has(type) ? '/(app)/my-applications' : '/(app)/adoption-requests';
+      router.push({ pathname, params: parts[2] ? { applicationId: parts[2] } : {} } as any);
+      return;
+    }
+
     const routes: Record<string, (parts: string[], url?: URL) => string> = {
       '/social/post': (p) => `/post/${p[2]}`,
       '/post':        (p) => `/post/${p[1]}`,
@@ -64,8 +83,10 @@ export const handleDeepLink = (deepLink: string | null | undefined) => {
       '/pet-details': (p, u) => `/pet-details?id=${u?.searchParams.get('petId') || u?.searchParams.get('id') || p[1] || ''}`,
       '/pet-profile': (p) => `/(app)/pet-profile/${p[1]}`,
       '/bazaar/orders': (p) => `/(app)/orders/${p[2]}`,
-      '/adoptions/applications': (p) => `/(app)/adoption-requests/${p[2]}`,
-      '/adoptions':   (p) => `/(app)/adopt/${p[1]}`,
+      // paltuu://adoptions/{petId} (listing approved, new listing match). The
+      // adopt screen is a flat route too, so `/adopt/{id}` matched nothing; the
+      // pet's own page is where these belong.
+      '/adoptions':   (p) => (p[1] ? `/pet-details?id=${p[1]}` : `/(app)/adopt`),
       '/lost-found':  ()  => (LOST_AND_FOUND_ENABLED ? `/(app)/create-lost-found` : `/(app)/(tabs)/pets`),
       '/bazaar/cart': ()  => `/(app)/cart`,
       '/bazaar':      ()  => `/(app)/marketplace`,

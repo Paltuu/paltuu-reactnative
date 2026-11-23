@@ -654,7 +654,7 @@ export default function NotificationsScreen() {
         if (!n.is_read) markReadMutation.mutate(n.notification_id);
       });
       const link = group.latest.deep_link;
-      if (link) handleDeepLink(link);
+      if (link) handleDeepLink(link, group.latest.type);
     },
     [markReadMutation]
   );

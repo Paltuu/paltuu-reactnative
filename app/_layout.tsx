@@ -39,6 +39,7 @@ import { useIncomingCallStore } from '../src/stores/incomingCallStore';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
+import { AdoptionUpdatePrompt } from '../src/components/adoption/AdoptionUpdatePrompt';
 import { toastConfig } from '../src/components/common/toastConfig';
 import { storage } from '../src/utils/storage';
 
@@ -259,7 +260,7 @@ export default function RootLayout() {
           if (__DEV__) console.log('[Paltuu] Cold-start notification tap detected');
           const data = response.notification.request.content.data;
           if (data?.deep_link) {
-            handleDeepLink(data.deep_link as string);
+            handleDeepLink(data.deep_link as string, data.type as string | undefined);
           }
         }
       });
@@ -275,7 +276,7 @@ export default function RootLayout() {
       if (__DEV__) console.log('[Paltuu] Notification tapped → checking deep link');
       const data = response.notification.request.content.data;
       if (data?.deep_link) {
-        handleDeepLink(data.deep_link as string);
+        handleDeepLink(data.deep_link as string, data.type as string | undefined);
       }
     });
 
@@ -392,6 +393,9 @@ export default function RootLayout() {
                   options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
               </Stack>
+              {/* New adoption application / application approved or not: a
+                  prompt in the app, for people who missed or blocked the push. */}
+              <AdoptionUpdatePrompt />
             </PostCardModalsProvider>
             </SocialActionsProvider>
             </BottomSheetModalProvider>
