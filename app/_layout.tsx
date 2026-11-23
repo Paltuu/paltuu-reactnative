@@ -39,6 +39,7 @@ import { useIncomingCallStore } from '../src/stores/incomingCallStore';
 import { SocialActionsProvider } from '../src/context/SocialActionsContext';
 import { PostCardModalsProvider } from '../src/context/PostCardModalsContext';
 import { OfflineBanner } from '../src/components/common/OfflineBanner';
+import { AppStickers } from '../src/components/stickers/AppStickers';
 import { toastConfig } from '../src/components/common/toastConfig';
 import { storage } from '../src/utils/storage';
 
@@ -394,6 +395,10 @@ export default function RootLayout() {
               </Stack>
             </PostCardModalsProvider>
             </SocialActionsProvider>
+            {/* Peeking pixel stickers on most screens (as on the web app); the
+                screens without them are listed in AppStickers. Under bottom
+                sheets and modals. */}
+            <AppStickers />
             </BottomSheetModalProvider>
           </SafeAreaProvider>
         </DispatcherCallProvider>
