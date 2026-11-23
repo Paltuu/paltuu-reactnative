@@ -116,6 +116,15 @@ export const getPostItemType = (post: SocialPost): string => {
   return bodyMedia[0]?.media_type === 'video' ? 'video' : 'image';
 };
 
+// The post a card stands for. A plain repost shows its original, so it stands
+// for that post; anything else, a quote included, stands for itself. Same
+// plain/quote rule as getPostItemType above.
+export const getPostRootId = (post: SocialPost): string => {
+  const isRepost = post.post_type === 'repost' && !!post.original_post_id;
+  const isPlainRepost = isRepost && !stripHtml(post.content) && !(post.media?.length ?? 0);
+  return String(isPlainRepost ? post.original_post_id : post.post_id);
+};
+
 export const formatCount = (n: number) => {
   if (!n) return '0';
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;

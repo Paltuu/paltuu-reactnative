@@ -113,8 +113,14 @@ export function SocialActionsProvider({ children }: { children: React.ReactNode 
         queryClient.setQueryData(['social-profile'], context.previousProfile);
       }
     },
-    onSettled: (_data, _err, { postId }) => {
-      queryClient.invalidateQueries({ queryKey: ['social-feed'] });
+    onSettled: (_data, _err, { postId, isReposted, quote }) => {
+      // A quick repost leaves the feed alone: the feed shows each post once,
+      // at its latest repost, so a refetch would pull this card out from
+      // under the user's finger and move it to the top. The optimistic flip
+      // above already shows it as reposted; the next refresh moves it.
+      // Undo and quotes still refetch.
+      const isQuickRepost = quote === undefined && !isReposted;
+      if (!isQuickRepost) queryClient.invalidateQueries({ queryKey: ['social-feed'] });
       queryClient.invalidateQueries({ queryKey: ['post', String(postId)] });
       queryClient.invalidateQueries({ queryKey: ['social-profile'] });
     },
