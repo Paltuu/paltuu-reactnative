@@ -165,7 +165,13 @@ export default function ProfileMenuScreen() {
           label="Log Out"
           danger
           right={<View />}
-          onPress={() => { close(); logout(); }}
+          // Don't pop this screen first. app/_layout.tsx replaces the whole signed-in
+          // stack with the welcome screen as soon as logout() clears the session, and
+          // on iPhones with notifications off (no push token, so logout() makes no
+          // network call) that happened a few ms after router.back(), mid pop
+          // animation, and closed the app (PALTU-177). Android always has an FCM
+          // token, so its logout() waited on a request and the pop had finished.
+          onPress={() => logout()}
         />
       </ScrollView>
     </View>
