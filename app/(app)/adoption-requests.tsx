@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import { usePetStore } from '../../src/stores/petStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 
@@ -49,6 +49,21 @@ function AdoptionRequestsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  // Set by a "new application" notification or the in-app prompt: open that
+  // application once it's in the list (once only, so closing it sticks).
+  const { applicationId } = useLocalSearchParams<{ applicationId?: string }>();
+  const openedFromLink = useRef(false);
+
+  useEffect(() => {
+    if (!applicationId || openedFromLink.current) return;
+    const match = adoptionRequests.find(
+      (r: any) => r.type !== 'foster' && String(r.adoption_id) === String(applicationId)
+    );
+    if (match) {
+      openedFromLink.current = true;
+      setSelectedItem(match);
+    }
+  }, [applicationId, adoptionRequests]);
 
   const handleStatusChange = (item: any, status: 'approved' | 'rejected') => {
     const id = item.type === 'foster' ? item.foster_id : item.adoption_id;

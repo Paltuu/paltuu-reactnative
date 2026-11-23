@@ -24,7 +24,14 @@ const STORAGE_KEYS = {
   // alarm permission), so this is a manual acknowledgement — once set, the reminder
   // card stays hidden on this device.
   DISPATCH_FULLSCREEN_ALERT_ACK: 'dispatch_fullscreen_alert_ack',
+  // Prefix: one key per account (a shared phone can switch accounts). Holds the
+  // notification ids AdoptionUpdatePrompt has already shown on this device.
+  ADOPTION_PROMPT_SEEN: 'adoption_prompt_seen_',
 };
+
+// Newest ids only: SecureStore warns past 2 KB on Android, and anything older
+// is past the prompt's 14-day window anyway.
+const ADOPTION_PROMPT_SEEN_MAX = 100;
 
 // expo-secure-store is not supported on web; fall back to localStorage
 const store = {
@@ -161,6 +168,23 @@ export const storage = {
   },
   async setLastSeenOtaUpdateId(id: string) {
     await store.setItem(STORAGE_KEYS.LAST_SEEN_OTA_UPDATE_ID, id);
+  },
+  async getAdoptionPromptSeen(userId: number | string): Promise<number[]> {
+    try {
+      const raw = await store.getItem(`${STORAGE_KEYS.ADOPTION_PROMPT_SEEN}${userId}`);
+      const ids = raw ? JSON.parse(raw) : [];
+      return Array.isArray(ids) ? ids.filter((id) => typeof id === 'number') : [];
+    } catch {
+      return [];
+    }
+  },
+  async addAdoptionPromptSeen(userId: number | string, ids: number[]) {
+    if (ids.length === 0) return;
+    const seen = await storage.getAdoptionPromptSeen(userId);
+    const merged = Array.from(new Set([...seen, ...ids]))
+      .sort((a, b) => b - a)
+      .slice(0, ADOPTION_PROMPT_SEEN_MAX);
+    await store.setItem(`${STORAGE_KEYS.ADOPTION_PROMPT_SEEN}${userId}`, JSON.stringify(merged));
   },
 };
 

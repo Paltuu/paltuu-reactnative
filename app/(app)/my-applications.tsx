@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { usePetStore } from '../../src/stores/petStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withFocusUnmount } from '../../src/components/common/withFocusUnmount';
 import { formatPhoneDisplay } from '../../src/utils/phone';
@@ -48,10 +48,25 @@ function MyApplicationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  // Set by an "approved / not approved" notification or the in-app prompt:
+  // open that application once it's in the list (once only, so closing it sticks).
+  const { applicationId } = useLocalSearchParams<{ applicationId?: string }>();
+  const openedFromLink = useRef(false);
 
   useEffect(() => {
     fetchMyApplications();
   }, []);
+
+  useEffect(() => {
+    if (!applicationId || openedFromLink.current) return;
+    const match = myApplications.find(
+      (a: any) => a.application_type !== 'foster' && String(a.application_id) === String(applicationId)
+    );
+    if (match) {
+      openedFromLink.current = true;
+      setSelectedItem(match);
+    }
+  }, [applicationId, myApplications]);
 
   const getStatusConfig = (status: string) => STATUS_CONFIG[status?.toLowerCase()] || STATUS_CONFIG.pending;
 
