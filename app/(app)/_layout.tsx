@@ -97,6 +97,14 @@ function LayoutContent() {
           name="profile-menu"
           options={{ animation: 'slide_from_right', gestureEnabled: true }}
         />
+        <Stack.Screen
+          name="my-listings/[id]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="adoption-requests/[id]"
+          options={{ animation: 'slide_from_right', gestureEnabled: true }}
+        />
         {/* Active booking detail — presented as a sheet that rises from the bottom rather
             than a sideways push, because it's reached two ways that both read as "expand
             this up": tapping the persistent booking bar above the tab bar (which points up

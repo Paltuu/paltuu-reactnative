@@ -95,6 +95,14 @@ export const petApi = {
     return data;
   },
 
+  // Owner's answer to "is this pet still available?". `true` renews the
+  // listing (or relists a paused one); `false` marks it adopted. Returns the
+  // updated adoption_status / bumped_at / availability_check_sent_at.
+  async setPetAvailability(id: number, available: boolean) {
+    const { data } = await client.post(`/pets/${id}/availability`, { available });
+    return data;
+  },
+
   async deletePet(id: number) {
     const { data } = await client.delete(`/pets/${id}`);
     return data;
@@ -112,6 +120,11 @@ export const petApi = {
 
   async updateApplicationStatus(params: { application_id: number; type: 'adoption' | 'foster'; status: 'approved' | 'rejected' }) {
     const { data } = await client.put('/applications/status', params);
+    return data;
+  },
+
+  async withdrawApplication(applicationId: number, type: 'adoption' | 'foster') {
+    const { data } = await client.delete('/applications/my', { params: { application_id: applicationId, type } });
     return data;
   },
 

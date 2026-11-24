@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { petsApi, PetFilters, Breed } from '../api/pets';
 import client, { UPLOAD_TIMEOUT_MS } from '../api/client';
+import { requestId, requestStatus } from '../utils/adoption';
 
 // Camera-roll photos (esp. HEIC/high-res JPEG) routinely exceed the API's
 // request-size limit — resize + re-encode before upload, keeping total batch
@@ -31,6 +32,11 @@ interface PetState {
   myListings: any[];
   adoptionRequests: any[];
   myApplications: any[];
+  // Last load error per adoption list (null once a load succeeds), so each
+  // screen can show its own retry state instead of an empty list.
+  myListingsError: unknown;
+  adoptionRequestsError: unknown;
+  myApplicationsError: unknown;
 
   // Actions
   fetchPets: (filters?: PetFilters) => Promise<void>;
@@ -38,12 +44,17 @@ interface PetState {
   fetchBreeds: () => Promise<void>;
   setFilters: (filters: Partial<PetFilters>) => void;
   resetFilters: () => void;
-  fetchMyListings: () => Promise<void>;
+  /** Resolves true when the list loaded. */
+  fetchMyListings: () => Promise<boolean>;
   updatePetStatus: (id: number, status: string) => Promise<void>;
+  setListingAvailability: (id: number, available: boolean) => Promise<void>;
   deletePet: (id: number) => Promise<void>;
-  fetchAdoptionRequests: () => Promise<void>;
-  fetchMyApplications: () => Promise<void>;
+  /** Resolves true when the list loaded. */
+  fetchAdoptionRequests: () => Promise<boolean>;
+  /** Resolves true when the list loaded. */
+  fetchMyApplications: () => Promise<boolean>;
   updateApplicationStatus: (applicationId: number, type: 'adoption' | 'foster', status: 'approved' | 'rejected') => Promise<void>;
+  withdrawApplication: (applicationId: number, type: 'adoption' | 'foster') => Promise<void>;
 
   // Selection
   selectedPet: any | null;
@@ -63,6 +74,9 @@ export const usePetStore = create<PetState>((set, get) => ({
   myListings: [],
   adoptionRequests: [],
   myApplications: [],
+  myListingsError: null,
+  adoptionRequestsError: null,
+  myApplicationsError: null,
   isLoading: false,
   error: null,
   filters: {
@@ -263,26 +277,49 @@ export const usePetStore = create<PetState>((set, get) => ({
     }
   },
 
+  // The three adoption-list loads below don't touch the shared `isLoading`:
+  // they're refreshed in the background (on focus, and by the adoption
+  // prompt), which would otherwise flash spinners on unrelated screens.
   fetchMyListings: async () => {
-    set({ isLoading: true, error: null });
     try {
       const response = await petsApi.getMyListings();
       const list = Array.isArray(response) ? response : (response?.listings || response?.data?.listings || []);
-      set({ myListings: list, isLoading: false });
+      set({ myListings: list, myListingsError: null });
+      return true;
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch my listings', isLoading: false });
+      set({ myListingsError: error, error: error.message || 'Failed to fetch my listings' });
+      return false;
     }
   },
 
   updatePetStatus: async (id, status) => {
     try {
       await petsApi.updatePetStatus(id, status);
-      const myListings = get().myListings.map(p => p.pet_id === id ? { ...p, adoption_status: status } : p);
+      const myListings = get().myListings.map((p) =>
+        p.pet_id === id
+          ? {
+              ...p,
+              adoption_status: status,
+              // The server clears a pending "still available?" check on any status change.
+              ...(p.adoption_status !== status ? { availability_check_sent_at: null } : {}),
+            }
+          : p
+      );
       set({ myListings });
     } catch (error: any) {
       set({ error: error.message || 'Failed to update status' });
       throw error;
     }
+  },
+
+  setListingAvailability: async (id, available) => {
+    const row = await petsApi.setPetAvailability(id, available);
+    const patch = {
+      adoption_status: available ? 'available' : 'adopted',
+      availability_check_sent_at: null,
+      ...(row && typeof row === 'object' ? row : {}),
+    };
+    set({ myListings: get().myListings.map((p) => (p.pet_id === id ? { ...p, ...patch } : p)) });
   },
 
   deletePet: async (id) => {
@@ -298,39 +335,68 @@ export const usePetStore = create<PetState>((set, get) => ({
   },
 
   fetchAdoptionRequests: async () => {
-    set({ isLoading: true, error: null });
     try {
       const response = await petsApi.getMyAdoptionRequests();
       const list = Array.isArray(response) ? response : (response?.applications || response?.data?.applications || []);
-      set({ adoptionRequests: list, isLoading: false });
+      set({ adoptionRequests: list, adoptionRequestsError: null });
+      return true;
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch adoption requests', isLoading: false });
+      set({ adoptionRequestsError: error, error: error.message || 'Failed to fetch adoption requests' });
+      return false;
     }
   },
 
   updateApplicationStatus: async (applicationId, type, status) => {
     try {
       await petsApi.updateApplicationStatus({ application_id: applicationId, type, status });
-      // Update local state
-      const adoptionRequests = get().adoptionRequests.map(r => 
-        ((type === 'adoption' && r.adoption_id === applicationId) || 
-         (type === 'foster' && r.foster_id === applicationId)) ? { ...r, status } : r
-      );
-      set({ adoptionRequests });
     } catch (error: any) {
       set({ error: error.message || 'Failed to update application status' });
       throw error;
     }
+    const target = get().adoptionRequests.find((r) => requestId(r) === applicationId);
+    const petId = target?.pet_id;
+    const wasPending = !!target && requestStatus(target) === 'pending';
+    set({
+      // Mirrors the server: approving one application declines every other
+      // one for the same pet that isn't declined already.
+      adoptionRequests: get().adoptionRequests.map((r) => {
+        if (r === target) return { ...r, status };
+        if (status === 'approved' && petId != null && r.pet_id === petId && requestStatus(r) !== 'rejected') {
+          return { ...r, status: 'rejected' };
+        }
+        return r;
+      }),
+      // ...and marks the pet adopted.
+      myListings: get().myListings.map((p) => {
+        if (petId == null || p.pet_id !== petId) return p;
+        if (status === 'approved') {
+          return { ...p, adoption_status: 'adopted', pending_application_count: 0 };
+        }
+        return wasPending && p.pending_application_count > 0
+          ? { ...p, pending_application_count: p.pending_application_count - 1 }
+          : p;
+      }),
+    });
   },
 
   fetchMyApplications: async () => {
-    set({ isLoading: true, error: null });
     try {
       const response = await petsApi.getMyApplications();
       const list = Array.isArray(response) ? response : (response?.applications || response?.data?.applications || []);
-      set({ myApplications: list, isLoading: false });
+      set({ myApplications: list, myApplicationsError: null });
+      return true;
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch my applications', isLoading: false });
+      set({ myApplicationsError: error, error: error.message || 'Failed to fetch my applications' });
+      return false;
     }
+  },
+
+  withdrawApplication: async (applicationId, type) => {
+    await petsApi.withdrawApplication(applicationId, type);
+    set({
+      myApplications: get().myApplications.filter(
+        (a) => !(a.application_id === applicationId && (a.application_type || 'adoption') === type)
+      ),
+    });
   },
 }));
