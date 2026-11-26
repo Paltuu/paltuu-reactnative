@@ -1,8 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  GestureResponderEvent,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { useSegments } from 'expo-router';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useReducedMotion,
@@ -16,23 +25,32 @@ import { FONTS } from '../../constants/typography';
 
 /**
  * The web app's peeking pixel stickers (paltuu-nextjs
- * components/stickers/AppStickers.tsx, PALTU-155), in the app (PALTU-179).
- * Rendered once in the root layout, over every screen except those in HIDE_ON.
+ * components/stickers/AppStickers.tsx and the .app-stickers / .peek-sticker
+ * rules in app/globals.css), in the app. Rendered once in the root layout,
+ * over every screen except those in HIDE_ON. Built to look and behave exactly
+ * like the web app on a phone (PALTU-184):
  *
- * Same as the web app on a phone: one left sticker and one right one, each on
- * its web side and tilt, at random heights (one higher than the other), picked
- * again whenever the screen changes. Mostly tucked behind the edge (a few px
- * show). Now and then one peeks out for a moment: first 8 to 20 s after a
- * screen opens, then every 30 to 60 s. Tapping a sticker while it's out pops
- * it the rest of the way with a wiggle and its speech bubble.
+ * - One left sticker and one right one, each on its web side and tilt, at
+ *   random heights (one higher than the other), picked again whenever the
+ *   screen changes. 85% tucked behind the edge, so a sliver shows.
+ * - Now and then one peeks out (to 58% tucked) for 2.4 s: first 8 to 20 s
+ *   after a screen opens, then every 30 to 60 s.
+ * - Tapping the sticker, or a 16 x 76 pt strip along the screen edge beside
+ *   it, pops it out by another 55% of its width from wherever it is, upright
+ *   and 15% bigger, with two wiggles of the picture and its speech bubble.
+ *   It tucks back 2.2 s after the last tap.
  *
- * One difference from the web: there, a resting sticker has a 16 px tap strip
- * in the page gutter. App screens run content (photos, carousels) to the edge,
- * and the left edge is the iOS swipe-back, so here a sticker only takes taps
- * while it's peeking or popped. Otherwise touches pass straight through.
+ * Like the web, two layers: the outer one peeks, the inner one pops.
+ *
+ * One thing differs, on iOS only: the left edge is the swipe-back gesture, and
+ * a view over it would swallow the swipe (this layer sits above every screen).
+ * So there the left sticker's tap strip isn't a view: the root view reports
+ * taps along the left edge (stickerEdgeTouches) and they pop it, while the
+ * touch still reaches the screen underneath. The resting left sticker itself
+ * takes no touches on iOS for the same reason.
  *
  * Decorative only: hidden from screen readers. Under Reduce Motion they don't
- * peek on their own or wiggle.
+ * peek on their own or wiggle (popping still slides, as on the web).
  */
 
 const STICKERS = [
@@ -47,21 +65,27 @@ type Sticker = (typeof STICKERS)[number];
 const LEFT = STICKERS.filter((s) => s.side === 'left');
 const RIGHT = STICKERS.filter((s) => s.side === 'right');
 
-// Sizes from the web app's phone rules (.app-stickers in globals.css).
+// The web app's phone sizes, as shares of the sticker's own width.
 const WIDTH = 56;
-const HIDE = 0.85; // share of the sticker behind the edge at rest
-const PEEK = 0.58; // ... at the peak of a peek
-const POP = 0.3; // ... when popped (it also grows by POP_SCALE)
+const HIDE = 0.85; // tucked behind the edge at rest (--hide)
+const PEEK = 0.58; // ... at the peak of a peek (--peek)
+const POP = 0.55; // how far popping brings it out, from wherever it is (--pop)
 const POP_SCALE = 1.15;
+// The tap strip beside each sticker (.app-stickers .peek-sticker-hit).
+const STRIP_WIDTH = 16;
+const STRIP_HEIGHT = 76;
+// Room for the speech bubble to size to its text: on the web it's nowrap and
+// runs past the sticker, but here a positioned child is held to its parent's
+// width unless it's given its own.
+const BUBBLE_ROOM = 200;
 
 const POP_MS = 2200;
-// The web's 2.4 s, plus a little: it's also the window for tapping it.
-const PEEK_MS = 3000;
-const SLIDE_MS = 600;
-const OUT_MS = 450;
-// The web's two transition curves (overshoot, then settle).
-const SLIDE_EASING = Easing.bezier(0.34, 1.4, 0.64, 1);
-const POP_EASING = Easing.bezier(0.34, 1.56, 0.64, 1);
+const PEEK_MS = 2400;
+// The web's transitions and keyframes.
+const PEEK_SLIDE = { duration: 600, easing: Easing.bezier(0.34, 1.4, 0.64, 1) };
+const POP_SLIDE = { duration: 450, easing: Easing.bezier(0.34, 1.56, 0.64, 1) };
+const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+const EASE_IN_OUT = Easing.bezier(0.42, 0, 0.58, 1);
 
 /**
  * Screens without stickers, as the route path without its (groups), matched as
@@ -107,6 +131,45 @@ function isHidden(segments: string[]) {
   return HIDE_ON.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
+// ---------------------------------------------------------------------------
+// iOS left-edge taps (see the note at the top). Spread onto the root view in
+// app/_layout.tsx; touch events bubble up to it from every screen without
+// taking the touch away from anything.
+
+const TAP_SLOP = 10;
+const TAP_MS = 500;
+const leftEdgeStickers = new Set<{ top: number; pop: () => void }>();
+let edgeTouch: { x: number; y: number; t: number } | null = null;
+
+export const stickerEdgeTouches =
+  Platform.OS === 'ios'
+    ? {
+        onTouchStart: (e: GestureResponderEvent) => {
+          const { pageX, pageY, touches } = e.nativeEvent;
+          edgeTouch = touches.length <= 1 && pageX <= STRIP_WIDTH ? { x: pageX, y: pageY, t: Date.now() } : null;
+        },
+        onTouchEnd: (e: GestureResponderEvent) => {
+          const start = edgeTouch;
+          edgeTouch = null;
+          if (!start) return;
+          const { pageX, pageY } = e.nativeEvent;
+          const tap =
+            Math.abs(pageX - start.x) <= TAP_SLOP &&
+            Math.abs(pageY - start.y) <= TAP_SLOP &&
+            Date.now() - start.t <= TAP_MS;
+          if (!tap) return;
+          leftEdgeStickers.forEach((s) => {
+            if (start.y >= s.top && start.y <= s.top + STRIP_HEIGHT) s.pop();
+          });
+        },
+        onTouchCancel: () => {
+          edgeTouch = null;
+        },
+      }
+    : {};
+
+// ---------------------------------------------------------------------------
+
 export function AppStickers() {
   const segments = useSegments() as string[];
   const hidden = isHidden(segments);
@@ -114,15 +177,15 @@ export function AppStickers() {
   const routeKey = segments.join('/');
   const pair = useMemo(() => (hidden ? null : pick()), [routeKey, hidden]);
   const reduceMotion = useReducedMotion();
-  const peekRefs = useRef<(PeekHandle | null)[]>([]);
+  const handles = useRef<(StickerHandle | null)[]>([]);
 
   // Now and then one of the two peeks out: first 8 to 20 s after the screen
-  // opens, then every 30 to 60 s.
+  // opens, then every 30 to 60 s after the last peek ends.
   useEffect(() => {
     if (!pair || reduceMotion) return;
     let timer: ReturnType<typeof setTimeout>;
     const peek = () => {
-      peekRefs.current[random(2)]?.peek();
+      handles.current[random(2)]?.peek();
       timer = setTimeout(peek, PEEK_MS + between(30, 60));
     };
     timer = setTimeout(peek, between(8, 20));
@@ -142,7 +205,7 @@ export function AppStickers() {
         <PeekingSticker
           key={`${routeKey}-${i}`}
           ref={(h) => {
-            peekRefs.current[i] = h;
+            handles.current[i] = h;
           }}
           sticker={sticker}
           top={top}
@@ -153,121 +216,159 @@ export function AppStickers() {
   );
 }
 
-interface PeekHandle {
+interface StickerHandle {
   peek: () => void;
 }
 
 const PeekingSticker = React.forwardRef<
-  PeekHandle,
+  StickerHandle,
   { sticker: Sticker; top: number; reduceMotion: boolean }
 >(function PeekingSticker({ sticker, top, reduceMotion }, ref) {
   const { height: screenHeight } = useWindowDimensions();
   const left = sticker.side === 'left';
+  const edge = left ? -1 : 1; // translateX sign toward the sticker's screen edge
   const height = Math.round((WIDTH * sticker.h) / sticker.w);
-  // How far it sits out from the screen edge, as a share of its width shown.
-  const offset = (tucked: number) => (left ? -1 : 1) * tucked * WIDTH;
+  const topPx = Math.round((screenHeight * top) / 100);
+  // iOS keeps the left edge free for swipe-back (see the note at the top).
+  const viaRootTaps = Platform.OS === 'ios' && left;
 
-  const x = useSharedValue(offset(HIDE));
-  const scale = useSharedValue(1);
+  // Outer layer: tucked or peeking (.is-peeking).
+  const outerX = useSharedValue(edge * HIDE * WIDTH);
+  // Inner layer: tilted at rest, or popped (.is-popped).
+  const innerX = useSharedValue(0);
   const rot = useSharedValue<number>(sticker.rot);
+  const scale = useSharedValue(1);
+  // Only the picture wiggles, not the bubble.
   const wiggle = useSharedValue(0);
-  const bubble = useSharedValue(0);
+  const bubbleOpacity = useSharedValue(0);
+  const bubbleIn = useSharedValue(0);
 
-  // Only takes taps while it's out (see the note at the top).
-  const [out, setOut] = useState(false);
-  const state = useRef<'rest' | 'peek' | 'pop'>('rest');
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  const tuck = useCallback(() => {
-    state.current = 'rest';
-    setOut(false);
-    const d = reduceMotion ? 0 : OUT_MS;
-    x.value = withTiming(offset(HIDE), { duration: d, easing: POP_EASING });
-    scale.value = withTiming(1, { duration: d });
-    rot.value = withTiming(sticker.rot, { duration: d });
-    bubble.value = withTiming(0, { duration: 200 });
-  }, [reduceMotion]);
+  const [peeking, setPeeking] = useState(false);
+  const [popped, setPopped] = useState(false);
+  const isPopped = useRef(false);
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const popTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(peekTimer.current);
+      clearTimeout(popTimer.current);
+    },
+    []
+  );
 
   const peek = useCallback(() => {
-    if (state.current !== 'rest') return;
-    state.current = 'peek';
-    setOut(true);
-    x.value = withTiming(offset(PEEK), { duration: SLIDE_MS, easing: SLIDE_EASING });
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      if (state.current !== 'peek') return;
-      state.current = 'rest';
-      setOut(false);
-      x.value = withTiming(offset(HIDE), { duration: SLIDE_MS, easing: SLIDE_EASING });
+    setPeeking(true);
+    outerX.value = withTiming(edge * PEEK * WIDTH, PEEK_SLIDE);
+    clearTimeout(peekTimer.current);
+    peekTimer.current = setTimeout(() => {
+      setPeeking(false);
+      outerX.value = withTiming(edge * HIDE * WIDTH, PEEK_SLIDE);
     }, PEEK_MS);
   }, []);
 
   React.useImperativeHandle(ref, () => ({ peek }), [peek]);
 
+  const tuck = useCallback(() => {
+    isPopped.current = false;
+    setPopped(false);
+    innerX.value = withTiming(0, POP_SLIDE);
+    rot.value = withTiming(sticker.rot, POP_SLIDE);
+    scale.value = withTiming(1, POP_SLIDE);
+    cancelAnimation(wiggle);
+    wiggle.value = 0;
+    bubbleOpacity.value = withTiming(0, { duration: 200, easing: EASE });
+    bubbleIn.value = withTiming(0, { duration: 250, easing: EASE });
+  }, []);
+
   const pop = useCallback(() => {
-    state.current = 'pop';
-    setOut(true);
-    const d = reduceMotion ? 0 : OUT_MS;
-    x.value = withTiming(offset(POP), { duration: d, easing: POP_EASING });
-    scale.value = withTiming(POP_SCALE, { duration: d, easing: POP_EASING });
-    rot.value = withTiming(0, { duration: d });
-    bubble.value = withDelay(reduceMotion ? 0 : 150, withTiming(1, { duration: reduceMotion ? 0 : 250 }));
+    clearTimeout(popTimer.current);
+    popTimer.current = setTimeout(tuck, POP_MS);
+    // Tapping it again while it's out only keeps it out longer.
+    if (isPopped.current) return;
+    isPopped.current = true;
+    setPopped(true);
+    innerX.value = withTiming(-edge * POP * WIDTH, POP_SLIDE);
+    rot.value = withTiming(0, POP_SLIDE);
+    scale.value = withTiming(POP_SCALE, POP_SLIDE);
+    bubbleOpacity.value = withDelay(150, withTiming(1, { duration: 200, easing: EASE }));
+    bubbleIn.value = withDelay(150, withTiming(1, { duration: 250, easing: EASE }));
     if (!reduceMotion) {
-      // Two wiggles, as on the web (0.5 s each, after 0.2 s).
+      // Two 0.5 s wiggles after 0.2 s: 0 -> -9deg -> 9deg -> 0 (@keyframes sticker-wiggle).
       wiggle.value = withDelay(
         200,
         withRepeat(
           withSequence(
-            withTiming(-9, { duration: 125 }),
-            withTiming(9, { duration: 250 }),
-            withTiming(0, { duration: 125 })
+            withTiming(-9, { duration: 125, easing: EASE_IN_OUT }),
+            withTiming(9, { duration: 250, easing: EASE_IN_OUT }),
+            withTiming(0, { duration: 125, easing: EASE_IN_OUT })
           ),
           2
         )
       );
     }
-    clearTimeout(timer.current);
-    timer.current = setTimeout(tuck, POP_MS);
   }, [reduceMotion, tuck]);
 
-  const stickerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x.value },
-      { rotate: `${rot.value + wiggle.value}deg` },
-      { scale: scale.value },
-    ],
+  // iOS left sticker: taps on its edge strip come from the root view.
+  useEffect(() => {
+    if (!viaRootTaps) return;
+    const entry = { top: topPx, pop };
+    leftEdgeStickers.add(entry);
+    return () => {
+      leftEdgeStickers.delete(entry);
+    };
+  }, [viaRootTaps, topPx, pop]);
+
+  const outerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: outerX.value }] }));
+  const innerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: innerX.value }, { rotate: `${rot.value}deg` }, { scale: scale.value }],
   }));
+  const pictureStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${wiggle.value}deg` }] }));
   const bubbleStyle = useAnimatedStyle(() => ({
-    opacity: bubble.value,
-    transform: [{ translateY: (1 - bubble.value) * 6 }, { scale: 0.8 + bubble.value * 0.2 }],
+    opacity: bubbleOpacity.value,
+    transform: [{ translateY: (1 - bubbleIn.value) * 6 }, { scale: 0.8 + 0.2 * bubbleIn.value }],
   }));
 
   return (
-    <Animated.View
-      pointerEvents={out ? 'auto' : 'none'}
-      style={[
-        styles.sticker,
-        { top: (screenHeight * top) / 100, width: WIDTH, height },
-        left ? { left: 0 } : { right: 0 },
-        stickerStyle,
-      ]}
-    >
-      <Pressable onPress={pop} style={StyleSheet.absoluteFill}>
-        <Image source={sticker.src} style={{ width: WIDTH, height }} contentFit="contain" />
-      </Pressable>
+    <>
       <Animated.View
-        pointerEvents="none"
-        style={[styles.bubble, left ? { left: WIDTH * 0.55 } : { right: WIDTH * 0.55 }, bubbleStyle]}
+        pointerEvents={viaRootTaps && !peeking && !popped ? 'none' : 'auto'}
+        style={[
+          styles.sticker,
+          { top: topPx, width: WIDTH, height },
+          left ? { left: 0 } : { right: 0 },
+          outerStyle,
+        ]}
       >
-        <View style={styles.bubbleShadow} />
-        <View style={styles.bubbleBox}>
-          <Text style={styles.bubbleText} numberOfLines={1}>
-            {sticker.say}
-          </Text>
-        </View>
+        <Animated.View style={[{ width: WIDTH, height }, innerStyle]}>
+          <Pressable onPress={pop} style={StyleSheet.absoluteFill}>
+            <Animated.View style={pictureStyle}>
+              <Image source={sticker.src} style={{ width: WIDTH, height }} contentFit="contain" />
+            </Animated.View>
+          </Pressable>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.bubbleRoom,
+              left ? { left: WIDTH * 0.55, alignItems: 'flex-start' } : { right: WIDTH * 0.55, alignItems: 'flex-end' },
+            ]}
+          >
+            <Animated.View style={bubbleStyle}>
+              <View style={styles.bubbleShadow} />
+              <View style={styles.bubbleFace}>
+                <Text style={styles.bubbleText} numberOfLines={1}>
+                  {sticker.say}
+                </Text>
+              </View>
+            </Animated.View>
+          </View>
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+
+      {/* The tap strip along the edge, as on the web (not the iOS left edge). */}
+      {viaRootTaps ? null : (
+        <Pressable onPress={pop} style={[styles.strip, { top: topPx }, left ? { left: 0 } : { right: 0 }]} />
+      )}
+    </>
   );
 });
 
@@ -281,9 +382,15 @@ const styles = StyleSheet.create({
   sticker: {
     position: 'absolute',
   },
-  bubble: {
+  strip: {
+    position: 'absolute',
+    width: STRIP_WIDTH,
+    height: STRIP_HEIGHT,
+  },
+  bubbleRoom: {
     position: 'absolute',
     top: -26,
+    width: BUBBLE_ROOM,
   },
   // The web's hard 3 px offset shadow, drawn as a solid box behind the bubble
   // (Android shadows can't be offset or hard-edged).
@@ -295,7 +402,7 @@ const styles = StyleSheet.create({
     bottom: -3,
     backgroundColor: INK,
   },
-  bubbleBox: {
+  bubbleFace: {
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: INK,
@@ -305,8 +412,9 @@ const styles = StyleSheet.create({
   bubbleText: {
     fontFamily: FONTS.pixel,
     fontSize: 9,
-    lineHeight: 14,
+    lineHeight: 14.4, // the web's line-height: 1.6
     color: INK,
+    includeFontPadding: false,
   },
 });
 

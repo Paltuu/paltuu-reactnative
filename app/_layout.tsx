@@ -42,7 +42,7 @@ import { OfflineBanner } from '../src/components/common/OfflineBanner';
 import { AdoptionUpdatePrompt } from '../src/components/adoption/AdoptionUpdatePrompt';
 import { toastConfig } from '../src/components/common/toastConfig';
 import { storage } from '../src/utils/storage';
-import { AppStickers } from '../src/components/stickers/AppStickers';
+import { AppStickers, stickerEdgeTouches } from '../src/components/stickers/AppStickers';
 
 // ─── Module-level: Notification Handler & Background Task ────────────────────
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
@@ -324,7 +324,9 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    // stickerEdgeTouches: on iOS, taps along the left edge pop the left
+    // sticker without a view there to block swipe-back (see AppStickers).
+    <GestureHandlerRootView style={{ flex: 1 }} {...stickerEdgeTouches}>
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
         <DispatcherCallProvider>
