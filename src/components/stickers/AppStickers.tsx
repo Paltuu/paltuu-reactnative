@@ -355,7 +355,7 @@ const PeekingSticker = React.forwardRef<
             <Animated.View style={bubbleStyle}>
               <View style={styles.bubbleShadow} />
               <View style={styles.bubbleFace}>
-                <Text style={styles.bubbleText} numberOfLines={1}>
+                <Text style={styles.bubbleText} numberOfLines={1} allowFontScaling={false}>
                   {sticker.say}
                 </Text>
               </View>
@@ -373,6 +373,7 @@ const PeekingSticker = React.forwardRef<
 });
 
 const INK = '#111827'; // the web bubble's ink (gray-900)
+const BUBBLE_FONT = 9;
 
 const styles = StyleSheet.create({
   layer: {
@@ -409,10 +410,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
+  // The web's line-height: 1.6, done by hand. Pixeled's natural line is 2.8 em
+  // tall (2.2 em above the baseline, 0.6 em below), and its letters are 1.2 em
+  // tall sitting on the baseline. CSS trims a 1.6 em line evenly, 0.6 em off
+  // the top and bottom, so the letters sit low in it. React Native's lineHeight
+  // doesn't: on iOS it trims the line from the top only, which pushed the
+  // letters up into the bubble's border. So no lineHeight here; the natural
+  // line is trimmed with negative margins instead, the same on both platforms.
+  // Not scaled with the system text size, so the margins stay right (it's
+  // decorative and hidden from screen readers, like the web's 9px bubble).
   bubbleText: {
     fontFamily: FONTS.pixel,
-    fontSize: 9,
-    lineHeight: 14.4, // the web's line-height: 1.6
+    fontSize: BUBBLE_FONT,
+    marginVertical: -0.6 * BUBBLE_FONT,
     color: INK,
     includeFontPadding: false,
   },
